@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-04
 title: Accounts Receivable
-status: draft
+status: frozen
 ---
 
 # Accounts Receivable

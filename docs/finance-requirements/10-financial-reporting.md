@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-10
 title: Financial Reporting
-status: draft
+status: frozen
 ---
 
 # Financial Reporting

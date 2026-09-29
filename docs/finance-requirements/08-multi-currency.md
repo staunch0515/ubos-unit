@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-08
 title: Multi-Currency
-status: draft
+status: frozen
 ---
 
 # Multi-Currency

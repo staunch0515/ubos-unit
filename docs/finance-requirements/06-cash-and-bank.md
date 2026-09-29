@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-06
 title: Cash and Bank
-status: draft
+status: frozen
 ---
 
 # Cash and Bank

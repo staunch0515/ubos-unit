@@ -8,6 +8,5 @@ python3 "$DIR/gen_traceability.py"
 python3 "$DIR/gen_indexes.py"
 python3 "$DIR/check_system.py"
 python3 "$DIR/check_system.py" --json | python3 -c "import json,sys; r=json.load(sys.stdin); sys.exit(1 if r['errors'] else 0)"
-# Finance requirements (docs/finance-requirements): dataset, expected results, checks, traceability
-python3 "$DIR/gen_finance_expected.py"
-python3 "$DIR/check_finance.py"
+# Finance requirements (self-contained folder docs/finance-requirements, own tools)
+sh "$DIR/../finance-requirements/tools/regen.sh"

@@ -1,7 +1,7 @@
 ---
 id: FIN-README
 title: US Basic Finance System — Requirements
-status: draft
+status: frozen
 ---
 
 # US Basic Finance System — Requirements
@@ -9,9 +9,22 @@ status: draft
 This folder specifies a **basic finance system for one US company**, following US GAAP and
 common US compliance practice. It is written to be **implementation-neutral**: it does not
 assume any platform, language, database or architecture. The same requirements are
-implemented twice — on the UBOS platform and on a separate Java system — and the two
-implementations are accepted against the same dataset and scenarios and then compared
+implemented by two independent implementations, each in its own repository. Both are
+accepted against the same dataset and scenarios and then compared
 (`40-comparison-protocol.md`).
+
+## Version
+
+| Field | Value |
+|---|---|
+| Version | **1.0** (frozen 2026-09-29) |
+| Git tag in the source repository | `fin-req-v1.0` |
+| Change record | `99-change-log.md` |
+
+This folder is self-contained: it has no link to any implementation and can be copied as a
+whole into any repository. A copy is never edited where it is used; every change is made in
+the source repository, gets a new version and tag, and is then copied again
+(`99-change-log.md`).
 
 The system is not sold. It is a complete, production-quality demonstration of a basic
 finance system; market differentiation is not a goal.
@@ -55,17 +68,26 @@ finance system; market differentiation is not a goal.
 | `30-acceptance-scenarios.md` | shared acceptance scenarios FIN-SCN-01 … FIN-SCN-15 |
 | `40-comparison-protocol.md` | how the two implementations are measured and compared |
 | `90-traceability.md` | requirement → scenario coverage (generated) |
+| `99-change-log.md` | versions, freeze rule and change procedure |
+| `templates/*.csv` | empty work-item and defect record templates for the comparison protocol |
+| `tools/` | generator of the dataset and expected results; checker and traceability generator |
 
 ## Maintenance
 
-- `docs/tools/gen_finance_expected.py` defines the dataset and generates the CSV files and
-  the expected results.
-- `docs/tools/check_finance.py` checks this folder: unique IDs, resolvable references,
-  complete requirement blocks, and coverage of every Must requirement by an acceptance
-  scenario; it also generates `90-traceability.md`.
-- Both run from `docs/tools/regen_all.sh`.
+Run from this folder (Python 3.8 or later, standard library only):
+
+```sh
+sh tools/regen.sh
+```
+
+- `tools/gen_finance_expected.py` defines the dataset and generates the CSV files and the
+  expected results.
+- `tools/check_finance.py` checks this folder: unique IDs, resolvable references, complete
+  requirement blocks, and coverage of every Must requirement by an acceptance scenario; it
+  also generates `90-traceability.md`. It must report `errors: 0`.
+- In a copy, running `sh tools/regen.sh` must leave every file unchanged; this proves the
+  copy is intact.
 - IDs are never renumbered or reused. A withdrawn requirement keeps its ID and is marked
   `**Status:** Withdrawn` with a reason.
-- The UBOS platform maps these requirements to its capabilities in
-  `docs/50-system/10-requirements/10-finance-mapping.md`. The Java implementation keeps its
-  own mapping; this folder never refers to either implementation.
+- Each implementation maps these requirements to its own design in its own repository; this
+  folder never refers to any implementation.

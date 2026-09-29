@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-11
 title: Controls, Audit Trail and Security
-status: draft
+status: frozen
 ---
 
 # Controls, Audit Trail and Security

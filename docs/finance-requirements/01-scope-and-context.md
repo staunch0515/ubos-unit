@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-01
 title: Scope and Context
-status: draft
+status: frozen
 ---
 
 # Scope and Context

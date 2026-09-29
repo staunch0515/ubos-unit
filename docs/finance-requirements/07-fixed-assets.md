@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-07
 title: Fixed Assets
-status: draft
+status: frozen
 ---
 
 # Fixed Assets

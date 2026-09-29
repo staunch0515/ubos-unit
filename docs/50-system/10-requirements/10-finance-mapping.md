@@ -3,13 +3,13 @@ id: UBS-REQ-10
 title: Annex — Basic Finance Requirements Mapped to the Platform
 status: draft
 phase: PH-2
-depends_on: [UBS-REQ-03, UBS-REQ-04, DEC-022, DEC-026]
+depends_on: [UBS-REQ-03, UBS-REQ-04, DEC-022, DEC-026, DEC-029]
 ---
 
 # Annex — Basic Finance Requirements Mapped to the Platform
 
 The implementation-neutral finance requirements live in `docs/finance-requirements/`
-(DEC-026). They use their own IDs (`FIN-<AREA>-<NNN>`) and never refer to the platform. This
+(DEC-026). This annex maps version 1.0 (git tag `fin-req-v1.0`, DEC-029). They use their own IDs (`FIN-<AREA>-<NNN>`) and never refer to the platform. This
 annex states, per finance area, which platform capabilities, requirements, design items and
 scenarios realise them on UBOS, and which part is **Buk content** (classes, rules, views and
 reports of the `finance` Buk) rather than kernel or system functionality. Nothing in the

@@ -1360,7 +1360,7 @@ depends_on: [UBS-IDX-00]
 | ASM-011 | Browsers provide origin-private file system storage and WebAssembly performance sufficient for the b | `10-requirements/07-constraints-assumptions.md` |
 | ASM-012 | The sample-company dataset (Northwind Components, Inc.) with independently computed expected results | `10-requirements/07-constraints-assumptions.md` |
 | ASM-013 | Accountants familiar with US GAAP are available as usability-study participants in PH-2 (EXIT-2-18). | `10-requirements/07-constraints-assumptions.md` |
-| ASM-014 | The owner's Java system implements the same finance requirements (`docs/finance-requirements/`) in t | `10-requirements/07-constraints-assumptions.md` |
+| ASM-014 | The owner's Java system implements the same finance requirements (`docs/finance-requirements/`, vers | `10-requirements/07-constraints-assumptions.md` |
 
 ## GL (146)
 

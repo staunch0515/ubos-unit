@@ -8,15 +8,18 @@ depends_on: [UBS-ARC-01, DEC-007]
 
 # Codebase Organisation and Delivery
 
-## 1. Repositories (DEC-018)
+## 1. Repository and components (DEC-018, DEC-028)
 
-| Repository | Content | Licence (DEC-019) |
-|---|---|---|
-| `bpa-standard` | normative text, grammars, schemas, profiles, conformance vectors, formal models | text CC BY 4.0; vectors and schemas Apache-2.0 |
-| `ubos` (monorepo) | kernel crates, node hosts, Forge, SDKs, clients, platform services | kernel, node and Forge: AGPL-3.0 open edition plus commercial licence; SDKs Apache-2.0 |
-| `ubos-verify` | open verifier (CLI, library, static web page) | Apache-2.0 |
-| `ubos-buks` | first-party Buks: `system`, `ontology`, `finance` (`fund-ops` and `contracts` deferred, DEC-022) | commercial (source available to customers) |
-| `ubos-docs` | this specification (currently `ubos-unit/docs/50-system`, DEC-027) | internal |
+All components live in the single repository `staunch0515/ubos-unit` (DEC-028). The
+component names below are used throughout this volume; each maps to a top-level folder.
+
+| Component | Folder in `ubos-unit` | Content | Licence (DEC-019) |
+|---|---|---|---|
+| `bpa-standard` | `standard/` | normative text, grammars, schemas, profiles, conformance vectors, formal models | text CC BY 4.0; vectors and schemas Apache-2.0 |
+| `ubos` (monorepo) | `crates/`, `packages/` | kernel crates, node hosts, Forge, SDKs, clients, platform services | kernel, node and Forge: AGPL-3.0 open edition plus commercial licence; SDKs Apache-2.0 |
+| `ubos-verify` | `verify/` | open verifier (CLI, library, static web page) | Apache-2.0 |
+| `ubos-buks` | `buks/` | first-party Buks: `system`, `ontology`, `finance` (`fund-ops` and `contracts` deferred, DEC-022) | commercial (source available to customers) |
+| `ubos-docs` | `docs/` | this specification, the finance requirements (`docs/finance-requirements/`, self-contained, DEC-029), tools and reports | internal |
 
 ## 2. Rust crates of the monorepo
 
@@ -110,7 +113,7 @@ depends_on: [UBS-ARC-01, DEC-007]
 ## 6. Reuse of the source repositories
 
 The eight research repositories are inputs, not a codebase to extend (DEC-018). Code from
-them MAY be ported into the monorepo crate by crate when all of the following hold:
+them MAY be ported into `ubos-unit` crate by crate when all of the following hold:
 1. It matches the specification.
 2. It passes the relevant conformance vectors.
 3. Its design is recorded against the `DSN-*` items it implements.

@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-13
 title: Non-Functional Requirements and User Interface
-status: draft
+status: frozen
 ---
 
 # Non-Functional Requirements and User Interface
