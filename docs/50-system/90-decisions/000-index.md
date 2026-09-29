@@ -43,6 +43,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-028 | `ubos-unit` is the single implementation monorepo | Accepted |
 | DEC-029 | Finance requirements frozen at version 1.0, distributed by copy, work items recorded per protocol | Accepted |
 | DEC-030 | PH-0 execution model: owner with AI sessions, external review at acceptance | Accepted |
+| DEC-031 | Model-checking bounds: exhaustive where feasible, simulation at the stated bound otherwise | Accepted |
 
 ---
 
@@ -326,3 +327,15 @@ Decisions are never deleted. A replaced decision is marked
 - **Consequences:** UBS-PH-0 §11 no longer states a calendar duration; progress is reported per step in `docs/reports/ph0-plan-zh.md`. ASM-001 carries a phase note and is re-assessed at EXIT-0-07.
 - **Alternatives considered:** Waiting for a hired team was rejected (PH-0 is a de-risking phase that the owner wants to start now); skipping the external review was rejected (the benchmark and model verdicts decide ASM-003 and the storage design).
 - **Affects:** ASM-001, UBS-PH-0, UBS-VER-02
+
+### DEC-031 — Model-checking bounds: exhaustive where feasible, simulation at the stated bound otherwise
+- **Status:** Accepted · **Date:** 2026-09-29
+- **Context:** PH-0 step 2 showed that exhaustive TLC runs grow beyond practical limits at the bounds stated in VER-FORM-0001…0003 and UBS-PH-0 §7.4: the merge model already has tens of millions of distinct states at 3 branches × 3 commits, and 3 branches × 4 commits is out of reach on the model-checking workstation.
+- **Decision:**
+  1. A formal model is checked exhaustively at its stated bound when TLC completes that run.
+  2. Otherwise it is checked exhaustively at the largest bound that completes (at least two commits per branch or process, all other dimensions as stated), and additionally by TLC simulation of at least 1,000,000 random behaviours at the stated bound.
+  3. The model report states the bound reached, states and depth for the exhaustive run, behaviours and depth for the simulation, the TLC version, and the verdict. Any violation in either run fails the item.
+  4. CI runs reduced bounds (`<model>.ci.cfg`) on every change; the full runs are repeated when a model changes and at PH-0 acceptance.
+- **Consequences:** EXIT-0-02, UBS-PH-0 §7.4 and VER-FORM-0001…0003 refer to this rule. The external reviewer (DEC-030) judges whether the reached bounds suffice.
+- **Alternatives considered:** Keeping the stated bounds as exhaustive requirements was rejected (not achievable without much larger hardware); lowering the bounds without simulation was rejected (loses coverage of deeper histories).
+- **Affects:** EXIT-0-02, UBS-PH-0, VER-FORM-0001, VER-FORM-0002, VER-FORM-0003, DSN-DVM-249, DSN-DVM-326, DSN-DVM-515

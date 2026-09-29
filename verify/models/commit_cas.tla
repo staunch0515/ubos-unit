@@ -96,8 +96,14 @@ GiveUp(p) ==
     /\ UNCHANGED <<hist, head, want, snap, ws, rs, attempts, group, aborts>>
 
 \* Flush through node n: validate against the node's view (STD-TXN-021, STD-TXN-022).
+\* A node admits a process into its open group only if the group's expected head is not
+\* older than the process's snapshot; otherwise the process waits for the next group.
+\* Without this rule a stale group fails a flush whose objects did not change
+\* (found by this model, see reports/commit_cas.md).
 Flush(p, n) ==
     /\ pc[p] = "working"
+    /\ LET g0 == IF group[n].procs = <<>> THEN [exp |-> head, procs |-> <<>>] ELSE group[n]
+       IN snap[p] <= g0.exp     \* the group's view is not older than the snapshot (DSN-DVM-208)
     /\ LET g0 == IF group[n].procs = <<>> THEN [exp |-> head, procs |-> <<>>] ELSE group[n]
            view(o) == LET mine == {i \in 1..Len(g0.procs) : o \in Writes(g0.procs[i])}
                       IN IF mine = {} THEN VerAt(o, g0.exp) ELSE g0.exp + Max(mine)
