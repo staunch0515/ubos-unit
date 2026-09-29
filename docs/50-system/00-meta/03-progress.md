@@ -66,6 +66,8 @@ depends_on: [UBS-META-00, UBS-META-01]
 | OQ-001 | PH-1 carries 341 requirements (kernel breadth). Should PH-1 be split into PH-1a (store, model, versioning, transactions, logic) and PH-1b (rules, flow basics, events, IAM, proofs), each with its own exit gate? | Resolved by DEC-014 |
 | OQ-002 | The first vertical covers fund operations and contracts in PH-2. Should either be deferred to PH-3 to shorten PH-2? | Resolved by DEC-015 |
 | OQ-003 | Hosted Cell (PH-4) comes after Server (PH-1/PH-2). Is on-premises/private-cloud Server the confirmed first commercial form? | Resolved by DEC-016 |
+| OQ-004 | STD-TIME-011 `set_period` rejects an intersecting segment "not fully covered by a segment of the same version lineage", but "version lineage" is not defined. The PH-0 model (`verify/models/timeline.tla`) reads it conservatively: reject when an existing segment intersects `[a, b)` without lying inside it. Under that reading `set_period` can never split a segment; it only fills gaps or replaces whole segments. Is that intended, and how is "version lineage" defined? | Open (found in PH-0 step 2) |
+| OQ-005 | STD-VER-040 builds a virtual merge base "by recursively merging" several best common ancestors in ascending `commit_id` order, but does not say which base each recursive merge uses or how conflicts inside the virtual merge are resolved. The PH-0 model (`verify/models/merge.tla`) uses the recursive base of the ancestors merged so far, keeps the base value for conflicting fields, and unites ledger entries by `entry_id`. Should the clause adopt this rule? | Open (found in PH-0 step 2) |
 
 ## 4. Log
 

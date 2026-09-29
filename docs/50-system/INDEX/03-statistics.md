@@ -32,7 +32,7 @@ depends_on: [UBS-IDX-00]
 | IN | 6 |
 | MET | 65 |
 | NR | 106 |
-| OQ | 3 |
+| OQ | 5 |
 | PER | 33 |
 | RSK | 38 |
 | SCN | 67 |

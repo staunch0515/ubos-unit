@@ -38,11 +38,13 @@ depends_on: [UBS-IDX-00]
 | IMP-11 | **Progressive disclosure.** Three product layers (business, builder, platform). Business users never | `00-meta/06-inputs.md` |
 | IMP-12 | **Open standards.** JSON Schema, OpenAPI, CloudEvents, OpenTelemetry, OIDC, SCIM, MCP, Parquet/Icebe | `00-meta/06-inputs.md` |
 
-## OQ (3)
+## OQ (5)
 
 | ID | Title | Defined in |
 |---|---|---|
 | OQ-001 | PH-1 carries 341 requirements (kernel breadth). Should PH-1 be split into PH-1a (store, model, versi | `00-meta/03-progress.md` |
 | OQ-002 | The first vertical covers fund operations and contracts in PH-2. Should either be deferred to PH-3 t | `00-meta/03-progress.md` |
 | OQ-003 | Hosted Cell (PH-4) comes after Server (PH-1/PH-2). Is on-premises/private-cloud Server the confirmed | `00-meta/03-progress.md` |
+| OQ-004 | STD-TIME-011 `set_period` rejects an intersecting segment "not fully covered by a segment of the sam | `00-meta/03-progress.md` |
+| OQ-005 | STD-VER-040 builds a virtual merge base "by recursively merging" several best common ancestors in as | `00-meta/03-progress.md` |
 
