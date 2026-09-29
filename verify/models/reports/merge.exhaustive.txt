@@ -1,0 +1,11 @@
+# merge: exhaustive run, bounds of merge.cfg with MaxPerBranch = 2 (merge.ci.cfg, DEC-031)
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 2.2E-8
+  based on the actual fingerprints:  val = 1.4E-8
+1307329 states generated, 510037 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 7.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 26 and the 95th percentile is 9).
+Finished in 43s at (2026-09-29 19:20:03)

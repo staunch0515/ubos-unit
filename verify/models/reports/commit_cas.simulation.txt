@@ -1,0 +1,6 @@
+# commit_cas: simulation, 1,000,000 behaviours at the bounds of commit_cas.cfg (DEC-031)
+# command: tlc2.TLC -workers 4 -simulate num=1000000 -depth 60 -config commit_cas.cfg commit_cas.tla
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Computed 1 initial states...
+Finished in 17min 27s at (2026-09-29 19:49:04)
+Progress: 508210073 states checked.

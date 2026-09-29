@@ -1,0 +1,6 @@
+# merge: simulation, 1,000,000 behaviours at the bounds of merge.cfg (DEC-031)
+# command: tlc2.TLC -workers 4 -simulate num=1000000 -depth 60 -config merge.cfg merge.tla
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Computed 1 initial states...
+Finished in 01h 44min at (2026-09-29 21:33:11)
+Progress: 278194526 states checked.

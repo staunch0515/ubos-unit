@@ -12,8 +12,8 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 MODE="${1:-ci}"
 [ $# -gt 0 ] && shift
 MODELS="${*:-commit_cas merge timeline}"
-TLA_VERSION="1.8.0"
-TLA_SHA256="ab4694601923fd5ac06452abbf847c366a5054a3d739552085edd6ed986c29ec"
+TLA_VERSION="1.7.4"
+TLA_SHA256="936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88"
 JAR="$DIR/.tools/tla2tools-$TLA_VERSION.jar"
 
 if [ ! -f "$JAR" ]; then

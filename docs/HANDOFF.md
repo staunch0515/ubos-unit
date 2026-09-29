@@ -75,9 +75,13 @@ Step 1 done: monorepo skeleton (`standard/`, `verify/`, `crates/` with five skel
 crates), licence files and `LICENSING.md`, CI (`.github/workflows/ci.yml`), dependency-graph
 checker `docs/tools/check_deps.py` reading UBS-ARC-07 §2.
 
-1. **PH-0 step 2** — TLA+ models `verify/models/{commit_cas,merge,timeline}.tla` checked with
-   TLC at the bounds of UBS-PH-0 §7.4, with reports (EXIT-0-02).
-2. Then steps 3…7 of DEC-030 in order, one pull request each, merged by the owner.
+Step 2 done: TLA+ models in `verify/models/` checked per DEC-031, no violation; report
+`verify/models/reports/README.md`; finding F-1 fixed in DSN-DVM-208; OQ-004 and OQ-005 open
+(owner to decide).
+
+1. **PH-0 step 3** — BPA 0.1 in `standard/`: Core, Bitemporal and Ledger clauses, JSON
+   Schemas, vector format, at least 300 vectors, coverage report (EXIT-0-01).
+2. Then steps 4…7 of DEC-030 in order, one pull request each, merged by the owner.
 3. **Java side** (owner): copy `fin-req-v1.0` into the Java repository
    (`docs/reports/finance-requirements-copy-guide-zh.md`) and start work-item records.
 4. **Accounting review** (external): chart of accounts and expected results of the sample

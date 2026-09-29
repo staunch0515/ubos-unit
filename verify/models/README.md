@@ -16,10 +16,11 @@ sh verify/models/check.sh ci     # reduced bounds (<model>.ci.cfg), run by CI
 sh verify/models/check.sh full   # verification-item bounds (<model>.cfg); long runs
 ```
 
-The script downloads TLC (`tla2tools.jar` 1.8.0) once into `verify/models/.tools/` and
-checks its SHA-256. Java 11 or later is needed. `TLC_WORKERS` sets the worker count.
+The script downloads TLC (release 1.7.4 of `tla2tools.jar`, TLC 2.19) once into
+`verify/models/.tools/` and checks its SHA-256. Java 11 or later is needed. `TLC_WORKERS` sets the worker count.
 
 ## Results
 
 The evidence of each run (TLC version, bounds, states, depth, duration, verdict) is in
-`reports/`. The summary for the owner is `docs/reports/ph0-plan-zh.md`.
+`reports/README.md` (bounds per DEC-031, findings, mutation checks, scope limits). The summary
+for the owner is `docs/reports/ph0-plan-zh.md`.
