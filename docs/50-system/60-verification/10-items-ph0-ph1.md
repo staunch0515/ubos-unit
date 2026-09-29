@@ -20,7 +20,7 @@ Numbers follow UBS-VER-00 §3.
 - **Procedure:**
   1. Model processes, nodes, branch heads, base validation and read-set validation in TLA+.
   2. State properties: linear first-parent history per branch; no lost update; serializable histories for serializable processes; dense `cseq`.
-  3. Check with TLC at 3 processes × 2 nodes × 3 objects × 4 commits.
+  3. Check with TLC at 3 processes × 2 nodes × 3 objects × 4 commits (exhaustive, or per DEC-031).
 - **Pass criterion:** 0 violated properties; state count reported.
 - **Evidence:** `commit_cas.tla`, configuration, TLC output.
 - **Supports:** EXIT-0-02
@@ -32,7 +32,7 @@ Numbers follow UBS-VER-00 §3.
 - **Procedure:**
   1. Model branches, Definition objects with fields, ledger keys with entries, merge base and the merge pipeline.
   2. State properties: determinism; complete conflict reporting; no lost or duplicated ledger entries; gap-free target sequences; correct merge parents.
-  3. Check at 3 branches × 4 commits × 3 objects × 2 ledger keys.
+  3. Check at 3 branches × 4 commits × 3 objects × 2 ledger keys (exhaustive, or per DEC-031).
 - **Pass criterion:** 0 violated properties.
 - **Evidence:** `merge.tla`, TLC output.
 - **Supports:** EXIT-0-02
@@ -44,7 +44,7 @@ Numbers follow UBS-VER-00 §3.
 - **Procedure:**
   1. Model the four timeline operations and bitemporal reads.
   2. State properties: no overlapping segments; answers at past `(cseq, asof)` never change; impact set ⊇ results whose inputs changed.
-  3. Check at 3 objects × 5 operations × 4 commits.
+  3. Check at 3 objects × 5 operations × 4 commits (exhaustive, or per DEC-031).
 - **Pass criterion:** 0 violated properties.
 - **Evidence:** `timeline.tla`, TLC output.
 - **Supports:** EXIT-0-02

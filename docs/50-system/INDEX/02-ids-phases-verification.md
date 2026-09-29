@@ -15,7 +15,7 @@ depends_on: [UBS-IDX-00]
 | ID | Title | Defined in |
 |---|---|---|
 | EXIT-0-01 | BPA 0.1 is released, signed, with Core, Bitemporal and Ledger clauses and ≥ 300 vectors | `50-phases/PH-0/00-plan.md` |
-| EXIT-0-02 | The three formal models are checked with no violation at the stated state-space bounds | `50-phases/PH-0/00-plan.md` |
+| EXIT-0-02 | The three formal models are checked with no violation at the stated state-space bounds, as defined b | `50-phases/PH-0/00-plan.md` |
 | EXIT-0-03 | The prototype passes 100% of `prototype` vectors on PostgreSQL through the runner | `50-phases/PH-0/00-plan.md` |
 | EXIT-0-04 | Root history independence holds in ≥ 1,000,000 generated cases | `50-phases/PH-0/00-plan.md` |
 | EXIT-0-05 | Benchmarks meet MET-PERF-001…003, or a decision records the storage fallback of DEC-020 | `50-phases/PH-0/00-plan.md` |

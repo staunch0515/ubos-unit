@@ -33,3 +33,15 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: dependency graph (AR-031, DEC-028)
         run: python3 docs/tools/check_deps.py
+
+  models:
+    name: formal models (reduced bounds)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: model-check commit_cas, merge, timeline (VER-FORM-0001..0003)
+        run: sh verify/models/check.sh ci

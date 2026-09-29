@@ -121,7 +121,7 @@ change for bitemporal reads.
 
 | Check | Threshold |
 |---|---|
-| formal models | 0 violations; state space at least 3 branches × 4 commits × 3 objects for merge, 3 processes × 2 nodes for CAS, 3 objects × 5 operations for timelines |
+| formal models | 0 violations; stated bounds 3 branches × 4 commits × 3 objects for merge, 3 processes × 2 nodes for CAS, 3 objects × 5 operations for timelines, checked per DEC-031: exhaustively where TLC completes, otherwise exhaustively at the largest completing bound plus at least 1,000,000 simulated behaviours at the stated bound |
 | vectors | 100% pass on PostgreSQL for the vectors marked `prototype` in 0.1 |
 | properties | ≥ 1,000,000 generated cases per property, 0 failures |
 | benchmarks | point read p95 ≤ 6.25 ms and simple commit p50 ≤ 19 ms (80% of NR-PERF-001 and NR-PERF-002 targets, measured as target ÷ 0.8) |
@@ -154,7 +154,7 @@ The PH-0 vectors, properties and models become permanent members of the PH-1 sui
 | Exit | Criterion | Evidence |
 |---|---|---|
 | EXIT-0-01 | BPA 0.1 is released, signed, with Core, Bitemporal and Ledger clauses and ≥ 300 vectors | release manifest and signature |
-| EXIT-0-02 | The three formal models are checked with no violation at the stated state-space bounds | model-checking reports |
+| EXIT-0-02 | The three formal models are checked with no violation at the stated state-space bounds, as defined by DEC-031 | model-checking reports |
 | EXIT-0-03 | The prototype passes 100% of `prototype` vectors on PostgreSQL through the runner | signed runner reports |
 | EXIT-0-04 | Root history independence holds in ≥ 1,000,000 generated cases | property report |
 | EXIT-0-05 | Benchmarks meet MET-PERF-001…003, or a decision records the storage fallback of DEC-020 | benchmark report and DEC entry |

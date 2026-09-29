@@ -405,7 +405,7 @@ AI implementer:
 - **Origin:** FR-VER-023, FR-VER-025, STD-VER-013
 
 ### DSN-DVM-208 — Head compare-and-set
-- **Statement:** Every flush MUST perform `cas_branch_head(branch, expected_head, new_head)` in the storage transaction. A mismatch MUST abort the transaction and return `TXN.HEAD_MOVED` to the sequencer, which retries base validation (DSN-DVM-510) against the new head.
+- **Statement:** Every flush MUST perform `cas_branch_head(branch, expected_head, new_head)` in the storage transaction. A mismatch MUST abort the transaction and return `TXN.HEAD_MOVED` to the sequencer, which retries base validation (DSN-DVM-510) against the new head. A sequencer MUST NOT validate a process against a view (expected head plus the commits already in its group) that is older than the process's snapshot; such a process waits for the next group (found by VER-FORM-0001, DEC-031).
 - **Rationale:** Single-writer order per branch without trusting any node.
 - **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
 - **Personas:** PER-KernelEngineer
