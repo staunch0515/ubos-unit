@@ -16,6 +16,7 @@ and, for comparison, on the owner's separate Java system.
 | `docs/reports/` | reports to the owner, in Chinese |
 | `docs/10-inventory` … `docs/40-spec`, `docs/00-meta` | earlier research volume, kept as history and input (DEC-008); do not extend |
 | `docs/HANDOFF.md` | current status, decisions, open items and next steps |
+| `standard/`, `verify/`, `crates/` | implementation monorepo (DEC-028): BPA standard releases, formal models and verifier, Rust crates; licences in `LICENSING.md` |
 
 ## Rules the owner has set (follow them without being reminded)
 
@@ -39,7 +40,9 @@ and, for comparison, on the owner's separate Java system.
    Edit the sources, then regenerate.
 7. **Validate before every commit:** `bash docs/tools/regen_all.sh` must end with
    `errors: 0` for both the system volume and the finance requirements, with 0 warnings and
-   0 Must gaps in the traceability summary.
+   0 Must gaps in the traceability summary. When code changes, also run `cargo fmt --all
+   --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings` and
+   `python3 docs/tools/check_deps.py` (0 errors); CI runs all of these.
 8. **Commits.** Clear messages; push to the branch you were asked to use. Do not open pull
    requests unless asked.
 9. **Finance requirements are frozen.** Never change a released version of

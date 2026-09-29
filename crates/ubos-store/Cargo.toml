@@ -1,0 +1,15 @@
+[package]
+name = "ubos-store"
+description = "Storage traits, PostgreSQL adapter, chunk store, kernel index maintenance"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+ubos-types.workspace = true
+
+[lints]
+workspace = true
