@@ -1,0 +1,7 @@
+# timeline: simulation, 1,000,000 behaviours at the bounds of timeline.cfg (DEC-031)
+# command: tlc2.TLC -workers 4 -simulate num=1000000 -depth 60 -config timeline.cfg timeline.tla
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running Random Simulation with seed -5959424081486297769 with 4 workers on 4 cores with 7282MB heap and 64MB offheap memory [pid: 16584] (Linux 6.18.44-fc-v37 amd64, Ubuntu 21.0.10 x86_64).
+Computed 1 initial states...
+Finished in 01h 16min at (2026-09-29 22:49:38)
+Progress: 396619754 states checked.
