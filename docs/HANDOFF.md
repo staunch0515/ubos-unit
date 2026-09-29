@@ -71,11 +71,13 @@ Done on 2026-09-29: finance requirements frozen at 1.0 (DEC-029); monorepo decid
 PH-0 plan confirmed by the owner and step 0 done (DEC-030). The step plan and status are in
 `docs/reports/ph0-plan-zh.md`.
 
-1. **PH-0 step 1** — monorepo skeleton: `standard/`, `verify/`, `crates/` (Cargo workspace
-   with `ubos-types`, `ubos-store`, `ubos-tree`, `ubos-version`, `ubos-time`), licence files
-   per DEC-019, CI (GitHub Actions: `regen_all.sh`, `cargo fmt`, `clippy`, dependency-graph
-   check of AR-031).
-2. Then steps 2…7 of DEC-030 in order, one pull request each, merged by the owner.
+Step 1 done: monorepo skeleton (`standard/`, `verify/`, `crates/` with five skeleton
+crates), licence files and `LICENSING.md`, CI (`.github/workflows/ci.yml`), dependency-graph
+checker `docs/tools/check_deps.py` reading UBS-ARC-07 §2.
+
+1. **PH-0 step 2** — TLA+ models `verify/models/{commit_cas,merge,timeline}.tla` checked with
+   TLC at the bounds of UBS-PH-0 §7.4, with reports (EXIT-0-02).
+2. Then steps 3…7 of DEC-030 in order, one pull request each, merged by the owner.
 3. **Java side** (owner): copy `fin-req-v1.0` into the Java repository
    (`docs/reports/finance-requirements-copy-guide-zh.md`) and start work-item records.
 4. **Accounting review** (external): chart of accounts and expected results of the sample

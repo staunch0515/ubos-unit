@@ -1,0 +1,35 @@
+# Build and quality gates (UBS-ARC-07 §4) for the PH-0 skeleton (DEC-030 step 1).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: specification and finance requirements
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: regenerate and validate (regen_all.sh)
+        run: bash docs/tools/regen_all.sh
+      - name: generated files are committed
+        run: git diff --exit-code
+
+  rust:
+    name: rust workspace
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: toolchain from rust-toolchain.toml
+        run: rustup toolchain install || rustup show
+      - name: format
+        run: cargo fmt --all --check
+      - name: lint
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: dependency graph (AR-031, DEC-028)
+        run: python3 docs/tools/check_deps.py

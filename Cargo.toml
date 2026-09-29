@@ -1,0 +1,33 @@
+# Cargo workspace of the UBOS reference implementation (UBS-ARC-07 §2, DEC-028).
+# Only the PH-0 prototype crates exist so far (UBS-PH-0 §2).
+[workspace]
+resolver = "2"
+members = [
+    "crates/ubos-types",
+    "crates/ubos-store",
+    "crates/ubos-tree",
+    "crates/ubos-version",
+    "crates/ubos-time",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.94"
+license = "AGPL-3.0-only"
+repository = "https://github.com/staunch0515/ubos-unit"
+publish = false
+
+[workspace.dependencies]
+ubos-types = { path = "crates/ubos-types" }
+ubos-store = { path = "crates/ubos-store" }
+ubos-tree = { path = "crates/ubos-tree" }
+ubos-version = { path = "crates/ubos-version" }
+ubos-time = { path = "crates/ubos-time" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

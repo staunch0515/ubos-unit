@@ -24,8 +24,8 @@
 
 | 步骤 | 内容 | 退出标准 | 状态 |
 |---|---|---|---|
-| 0 | 规格对齐：DEC-030；PH-0 计划去掉 ENV-REF-BOX（DEC-024），路径改为单仓文件夹（DEC-028）；ASM-001 加 phase note | — | 本 PR |
-| 1 | 单仓骨架：`standard/`、`verify/`、`crates/`（Cargo 工作区，含五个原型 crate），各目录许可证，CI（`regen_all.sh`、fmt/clippy、依赖图检查 AR-031） | 基础 | 未开始 |
+| 0 | 规格对齐：DEC-030；PH-0 计划去掉 ENV-REF-BOX（DEC-024），路径改为单仓文件夹（DEC-028）；ASM-001 加 phase note | — | 已完成（PR #2） |
+| 1 | 单仓骨架：`standard/`、`verify/`、`crates/`（Cargo 工作区，含五个原型 crate），各目录许可证，CI（`regen_all.sh`、fmt/clippy、依赖图检查 AR-031） | 基础 | 已完成（本 PR） |
 | 2 | TLA+ 模型 `verify/models/{commit_cas,merge,timeline}.tla`，按第 7.4 节的状态空间用 TLC 检查，出报告 | EXIT-0-02 | 未开始 |
 | 3 | BPA 0.1：Core、Bitemporal、Ledger 条款，JSON Schema，向量格式，至少 300 个向量；覆盖率报告（MUST 条款覆盖至少 80%） | EXIT-0-01 | 未开始 |
 | 4 | 原型 crate、适配器协议、`forge conform` 运行器；`prototype` 向量 100% 通过；属性测试每条至少 100 万例 | EXIT-0-03、EXIT-0-04 | 未开始 |

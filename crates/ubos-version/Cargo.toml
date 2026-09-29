@@ -1,0 +1,16 @@
+[package]
+name = "ubos-version"
+description = "Commits, branches, change sets, merge, revert, inheritance resolution"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+ubos-store.workspace = true
+ubos-tree.workspace = true
+
+[lints]
+workspace = true
