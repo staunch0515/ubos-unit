@@ -41,7 +41,7 @@ assumption names what happens if it turns out false.
 
 | ID | Assumption | If false |
 |---|---|---|
-| ASM-001 | A core team of 8–12 engineers is available from PH-0, growing to 15–20 by PH-4, with at least 3 senior Rust engineers and 1 formal-methods-capable engineer. | Durations stretch; PH-3 AI and PH-5 federation scope is reduced by DEC. |
+| ASM-001 | A core team of 8–12 engineers is available from PH-0, growing to 15–20 by PH-4, with at least 3 senior Rust engineers and 1 formal-methods-capable engineer. **Phase note:** PH-0 is executed by the product owner with AI sessions, and an external expert in databases and formal methods reviews at acceptance (DEC-030); the assumption is re-assessed for PH-1 at EXIT-0-07. | Durations stretch; PH-3 AI and PH-5 federation scope is reduced by DEC. |
 | ASM-002 | An independent US CPA (or a firm) is available in PH-3 to run the audit drill on the sample company's books (SCN-511), replacing the design-partner pilot (DEC-022, DEC-023). | G3 is evidenced by an internal audit drill run by a qualified accountant under the same protocol, and the external drill moves to the first PH-4 release. |
 | ASM-003 | PostgreSQL 16+ on NVMe meets the NR-PERF commit targets with the designed storage layout. | The storage engine design is revisited in PH-1 (for example a custom log-structured object store in front of PostgreSQL). |
 | ASM-004 | Commercial and self-hostable LLMs with structured output and tool use remain available at acceptable cost and with US data residency options. | AI features degrade to self-hosted models with narrower capabilities; G4 targets are revised. |

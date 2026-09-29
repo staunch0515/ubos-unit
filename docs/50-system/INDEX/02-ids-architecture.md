@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (29)
+## DEC (30)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -123,4 +123,5 @@ depends_on: [UBS-IDX-00]
 | DEC-027 | The specification moves to the repository `ubos-unit` | `90-decisions/000-index.md` |
 | DEC-028 | `ubos-unit` is the single implementation monorepo | `90-decisions/000-index.md` |
 | DEC-029 | Finance requirements frozen at version 1.0, distributed by copy | `90-decisions/000-index.md` |
+| DEC-030 | PH-0 execution model: owner with AI sessions, external review at acceptance | `90-decisions/000-index.md` |
 
