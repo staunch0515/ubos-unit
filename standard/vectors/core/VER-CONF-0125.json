@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"enum value outside the allowed values violates the constraint","id":"VER-CONF-0125","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.CONSTRAINT_VIOLATED"},"input":{"constraints":{"allowed_values":["open","closed"]},"type":"enum","value":"draft"},"op":"validate_value"}],"tags":["prototype"]}

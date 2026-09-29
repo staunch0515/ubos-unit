@@ -79,8 +79,12 @@ Step 2 done: TLA+ models in `verify/models/` checked per DEC-031, no violation; 
 `verify/models/reports/README.md`; finding F-1 fixed in DSN-DVM-208; OQ-004 and OQ-005 open
 (owner to decide).
 
-1. **PH-0 step 3** — BPA 0.1 in `standard/`: Core, Bitemporal and Ledger clauses, JSON
-   Schemas, vector format, at least 300 vectors, coverage report (EXIT-0-01).
+Step 3a done (DEC-032): release build in `standard/` (oracle, generator, builder), 390
+vectors for FND, OBJ, CLS and KIND, STD-CONF-005 adapter operations; OQ-006 open.
+
+1. **PH-0 step 3b** — vectors for VER, TIME, TXN and PROOF (merge, diff, timelines, CAS, state
+   tree, with the tree clarifications of STD-PROOF-001), coverage ≥ 80% of MUST clauses
+   (MET-QUAL-003), final manifest; then the owner signs the tag `bpa-v0.1.0` (EXIT-0-01).
 2. Then steps 4…7 of DEC-030 in order, one pull request each, merged by the owner.
 3. **Java side** (owner): copy `fin-req-v1.0` into the Java repository
    (`docs/reports/finance-requirements-copy-guide-zh.md`) and start work-item records.

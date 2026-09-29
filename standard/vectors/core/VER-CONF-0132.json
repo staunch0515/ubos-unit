@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"keyed list with a duplicate key violates the constraint","id":"VER-CONF-0132","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.CONSTRAINT_VIOLATED"},"input":{"constraints":{"key":"sku"},"type":"list","value":[{"sku":"a"},{"sku":"a"}]},"op":"validate_value"}],"tags":["prototype"]}

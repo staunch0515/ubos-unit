@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-011"],"description":"an unregistered domain tag is rejected","id":"VER-CONF-0059","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"domain":"ubos.other.v1","value":{"k":"v"}},"op":"content_id"}],"tags":["prototype"]}

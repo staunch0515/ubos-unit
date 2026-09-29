@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-002"],"description":"a decimal is carried as a string","id":"VER-CONF-0030","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"10.1"},"input":{"type":"decimal","value":"10.10"},"op":"validate_value"}],"tags":["prototype"]}

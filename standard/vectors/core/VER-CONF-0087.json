@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"integer within the safe range is a JSON number","id":"VER-CONF-0087","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":-12},"input":{"type":"integer","value":-12},"op":"validate_value"}],"tags":["prototype"]}

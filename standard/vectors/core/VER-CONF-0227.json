@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-024"],"description":"an unknown time zone is rejected","determinism":{"tzdb":"2025b"},"id":"VER-CONF-0227","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"date":"2026-01-01","time":"00:00:00","tz":"Mars/Olympus"},"op":"local_to_instant"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"a leading plus sign is invalid","id":"VER-CONF-0165","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"a":"+1","op":"canonical"},"op":"decimal"}],"tags":["prototype"]}

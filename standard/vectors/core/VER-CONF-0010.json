@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: the solidus is not escaped","id":"VER-CONF-0010","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"{\"url\":\"a/b\"}"},"input":{"value":{"url":"a/b"}},"op":"canonical_json"}],"tags":["prototype"]}

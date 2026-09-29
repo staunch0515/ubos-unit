@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"with scale 2 the canonical form has two digits","id":"VER-CONF-0163","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"12.50"},"input":{"a":"12.5","op":"canonical","scale":2},"op":"decimal"}],"tags":["prototype"]}

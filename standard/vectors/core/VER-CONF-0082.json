@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"text shorter than min_length violates the constraint","id":"VER-CONF-0082","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.CONSTRAINT_VIOLATED"},"input":{"constraints":{"min_length":2},"type":"text","value":"a"},"op":"validate_value"}],"tags":["prototype"]}

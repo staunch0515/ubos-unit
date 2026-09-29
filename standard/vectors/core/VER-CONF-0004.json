@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: keys sort by UTF-16 code units: supplementary characters before U+FFFF","id":"VER-CONF-0004","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"{\"😀\":2,\"￿\":1}"},"input":{"value":{"😀":2,"￿":1}},"op":"canonical_json"}],"tags":["prototype"]}

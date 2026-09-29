@@ -1,0 +1,57 @@
+{
+  "$id": "DAT-ConformanceVector",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "clauses": {
+      "description": "STD clause ids exercised",
+      "type": "array"
+    },
+    "description": {
+      "description": "what is checked",
+      "type": "string"
+    },
+    "determinism": {
+      "description": "fixed now, entropy seed, tzdb version",
+      "type": "object"
+    },
+    "id": {
+      "description": "VER-CONF-nnnn",
+      "type": "string"
+    },
+    "polarity": {
+      "description": "positive | negative",
+      "enum": [
+        "positive",
+        "negative"
+      ],
+      "type": "string"
+    },
+    "profile": {
+      "description": "profile name",
+      "type": "string"
+    },
+    "setup": {
+      "description": "ordered adapter operations establishing the initial state (genesis, classes, objects)",
+      "type": "array"
+    },
+    "steps": {
+      "description": "ordered operations with expected results {op, input, expect: {result | error_code, match: exact|subset|hash}}",
+      "type": "array"
+    },
+    "tags": {
+      "description": "labels such as `prototype` (the vector is required of the PH-0 prototype) (DEC-032)",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "clauses",
+    "profile",
+    "polarity",
+    "setup",
+    "steps",
+    "description"
+  ],
+  "title": "DAT-ConformanceVector",
+  "type": "object"
+}

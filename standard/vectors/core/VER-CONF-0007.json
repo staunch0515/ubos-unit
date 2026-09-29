@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: control characters use the short escapes","id":"VER-CONF-0007","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"{\"t\":\"a\\nb\\tc\\rd\\be\\ff\"}"},"input":{"value":{"t":"a\nb\tc\rd\be\ff"}},"op":"canonical_json"}],"tags":["prototype"]}

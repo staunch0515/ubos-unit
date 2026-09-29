@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"text longer than max_length violates the constraint","id":"VER-CONF-0083","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.CONSTRAINT_VIOLATED"},"input":{"constraints":{"max_length":3},"type":"text","value":"abcd"},"op":"validate_value"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"a number is not text","id":"VER-CONF-0086","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"text","value":5},"op":"validate_value"}],"tags":["prototype"]}

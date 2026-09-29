@@ -1,0 +1,73 @@
+{
+  "$id": "DAT-LedgerEntry",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "body_ref": {
+      "description": "content-id of the body (amounts and other fields)",
+      "type": "string"
+    },
+    "class": {
+      "description": "ledger class URI",
+      "type": "string"
+    },
+    "class_version": {
+      "description": "content-id of the class version",
+      "type": "string"
+    },
+    "correction_type": {
+      "description": "reversal | adjustment | repost",
+      "enum": [
+        "reversal",
+        "adjustment",
+        "repost"
+      ],
+      "type": "string"
+    },
+    "corrects": {
+      "description": "entry_ids corrected by this entry",
+      "type": "array"
+    },
+    "entry_id": {
+      "description": "UUID of the entry",
+      "type": "string"
+    },
+    "ledger_key": {
+      "description": "values of the declared ledger key fields",
+      "type": "object"
+    },
+    "posting_group": {
+      "description": "group id for double-entry balancing",
+      "type": "string"
+    },
+    "seq": {
+      "description": "branch-assigned sequence within the ledger key (1-based, gap-free)",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "source_refs": {
+      "description": "canonical URIs of originating objects",
+      "type": "array"
+    },
+    "source_seq": {
+      "description": "{branch, seq} on the branch where first appended, after merges",
+      "type": "object"
+    },
+    "valid_at": {
+      "description": "date or instant of business effect",
+      "type": "string"
+    }
+  },
+  "required": [
+    "entry_id",
+    "class",
+    "class_version",
+    "ledger_key",
+    "seq",
+    "valid_at",
+    "body_ref"
+  ],
+  "title": "DAT-LedgerEntry",
+  "type": "object"
+}

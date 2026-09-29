@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"leading zeros are invalid","id":"VER-CONF-0166","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"a":"007","op":"canonical"},"op":"decimal"}],"tags":["prototype"]}

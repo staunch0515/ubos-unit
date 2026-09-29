@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: negative integer and zero","id":"VER-CONF-0012","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"{\"n\":-42,\"z\":0}"},"input":{"value":{"n":-42,"z":0}},"op":"canonical_json"}],"tags":["prototype"]}

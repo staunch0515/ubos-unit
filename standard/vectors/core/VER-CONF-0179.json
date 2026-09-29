@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"round 2.5 to scale 0 with half_up","id":"VER-CONF-0179","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"3"},"input":{"a":"2.5","op":"round","rounding":"half_up","scale":0},"op":"decimal"}],"tags":["prototype"]}

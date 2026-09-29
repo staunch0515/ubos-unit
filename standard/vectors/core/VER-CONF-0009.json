@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: quote and backslash are escaped","id":"VER-CONF-0009","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"{\"t\":\"say \\\"hi\\\" \\\\ bye\"}"},"input":{"value":{"t":"say \"hi\" \\ bye"}},"op":"canonical_json"}],"tags":["prototype"]}

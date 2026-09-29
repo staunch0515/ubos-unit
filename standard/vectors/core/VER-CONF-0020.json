@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: escaped input characters are written literally","id":"VER-CONF-0020","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"\"café €\""},"input_text":"{\"value\": \"caf\\u00e9 \\u20ac\"}","op":"canonical_json"}],"tags":["prototype"]}

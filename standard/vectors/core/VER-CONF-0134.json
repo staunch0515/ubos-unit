@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"map key outside the key pattern violates the constraint","id":"VER-CONF-0134","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.CONSTRAINT_VIOLATED"},"input":{"constraints":{"key_pattern":"[a-z]{2}"},"type":"map","value":{"EN":"x"}},"op":"validate_value"}],"tags":["prototype"]}

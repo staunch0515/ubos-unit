@@ -1,0 +1,41 @@
+{
+  "$id": "DAT-ValueTypeDecl",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "base": {
+      "description": "a STD-FND-020 type",
+      "type": "string"
+    },
+    "constraints": {
+      "description": "constraints of the base type",
+      "type": "object"
+    },
+    "description": {
+      "description": "documentation",
+      "type": "string"
+    },
+    "display": {
+      "description": "format pattern",
+      "type": "string"
+    },
+    "name": {
+      "description": "PascalCase name, namespaced",
+      "type": "string"
+    },
+    "normalize": {
+      "description": "L1 expression returning the normalised value",
+      "type": "string"
+    },
+    "validate": {
+      "description": "L1 expression returning boolean",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "base",
+    "description"
+  ],
+  "title": "DAT-ValueTypeDecl",
+  "type": "object"
+}

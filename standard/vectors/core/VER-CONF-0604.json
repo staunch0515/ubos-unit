@@ -1,0 +1,1 @@
+{"clauses":["STD-CLS-010"],"description":"the genesis class SystemObject lies directly below Object","id":"VER-CONF-0604","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":["SystemObject","Object"]},"input":{"class":"SystemObject","classes":[]},"op":"linearize"}]}

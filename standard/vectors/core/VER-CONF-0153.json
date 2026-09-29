@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-021"],"description":"canonical JSON keeps null members","id":"VER-CONF-0153","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"{\"a\":null,\"b\":1}"},"input":{"value":{"a":null,"b":1}},"op":"canonical_json"}],"tags":["prototype"]}

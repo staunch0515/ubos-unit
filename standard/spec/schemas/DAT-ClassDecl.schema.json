@@ -1,0 +1,124 @@
+{
+  "$id": "DAT-ClassDecl",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "abstract": {
+      "description": "no direct instances",
+      "type": "boolean"
+    },
+    "classification_default": {
+      "description": "default classification for fields",
+      "type": "string"
+    },
+    "description": {
+      "description": "documentation",
+      "type": "string"
+    },
+    "fields": {
+      "description": "DAT-FieldDecl items (own fields only)",
+      "type": "array"
+    },
+    "keys": {
+      "description": "unique keys: lists of field names",
+      "type": "array"
+    },
+    "kind": {
+      "description": "definition | ledger | system | raw_document | inherit",
+      "enum": [
+        "definition",
+        "ledger",
+        "system",
+        "raw_document",
+        "inherit"
+      ],
+      "type": "string"
+    },
+    "knowledge": {
+      "description": "knowledge object URIs",
+      "type": "array"
+    },
+    "label": {
+      "description": "display label (translatable)",
+      "type": "string"
+    },
+    "ledger": {
+      "description": "Ledger kind only: {key: [field], amounts: [field], double_entry: boolean, period_scope: text}",
+      "type": "object"
+    },
+    "lens": {
+      "description": "lens from the previous schema version (STD-CLS-060)",
+      "type": "string"
+    },
+    "lifecycle": {
+      "description": "lifecycle object URI",
+      "type": "string"
+    },
+    "merge": {
+      "description": "per-field merge strategies (STD-VER-051)",
+      "type": "object"
+    },
+    "name": {
+      "description": "PascalCase class name",
+      "type": "string"
+    },
+    "namespace": {
+      "description": "owning namespace (Buk or tenant)",
+      "type": "string"
+    },
+    "overlay_policy": {
+      "description": "per member: overridable | extend_only | locked",
+      "type": "object"
+    },
+    "parent": {
+      "description": "parent class URI (absent only for Object)",
+      "type": "string"
+    },
+    "ports": {
+      "description": "DAT-PortDecl items",
+      "type": "array"
+    },
+    "projections": {
+      "description": "projection declaration URIs",
+      "type": "array"
+    },
+    "schema_version": {
+      "description": "incremented on every change",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "subject_key": {
+      "description": "field path that identifies the data subject for personal fields",
+      "type": "string"
+    },
+    "traits": {
+      "description": "ordered trait URIs",
+      "type": "array"
+    },
+    "valid_time": {
+      "description": "date | instant (Definition kind; default date)",
+      "type": "string"
+    },
+    "views": {
+      "description": "view object URIs by mode",
+      "type": "array"
+    },
+    "write_policy": {
+      "description": "direct | change_set (default direct for Ledger, change_set for classes in ConfigAsset, else direct)",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "namespace",
+    "kind",
+    "parent",
+    "label",
+    "description",
+    "schema_version",
+    "fields"
+  ],
+  "title": "DAT-ClassDecl",
+  "type": "object"
+}

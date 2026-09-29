@@ -1,0 +1,110 @@
+{
+  "$id": "DAT-Process",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "bulk": {
+      "description": "bulk process id",
+      "type": "string"
+    },
+    "channel": {
+      "description": "workspace | studio | api | sdk | agent | integration | schedule | kernel",
+      "enum": [
+        "workspace",
+        "studio",
+        "api",
+        "sdk",
+        "agent",
+        "integration",
+        "schedule",
+        "kernel"
+      ],
+      "type": "string"
+    },
+    "client": {
+      "description": "client application and version",
+      "type": "string"
+    },
+    "commits": {
+      "description": "commit ids produced",
+      "type": "array"
+    },
+    "ended_at": {
+      "description": "host time at end",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "type": "string"
+    },
+    "idempotency_key": {
+      "description": "client key",
+      "type": "string"
+    },
+    "initiator": {
+      "description": "principal DID",
+      "type": "string"
+    },
+    "journal": {
+      "description": "content-id of the execution journal",
+      "type": "string"
+    },
+    "kind": {
+      "description": "action | schedule | job | handler | merge | import | agent_run | sync | kernel",
+      "enum": [
+        "action",
+        "schedule",
+        "job",
+        "handler",
+        "merge",
+        "import",
+        "agent_run",
+        "sync",
+        "kernel"
+      ],
+      "type": "string"
+    },
+    "on_behalf_of": {
+      "description": "principal DID",
+      "type": "string"
+    },
+    "parent_process": {
+      "description": "triggering process id",
+      "type": "string"
+    },
+    "process_id": {
+      "description": "UUID",
+      "type": "string"
+    },
+    "saga": {
+      "description": "saga id",
+      "type": "string"
+    },
+    "started_at": {
+      "description": "host time at start",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "type": "string"
+    },
+    "state": {
+      "description": "running | committed | aborted | failed",
+      "enum": [
+        "running",
+        "committed",
+        "aborted",
+        "failed"
+      ],
+      "type": "string"
+    },
+    "trigger": {
+      "description": "{type: user|event|schedule|job|merge|external, ref: text}",
+      "type": "object"
+    }
+  },
+  "required": [
+    "process_id",
+    "kind",
+    "initiator",
+    "channel",
+    "trigger",
+    "started_at",
+    "state"
+  ],
+  "title": "DAT-Process",
+  "type": "object"
+}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-023"],"description":"adding money of one currency","id":"VER-CONF-0200","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"amount":"11.00","currency":"USD"}},"input":{"a":{"amount":"10.25","currency":"USD"},"b":{"amount":"0.75","currency":"USD"},"op":"add"},"op":"money"}],"tags":["prototype"]}

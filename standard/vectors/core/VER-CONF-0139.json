@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"an unknown value type is rejected","id":"VER-CONF-0139","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.UNKNOWN_TYPE"},"input":{"type":"float","value":1},"op":"validate_value"}],"tags":["prototype"]}

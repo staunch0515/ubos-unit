@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"closed half-open period","id":"VER-CONF-0117","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"from":"2026-01-01","to":"2026-02-01"}},"input":{"type":"period","value":{"from":"2026-01-01","to":"2026-02-01"}},"op":"validate_value"}],"tags":["prototype"]}

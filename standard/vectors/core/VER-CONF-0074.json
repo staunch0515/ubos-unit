@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-016"],"description":"member-name 'due_date' is valid","id":"VER-CONF-0074","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":true},"input":{"grammar":"member-name","text":"due_date"},"op":"check_name"}],"tags":["prototype"]}

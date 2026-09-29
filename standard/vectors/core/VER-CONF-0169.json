@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"addition is exact","id":"VER-CONF-0169","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"0.3"},"input":{"a":"0.1","b":"0.2","op":"add"},"op":"decimal"}],"tags":["prototype"]}

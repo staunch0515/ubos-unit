@@ -1,0 +1,1 @@
+{"clauses":["STD-CLS-010"],"description":"the genesis class ConfigAsset lies directly below Object","id":"VER-CONF-0603","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":["ConfigAsset","Object"]},"input":{"class":"ConfigAsset","classes":[]},"op":"linearize"}]}

@@ -10,7 +10,7 @@ and, for comparison, on the owner's separate Java system.
 
 | Path | Content |
 |---|---|
-| `docs/50-system/` | the authoritative system specification (requirements, architecture, BPA standard, 13 systems, phases PH-0…PH-5, verification, decisions DEC-001…031) — start at `docs/50-system/README.md` and `docs/50-system/00-meta/05-ai-reading-guide.md` |
+| `docs/50-system/` | the authoritative system specification (requirements, architecture, BPA standard, 13 systems, phases PH-0…PH-5, verification, decisions DEC-001…032) — start at `docs/50-system/README.md` and `docs/50-system/00-meta/05-ai-reading-guide.md` |
 | `docs/finance-requirements/` | implementation-neutral US Basic Finance requirements (FIN-*), sample company dataset, expected results, acceptance scenarios, comparison protocol; self-contained with its own `tools/`, frozen at version 1.0 (`fin-req-v1.0`, DEC-029) |
 | `docs/tools/` | generators and checkers of the system volume (`regen_all.sh` runs all, including the finance folder's `tools/regen.sh`) |
 | `docs/reports/` | reports to the owner, in Chinese |
@@ -36,7 +36,9 @@ and, for comparison, on the owner's separate Java system.
    reason. A change of phase or scope needs a `DEC-*` record and a `**Phase note:**` line.
 6. **Generated files are never edited by hand** (`INDEX/`, `50-phases/PH-*/01-features.md`,
    `60-verification/2*-trace*.md`, `finance-requirements/21-expected-results.md`,
-   `finance-requirements/sample-company/*.csv`, `finance-requirements/90-traceability.md`).
+   `finance-requirements/sample-company/*.csv`, `finance-requirements/90-traceability.md`,
+   `standard/spec/`, `standard/vectors/`, `standard/release/*/coverage.md` and `manifest.json`;
+   vectors are written as cases in `standard/tools/cases/`).
    Edit the sources, then regenerate.
 7. **Validate before every commit:** `bash docs/tools/regen_all.sh` must end with
    `errors: 0` for both the system volume and the finance requirements, with 0 warnings and

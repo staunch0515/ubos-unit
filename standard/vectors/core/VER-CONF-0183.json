@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"round 2.9 to scale 0 with down","id":"VER-CONF-0183","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"2"},"input":{"a":"2.9","op":"round","rounding":"down","scale":0},"op":"decimal"}],"tags":["prototype"]}

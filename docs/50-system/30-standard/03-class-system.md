@@ -96,7 +96,7 @@ DAT-PortDecl:
 ## 2. Inheritance
 
 ### STD-CLS-010 — Root and base classes
-- **Clause:** The genesis model MUST define `Object` (abstract) and, directly below it, the abstract base classes `DataObject`, `LogicAsset`, `ViewAsset`, `ConfigAsset` and `SystemObject`. Every class MUST have exactly one parent, except `Object`.
+- **Clause:** The genesis model MUST define `Object` (abstract) and, directly below it, the abstract base classes `DataObject`, `LogicAsset`, `ViewAsset`, `ConfigAsset` and `SystemObject`. Every class MUST have exactly one parent, except `Object`. `LogicAsset`, `ViewAsset` and `ConfigAsset` have the kind `definition`, `SystemObject` the kind `system`; `Object` and `DataObject` have no kind (STD-CLS-014) (DEC-032).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0600…0604
 - **Satisfies:** FR-MODEL-021

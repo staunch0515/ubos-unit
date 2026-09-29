@@ -1,0 +1,43 @@
+{
+  "$id": "DAT-Error",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "catchable": {
+      "description": "from the registry (logic may catch)",
+      "type": "boolean"
+    },
+    "code": {
+      "description": "<AREA>.<UPPER_SNAKE>",
+      "type": "string"
+    },
+    "correlation": {
+      "description": "{trace, process_id}",
+      "type": "object"
+    },
+    "details": {
+      "description": "code-specific structured data",
+      "type": "object"
+    },
+    "explanation": {
+      "description": "explanation entries {rule, rule_version, subject, path, values, text}",
+      "type": "array"
+    },
+    "message": {
+      "description": "{template, params}",
+      "type": "object"
+    },
+    "retryable": {
+      "description": "from the registry",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "code",
+    "message",
+    "retryable",
+    "catchable",
+    "correlation"
+  ],
+  "title": "DAT-Error",
+  "type": "object"
+}

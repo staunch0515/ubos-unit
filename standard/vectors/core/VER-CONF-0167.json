@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"an exponent is invalid","id":"VER-CONF-0167","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"a":"1E3","op":"canonical"},"op":"decimal"}],"tags":["prototype"]}

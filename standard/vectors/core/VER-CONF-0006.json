@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: non-ASCII text is written as UTF-8, not escaped","id":"VER-CONF-0006","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"{\"name\":\"Zürich €\"}"},"input":{"value":{"name":"Zürich €"}},"op":"canonical_json"}],"tags":["prototype"]}

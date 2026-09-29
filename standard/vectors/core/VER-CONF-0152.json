@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-021"],"description":"null is accepted for any value type as \"cleared\"","id":"VER-CONF-0152","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":null},"input":{"type":"date","value":null},"op":"validate_value"}],"tags":["prototype"]}

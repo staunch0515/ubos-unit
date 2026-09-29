@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-016"],"description":"member-name 'dueDate' is invalid","id":"VER-CONF-0075","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_NAME"},"input":{"grammar":"member-name","text":"dueDate"},"op":"check_name"}],"tags":["prototype"]}

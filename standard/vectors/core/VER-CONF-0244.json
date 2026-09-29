@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-025"],"description":"an unknown inline mark is rejected","id":"VER-CONF-0244","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"document","value":{"kind":"text","marks":["blink"],"text":"x"}},"op":"validate_value"}],"tags":["prototype"]}

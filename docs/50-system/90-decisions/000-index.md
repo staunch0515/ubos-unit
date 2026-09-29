@@ -44,6 +44,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-029 | Finance requirements frozen at version 1.0, distributed by copy, work items recorded per protocol | Accepted |
 | DEC-030 | PH-0 execution model: owner with AI sessions, external review at acceptance | Accepted |
 | DEC-031 | Model-checking bounds: exhaustive where feasible, simulation at the stated bound otherwise | Accepted |
+| DEC-032 | BPA 0.1 release: scope, build from the specification, adapter operations, generated vectors, clarifications | Accepted |
 
 ---
 
@@ -339,3 +340,17 @@ Decisions are never deleted. A replaced decision is marked
 - **Consequences:** EXIT-0-02, UBS-PH-0 §7.4 and VER-FORM-0001…0003 refer to this rule. The external reviewer (DEC-030) judges whether the reached bounds suffice.
 - **Alternatives considered:** Keeping the stated bounds as exhaustive requirements was rejected (not achievable without much larger hardware); lowering the bounds without simulation was rejected (loses coverage of deeper histories).
 - **Affects:** EXIT-0-02, UBS-PH-0, VER-FORM-0001, VER-FORM-0002, VER-FORM-0003, DSN-DVM-249, DSN-DVM-326, DSN-DVM-515
+
+### DEC-032 — BPA 0.1 release: scope, build, adapter operations, generated vectors, clarifications
+- **Status:** Accepted · **Date:** 2026-09-29
+- **Context:** PH-0 step 3 (DEC-030) releases BPA 0.1 with Core, Bitemporal and Ledger clauses and at least 300 conformance vectors (EXIT-0-01, MET-QUAL-002, MET-QUAL-003). The vectors need an operation set that implementations can run before UBTP exists, and writing them exposes gaps in the clause text.
+- **Decision:**
+  1. **Single source.** The normative text stays in `docs/50-system/30-standard/`. `standard/tools/build_release.py` builds the release into `standard/`: the clauses in scope (`standard/release/0.1/scope.json`), JSON Schemas generated from the `DAT-*` blocks, the vectors, the coverage report and a manifest of SHA-256 hashes. Release files are never edited by hand.
+  2. **Scope of 0.1.** FND (all); OBJ 001–009; CLS 001, 002, 010–015; KIND (all); VER 001–003, 010, 013, 030, 040, 050–054, 056; TIME 001, 010–012, 020, 030, 031; TXN 001–004, 020–024; PROOF 001–003; ERR 001–002; CONF 001–005. Other clauses follow in later releases.
+  3. **Adapter operations.** STD-CONF-005 defines the operations of 0.1 and `DAT-AdapterChange`; `DAT-ConformanceVector` gains `tags`, where `prototype` marks the vectors that the PH-0 prototype must pass (EXIT-0-03).
+  4. **Generated vectors.** Vectors are produced by `standard/tools/genvectors.py` from a reference oracle in `standard/tools/bpa/` (Apache-2.0). Expected results are computed, never typed; merge and timeline rules follow the checked TLA+ models. Each vector lies in the VER-CONF range of its clause.
+  5. **Clarifications and resolutions.** OQ-004 is resolved by the conservative reading of `set_period` (STD-TIME-011); OQ-005 by the virtual-base rule of the merge model (STD-VER-040). STD-OBJ-002 states that a single-chunk body is identified by its chunk identifier. New error codes `MODEL.INVALID_VALUE`, `MODEL.UNKNOWN_TYPE` and `MODEL.INVALID_NAME` are registered (STD-ERR-002).
+  6. **Release.** After merge the owner creates the signed tag `bpa-v0.1.0`; the manifest lists every released file with its hash (DSN-BPA-001).
+- **Consequences:** The PH-0 prototype (step 4) implements the adapter operations of its vectors. Further clarifications found while writing vectors are recorded in this decision's addenda before the release.
+- **Alternatives considered:** Copying the clauses into `standard/` by hand was rejected (two sources drift); hand-written expected values were rejected (error-prone at 300+ vectors); waiting for UBTP was rejected (PH-0 needs executable vectors).
+- **Affects:** OQ-004, OQ-005, STD-TIME-011, STD-VER-040, STD-OBJ-002, STD-ERR-002, STD-CONF-001, STD-CONF-005, EXIT-0-01, EXIT-0-03, DSN-BPA-001

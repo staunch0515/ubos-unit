@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-016"],"description":"slug '-start' is invalid","id":"VER-CONF-0070","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_NAME"},"input":{"grammar":"slug","text":"-start"},"op":"check_name"}],"tags":["prototype"]}

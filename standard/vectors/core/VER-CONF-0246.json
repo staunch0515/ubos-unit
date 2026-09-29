@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-025"],"description":"a node without a kind is rejected","id":"VER-CONF-0246","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"document","value":{"text":"x"}},"op":"validate_value"}],"tags":["prototype"]}

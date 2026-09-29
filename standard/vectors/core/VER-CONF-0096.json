@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"money with the currency minor unit","id":"VER-CONF-0096","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"amount":"10.50","currency":"USD"}},"input":{"type":"money","value":{"amount":"10.5","currency":"USD"}},"op":"validate_value"}],"tags":["prototype"]}

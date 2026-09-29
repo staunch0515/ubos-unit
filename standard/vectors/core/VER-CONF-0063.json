@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-015"],"description":"uppercase UUID text is not canonical","id":"VER-CONF-0063","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_NAME"},"input":{"grammar":"uuid","text":"01890A5D-AC96-774B-BCCE-B302099A8057"},"op":"check_name"}],"tags":["prototype"]}

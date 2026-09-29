@@ -1,0 +1,1 @@
+{"clauses":["STD-CLS-010"],"description":"the genesis class ViewAsset lies directly below Object","id":"VER-CONF-0602","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":["ViewAsset","Object"]},"input":{"class":"ViewAsset","classes":[]},"op":"linearize"}]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-023"],"description":"an amount with more digits than the minor unit is rounded half_even","id":"VER-CONF-0206","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"amount":"1.00","currency":"USD"}},"input":{"type":"money","value":{"amount":"1.005","currency":"USD"}},"op":"validate_value"}],"tags":["prototype"]}

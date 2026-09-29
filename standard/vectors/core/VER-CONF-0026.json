@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-002"],"description":"canonical data rejects a number with a fraction inside an object","id":"VER-CONF-0026","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input_text":"{\"value\": {\"amount\": 10.10}}","op":"canonical_json"}],"tags":["prototype"]}

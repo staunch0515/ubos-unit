@@ -1,0 +1,65 @@
+{
+  "$id": "DAT-FieldDecl",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "classification": {
+      "description": "STD-FND-027 level",
+      "type": "string"
+    },
+    "computed": {
+      "description": "L1 expression; computed fields are read-only",
+      "type": "string"
+    },
+    "constraints": {
+      "description": "type-specific constraints",
+      "type": "object"
+    },
+    "default": {
+      "description": "literal default or {expr: L1}"
+    },
+    "description": {
+      "description": "documentation",
+      "type": "string"
+    },
+    "label": {
+      "description": "display label",
+      "type": "string"
+    },
+    "log_reads": {
+      "description": "access logging (default true for personal levels)",
+      "type": "boolean"
+    },
+    "lookup": {
+      "description": "none | equality (STD-OBJ-012)",
+      "type": "string"
+    },
+    "materialized": {
+      "description": "store computed value (STD-OBJ-003)",
+      "type": "boolean"
+    },
+    "name": {
+      "description": "snake_case member name",
+      "type": "string"
+    },
+    "relationship": {
+      "description": "for reference/list-of-reference fields: {target, cardinality, inverse, ownership, on_end, attributes_class}",
+      "type": "object"
+    },
+    "required": {
+      "description": "default false",
+      "type": "boolean"
+    },
+    "type": {
+      "description": "value type name (STD-FND-020) or custom value type URI",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "label",
+    "description"
+  ],
+  "title": "DAT-FieldDecl",
+  "type": "object"
+}

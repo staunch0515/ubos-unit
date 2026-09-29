@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"P alone is not a duration","id":"VER-CONF-0122","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"duration","value":"P"},"op":"validate_value"}],"tags":["prototype"]}

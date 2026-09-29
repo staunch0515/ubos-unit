@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-027"],"description":"an unknown classification level is rejected","id":"VER-CONF-0277","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"clearances":["secret"],"level":"public"},"op":"classification_covers"}],"tags":["prototype"]}

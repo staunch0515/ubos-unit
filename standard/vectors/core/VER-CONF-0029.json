@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-002"],"description":"a large integer is carried as a decimal string","id":"VER-CONF-0029","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"9007199254740993"},"input":{"type":"integer","value":"9007199254740993"},"op":"validate_value"}],"tags":["prototype"]}

@@ -1,0 +1,41 @@
+{
+  "$id": "DAT-DiffEntry",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "class": {
+      "description": "class URI",
+      "type": "string"
+    },
+    "fields": {
+      "description": "{path, old, new, masked: boolean}",
+      "type": "array"
+    },
+    "object_id": {
+      "description": "object or entry id",
+      "type": "string"
+    },
+    "op": {
+      "description": "added | ended | changed | moved | appended",
+      "enum": [
+        "added",
+        "ended",
+        "changed",
+        "moved",
+        "appended"
+      ],
+      "type": "string"
+    },
+    "versions": {
+      "description": "{a: hash|null, b: hash|null}",
+      "type": "object"
+    }
+  },
+  "required": [
+    "object_id",
+    "class",
+    "op",
+    "versions"
+  ],
+  "title": "DAT-DiffEntry",
+  "type": "object"
+}

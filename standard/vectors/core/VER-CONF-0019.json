@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: whitespace in the input does not change the output","id":"VER-CONF-0019","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"{\"a\":\"x\",\"b\":[1,2]}"},"input_text":"{ \"value\" : { \"b\" : [ 1 , 2 ] ,\n \"a\" : \"x\" } }","op":"canonical_json"}],"tags":["prototype"]}

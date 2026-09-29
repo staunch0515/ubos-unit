@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"text not matching the pattern violates it","id":"VER-CONF-0085","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.CONSTRAINT_VIOLATED"},"input":{"constraints":{"pattern":"[A-Z]{2}[0-9]{2}"},"type":"text","value":"AB123"},"op":"validate_value"}],"tags":["prototype"]}

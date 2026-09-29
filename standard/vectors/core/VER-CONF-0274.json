@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-027"],"description":"an explicit personal clearance covers personal","id":"VER-CONF-0274","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":true},"input":{"clearances":["personal"],"level":"personal"},"op":"classification_covers"}],"tags":["prototype"]}

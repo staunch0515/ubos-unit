@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"text min_length counts code points","id":"VER-CONF-0081","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"äö"},"input":{"constraints":{"min_length":2},"type":"text","value":"äö"},"op":"validate_value"}],"tags":["prototype"]}

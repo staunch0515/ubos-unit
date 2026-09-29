@@ -1,0 +1,1 @@
+{"clauses":["STD-CLS-010"],"description":"the genesis class LogicAsset lies directly below Object","id":"VER-CONF-0601","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":["LogicAsset","Object"]},"input":{"class":"LogicAsset","classes":[]},"op":"linearize"}]}

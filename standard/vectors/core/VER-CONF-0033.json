@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-003"],"description":"text already in NFC is unchanged","id":"VER-CONF-0033","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"Straße"},"input":{"text":"Straße"},"op":"normalize_text"}],"tags":["prototype"]}

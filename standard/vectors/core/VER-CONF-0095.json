@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"decimal with more digits than precision violates it","id":"VER-CONF-0095","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.CONSTRAINT_VIOLATED"},"input":{"constraints":{"precision":5},"type":"decimal","value":"12345.6"},"op":"validate_value"}],"tags":["prototype"]}

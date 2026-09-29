@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"instant in UTC with Z and microseconds","id":"VER-CONF-0113","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"2026-03-01T12:00:00.000000Z"},"input":{"type":"instant","value":"2026-03-01T12:00:00.000000Z"},"op":"validate_value"}],"tags":["prototype"]}

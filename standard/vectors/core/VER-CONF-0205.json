@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-023"],"description":"the default scale of a currency is its minor unit","id":"VER-CONF-0205","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"amount":"7.000","currency":"KWD"}},"input":{"type":"money","value":{"amount":"7","currency":"KWD"}},"op":"validate_value"}],"tags":["prototype"]}

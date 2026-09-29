@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"multiplication is exact","id":"VER-CONF-0171","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"1.5625"},"input":{"a":"1.25","b":"1.25","op":"mul"},"op":"decimal"}],"tags":["prototype"]}

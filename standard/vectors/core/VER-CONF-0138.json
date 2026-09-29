@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"json value larger than max_size violates the constraint","id":"VER-CONF-0138","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.CONSTRAINT_VIOLATED"},"input":{"constraints":{"max_size":10},"type":"json","value":{"a":"xxxxxxxxxxxxxxxxxxxx"}},"op":"validate_value"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"an empty period is invalid","id":"VER-CONF-0118","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"period","value":{"from":"2026-01-01","to":"2026-01-01"}},"op":"validate_value"}],"tags":["prototype"]}

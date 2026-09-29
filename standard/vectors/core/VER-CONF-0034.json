@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-003"],"description":"canonical JSON normalises strings to NFC before serialising","id":"VER-CONF-0034","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"{\"k\":\"Å\"}"},"input":{"value":{"k":"Å"}},"op":"canonical_json"}],"tags":["prototype"]}

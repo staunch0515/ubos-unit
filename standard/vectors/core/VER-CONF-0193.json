@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"assignment to a field with scale rounds with the field rounding mode","id":"VER-CONF-0193","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"2.35"},"input":{"constraints":{"rounding":"half_up","scale":2},"type":"decimal","value":"2.345"},"op":"validate_value"}],"tags":["prototype"]}

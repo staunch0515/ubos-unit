@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"open period","id":"VER-CONF-0116","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"from":"2026-01-01","to":null}},"input":{"type":"period","value":{"from":"2026-01-01","to":null}},"op":"validate_value"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: -0 is written as 0","id":"VER-CONF-0017","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"0"},"input_text":"{\"value\": -0}","op":"canonical_json"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-015"],"description":"a UUID version 4 is accepted on import","id":"VER-CONF-0061","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":true},"input":{"grammar":"uuid","text":"4b1c8f0e-9d2a-4e6f-8a3b-5c7d9e1f2a3b"},"op":"check_name"}],"tags":["prototype"]}

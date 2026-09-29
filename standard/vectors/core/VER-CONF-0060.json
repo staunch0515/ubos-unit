@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-015"],"description":"a UUID version 7 is accepted","id":"VER-CONF-0060","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":true},"input":{"grammar":"uuid-v7","text":"01890a5d-ac96-774b-bcce-b302099a8057"},"op":"check_name"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"a duration ending in T is invalid","id":"VER-CONF-0123","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"duration","value":"P1DT"},"op":"validate_value"}],"tags":["prototype"]}

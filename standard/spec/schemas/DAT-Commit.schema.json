@@ -1,0 +1,87 @@
+{
+  "$id": "DAT-Commit",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "abi": {
+      "description": "instruction ABI version used",
+      "type": "string"
+    },
+    "author": {
+      "description": "principal DID",
+      "type": "string"
+    },
+    "branch": {
+      "description": "branch name",
+      "type": "string"
+    },
+    "change_set": {
+      "description": "change set merged by this commit",
+      "type": "string"
+    },
+    "changes": {
+      "description": "DAT-Change items",
+      "type": "array"
+    },
+    "commit_id": {
+      "description": "content-id (computed)",
+      "type": "string"
+    },
+    "message": {
+      "description": "free text",
+      "type": "string"
+    },
+    "on_behalf_of": {
+      "description": "principal DID",
+      "type": "string"
+    },
+    "parents": {
+      "description": "parent commit ids; first parent is the previous head of the branch; merge commits have 2",
+      "type": "array"
+    },
+    "process_id": {
+      "description": "UUID of the process",
+      "type": "string"
+    },
+    "reason_code": {
+      "description": "registered code; required for non-human initiators",
+      "type": "string"
+    },
+    "root": {
+      "description": "Merkle root of the branch state after the commit (STD-PROOF-001)",
+      "type": "string"
+    },
+    "rule_binding": {
+      "description": "content-id of DAT-RuleBinding",
+      "type": "string"
+    },
+    "signatures": {
+      "description": "DAT-Signature items: author, and node co-signature where required",
+      "type": "array"
+    },
+    "tx_time": {
+      "description": "transaction time (STD-TIME-001)",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "type": "string"
+    },
+    "vae": {
+      "description": "tenant[.vae] authority",
+      "type": "string"
+    }
+  },
+  "required": [
+    "commit_id",
+    "vae",
+    "branch",
+    "parents",
+    "author",
+    "process_id",
+    "tx_time",
+    "changes",
+    "root",
+    "rule_binding",
+    "abi",
+    "signatures"
+  ],
+  "title": "DAT-Commit",
+  "type": "object"
+}

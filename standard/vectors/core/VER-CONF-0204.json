@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-023"],"description":"yen amounts have no minor unit","id":"VER-CONF-0204","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"amount":"101","currency":"JPY"}},"input":{"a":{"amount":"100","currency":"JPY"},"b":{"amount":"1","currency":"JPY"},"op":"add"},"op":"money"}],"tags":["prototype"]}

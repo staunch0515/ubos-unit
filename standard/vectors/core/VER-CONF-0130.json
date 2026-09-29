@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"list with too many items violates max_items","id":"VER-CONF-0130","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.CONSTRAINT_VIOLATED"},"input":{"constraints":{"max_items":2},"type":"list","value":[1,2,3]},"op":"validate_value"}],"tags":["prototype"]}

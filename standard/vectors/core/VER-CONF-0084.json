@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"text pattern must match the whole value","id":"VER-CONF-0084","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"AB12"},"input":{"constraints":{"pattern":"[A-Z]{2}[0-9]{2}"},"type":"text","value":"AB12"},"op":"validate_value"}],"tags":["prototype"]}
