@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-05
 title: Accounts Payable and Form 1099
-status: draft
+status: frozen
 ---
 
 # Accounts Payable and Form 1099

@@ -10,9 +10,9 @@ and, for comparison, on the owner's separate Java system.
 
 | Path | Content |
 |---|---|
-| `docs/50-system/` | the authoritative system specification (requirements, architecture, BPA standard, 13 systems, phases PH-0…PH-5, verification, decisions DEC-001…027) — start at `docs/50-system/README.md` and `docs/50-system/00-meta/05-ai-reading-guide.md` |
-| `docs/finance-requirements/` | implementation-neutral US Basic Finance requirements (FIN-*), sample company dataset, expected results, acceptance scenarios, comparison protocol |
-| `docs/tools/` | generators and checkers (`regen_all.sh` runs all) |
+| `docs/50-system/` | the authoritative system specification (requirements, architecture, BPA standard, 13 systems, phases PH-0…PH-5, verification, decisions DEC-001…029) — start at `docs/50-system/README.md` and `docs/50-system/00-meta/05-ai-reading-guide.md` |
+| `docs/finance-requirements/` | implementation-neutral US Basic Finance requirements (FIN-*), sample company dataset, expected results, acceptance scenarios, comparison protocol; self-contained with its own `tools/`, frozen at version 1.0 (`fin-req-v1.0`, DEC-029) |
+| `docs/tools/` | generators and checkers of the system volume (`regen_all.sh` runs all, including the finance folder's `tools/regen.sh`) |
 | `docs/reports/` | reports to the owner, in Chinese |
 | `docs/10-inventory` … `docs/40-spec`, `docs/00-meta` | earlier research volume, kept as history and input (DEC-008); do not extend |
 | `docs/HANDOFF.md` | current status, decisions, open items and next steps |
@@ -40,7 +40,11 @@ and, for comparison, on the owner's separate Java system.
    0 Must gaps in the traceability summary.
 8. **Commits.** Clear messages; push to the branch you were asked to use. Do not open pull
    requests unless asked.
-9. **Excluded topics** (charter §3.2, CST-008): tokens, cryptocurrencies, compute markets,
+9. **Finance requirements are frozen.** Never change a released version of
+   `docs/finance-requirements/`. A change needs the owner's confirmation, an entry in its
+   `99-change-log.md`, a new version and a new tag `fin-req-vX.Y` (DEC-029). The folder must
+   never refer to UBOS, the Java system or any path outside itself.
+10. **Excluded topics** (charter §3.2, CST-008): tokens, cryptocurrencies, compute markets,
    "intent economy", organisational-governance protocols and "end of the company"
    narratives never become features.
 

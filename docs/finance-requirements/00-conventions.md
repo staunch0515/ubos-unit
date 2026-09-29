@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-00
 title: Conventions
-status: draft
+status: frozen
 ---
 
 # Conventions

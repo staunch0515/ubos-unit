@@ -1,20 +1,22 @@
 ---
 id: FIN-DOC-40
 title: Comparison Protocol
-status: draft
+status: frozen
 ---
 
 # Comparison Protocol
 
-The same requirements are implemented on two systems: **System U** (the UBOS platform with a
-Basic Finance business package) and **System J** (the owner's Java system). This protocol
-fixes what is measured, how, and how the results are reported, so that the comparison is
-fair and repeatable.
+The same requirements are implemented by two independent implementations, each developed in
+its own repository by its own team. The owner gives each implementation a one-letter
+**system code** (for example `A` and `B`) that is used in all records. This protocol fixes
+what is measured, how, and how the results are reported, so that the comparison is fair and
+repeatable.
 
 ## 1. Principles
 
-1. **Same input.** Both teams work from this folder at the same version (git tag). A change
-   to the requirements is tagged and applied to both.
+1. **Same input.** Both teams work from this folder at the same version (`README.md`,
+   §Version). Each team copies the folder unchanged into its repository. A change to the
+   requirements gets a new version (`99-change-log.md`) and is copied to both.
 2. **Same oracle.** Both implementations are accepted only by FIN-SCN-01 … FIN-SCN-15 and
    the expected results FIN-EXP-*, run by a person who did not build the implementation.
 3. **Record while working.** Effort and defects are recorded when they happen, not
@@ -26,21 +28,64 @@ fair and repeatable.
 
 ## 2. Work items
 
-Work is recorded per **work item** = one requirement (FIN-*) or one scenario-level task
-(for example "statement import formats"). Each work item record contains:
+Work is recorded per **work item** = one requirement (FIN-*), one acceptance scenario
+(FIN-SCN-*), one change request (CR-A … CR-F) or one named cross-cutting task (for example
+"statement import formats"; its ID is `TASK-` plus a short name chosen by the team).
+
+### 2.1 Where and when
+
+1. Each team keeps two files in its own repository, in a folder of its choice, started from
+   `templates/work-items.csv` and `templates/defects.csv`. The files are committed at least
+   once a week.
+2. Recording starts with the first hour of work after the team copied the tagged version;
+   the first row names that version in `req_version`.
+3. A person adds one **effort row** per work item per day on which they worked on it, on the
+   same day. Hours are recorded in steps of 0.25. Work that serves several work items is
+   split in proportion, or recorded under a `TASK-` item.
+4. Every commit message of the implementation starts with the work item ID
+   (`FIN-GL-003: …`, `TASK-bank-import: …`). Size (§2.3) is derived from the commit history
+   by these IDs; it is not typed by hand.
+5. A defect is recorded when it is found, in `defects.csv`, with the work item it traces to.
+   Its fix is recorded as effort rows of kind `defect-fix`.
+6. Rows are never deleted. A wrong row is corrected by a new row with negative hours and a
+   note.
+
+### 2.2 Effort row (`templates/work-items.csv`)
 
 | Field | Meaning |
 |---|---|
-| system | U or J |
-| work item | requirement or task ID |
-| kind | build, change, defect fix, rework |
-| effort | person-hours, by role (developer, analyst, tester, designer) |
-| calendar | start and end dates |
-| artefacts | files or configuration items changed; for System U, which of them are configuration or model versus code |
-| size | lines of code added/changed/deleted by language; for configuration or models, the number of definitions changed |
-| tests | automated tests added |
-| defects | defects found later that trace to this work item, with severity and where found (review, test, acceptance, operation) |
+| system | the system code |
+| req_version | version of this folder the work is based on (for example `1.0`) |
+| date | day of the work, `YYYY-MM-DD` |
+| person | a pseudonym of the person, stable for the whole comparison |
+| role | developer, analyst, tester or designer |
+| work_item | requirement, scenario, change request or task ID |
+| kind | build, change, defect-fix or rework |
+| hours | person-hours, in steps of 0.25 |
+| artefact_kind | where the work landed: code, configuration-model, test, documentation or none |
 | notes | anything that affects comparability |
+
+### 2.3 Size, from the commit history
+
+For each work item, size is computed at report time from the commits whose message starts
+with its ID: files changed; lines added, changed and deleted by language; and, for
+configuration or model files, the number of definitions changed. Each team states in the
+report which file types it counts as code and which as configuration or models, and how it
+counts a definition.
+
+### 2.4 Defect row (`templates/defects.csv`)
+
+| Field | Meaning |
+|---|---|
+| system | the system code |
+| defect_id | team-local ID |
+| date_found | `YYYY-MM-DD` |
+| work_item | the work item the defect traces to |
+| severity | critical, major, minor or cosmetic |
+| found_in | review, test, acceptance or operation |
+| fin_exp | FIN-EXP section whose figure was wrong, if any |
+| date_fixed | `YYYY-MM-DD`, empty while open |
+| notes | description |
 
 ## 3. Metrics
 
@@ -50,7 +95,7 @@ Work is recorded per **work item** = one requirement (FIN-*) or one scenario-lev
 | FIN-MET-02 | Effort per area (GL, PC, AR, AP, BK, FA, FX, TX, RP, CT, SC, DI, NF, UI) | person-hours |
 | FIN-MET-03 | Calendar time from start to first full acceptance | weeks |
 | FIN-MET-04 | Size of the implementation: code by language, and configuration or model definitions | lines and definitions |
-| FIN-MET-05 | Share of requirements met without writing general-purpose code (configuration, models, rules only) | % |
+| FIN-MET-05 | Share of requirements met without writing general-purpose code (effort rows of the requirement have `artefact_kind` configuration-model, test or documentation only) | % |
 | FIN-MET-06 | Defects found in acceptance and in the first 3 months of operation per 100 Must requirements, by severity | count |
 | FIN-MET-07 | Expected-result mismatches at first acceptance run | count of FIN-EXP lines that differ |
 | FIN-MET-08 | Change lead time for the standard change requests of §4 (from request to accepted in production) | hours |
@@ -80,8 +125,8 @@ scenarios before either team starts.
 
 ## 5. Procedure
 
-1. Tag the requirements version; both teams start from it.
-2. Each team keeps its work-item records in the common template (CSV with the fields of §2).
+1. Freeze and tag the requirements version; both teams copy it unchanged (`README.md`).
+2. Each team keeps its work-item and defect records per §2.
 3. When a team declares a scenario ready, an independent tester runs it and records the
    result and any FIN-EXP mismatch.
 4. After first full acceptance, run the change requests of §4.

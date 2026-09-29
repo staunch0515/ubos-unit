@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-09
 title: Sales Tax
-status: draft
+status: frozen
 ---
 
 # Sales Tax

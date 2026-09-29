@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-12
 title: Data and Integration
-status: draft
+status: frozen
 ---
 
 # Data and Integration

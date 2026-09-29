@@ -30,7 +30,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-015 | Both first-vertical Buks stay in PH-2 | Superseded by DEC-022 |
 | DEC-016 | The first commercial form is Server (on-premises and private cloud); hosted Cell follows in PH-4 | Accepted, revised by DEC-023 |
 | DEC-017 | Architecture-level ID kinds AR (architecture rule) and CTR (inter-system contract) | Accepted |
-| DEC-018 | Repository layout and reuse of the research repositories | Accepted |
+| DEC-018 | Repository layout and reuse of the research repositories | Accepted, revised by DEC-028 |
 | DEC-019 | Licensing of the standard, reference implementation and tools | Accepted |
 | DEC-020 | Storage engine design: PostgreSQL/SQLite with kernel indexes and prolly trees | Accepted |
 | DEC-021 | Policy engine: Cedar-class analysable policies plus relationship tuples | Accepted |
@@ -40,6 +40,8 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-025 | PH-2 user interface is Web only, professional and practical; Smart Grid moves to PH-2 | Accepted |
 | DEC-026 | Implementation-neutral finance requirements shared with a Java reference system for comparison | Accepted |
 | DEC-027 | The specification moves to the repository `ubos-unit` | Accepted |
+| DEC-028 | `ubos-unit` is the single implementation monorepo | Accepted |
+| DEC-029 | Finance requirements frozen at version 1.0, distributed by copy, work items recorded per protocol | Accepted |
 
 ---
 
@@ -208,7 +210,7 @@ Decisions are never deleted. A replaced decision is marked
 - **Affects:** UBS-META-01, tools/check_system.py
 
 ### DEC-018 — Repository layout and reuse of the research repositories
-- **Status:** Accepted · **Date:** 2026-09-29
+- **Status:** Accepted, revised by DEC-028 (the four repositories become top-level folders of `ubos-unit`) · **Date:** 2026-09-29
 - **Context:** The eight research repositories contain useful code but diverge from the specification.
 - **Decision:** The reference implementation lives in a new monorepo (`ubos`), with separate repositories for the standard (`bpa-standard`), the open verifier (`ubos-verify`) and first-party Buks (`ubos-buks`). Research-repository code may be ported only under the rules of UBS-ARC-07 §6.
 - **Consequences:** Clean dependency graph (AR-031). Porting is traceable.
@@ -293,3 +295,19 @@ Decisions are never deleted. A replaced decision is marked
 - **Consequences:** DEC-001's location is revised; UBS-ARC-07 names `ubos-unit` as the current home of the specification.
 - **Alternatives considered:** Continuing in `ubos-platform` was rejected (mixed with research code); copying files without history was rejected (loses the change record).
 - **Affects:** DEC-001, DEC-018, UBS-ARC-07
+
+### DEC-028 — `ubos-unit` is the single implementation monorepo
+- **Status:** Accepted · **Date:** 2026-09-29
+- **Context:** DEC-018 planned four implementation repositories (`ubos`, `bpa-standard`, `ubos-verify`, `ubos-buks`) plus a documentation repository. The owner made `ubos-unit` the home of the work (DEC-027) and wants one repository, provided no planned function is lost.
+- **Decision:** The implementation lives in `staunch0515/ubos-unit` next to `docs/`. The four DEC-018 repositories become top-level folders with the same content, licences and dependency rules: `standard/` (formerly `bpa-standard`), `verify/` (formerly `ubos-verify`), `crates/` and `packages/` (formerly the `ubos` monorepo: Rust crates and TypeScript packages), `buks/` (formerly `ubos-buks`). The former repository names remain the **component names** used throughout this volume; a path such as `bpa-standard/vectors/` means `standard/vectors/` and `ubos-verify/models/` means `verify/models/`. Each folder carries its own licence file per DEC-019. Signed releases are tagged per component (`bpa-vX.Y.Z`, `verify-vX.Y.Z`, `kernel-vX.Y.Z`, `buk-<name>-vX.Y.Z`). When a component is published (for example the standard under CC BY 4.0 and Apache-2.0), it is exported from its folder with history into a public mirror; `ubos-unit` stays the source.
+- **Consequences:** One pull request can change the standard, its vectors and the kernel together, which suits AR-033 (standard before code) and keeps `bash docs/tools/regen_all.sh` and CI in one place. The dependency-graph check of AR-031 also forbids dependencies from `standard/` on any other folder, and from `verify/` on anything except `standard/` and the shared crates `ubos-types`, `ubos-crypto` and `ubos-proof`. `buks/` depends only on the published Forge and SDK interfaces. The finance requirements folder (`docs/finance-requirements/`) stays self-contained (DEC-029).
+- **Alternatives considered:** Separate repositories as in DEC-018 were rejected for now: no public release is planned before PH-3 (DEC-023), and one repository removes cross-repository version pinning during PH-0…PH-2. Splitting is still possible later by exporting a folder with history.
+- **Affects:** DEC-018, DEC-019, UBS-ARC-07, AR-031
+
+### DEC-029 — Finance requirements frozen at version 1.0, distributed by copy
+- **Status:** Accepted · **Date:** 2026-09-29
+- **Context:** The owner's Java implementation of the finance requirements is developed in a separate, unrelated repository at the same time as the UBOS implementation (ASM-014). Both must start from the same, unchanging requirements, and the requirements must contain nothing specific to this repository.
+- **Decision:** `docs/finance-requirements/` is a self-contained folder: it no longer names either implementation or any path outside itself, and it carries its own generator and checker (`tools/`, run by `tools/regen.sh`; `docs/tools/regen_all.sh` calls it). Version 1.0 is frozen on 2026-09-29 with the git tag `fin-req-v1.0`; the folder's `99-change-log.md` states the freeze rule and the change procedure. Other repositories receive an unchanged copy of a tagged version; changes are made only here and released as new versions. Work items are recorded as fixed in the folder's comparison protocol §2: one effort row per person, work item and day in `work-items.csv`, defects in `defects.csv` (templates in `templates/`), commit messages starting with the work item ID so that size is derived from git history. In the records the UBOS implementation uses system code `U` and the Java implementation `J`.
+- **Consequences:** The mapping annex UBS-REQ-10 refers to version 1.0. A change to the finance requirements after the freeze needs a new version and is applied to both implementations at an agreed date.
+- **Alternatives considered:** A git submodule or subtree in the Java repository was rejected (it links the Java repository to this one); estimating effort after the fact was rejected (protocol principle 3).
+- **Affects:** DEC-026, UBS-REQ-10, ASM-014

@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-02
 title: General Ledger
-status: draft
+status: frozen
 ---
 
 # General Ledger

@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-03
 title: Periods and Close
-status: draft
+status: frozen
 ---
 
 # Periods and Close

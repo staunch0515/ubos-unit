@@ -1,7 +1,7 @@
 ---
 id: FIN-DOC-30
 title: Acceptance Scenarios
-status: draft
+status: frozen
 ---
 
 # Acceptance Scenarios

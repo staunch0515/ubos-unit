@@ -88,7 +88,7 @@
 **数据怎么用**：
 1. 两套系统都通过**自己的界面或 API** 逐笔录入业务，不直接导入分录。
 2. 税额、折旧、汇兑损益、所得税等计算结果由系统自己算，再与预期结果比对。
-3. 预期结果由脚本 `docs/tools/gen_finance_expected.py` 用十进制精确计算，并自动做勾稽检查：
+3. 预期结果由脚本 `docs/finance-requirements/tools/gen_finance_expected.py` 用十进制精确计算，并自动做勾稽检查：
    - 借贷平衡、资产等于负债加权益；
    - 现金流量表与现金变动一致；
    - 账龄合计等于控制科目；
@@ -164,9 +164,10 @@
 
 ## 八、维护方式
 
-- 数据集和预期结果：`docs/tools/gen_finance_expected.py`。
-- 校验：`docs/tools/check_finance.py`。它检查编号唯一、引用可解析、需求字段完整、每条"必须"级需求都有场景覆盖，并生成 `90-traceability.md`。
-- 两者都已加入 `docs/tools/regen_all.sh`，当前结果为 0 错误。
+- 数据集和预期结果：`docs/finance-requirements/tools/gen_finance_expected.py`。
+- 校验：`docs/finance-requirements/tools/check_finance.py`。它检查编号唯一、引用可解析、需求字段完整、每条"必须"级需求都有场景覆盖，并生成 `90-traceability.md`。
+- 两者由文件夹自带的 `tools/regen.sh` 运行，`docs/tools/regen_all.sh` 也会调用它，当前结果为 0 错误。
+- 版本 1.0 已冻结（标签 `fin-req-v1.0`，DEC-029），复制到其他仓库的方法见 `docs/reports/finance-requirements-copy-guide-zh.md`。
 - UBOS 侧的对应关系在 `docs/50-system/10-requirements/10-finance-mapping.md`。需求文档本身不提任何实现。
 
 ---
