@@ -32,6 +32,7 @@ the work without the earlier conversations. Read `CLAUDE.md` first for the worki
 | DEC-027 | The specification and finance requirements moved with history to `staunch0515/ubos-unit`; `ubos-platform` is the archive. |
 | DEC-018 | Component layout: `ubos` (kernel and clients), `bpa-standard`, `ubos-verify`, `ubos-buks`; revised by DEC-028. |
 | DEC-028 | `ubos-unit` is the single implementation monorepo: `standard/`, `verify/`, `crates/`, `packages/`, `buks/` next to `docs/`; the DEC-018 names remain component names (UBS-ARC-07 §1). |
+| DEC-030 | PH-0 is executed by the owner with AI sessions in eight steps (one pull request each), with PH-0 verification work requested, external review at acceptance, benchmark hardware rented for step 5 and owner-signed releases. |
 | DEC-029 | Finance requirements are self-contained, **frozen at version 1.0** (tag `fin-req-v1.0`), copied unchanged into other repositories; work items recorded per `40-comparison-protocol.md` §2 (system codes U and J). |
 
 The full log with context and alternatives is `docs/50-system/90-decisions/000-index.md`.
@@ -44,7 +45,7 @@ Values confirmed by the owner (2026-09-29): Form 1099-NEC/MISC threshold for tax
 **System specification (`docs/50-system/`)** — about 250 documents, fully cross-checked:
 33 personas, 220 capabilities, 67 scenarios (19 deferred), 800 FR, 106 NR, 54 CR, 239
 standard clauses, 695 design items, 118 interfaces, 85 exit criteria (7 withdrawn), 77
-suites, 90 verification items, 27 decisions. Traceability has 0 Must gaps in every phase.
+suites, 90 verification items, 30 decisions. Traceability has 0 Must gaps in every phase.
 Annex `10-requirements/10-finance-mapping.md` maps the finance requirements to the platform.
 
 **Finance requirements (`docs/finance-requirements/`, version 1.0, frozen)** — 153 requirements (130 Must, 20
@@ -64,20 +65,21 @@ repositories: `docs/reports/finance-requirements-copy-guide-zh.md`.
 all. Expected result today: system volume `errors: 0, warnings: 0`;
 finance `errors: 0`.
 
-## 4. Next steps (proposed, not started)
+## 4. Next steps
 
-Done on 2026-09-29: finance requirements frozen at 1.0 (DEC-029); monorepo decided (DEC-028).
+Done on 2026-09-29: finance requirements frozen at 1.0 (DEC-029); monorepo decided (DEC-028);
+PH-0 plan confirmed by the owner and step 0 done (DEC-030). The step plan and status are in
+`docs/reports/ph0-plan-zh.md`.
 
-1. **Java side.** The owner copies `fin-req-v1.0` into the Java repository
-   (`docs/reports/finance-requirements-copy-guide-zh.md`) and both teams start work-item
-   records per `40-comparison-protocol.md` §2.
-2. **Accounting review.** A US CPA or equivalent reviews and signs the chart of accounts and
-   the expected results of the sample company (needed for EXIT-2-16). Findings become a
-   new finance version (1.1), not an edit of 1.0.
-3. **Prepare PH-0** (`docs/50-system/50-phases/PH-0/00-plan.md`): reference environment
-   ENV-REF-SERVER, an engineer able to write formal models, and the monorepo folders of
-   DEC-028 (`standard/`, `verify/`, `crates/`).
-4. Start PH-0 work only after the owner confirms a PH-0 plan in Chinese.
+1. **PH-0 step 1** — monorepo skeleton: `standard/`, `verify/`, `crates/` (Cargo workspace
+   with `ubos-types`, `ubos-store`, `ubos-tree`, `ubos-version`, `ubos-time`), licence files
+   per DEC-019, CI (GitHub Actions: `regen_all.sh`, `cargo fmt`, `clippy`, dependency-graph
+   check of AR-031).
+2. Then steps 2…7 of DEC-030 in order, one pull request each, merged by the owner.
+3. **Java side** (owner): copy `fin-req-v1.0` into the Java repository
+   (`docs/reports/finance-requirements-copy-guide-zh.md`) and start work-item records.
+4. **Accounting review** (external): chart of accounts and expected results of the sample
+   company (EXIT-2-16); findings become finance version 1.1.
 
 ## 5. Open items
 
@@ -85,6 +87,8 @@ Done on 2026-09-29: finance requirements frozen at 1.0 (DEC-029); monorepo decid
 |---|---|
 | Legal review of licences | DEC-019 accepted; legal review before any public release. |
 | Accounting reviewer | to be named (ASM-002, PH-3 CPA). |
+| PH-0 external reviewer | database and formal-methods expert for PH-0 acceptance (DEC-030), to be named by the owner. |
+| ENV-REF-SERVER | rented by the owner for PH-0 step 5 (DEC-030). |
 
 ## 6. Repositories
 

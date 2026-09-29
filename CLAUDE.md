@@ -10,7 +10,7 @@ and, for comparison, on the owner's separate Java system.
 
 | Path | Content |
 |---|---|
-| `docs/50-system/` | the authoritative system specification (requirements, architecture, BPA standard, 13 systems, phases PH-0…PH-5, verification, decisions DEC-001…029) — start at `docs/50-system/README.md` and `docs/50-system/00-meta/05-ai-reading-guide.md` |
+| `docs/50-system/` | the authoritative system specification (requirements, architecture, BPA standard, 13 systems, phases PH-0…PH-5, verification, decisions DEC-001…030) — start at `docs/50-system/README.md` and `docs/50-system/00-meta/05-ai-reading-guide.md` |
 | `docs/finance-requirements/` | implementation-neutral US Basic Finance requirements (FIN-*), sample company dataset, expected results, acceptance scenarios, comparison protocol; self-contained with its own `tools/`, frozen at version 1.0 (`fin-req-v1.0`, DEC-029) |
 | `docs/tools/` | generators and checkers of the system volume (`regen_all.sh` runs all, including the finance folder's `tools/regen.sh`) |
 | `docs/reports/` | reports to the owner, in Chinese |
@@ -28,6 +28,8 @@ and, for comparison, on the owner's separate Java system.
    不测试"), answer in text only: no development, no design documents, no tests.
 4. **No testing and no security review** unless explicitly asked: do not write tests, do not
    hunt for bugs, vulnerabilities or security issues in code ("不要测试,不要找代码的漏洞和安全问题").
+   Exception: the verification work that a phase's exit criteria require is requested when
+   the owner confirms that phase's plan (PH-0: DEC-030).
 5. **IDs are permanent.** Never renumber or reuse an ID. Deferred items keep their ID and are
    marked `**Status:** Deferred (DEC-xxx)`; withdrawn items are marked `**Withdrawn**` with a
    reason. A change of phase or scope needs a `DEC-*` record and a `**Phase note:**` line.

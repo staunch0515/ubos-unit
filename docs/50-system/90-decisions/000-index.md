@@ -42,6 +42,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-027 | The specification moves to the repository `ubos-unit` | Accepted |
 | DEC-028 | `ubos-unit` is the single implementation monorepo | Accepted |
 | DEC-029 | Finance requirements frozen at version 1.0, distributed by copy, work items recorded per protocol | Accepted |
+| DEC-030 | PH-0 execution model: owner with AI sessions, external review at acceptance | Accepted |
 
 ---
 
@@ -311,3 +312,17 @@ Decisions are never deleted. A replaced decision is marked
 - **Consequences:** The mapping annex UBS-REQ-10 refers to version 1.0. A change to the finance requirements after the freeze needs a new version and is applied to both implementations at an agreed date.
 - **Alternatives considered:** A git submodule or subtree in the Java repository was rejected (it links the Java repository to this one); estimating effort after the fact was rejected (protocol principle 3).
 - **Affects:** DEC-026, UBS-REQ-10, ASM-014
+
+### DEC-030 — PH-0 execution model: owner with AI sessions, external review at acceptance
+- **Status:** Accepted · **Date:** 2026-09-29
+- **Context:** ASM-001 assumes a core team of 8–12 engineers from PH-0, and UBS-PH-0 §11 assumes 6–8 engineers for three months. In practice the owner develops with AI assistance. PH-0 exits are verification results (model checking, conformance vectors, property tests, benchmarks, escape cases), while the working agreement forbids tests unless the owner asks for them.
+- **Decision:**
+  1. PH-0 is executed by the product owner with Claude sessions. The sessions draft the formal models, standard clauses, schemas, vectors, prototype crates, runner and reports; the owner reviews and merges each step as one pull request.
+  2. The verification work that PH-0 exit criteria require (VER items of UBS-PH-0 §7.2: models, vectors, properties, benchmarks and the 100 sandbox escape cases) is explicitly requested by the owner. No other testing and no security review is done unless asked.
+  3. An external reviewer with database and formal-methods expertise reviews the model and benchmark reports at acceptance (UBS-PH-0 §7.5).
+  4. PH-0 proceeds in eight steps, each one pull request: (0) specification alignment; (1) monorepo skeleton with CI; (2) formal models; (3) BPA 0.1 clauses, schemas and vectors; (4) prototype crates, adapter and runner, property tests; (5) benchmarks on ENV-REF-SERVER; (6) sandbox spike; (7) PH-1 re-baseline and acceptance. Steps 2 and 3 precede code (AR-033).
+  5. The owner rents the ENV-REF-SERVER database host and one application node for the benchmark step only; the environment definition is kept in `verify/envs/` (UBS-VER-02).
+  6. Signed releases (for example BPA 0.1, EXIT-0-01) are tagged and signed by the owner with the owner's key; the sessions prepare the release manifest and checksums.
+- **Consequences:** UBS-PH-0 §11 no longer states a calendar duration; progress is reported per step in `docs/reports/ph0-plan-zh.md`. ASM-001 carries a phase note and is re-assessed at EXIT-0-07.
+- **Alternatives considered:** Waiting for a hired team was rejected (PH-0 is a de-risking phase that the owner wants to start now); skipping the external review was rejected (the benchmark and model verdicts decide ASM-003 and the storage design).
+- **Affects:** ASM-001, UBS-PH-0, UBS-VER-02

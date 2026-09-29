@@ -3,7 +3,7 @@ id: UBS-PH-0
 title: PH-0 — Foundations and De-risking
 status: draft
 phase: PH-0
-depends_on: [UBS-PH-00, UBS-STD-00, UBS-SYS-DVM-00, UBS-SYS-BPA-00]
+depends_on: [UBS-PH-00, UBS-STD-00, UBS-SYS-DVM-00, UBS-SYS-BPA-00, DEC-028, DEC-030]
 ---
 
 # PH-0 — Foundations and De-risking
@@ -30,11 +30,11 @@ Measurable outcomes:
 
 | System | Components | Depth |
 |---|---|---|
-| BPA | `bpa-standard` repository, release pipeline, clauses for FND, OBJ, CLS (core), KIND, VER (commit, branch, merge), TIME, TXN (commit, CAS), PROOF (tree, roots) | new |
-| DVM | prototype crates `ubos-types`, `ubos-store` (PostgreSQL; SQLite follows in PH-4, DEC-024), `ubos-tree`, minimal `ubos-version` and `ubos-time` sufficient for vectors | prototype |
+| BPA | `bpa-standard` component (folder `standard/`, DEC-028), release pipeline, clauses for FND, OBJ, CLS (core), KIND, VER (commit, branch, merge), TIME, TXN (commit, CAS), PROOF (tree, roots) | new |
+| DVM | prototype crates (folder `crates/`) `ubos-types`, `ubos-store` (PostgreSQL; SQLite follows in PH-4, DEC-024), `ubos-tree`, minimal `ubos-version` and `ubos-time` sufficient for vectors | prototype |
 | FRG | conformance runner and adapter protocol (DSN-FRG-401, DSN-FRG-402) | prototype |
 | NOD | in-process host services (clock, entropy, blobs) for the prototype | prototype |
-| `ubos-verify` | TLA+ models for commit/CAS, merge, timelines | new |
+| `ubos-verify` | folder `verify/`: TLA+ models for commit/CAS, merge, timelines; environment definitions | new |
 
 ## 3. Feature list
 
@@ -57,9 +57,9 @@ following design items as prototypes; they are re-verified in PH-1 at production
 | Dependency | Kind | Needed by |
 |---|---|---|
 | requirements, architecture, standard drafts and DVM design in this volume | internal | start |
-| ENV-REF-SERVER hardware or cloud equivalent | external | week 4 (benchmarks) |
-| TLA+ tooling (TLC, Apalache) and a formal-methods-capable engineer (ASM-001) | external | start |
-| workload generators for WL-GENERIC-10M (UBS-REQ-06) | internal | week 6 |
+| ENV-REF-SERVER database host and one application node, rented by the owner (DEC-030) | external | step 5 (benchmarks) |
+| TLA+ tooling (TLC, Apalache); models drafted by AI sessions and reviewed by an external formal-methods expert at acceptance (DEC-030, ASM-001) | external | start (tooling), acceptance (review) |
+| workload generators for WL-GENERIC-10M (UBS-REQ-06) | internal | step 5 |
 
 ## 5. Out of scope for this phase
 
@@ -73,10 +73,10 @@ following design items as prototypes; they are re-verified in PH-1 at production
 
 | Deliverable | Form |
 |---|---|
-| BPA 0.1 release | signed tag in `bpa-standard` with clauses, schemas and ≥ 300 vectors |
-| Formal models | `ubos-verify/models/{commit_cas,merge,timeline}.tla` with model-checking reports |
-| Storage prototype | `ubos` monorepo branch with prototype crates and benchmark harness |
-| Benchmark report | report on ENV-REF-SERVER and ENV-REF-BOX against the PH-1 NR targets, with the ASM-003 verdict |
+| BPA 0.1 release | tag `bpa-v0.1.0` signed by the owner (DEC-030) over `standard/` with clauses, schemas and ≥ 300 vectors |
+| Formal models | `verify/models/{commit_cas,merge,timeline}.tla` with model-checking reports |
+| Storage prototype | prototype crates and benchmark harness in `crates/` of `ubos-unit` (DEC-028) |
+| Benchmark report | report on ENV-REF-SERVER against the PH-1 NR targets, with the ASM-003 verdict (ENV-REF-BOX is not used: SQLite and Box are PH-4, DEC-024) |
 | Conformance runner prototype | `forge conform` running the 0.1 vectors against the prototype through the adapter |
 | Sandbox spike report | Rhai hardening findings and first escape-suite results (ASM-008 verdict) |
 | Decision records | DEC entries confirming or revising DEC-020 and ASM-003, ASM-008 |
@@ -165,14 +165,18 @@ The PH-0 vectors, properties and models become permanent members of the PH-1 sui
 
 | Risk | Description | L | I | Mitigation | Early warning | Owner |
 |---|---|---|---|---|---|---|
-| RSK-001 | PostgreSQL cannot meet commit latency with in-flush index and tree maintenance | M | H | group commit, deferred tree node writes, fallback log-structured layer (DEC-020) | MET-PERF-002 above 25 ms in week 8 | engineering lead |
+| RSK-001 | PostgreSQL cannot meet commit latency with in-flush index and tree maintenance | M | H | group commit, deferred tree node writes, fallback log-structured layer (DEC-020) | MET-PERF-002 above 25 ms in the first prototype benchmark (step 4) | engineering lead |
 | RSK-002 | Prolly-tree write amplification too high on hot keys | M | M | tune chunking parameters, cache upper levels, batch per commit | node writes per change > 6 | kernel engineer |
-| RSK-003 | Formal models find a semantic defect late | L | H | model first, then code; weekly model reviews | any violation | formal-methods engineer |
+| RSK-003 | Formal models find a semantic defect late | L | H | model first, then code (steps 2 and 3 before step 4); model review before each code step | any violation | formal-methods engineer |
 | RSK-004 | Rhai cannot be made deterministic without float support | L | M | disable floats, decimal type, fork if needed (ASM-008) | spike findings | kernel engineer |
 | RSK-005 | Vector format too implementation-specific | M | M | review by an external implementer; adapter protocol through UBTP messages | reviewer findings | standards steward |
 
-## 11. Reference duration and team assumption
+## 11. Execution and team
 
-Non-normative. 3 months with 6–8 engineers: 3 kernel engineers (Rust), 1 formal-methods
-engineer, 1 standards author, 1 performance engineer, the engineering lead and the product
-owner.
+Non-normative. PH-0 is executed by the product owner with AI sessions in eight steps, each
+one pull request (DEC-030): (0) specification alignment; (1) monorepo skeleton with CI;
+(2) formal models; (3) BPA 0.1 clauses, schemas and vectors; (4) prototype crates, adapter,
+runner and property tests; (5) benchmarks on ENV-REF-SERVER; (6) sandbox spike; (7) PH-1
+re-baseline and acceptance. An external reviewer with database and formal-methods expertise
+takes part in acceptance. No calendar duration is fixed; progress is reported per step.
+The earlier reference of 3 months with 6–8 engineers (ASM-001) is kept only for comparison.
