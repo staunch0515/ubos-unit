@@ -23,6 +23,8 @@ with branch ordinals: an object index with `cseq` intervals, ledger entries, sto
 nodes and a state root per commit, written with the head compare-and-set in one
 transaction (DSN-DVM-004, -005, -007, -008). A branch reads its own rows and falls back to
 its parent at the fork point. Tables of the step-4 layout must be dropped before use.
+`ubos-bench load|check|run` generates and loads WL-GENERIC and drives VER-BENCH-0001;
+commits can be grouped (`Engine::commit_group`, DSN-DVM-006).
 
 Run the BPA vectors tagged `prototype`:
 

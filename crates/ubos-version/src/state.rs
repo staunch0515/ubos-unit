@@ -2,7 +2,9 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::rc::Rc;
 use ubos_model::Registry;
 use ubos_model::types::decimal::Decimal;
 use ubos_model::types::values::minor_unit;
@@ -151,12 +153,62 @@ fn parse<T: serde::de::DeserializeOwned>(v: Value) -> Result<T, BpaError> {
     serde_json::from_value(v).map_err(storage)
 }
 
-/// Tree nodes read from the store.
+/// Hash and stored record of a new version (STD-OBJ-002); used by commits and by bulk
+/// loaders, which must produce identical versions.
+#[allow(clippy::too_many_arguments)]
+pub fn version_record(
+    reg: &Registry,
+    oid: &str,
+    class: &str,
+    slug: &str,
+    body: &Map<String, Value>,
+    from: &str,
+    to: Option<&str>,
+    predecessor: Option<&str>,
+    tombstone: bool,
+) -> Result<(String, Value), BpaError> {
+    let c = reg.class(class)?;
+    let valid = json!({"from": from, "to": to});
+    let mut env = json!({
+        "object_id": oid, "class": class, "class_version": c.class_version, "schema_version": c.schema_version,
+        "kind": c.kind, "slug": slug, "valid": valid, "body_ref": content_id("ubos.chunk.v1", &Value::Object(body.clone()))?,
+    });
+    if let Some(p) = predecessor {
+        env["predecessor"] = json!(p);
+    }
+    if tombstone {
+        env["tombstone"] = json!(true);
+    }
+    let vh = content_id("ubos.version.v1", &env)?;
+    let rec = json!({"object_id": oid, "class": class, "slug": slug, "body": body, "valid": valid, "tombstone": tombstone});
+    Ok((vh, rec))
+}
+
+/// Parsed tree nodes shared by the views of this thread, keyed by hash (the process-local
+/// node cache of DSN-DVM-007; nodes are immutable, so the cache is never stale, AR-028).
+const NODE_CACHE_LIMIT: usize = 500_000;
+
+thread_local! {
+    static NODES: RefCell<HashMap<String, Rc<Node>>> = RefCell::new(HashMap::new());
+}
+
+/// Tree nodes read from the store through the node cache.
 struct StoreNodes<'s>(&'s mut dyn Store);
 
 impl NodeSource for StoreNodes<'_> {
-    fn node(&mut self, hash: &str) -> Result<Node, BpaError> {
-        Node::from_json(&self.0.node(hash)?)
+    fn node(&mut self, hash: &str) -> Result<Rc<Node>, BpaError> {
+        if let Some(n) = NODES.with(|c| c.borrow().get(hash).cloned()) {
+            return Ok(n);
+        }
+        let n = Rc::new(Node::from_json(&self.0.node(hash)?)?);
+        NODES.with(|c| {
+            let mut c = c.borrow_mut();
+            if c.len() >= NODE_CACHE_LIMIT {
+                c.clear();
+            }
+            c.insert(hash.to_string(), n.clone());
+        });
+        Ok(n)
     }
 }
 
@@ -167,6 +219,9 @@ pub struct Repo<'a> {
     /// The class registry.
     pub reg: &'a Registry,
     cache: HashMap<u64, CommitRecord>,
+    /// Branch references as first read by this view, so that one operation sees one
+    /// snapshot of every branch (DSN-DVM-008).
+    branches: HashMap<String, BranchRef>,
 }
 
 impl<'a> Repo<'a> {
@@ -176,6 +231,7 @@ impl<'a> Repo<'a> {
             store,
             reg,
             cache: HashMap::new(),
+            branches: HashMap::new(),
         }
     }
 
@@ -225,9 +281,15 @@ impl<'a> Repo<'a> {
     }
 
     fn branch_ref(&mut self, branch: &str) -> Result<BranchRef, BpaError> {
-        self.store
+        if let Some(r) = self.branches.get(branch) {
+            return Ok(r.clone());
+        }
+        let r = self
+            .store
             .branch(branch)?
-            .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown branch"))
+            .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown branch"))?;
+        self.branches.insert(branch.to_string(), r.clone());
+        Ok(r)
     }
 
     /// The head commit of a branch.
@@ -258,7 +320,7 @@ impl<'a> Repo<'a> {
     }
 
     /// The ordinal a read of `branch` at `time` uses (default: head), checked to exist.
-    fn ordinal(&mut self, branch: &str, time: Option<u64>) -> Result<u64, BpaError> {
+    pub(crate) fn ordinal(&mut self, branch: &str, time: Option<u64>) -> Result<u64, BpaError> {
         let r = self.branch_ref(branch)?;
         match time {
             None => Ok(r.head_cseq),
@@ -292,7 +354,7 @@ impl<'a> Repo<'a> {
     }
 
     /// Objects of a branch at an ordinal, optionally of one class.
-    fn objects_in(
+    pub(crate) fn objects_in(
         &mut self,
         branch: &str,
         cseq: u64,
@@ -382,6 +444,14 @@ impl<'a> Repo<'a> {
     pub fn root_at(&mut self, branch: &str, time: Option<u64>) -> Result<String, BpaError> {
         let id = self.commit_at(branch, time)?;
         Ok(self.commit(id)?.root)
+    }
+
+    /// Keys whose values differ between two state-tree roots.
+    pub fn tree_diff(&mut self, a: &str, b: &str) -> Result<Vec<String>, BpaError> {
+        Ok(ubos_tree::diff(&mut StoreNodes(&mut *self.store), a, b)?
+            .into_iter()
+            .map(|c| c.0)
+            .collect())
     }
 
     /// A version record by hash.
@@ -564,6 +634,8 @@ impl<'a> Repo<'a> {
                 .map(|(h, n)| (h.clone(), n.to_json()))
                 .collect(),
         };
+        let branch = f.branch.clone();
+        self.branches.remove(&branch);
         if !self.store.flush(&f)? {
             return Err(BpaError::new("TXN.HEAD_MOVED", "the branch head moved"));
         }
@@ -585,20 +657,17 @@ impl<'a> Repo<'a> {
         predecessor: Option<&str>,
         tombstone: bool,
     ) -> Result<String, BpaError> {
-        let c = self.reg.class(class)?;
-        let valid = json!({"from": from, "to": to});
-        let mut env = json!({
-            "object_id": oid, "class": class, "class_version": c.class_version, "schema_version": c.schema_version,
-            "kind": c.kind, "slug": slug, "valid": valid, "body_ref": content_id("ubos.chunk.v1", &Value::Object(body.clone()))?,
-        });
-        if let Some(p) = predecessor {
-            env["predecessor"] = json!(p);
-        }
-        if tombstone {
-            env["tombstone"] = json!(true);
-        }
-        let vh = content_id("ubos.version.v1", &env)?;
-        let rec = json!({"object_id": oid, "class": class, "slug": slug, "body": body, "valid": valid, "tombstone": tombstone});
+        let (vh, rec) = version_record(
+            self.reg,
+            oid,
+            class,
+            slug,
+            body,
+            from,
+            to,
+            predecessor,
+            tombstone,
+        )?;
         tx.versions.push((vh.clone(), rec));
         Ok(vh)
     }

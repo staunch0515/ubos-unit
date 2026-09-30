@@ -17,7 +17,7 @@ use ubos_types::BpaError;
 
 mod pg;
 
-pub use pg::PgStore;
+pub use pg::{BulkRows, PgStore};
 
 /// A branch reference.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -99,6 +99,16 @@ pub trait Store {
     fn create_branch(&mut self, name: &str, r: &BranchRef) -> Result<bool, BpaError>;
     /// Write a flush atomically; false (nothing written) when the head moved.
     fn flush(&mut self, f: &Flush) -> Result<bool, BpaError>;
+    /// Write consecutive flushes (group commit, DSN-DVM-006); false when a head moved.
+    /// The default writes them one by one; PostgreSQL writes them in one transaction.
+    fn flush_many(&mut self, fs: &[Flush]) -> Result<bool, BpaError> {
+        for f in fs {
+            if !self.flush(f)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
     /// The local row of one object: `Some(state or None)` when the branch has one.
     fn object(
         &mut self,
@@ -313,5 +323,152 @@ impl Store for MemStore {
     }
     fn backend(&self) -> &'static str {
         "memory"
+    }
+}
+
+/// A group of commits built on top of a store (DSN-DVM-006): flushes go to an in-memory
+/// overlay that later commits of the group read through, and [`Group::finish`] writes them
+/// all with [`Store::flush_many`].
+pub struct Group {
+    inner: Box<dyn Store>,
+    overlay: MemStore,
+    pending: Vec<Flush>,
+}
+
+impl Group {
+    /// Start a group over a store.
+    pub fn new(inner: Box<dyn Store>) -> Group {
+        Group {
+            inner,
+            overlay: MemStore::default(),
+            pending: Vec::new(),
+        }
+    }
+
+    /// Write the group; returns the store and whether the flushes were written.
+    pub fn finish(mut self) -> (Box<dyn Store>, Result<bool, BpaError>) {
+        let r = if self.pending.is_empty() {
+            Ok(true)
+        } else {
+            self.inner.flush_many(&self.pending)
+        };
+        (self.inner, r)
+    }
+
+    /// Number of flushes in the group.
+    pub fn len(&self) -> usize {
+        self.pending.len()
+    }
+
+    /// True when no flush is pending.
+    pub fn is_empty(&self) -> bool {
+        self.pending.is_empty()
+    }
+}
+
+fn unsupported(what: &str) -> BpaError {
+    BpaError::new(
+        "ADAPTER.UNSUPPORTED",
+        format!("{what} inside a commit group"),
+    )
+}
+
+impl Store for Group {
+    fn reset(&mut self) -> Result<(), BpaError> {
+        Err(unsupported("reset"))
+    }
+    fn version(&mut self, hash: &str) -> Result<Value, BpaError> {
+        match self.overlay.versions.get(hash) {
+            Some(v) => Ok(v.clone()),
+            None => self.inner.version(hash),
+        }
+    }
+    fn commit(&mut self, id: u64) -> Result<Value, BpaError> {
+        match self.overlay.commits.get(&id) {
+            Some(v) => Ok(v.clone()),
+            None => self.inner.commit(id),
+        }
+    }
+    fn commit_at(&mut self, branch: &str, cseq: u64) -> Result<Option<u64>, BpaError> {
+        match self.overlay.commit_at(branch, cseq)? {
+            Some(id) => Ok(Some(id)),
+            None => self.inner.commit_at(branch, cseq),
+        }
+    }
+    fn next_commit_id(&mut self) -> Result<u64, BpaError> {
+        self.inner.next_commit_id()
+    }
+    fn branch(&mut self, name: &str) -> Result<Option<BranchRef>, BpaError> {
+        match self.overlay.branches.get(name) {
+            Some(r) => Ok(Some(r.clone())),
+            None => self.inner.branch(name),
+        }
+    }
+    fn create_branch(&mut self, _name: &str, _r: &BranchRef) -> Result<bool, BpaError> {
+        Err(unsupported("create_branch"))
+    }
+    fn flush(&mut self, f: &Flush) -> Result<bool, BpaError> {
+        if !self.overlay.branches.contains_key(&f.branch) {
+            let Some(r) = self.inner.branch(&f.branch)? else {
+                return Ok(false);
+            };
+            self.overlay.branches.insert(f.branch.clone(), r);
+        }
+        if !self.overlay.flush(f)? {
+            return Ok(false);
+        }
+        self.pending.push(f.clone());
+        Ok(true)
+    }
+    fn object(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        object_id: &str,
+    ) -> Result<Option<Option<Value>>, BpaError> {
+        match self.overlay.object(branch, cseq, object_id)? {
+            Some(row) => Ok(Some(row)),
+            None => self.inner.object(branch, cseq, object_id),
+        }
+    }
+    fn objects(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        class: Option<&str>,
+    ) -> Result<Vec<(String, Option<Value>)>, BpaError> {
+        let mut out: BTreeMap<String, Option<Value>> = self
+            .inner
+            .objects(branch, cseq, class)?
+            .into_iter()
+            .collect();
+        out.extend(self.overlay.objects(branch, cseq, class)?);
+        Ok(out.into_iter().collect())
+    }
+    fn entries(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        key: Option<(&str, &str)>,
+        entry_id: Option<&str>,
+    ) -> Result<Vec<Value>, BpaError> {
+        let mut out = self.inner.entries(branch, cseq, key, entry_id)?;
+        out.extend(self.overlay.entries(branch, cseq, key, entry_id)?);
+        Ok(out)
+    }
+    fn node(&mut self, hash: &str) -> Result<Value, BpaError> {
+        match self.overlay.nodes.get(hash) {
+            Some(v) => Ok(v.clone()),
+            None => self.inner.node(hash),
+        }
+    }
+    fn put_meta(&mut self, key: &str, value: &Value) -> Result<(), BpaError> {
+        self.inner.put_meta(key, value)
+    }
+    fn meta(&mut self, key: &str) -> Result<Option<Value>, BpaError> {
+        self.inner.meta(key)
+    }
+    fn backend(&self) -> &'static str {
+        self.inner.backend()
     }
 }

@@ -359,7 +359,61 @@ impl Repo<'_> {
         Ok(json!({"cseq": cseq, "merged": true, "appended": appended}))
     }
 
+    /// One object entry of a diff, or `None` when the object is unchanged.
+    fn diff_object(
+        &mut self,
+        oid: &str,
+        x: Option<&ObjectState>,
+        y: Option<&ObjectState>,
+    ) -> Result<Option<Value>, BpaError> {
+        if let (Some(x), Some(y)) = (x, y)
+            && x.head == y.head
+            && x.timeline == y.timeline
+        {
+            return Ok(None);
+        }
+        if x.is_none() && y.is_none() {
+            return Ok(None);
+        }
+        let class = y.or(x).map(|o| o.class.clone()).unwrap_or_default();
+        let mut ent = json!({"object_id": oid, "class": class,
+            "versions": {"a": x.map(|o| o.head.clone()), "b": y.map(|o| o.head.clone())}});
+        match (x, y) {
+            (None, _) => ent["op"] = json!("added"),
+            (Some(x), Some(y)) => {
+                let vx = self.version(&x.head)?;
+                let vy = self.version(&y.head)?;
+                if vy["tombstone"] == true && vx["tombstone"] != true {
+                    ent["op"] = json!("ended");
+                } else {
+                    let (bx, by) = (
+                        vx["body"].as_object().cloned().unwrap_or_default(),
+                        vy["body"].as_object().cloned().unwrap_or_default(),
+                    );
+                    let keys: BTreeSet<&String> = bx.keys().chain(by.keys()).collect();
+                    let fields: Vec<Value> = keys
+                        .into_iter()
+                        .filter(|k| bx.get(*k) != by.get(*k))
+                        .map(|k| json!({"path": format!("/{k}"), "old": bx.get(k), "new": by.get(k)}))
+                        .collect();
+                    let moved = vx["slug"] != vy["slug"] && fields.is_empty();
+                    ent["op"] = json!(if moved { "moved" } else { "changed" });
+                    if !fields.is_empty() {
+                        ent["fields"] = json!(fields);
+                    }
+                }
+            }
+            (Some(_), None) => ent["op"] = json!("ended"),
+        }
+        Ok(Some(ent))
+    }
+
     /// Diff between two coordinates `{branch, time}` (STD-VER-030).
+    ///
+    /// The state trees of the two coordinates are compared, and only the objects under
+    /// differing keys, plus the System-kind objects (which the tree leaves out), are read, so
+    /// the cost follows the size of the change (NR-PERF-005). When ledger keys differ, whose
+    /// tree keys do not name the entry, the full comparison is used.
     pub fn diff(&mut self, a: &Value, b: &Value) -> Result<Value, BpaError> {
         let coord = |v: &Value| {
             (
@@ -369,49 +423,42 @@ impl Repo<'_> {
         };
         let (ab, at_) = coord(a);
         let (bb, bt) = coord(b);
+        let system: Vec<String> = self
+            .reg
+            .declarations()
+            .iter()
+            .filter_map(|d| d.get("name").and_then(Value::as_str))
+            .filter(|n| {
+                self.reg
+                    .class(n)
+                    .is_ok_and(|c| c.kind.as_deref() == Some("system"))
+            })
+            .map(str::to_string)
+            .collect();
+        let ra = self.root_at(&ab, at_)?;
+        let rb = self.root_at(&bb, bt)?;
+        let keys = self.tree_diff(&ra, &rb)?;
+        if keys.iter().all(|k| k.starts_with("o/")) {
+            let mut ids: BTreeSet<String> = keys.iter().map(|k| k[2..].to_string()).collect();
+            for class in &system {
+                let (ca, cb) = (self.ordinal(&ab, at_)?, self.ordinal(&bb, bt)?);
+                ids.extend(self.objects_in(&ab, ca, Some(class))?.into_keys());
+                ids.extend(self.objects_in(&bb, cb, Some(class))?.into_keys());
+            }
+            let mut out = Vec::new();
+            for oid in ids {
+                let x = self.object_at(&ab, at_, &oid)?;
+                let y = self.object_at(&bb, bt, &oid)?;
+                out.extend(self.diff_object(&oid, x.as_ref(), y.as_ref())?);
+            }
+            return Ok(Value::Array(out));
+        }
         let sa = self.state_at(&ab, at_)?;
         let sb = self.state_at(&bb, bt)?;
         let mut out = Vec::new();
         let ids: BTreeSet<&String> = sa.objects.keys().chain(sb.objects.keys()).collect();
         for oid in ids {
-            let (x, y) = (sa.objects.get(oid), sb.objects.get(oid));
-            if let (Some(x), Some(y)) = (x, y)
-                && x.head == y.head
-                && x.timeline == y.timeline
-            {
-                continue;
-            }
-            let class = y.or(x).map(|o| o.class.clone()).unwrap_or_default();
-            let mut ent = json!({"object_id": oid, "class": class,
-                "versions": {"a": x.map(|o| o.head.clone()), "b": y.map(|o| o.head.clone())}});
-            match (x, y) {
-                (None, _) => ent["op"] = json!("added"),
-                (Some(x), Some(y)) => {
-                    let vx = self.version(&x.head)?;
-                    let vy = self.version(&y.head)?;
-                    if vy["tombstone"] == true && vx["tombstone"] != true {
-                        ent["op"] = json!("ended");
-                    } else {
-                        let (bx, by) = (
-                            vx["body"].as_object().cloned().unwrap_or_default(),
-                            vy["body"].as_object().cloned().unwrap_or_default(),
-                        );
-                        let keys: BTreeSet<&String> = bx.keys().chain(by.keys()).collect();
-                        let fields: Vec<Value> = keys
-                            .into_iter()
-                            .filter(|k| bx.get(*k) != by.get(*k))
-                            .map(|k| json!({"path": format!("/{k}"), "old": bx.get(k), "new": by.get(k)}))
-                            .collect();
-                        let moved = vx["slug"] != vy["slug"] && fields.is_empty();
-                        ent["op"] = json!(if moved { "moved" } else { "changed" });
-                        if !fields.is_empty() {
-                            ent["fields"] = json!(fields);
-                        }
-                    }
-                }
-                (Some(_), None) => ent["op"] = json!("ended"),
-            }
-            out.push(ent);
+            out.extend(self.diff_object(oid, sa.objects.get(oid), sb.objects.get(oid))?);
         }
         let seen: BTreeSet<&String> = sa
             .ledger
