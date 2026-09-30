@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-027"],"description":"a confidential clearance covers public","id":"VER-CONF-0271","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":true},"input":{"clearances":["confidential"],"level":"public"},"op":"classification_covers"}],"tags":["prototype"]}

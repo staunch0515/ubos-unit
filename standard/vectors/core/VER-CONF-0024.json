@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-002"],"description":"canonical data rejects a number with a negative fraction","id":"VER-CONF-0024","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input_text":"{\"value\": -0.25}","op":"canonical_json"}],"tags":["prototype"]}

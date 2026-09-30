@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"json value of any shape","id":"VER-CONF-0137","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"a":[1,"b",null]}},"input":{"type":"json","value":{"a":[1,"b",null]}},"op":"validate_value"}],"tags":["prototype"]}

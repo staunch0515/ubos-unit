@@ -18,7 +18,7 @@ depends_on: [UBS-STD-01]
 - **Notes:** An object has no mutable state. "Current state" is the version selected by a snapshot.
 
 ### STD-OBJ-002 — Object version envelope
-- **Clause:** Every stored object version MUST consist of an envelope (`DAT-ObjectVersion`) and a body. The version hash MUST be computed over the canonical envelope with `body_ref` set to the body's content identifier (domain tag `ubos.version.v1`). Envelope members listed as required MUST be present.
+- **Clause:** Every stored object version MUST consist of an envelope (`DAT-ObjectVersion`) and a body. The version hash MUST be computed over the canonical envelope with `body_ref` set to the body's content identifier (domain tag `ubos.version.v1`). The body's content identifier is the chunk identifier of its canonical bytes (domain tag `ubos.chunk.v1`) when the body is a single chunk (STD-OBJ-008); ledger entry bodies use the same rule (STD-KIND-020). Envelope members listed as required MUST be present.
 - **Grammar / Schema:** `DAT-ObjectVersion`
 - **Conformance vectors:** VER-CONF-0305…0329
 - **Satisfies:** FR-VER-011, FR-PROOF-012, FR-TIME-021

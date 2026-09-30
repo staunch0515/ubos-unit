@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"integer above max violates the constraint","id":"VER-CONF-0089","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.CONSTRAINT_VIOLATED"},"input":{"constraints":{"max":5},"type":"integer","value":9},"op":"validate_value"}],"tags":["prototype"]}

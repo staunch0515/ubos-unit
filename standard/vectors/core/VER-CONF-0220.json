@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-024"],"description":"a local time with microseconds","determinism":{"tzdb":"2025b"},"id":"VER-CONF-0220","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"2026-06-01T12:00:00.250000Z"},"input":{"date":"2026-06-01","time":"12:00:00.250000","tz":"UTC"},"op":"local_to_instant"}],"tags":["prototype"]}

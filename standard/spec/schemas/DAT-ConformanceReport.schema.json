@@ -1,0 +1,45 @@
+{
+  "$id": "DAT-ConformanceReport",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "environment": {
+      "description": "OS, CPU, database versions",
+      "type": "object"
+    },
+    "implementation": {
+      "description": "{name, vendor, version, build_hash, backends}",
+      "type": "object"
+    },
+    "profiles_claimed": {
+      "description": "profile names",
+      "type": "array"
+    },
+    "results": {
+      "description": "{vector, outcome, detail}",
+      "type": "array"
+    },
+    "signature": {
+      "description": "DAT-Signature (runner)",
+      "type": "object"
+    },
+    "standard_version": {
+      "description": "BPA version",
+      "type": "string"
+    },
+    "summary": {
+      "description": "counts per profile and outcome",
+      "type": "object"
+    }
+  },
+  "required": [
+    "standard_version",
+    "implementation",
+    "profiles_claimed",
+    "results",
+    "summary",
+    "environment",
+    "signature"
+  ],
+  "title": "DAT-ConformanceReport",
+  "type": "object"
+}

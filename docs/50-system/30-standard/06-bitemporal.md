@@ -33,7 +33,7 @@ depends_on: [UBS-STD-05]
   |---|---|
   | `create(v, from)` | insert `[from, ∞)` → v; the timeline must be empty |
   | `supersede_from(v, d)` | let `e` = the start of the first segment starting after d, or ∞; replace `[d, e)` with v (splitting any segment that contains d) |
-  | `set_period(v, a, b)` | if any existing segment intersects `[a, b)` and is not fully covered by a segment of the same version lineage, reject with `TIME.OVERLAPPING_VALIDITY`; otherwise set `[a, b)` → v |
+  | `set_period(v, a, b)` | if any existing segment intersects `[a, b)` without lying entirely inside `[a, b)`, reject with `TIME.OVERLAPPING_VALIDITY`; otherwise remove the segments inside `[a, b)` and set `[a, b)` → v. `set_period` therefore fills gaps and replaces whole segments; it never splits a segment (DEC-032, OQ-004) |
   | `replace_future(v, d)` | remove every segment starting at or after d; truncate the segment containing d at d; insert `[d, ∞)` → v |
   | `end(d)` | truncate the segment containing d at d; remove every later segment; the object is ended from d |
 

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-002"],"description":"canonical data rejects a number with an exponent","id":"VER-CONF-0022","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input_text":"{\"value\": 1e3}","op":"canonical_json"}],"tags":["prototype"]}

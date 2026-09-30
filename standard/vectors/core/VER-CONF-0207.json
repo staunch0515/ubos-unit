@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-023"],"description":"an explicit scale overrides the minor unit","id":"VER-CONF-0207","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"amount":"1.2346","currency":"USD"}},"input":{"constraints":{"scale":4},"type":"money","value":{"amount":"1.23456","currency":"USD"}},"op":"validate_value"}],"tags":["prototype"]}

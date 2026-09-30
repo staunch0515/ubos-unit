@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-016"],"description":"class-name 'salesInvoice' is invalid","id":"VER-CONF-0072","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_NAME"},"input":{"grammar":"class-name","text":"salesInvoice"},"op":"check_name"}],"tags":["prototype"]}

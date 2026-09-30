@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"round to scale 2 with half_up","id":"VER-CONF-0190","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"1.01"},"input":{"a":"1.005","op":"round","rounding":"half_up","scale":2},"op":"decimal"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-016"],"description":"slug 'Invoice' is invalid","id":"VER-CONF-0069","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_NAME"},"input":{"grammar":"slug","text":"Invoice"},"op":"check_name"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"addition of large values is exact","id":"VER-CONF-0172","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"100000000000000000000"},"input":{"a":"99999999999999999999.99","b":"0.01","op":"add"},"op":"decimal"}],"tags":["prototype"]}

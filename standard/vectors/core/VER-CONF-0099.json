@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"money with an unknown currency code is invalid","id":"VER-CONF-0099","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"money","value":{"amount":"1","currency":"XYZ"}},"op":"validate_value"}],"tags":["prototype"]}

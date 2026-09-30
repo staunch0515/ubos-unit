@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-015"],"description":"a UUID version 4 is not a version 7 identifier","id":"VER-CONF-0062","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_NAME"},"input":{"grammar":"uuid-v7","text":"4b1c8f0e-9d2a-4e6f-8a3b-5c7d9e1f2a3b"},"op":"check_name"}],"tags":["prototype"]}

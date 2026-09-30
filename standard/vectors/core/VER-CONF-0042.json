@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-010"],"description":"content identifier of an integer is sha256:<lowercase hex>","id":"VER-CONF-0042","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"sha256:7a49502785a6b529f127848a4288fe00b90d839386ee8937f08623ab26de1d3a"},"input":{"domain":"ubos.chunk.v1","value":7},"op":"content_id"}],"tags":["prototype"]}

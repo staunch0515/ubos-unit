@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-015"],"description":"a UUID without hyphens is rejected","id":"VER-CONF-0064","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_NAME"},"input":{"grammar":"uuid","text":"01890a5dac96774bbcceb302099a8057"},"op":"check_name"}],"tags":["prototype"]}

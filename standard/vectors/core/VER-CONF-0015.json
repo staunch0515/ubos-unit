@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: deep nesting","id":"VER-CONF-0015","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"{\"a\":{\"b\":{\"c\":{\"d\":[1,{\"e\":\"f\"}]}}}}"},"input":{"value":{"a":{"b":{"c":{"d":[1,{"e":"f"}]}}}}},"op":"canonical_json"}],"tags":["prototype"]}

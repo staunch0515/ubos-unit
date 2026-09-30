@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-016"],"description":"slug 'invoice-2026_01' is valid","id":"VER-CONF-0065","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":true},"input":{"grammar":"slug","text":"invoice-2026_01"},"op":"check_name"}],"tags":["prototype"]}

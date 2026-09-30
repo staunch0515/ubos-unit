@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"decimal canonical string","id":"VER-CONF-0092","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"-12.5"},"input":{"type":"decimal","value":"-12.5"},"op":"validate_value"}],"tags":["prototype"]}

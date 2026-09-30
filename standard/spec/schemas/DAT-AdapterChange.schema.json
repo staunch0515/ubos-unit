@@ -1,0 +1,66 @@
+{
+  "$id": "DAT-AdapterChange",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "base": {
+      "description": "base version hash (update, end); STD-TXN-020",
+      "type": "string"
+    },
+    "body": {
+      "description": "own field values (create, update, append)"
+    },
+    "class": {
+      "description": "class name (create, append)",
+      "type": "string"
+    },
+    "entry_id": {
+      "description": "entry to append, or entry to reverse or adjust",
+      "type": "string"
+    },
+    "ledger_key": {
+      "description": "ledger key values (append)",
+      "type": "object"
+    },
+    "new_entry_id": {
+      "description": "identifier of the correcting entry (reverse, adjust)",
+      "type": "string"
+    },
+    "object_id": {
+      "description": "Definition or RawDocument object (create, update, end)",
+      "type": "string"
+    },
+    "op": {
+      "description": "create | update | end | append | reverse | adjust",
+      "enum": [
+        "create",
+        "update",
+        "end",
+        "append",
+        "reverse",
+        "adjust"
+      ],
+      "type": "string"
+    },
+    "posting_group": {
+      "description": "double-entry group (append)",
+      "type": "string"
+    },
+    "slug": {
+      "description": "locator slug (create; update when it changes)",
+      "type": "string"
+    },
+    "valid": {
+      "description": "timeline operation {kind: create|supersede_from|set_period|replace_future|end, from, to} (STD-TIME-011)",
+      "type": "object"
+    },
+    "valid_at": {
+      "description": "date or instant of business effect (append)",
+      "type": "string"
+    }
+  },
+  "required": [
+    "op"
+  ],
+  "title": "DAT-AdapterChange",
+  "type": "object"
+}

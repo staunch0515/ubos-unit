@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"division rounds half_even to the scale","id":"VER-CONF-0173","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"0.3333"},"input":{"a":"1","b":"3","op":"div","rounding":"half_even","scale":4},"op":"decimal"}],"tags":["prototype"]}

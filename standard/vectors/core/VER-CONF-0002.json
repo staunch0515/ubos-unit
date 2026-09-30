@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: nested objects and arrays keep array order","id":"VER-CONF-0002","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"{\"a\":{\"x\":null,\"y\":true},\"z\":[3,1,2]}"},"input":{"value":{"a":{"x":null,"y":true},"z":[3,1,2]}},"op":"canonical_json"}],"tags":["prototype"]}

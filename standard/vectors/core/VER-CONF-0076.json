@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-016"],"description":"member-name '1st' is invalid","id":"VER-CONF-0076","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_NAME"},"input":{"grammar":"member-name","text":"1st"},"op":"check_name"}],"tags":["prototype"]}

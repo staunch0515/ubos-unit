@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"money in a zero-decimal currency","id":"VER-CONF-0097","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"amount":"1500","currency":"JPY"}},"input":{"type":"money","value":{"amount":"1500","currency":"JPY"}},"op":"validate_value"}],"tags":["prototype"]}

@@ -23,6 +23,7 @@ DAT-ConformanceVector:
   polarity: { type: enum, required: true, description: "positive | negative" }
   setup: { type: list, required: true, description: "ordered adapter operations establishing the initial state (genesis, classes, objects)" }
   steps: { type: list, required: true, description: "ordered operations with expected results {op, input, expect: {result | error_code, match: exact|subset|hash}}" }
+  tags: { type: list, required: false, description: "labels such as `prototype` (the vector is required of the PH-0 prototype) (DEC-032)" }
   determinism: { type: composite, required: false, description: "fixed now, entropy seed, tzdb version" }
   description: { type: text, required: true, description: "what is checked" }
 ```
@@ -58,6 +59,62 @@ DAT-ConformanceReport:
 - **Conformance vectors:** —
 - **Satisfies:** FR-STD-014, FR-STD-051
 - **Notes:** —
+
+### STD-CONF-005 — Adapter operations of release 0.1
+- **Clause:** Until the Protocol profile defines UBTP messages, vectors MUST use only the adapter operations below; an adapter MUST implement each operation of the profiles it claims. Inputs and results are canonical JSON. An operation fails with a registered error code (STD-ERR-002). `match: exact` compares the whole result, `subset` compares only the members present in the expected result (recursively for objects, element-wise for arrays of equal length).
+
+  | Operation | Input | Result |
+  |---|---|---|
+  | `canonical_json` | `{value}` | canonical text of the value after NFC normalisation of every string (STD-FND-001…003) |
+  | `content_id` | `{domain, value}` | content identifier of `domain 0x00 canonical(value)` (STD-FND-010, STD-FND-011) |
+  | `normalize_text` | `{text}` | text in NFC (STD-FND-003) |
+  | `check_name` | `{grammar, text}` | `true`; grammars `slug`, `class-name`, `member-name`, `namespace`, `branch-name`, `uuid`, `uuid-v7` |
+  | `validate_value` | `{type, constraints, value}` | the canonical value (STD-FND-020…027) |
+  | `decimal` | `{op, a, b, scale, rounding}` | decimal string; `op` is `canonical`, `add`, `sub`, `mul`, `div` or `round` (STD-FND-022) |
+  | `money` | `{op, a, b}` | money value; `op` is `add` or `sub` (STD-FND-023) |
+  | `local_to_instant` | `{date, time, tz, disambiguation}` | instant (STD-FND-024) |
+  | `classification_covers` | `{clearances, level}` | boolean (STD-FND-027) |
+  | `version_hash` | `{envelope, body}` | `{body_ref, version_hash}` (STD-OBJ-002) |
+  | `entry_hash` | `{entry, body}` | `{body_ref, entry_hash}` (STD-KIND-020) |
+  | `commit_id` | `{commit}` | commit identifier (STD-VER-001) |
+  | `tree_root` | `{entries}` | root of the prolly tree over sorted `[key, hash]` pairs (STD-PROOF-001) |
+  | `linearize` | `{classes, class}` | `L(class)` as a list of class names (STD-CLS-011) |
+  | `effective_class` | `{classes, class}` | the effective definition (STD-CLS-001…014) |
+  | `reset`, `set_now`, `load_genesis` | `{}`, `{now}`, `{classes}` | `true` (STD-CONF-002) |
+  | `create_branch` | `{name, from}` | `{head}`, the cseq of the fork commit |
+  | `commit` | `{branch, changes, process}` | `{cseq, versions, entries}` (`DAT-AdapterChange`) |
+  | `read` | `{branch, object_id, asof, time}` | `{version_hash, body, valid, tombstone}` |
+  | `read_ledger` | `{branch, class, ledger_key, asof, time}` | `{entries}`, each `{entry_id, seq, entry_hash, valid_at, body}` |
+  | `merge` | `{source, target}` | `{cseq}`; on conflict `VER.MERGE_CONFLICT` with the conflict list |
+  | `diff` | `{from, to}` | the diff of STD-VER-030 |
+  | `export_state` | `{branch, time}` | `{root, entries}` of the state tree (STD-PROOF-001) |
+
+  Conventions of the adapter operations:
+  1. Absent inputs take their defaults. `time` is the `cseq` of a commit on the branch (`main` starts at `cseq` 0, empty), and `asof` is a date or an instant. Object and entry identifiers are chosen by the vector.
+  2. A step MAY give its input as `input_text`, a JSON text that the adapter parses (duplicate member names are an error, `MODEL.INVALID_VALUE`); vectors carry non-canonical inputs, such as numbers with a fraction, this way. A step MAY carry a `label`. An input value `{"$ref": "<label>/<pointer>"}` is replaced by the member of that step's result at the JSON pointer (RFC 6901). An expectation `{"same_as": "<label>/<pointer>"}` requires the result to equal that value.
+  3. In adapter inputs a class is referenced by its name. A trait is a declaration with `trait: true` and `applies_to`, a list of kinds. A ledger class declares `ledger: {key, amounts, double_entry, period_scope}`; `period_scope` names a class whose objects have the fields `start` and `end` (dates, half-open) and `state` (`open`, `closing`, `closed`).
+  4. The business time zone of the adapter is UTC; the posting date of an append is the date of `now` (`set_now`).
+  5. Version hashes, entry hashes, roots, commit identifiers, transaction times and signatures of stateful operations are compared only through `same_as` or through the pure operations, because they depend on the implementation's clock, keys and class identifiers. Before an `exact` comparison of a stateful result, the members `version_hash`, `entry_hash`, `root`, `head` and `versions` are removed from it.
+- **Grammar / Schema:** `DAT-AdapterChange`
+- **Conformance vectors:** —
+- **Satisfies:** FR-STD-021, FR-STD-022
+- **Notes:** The operations are test interfaces; STD-CONF-002 applies (disabled in production builds).
+
+```yaml
+DAT-AdapterChange:
+  op: { type: enum, required: true, description: "create | update | end | append | reverse | adjust" }
+  object_id: { type: text, required: false, description: "Definition or RawDocument object (create, update, end)" }
+  class: { type: text, required: false, description: "class name (create, append)" }
+  slug: { type: text, required: false, description: "locator slug (create; update when it changes)" }
+  base: { type: text, required: false, description: "base version hash (update, end); STD-TXN-020" }
+  body: { type: json, required: false, description: "own field values (create, update, append)" }
+  valid: { type: map, required: false, description: "timeline operation {kind: create|supersede_from|set_period|replace_future|end, from, to} (STD-TIME-011)" }
+  entry_id: { type: text, required: false, description: "entry to append, or entry to reverse or adjust" }
+  new_entry_id: { type: text, required: false, description: "identifier of the correcting entry (reverse, adjust)" }
+  ledger_key: { type: map, required: false, description: "ledger key values (append)" }
+  valid_at: { type: text, required: false, description: "date or instant of business effect (append)" }
+  posting_group: { type: text, required: false, description: "double-entry group (append)" }
+```
 
 ### STD-CONF-010 — Extensions
 - **Clause:** Vendor extensions (instructions, value types, properties, widgets, error codes) MUST use names prefixed `x-<vendor>.`, MUST be registered in the extension registry with schema and vectors, and MUST NOT change the semantics of standard items. Standard names without the prefix are reserved.

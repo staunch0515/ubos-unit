@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: duplicate member names are rejected","id":"VER-CONF-0018","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input_text":"{\"value\": {\"a\": 1, \"a\": 2}}","op":"canonical_json"}],"tags":["prototype"]}

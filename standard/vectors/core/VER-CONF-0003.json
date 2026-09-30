@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: no insignificant whitespace in a list of scalars","id":"VER-CONF-0003","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"[1,\"two\",false,null]"},"input":{"value":[1,"two",false,null]},"op":"canonical_json"}],"tags":["prototype"]}

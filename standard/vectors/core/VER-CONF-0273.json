@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-027"],"description":"personal must be granted explicitly, even with sensitive_personal","id":"VER-CONF-0273","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":false},"input":{"clearances":["sensitive_personal"],"level":"personal"},"op":"classification_covers"}],"tags":["prototype"]}

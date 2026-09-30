@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"enum value among the allowed values","id":"VER-CONF-0124","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"open"},"input":{"constraints":{"allowed_values":["open","closed"]},"type":"enum","value":"open"},"op":"validate_value"}],"tags":["prototype"]}

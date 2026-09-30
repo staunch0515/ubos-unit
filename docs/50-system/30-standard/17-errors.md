@@ -49,6 +49,9 @@ DAT-Error:
   | `MODEL.MIGRATION_REQUIRED` | breaking change without a migration | no | yes | 422 |
   | `MODEL.CURRENCY_MISMATCH` | money arithmetic across currencies | no | yes | 422 |
   | `MODEL.OBJECT_TOO_LARGE` | size limit | no | yes | 413 |
+  | `MODEL.INVALID_VALUE` | a value is not in the canonical representation of its type, or is not canonical data (STD-FND-002, STD-FND-020, STD-FND-022) | no | yes | 422 |
+  | `MODEL.UNKNOWN_TYPE` | a value type outside STD-FND-020 | no | yes | 422 |
+  | `MODEL.INVALID_NAME` | a slug, class, member or namespace name outside the grammar of STD-FND-016 | no | yes | 422 |
   | `VER.CHANGE_SET_REQUIRED` | direct commit to a `change_set` class on a protected branch | no | yes | 409 |
   | `VER.MERGE_CONFLICT` | merge conflicts | no | yes | 409 |
   | `VER.INVALID_BRANCH_NAME` | branch-name grammar | no | yes | 422 |

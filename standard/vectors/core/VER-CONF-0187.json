@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"round 2.9 to scale 0 with floor","id":"VER-CONF-0187","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"2"},"input":{"a":"2.9","op":"round","rounding":"floor","scale":0},"op":"decimal"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"list of integers","id":"VER-CONF-0129","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":[1,2,3]},"input":{"constraints":{"item_type":{"type":"integer"}},"type":"list","value":[1,2,3]},"op":"validate_value"}],"tags":["prototype"]}

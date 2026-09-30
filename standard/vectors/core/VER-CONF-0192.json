@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"an unknown rounding mode is invalid","id":"VER-CONF-0192","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"a":"1.5","op":"round","rounding":"nearest","scale":0},"op":"decimal"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"hour 24 is not a time","id":"VER-CONF-0112","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"time","value":"24:00:00"},"op":"validate_value"}],"tags":["prototype"]}

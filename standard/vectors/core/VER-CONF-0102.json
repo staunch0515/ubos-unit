@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"quantity with a unit","id":"VER-CONF-0102","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"unit":"kg","value":"2.5"}},"input":{"type":"quantity","value":{"unit":"kg","value":"2.50"}},"op":"validate_value"}],"tags":["prototype"]}

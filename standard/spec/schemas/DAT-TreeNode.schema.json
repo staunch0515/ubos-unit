@@ -1,0 +1,23 @@
+{
+  "$id": "DAT-TreeNode",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "entries": {
+      "description": "sorted [key, hash] pairs; for level > 0, hash is a child node hash and key is the child's first key",
+      "type": "array"
+    },
+    "level": {
+      "description": "0 for leaves",
+      "type": [
+        "integer",
+        "string"
+      ]
+    }
+  },
+  "required": [
+    "level",
+    "entries"
+  ],
+  "title": "DAT-TreeNode",
+  "type": "object"
+}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"a safe integer written as a string is not canonical","id":"VER-CONF-0090","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"integer","value":"12"},"op":"validate_value"}],"tags":["prototype"]}

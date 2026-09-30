@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"decimal with a declared scale is written with that many digits","id":"VER-CONF-0093","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"12.50"},"input":{"constraints":{"scale":2},"type":"decimal","value":"12.5"},"op":"validate_value"}],"tags":["prototype"]}

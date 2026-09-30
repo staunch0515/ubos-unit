@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-016"],"description":"class-name 'SalesInvoice' is valid","id":"VER-CONF-0071","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":true},"input":{"grammar":"class-name","text":"SalesInvoice"},"op":"check_name"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-024"],"description":"a local time in New York in summer","determinism":{"tzdb":"2025b"},"id":"VER-CONF-0216","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"2026-07-15T13:30:00.000000Z"},"input":{"date":"2026-07-15","time":"09:30:00","tz":"America/New_York"},"op":"local_to_instant"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"time with seconds","id":"VER-CONF-0110","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"23:59:59"},"input":{"type":"time","value":"23:59:59"},"op":"validate_value"}],"tags":["prototype"]}

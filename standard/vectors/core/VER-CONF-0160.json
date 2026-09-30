@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"canonical form drops trailing fraction zeros","id":"VER-CONF-0160","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"12.5"},"input":{"a":"12.500","op":"canonical"},"op":"decimal"}],"tags":["prototype"]}

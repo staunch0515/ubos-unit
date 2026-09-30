@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"integer below min violates the constraint","id":"VER-CONF-0088","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.CONSTRAINT_VIOLATED"},"input":{"constraints":{"min":5},"type":"integer","value":3},"op":"validate_value"}],"tags":["prototype"]}

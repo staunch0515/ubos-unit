@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"money in a three-decimal currency","id":"VER-CONF-0098","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"amount":"1.200","currency":"BHD"}},"input":{"type":"money","value":{"amount":"1.2","currency":"BHD"}},"op":"validate_value"}],"tags":["prototype"]}

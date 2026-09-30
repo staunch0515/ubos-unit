@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"a type name in another case is unknown","id":"VER-CONF-0140","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.UNKNOWN_TYPE"},"input":{"type":"Text","value":"x"},"op":"validate_value"}],"tags":["prototype"]}

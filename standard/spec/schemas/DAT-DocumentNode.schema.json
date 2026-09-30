@@ -1,0 +1,31 @@
+{
+  "$id": "DAT-DocumentNode",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "attrs": {
+      "description": "kind-specific attributes (level, href, clause URI, binding path, logic URI)",
+      "type": "object"
+    },
+    "children": {
+      "description": "child nodes (DAT-DocumentNode)",
+      "type": "array"
+    },
+    "kind": {
+      "description": "block or inline node kind",
+      "type": "string"
+    },
+    "marks": {
+      "description": "inline marks applied to the text",
+      "type": "array"
+    },
+    "text": {
+      "description": "text content for text leaves",
+      "type": "string"
+    }
+  },
+  "required": [
+    "kind"
+  ],
+  "title": "DAT-DocumentNode",
+  "type": "object"
+}

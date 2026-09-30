@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"division by zero","id":"VER-CONF-0175","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"LOGIC.DIVISION_BY_ZERO"},"input":{"a":"1","b":"0","op":"div","rounding":"half_even","scale":2},"op":"decimal"}],"tags":["prototype"]}

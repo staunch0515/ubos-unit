@@ -1,0 +1,72 @@
+{
+  "$id": "DAT-BranchRef",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "created_from": {
+      "description": "commit id at creation",
+      "type": "string"
+    },
+    "expires_at": {
+      "description": "lifetime for sandbox/agent kinds",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "type": "string"
+    },
+    "head": {
+      "description": "commit id",
+      "type": "string"
+    },
+    "kind": {
+      "description": "main | release | draft | feature | agent | overlay | loader | evolution | correction | sandbox | device",
+      "enum": [
+        "main",
+        "release",
+        "draft",
+        "feature",
+        "agent",
+        "overlay",
+        "loader",
+        "evolution",
+        "correction",
+        "sandbox",
+        "device"
+      ],
+      "type": "string"
+    },
+    "name": {
+      "description": "branch name (STD-VER-013)",
+      "type": "string"
+    },
+    "owner": {
+      "description": "principal DID",
+      "type": "string"
+    },
+    "parent_line": {
+      "description": "{branch, mode: live|pinned, pin: commit id} for inheritance",
+      "type": "object"
+    },
+    "state": {
+      "description": "active | frozen | archived",
+      "enum": [
+        "active",
+        "frozen",
+        "archived"
+      ],
+      "type": "string"
+    },
+    "vae": {
+      "description": "authority",
+      "type": "string"
+    }
+  },
+  "required": [
+    "vae",
+    "name",
+    "kind",
+    "head",
+    "created_from",
+    "owner",
+    "state"
+  ],
+  "title": "DAT-BranchRef",
+  "type": "object"
+}

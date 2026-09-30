@@ -196,7 +196,7 @@ DAT-DiffEntry:
 ## 5. Merge
 
 ### STD-VER-040 — Merge base
-- **Clause:** The merge base of commits S (source head) and T (target head) MUST be the best common ancestor: a common ancestor not reachable from any other common ancestor. When several exist, the implementation MUST construct a virtual base by recursively merging them, in ascending order of `commit_id`.
+- **Clause:** The merge base of commits S (source head) and T (target head) MUST be the best common ancestor: a common ancestor not reachable from any other common ancestor. When several exist, the implementation MUST construct a virtual base by merging them one by one in ascending order of `commit_id`: the accumulated virtual state is merged with the next ancestor using, as base, the merge base of the ancestors merged so far and that ancestor (computed by this clause recursively). Inside a virtual merge, a conflicting field or object keeps its value in that base, and ledger entries are united by `entry_id` as in STD-VER-054 (DEC-032, OQ-005).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1400…1414
 - **Satisfies:** FR-VER-051

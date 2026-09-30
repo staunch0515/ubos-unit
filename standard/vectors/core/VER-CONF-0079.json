@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-016"],"description":"namespace 'Acme' is invalid","id":"VER-CONF-0079","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_NAME"},"input":{"grammar":"namespace","text":"Acme"},"op":"check_name"}],"tags":["prototype"]}

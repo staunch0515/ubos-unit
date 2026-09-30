@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-001"],"description":"canonical JSON: keys sort by UTF-16 code units: upper case before lower case","id":"VER-CONF-0005","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"{\"A\":4,\"B\":2,\"a\":3,\"b\":1}"},"input":{"value":{"A":4,"B":2,"a":3,"b":1}},"op":"canonical_json"}],"tags":["prototype"]}

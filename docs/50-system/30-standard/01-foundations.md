@@ -119,7 +119,7 @@ depends_on: [UBS-STD-00]
 - **Notes:** The effective value of an absent member is resolved by inheritance, overlays or defaults.
 
 ### STD-FND-022 — Decimal strings and arithmetic
-- **Clause:** Decimal strings MUST match the grammar below, with no exponent and no leading `+`. Canonical form has no leading zeros except a single `0` before the point, and no trailing zeros beyond the declared scale. Arithmetic on decimals MUST be exact, and results MUST be rounded only when assigned to a field with a declared scale, using the field's rounding mode. Division MUST specify a scale and rounding mode, or be rejected at type-check time.
+- **Clause:** Decimal strings MUST match the grammar below, with no exponent and no leading `+`. Canonical form has no leading zeros except a single `0` before the point and no negative zero; with a declared scale it has exactly that many fraction digits (no point for scale 0), and without one it has no trailing fraction zeros (DEC-032). Arithmetic on decimals MUST be exact, and results MUST be rounded only when assigned to a field with a declared scale, using the field's rounding mode. Division MUST specify a scale and rounding mode, or be rejected at type-check time.
 - **Grammar / Schema:**
   ```
   decimal = ["-"] int-part ["." 1*DIGIT]
@@ -138,7 +138,7 @@ depends_on: [UBS-STD-00]
 - **Notes:** —
 
 ### STD-FND-024 — Time values
-- **Clause:** Instants MUST be stored in UTC with microsecond precision. Dates MUST carry no time zone. Conversions between local times and instants MUST use a named IANA time zone and the tz database version recorded in the execution journal. Non-existent local times (spring forward) MUST resolve to the instant after the gap. Repeated local times (fall back) MUST resolve to the earlier instant, unless a disambiguation is given.
+- **Clause:** Instants MUST be stored in UTC with microsecond precision. Dates MUST carry no time zone. Conversions between local times and instants MUST use a named IANA time zone and the tz database version recorded in the execution journal. Non-existent local times (spring forward) MUST resolve to the first instant after the gap, that is, the transition instant (DEC-032). Repeated local times (fall back) MUST resolve to the earlier instant, unless a disambiguation is given.
 - **Grammar / Schema:** RFC 3339, IANA tz
 - **Conformance vectors:** VER-CONF-0215…0239
 - **Satisfies:** FR-LOC-031, FR-LOC-032, FR-TIME-023
@@ -147,7 +147,8 @@ depends_on: [UBS-STD-00]
 ### STD-FND-025 — Rich-text document schema
 - **Clause:** Values of type `document` MUST conform to the BPA rich-text schema, a tree of blocks with inline marks and bindings:
   - block kinds: `paragraph`, `heading`, `list`, `list_item`, `table`, `row`, `cell`, `quote`, `code`, `image`, `section`, `clause_ref`, `binding`, `logic_block`, `page_break`;
-  - inline marks: `bold`, `italic`, `underline`, `strike`, `link`, `comment_ref`.
+  - inline marks: `bold`, `italic`, `underline`, `strike`, `link`, `comment_ref`;
+  - text leaves have the kind `text` and no children (DEC-032).
 
   Unknown node kinds MUST be rejected.
 - **Grammar / Schema:** `DAT-DocumentNode` below

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-027"],"description":"a personal clearance covers the lower non-personal levels","id":"VER-CONF-0276","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":true},"input":{"clearances":["personal"],"level":"confidential"},"op":"classification_covers"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"money with a numeric amount is invalid","id":"VER-CONF-0101","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"money","value":{"amount":1,"currency":"USD"}},"op":"validate_value"}],"tags":["prototype"]}

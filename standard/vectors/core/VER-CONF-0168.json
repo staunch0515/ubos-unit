@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"a point without digits is invalid","id":"VER-CONF-0168","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"a":"1.","op":"canonical"},"op":"decimal"}],"tags":["prototype"]}

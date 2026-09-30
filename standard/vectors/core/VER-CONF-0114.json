@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"an instant with an offset is not canonical","id":"VER-CONF-0114","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"instant","value":"2026-03-01T12:00:00.000000+01:00"},"op":"validate_value"}],"tags":["prototype"]}

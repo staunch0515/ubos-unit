@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-027"],"description":"an internal clearance does not cover confidential","id":"VER-CONF-0272","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":false},"input":{"clearances":["internal"],"level":"confidential"},"op":"classification_covers"}],"tags":["prototype"]}

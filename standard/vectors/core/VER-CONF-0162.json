@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"negative zero is written as 0","id":"VER-CONF-0162","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"0"},"input":{"a":"-0.00","op":"canonical"},"op":"decimal"}],"tags":["prototype"]}

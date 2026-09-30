@@ -1,0 +1,77 @@
+{
+  "$id": "DAT-ObjectVersion",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "body_ref": {
+      "description": "content-id of the body (canonical JSON of own field values)",
+      "type": "string"
+    },
+    "class": {
+      "description": "canonical URI of the class object (no selectors)",
+      "type": "string"
+    },
+    "class_version": {
+      "description": "content-id of the class version used",
+      "type": "string"
+    },
+    "encryption": {
+      "description": "per-field encryption descriptors (STD-OBJ-010)",
+      "type": "object"
+    },
+    "kind": {
+      "description": "definition | system | raw_document (ledger entries use DAT-LedgerEntry)",
+      "type": "string"
+    },
+    "object_id": {
+      "description": "UUID of the object",
+      "type": "string"
+    },
+    "predecessor": {
+      "description": "content-id of the previous version on the same branch line, absent for creation",
+      "type": "string"
+    },
+    "provenance_ref": {
+      "description": "content-id of the derivation record for logic-produced versions (STD-TXN-030)",
+      "type": "string"
+    },
+    "schema_version": {
+      "description": "schema version of the class at write time",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "slug": {
+      "description": "locator slug at this version",
+      "type": "string"
+    },
+    "state": {
+      "description": "lifecycle state, when the class has a lifecycle",
+      "type": "string"
+    },
+    "tombstone": {
+      "description": "true when this version ends the object (ended, or hidden on a child branch)",
+      "type": "boolean"
+    },
+    "valid": {
+      "description": "valid-time period; Definition kind only, else {from: null, to: null}",
+      "required": [
+        "from",
+        "to"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "object_id",
+    "class",
+    "class_version",
+    "schema_version",
+    "kind",
+    "slug",
+    "valid",
+    "body_ref"
+  ],
+  "title": "DAT-ObjectVersion",
+  "type": "object"
+}

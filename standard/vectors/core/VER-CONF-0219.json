@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-024"],"description":"a local time in Kolkata (half-hour offset)","determinism":{"tzdb":"2025b"},"id":"VER-CONF-0219","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"2026-06-01T06:30:00.000000Z"},"input":{"date":"2026-06-01","time":"12:00:00","tz":"Asia/Kolkata"},"op":"local_to_instant"}],"tags":["prototype"]}

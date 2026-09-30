@@ -8,5 +8,8 @@ python3 "$DIR/gen_traceability.py"
 python3 "$DIR/gen_indexes.py"
 python3 "$DIR/check_system.py"
 python3 "$DIR/check_system.py" --json | python3 -c "import json,sys; r=json.load(sys.stdin); sys.exit(1 if r['errors'] else 0)"
+# BPA release build (standard/, DEC-032): vectors from the oracle, clauses, schemas, coverage, manifest
+python3 "$DIR/../../standard/tools/genvectors.py"
+python3 "$DIR/../../standard/tools/build_release.py"
 # Finance requirements (self-contained folder docs/finance-requirements, own tools)
 sh "$DIR/../finance-requirements/tools/regen.sh"

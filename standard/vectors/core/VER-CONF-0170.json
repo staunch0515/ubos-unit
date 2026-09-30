@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"subtraction is exact","id":"VER-CONF-0170","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"0.000000000000000000001"},"input":{"a":"1","b":"0.999999999999999999999","op":"sub"},"op":"decimal"}],"tags":["prototype"]}

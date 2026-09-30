@@ -1,0 +1,44 @@
+{
+  "$id": "DAT-ChunkingParams",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "algorithm": {
+      "description": "fastcdc-v2020",
+      "type": "string"
+    },
+    "avg_size": {
+      "description": "65536",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "manifest": {
+      "description": "{chunks: [content-id], total_size: integer, media_type: text}",
+      "type": "object"
+    },
+    "max_size": {
+      "description": "262144",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "min_size": {
+      "description": "16384",
+      "type": [
+        "integer",
+        "string"
+      ]
+    }
+  },
+  "required": [
+    "algorithm",
+    "min_size",
+    "avg_size",
+    "max_size",
+    "manifest"
+  ],
+  "title": "DAT-ChunkingParams",
+  "type": "object"
+}

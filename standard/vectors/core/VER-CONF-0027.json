@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-002"],"description":"canonical data rejects a number with an integer above 2^53-1","id":"VER-CONF-0027","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input_text":"{\"value\": 9007199254740992}","op":"canonical_json"}],"tags":["prototype"]}

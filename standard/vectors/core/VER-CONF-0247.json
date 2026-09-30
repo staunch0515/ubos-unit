@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-025"],"description":"text in documents is normalised to NFC","id":"VER-CONF-0247","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"kind":"text","text":"Café"}},"input":{"type":"document","value":{"kind":"text","text":"Café"}},"op":"validate_value"}],"tags":["prototype"]}

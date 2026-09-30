@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"date in the proleptic Gregorian calendar","id":"VER-CONF-0106","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"2024-02-29"},"input":{"type":"date","value":"2024-02-29"},"op":"validate_value"}],"tags":["prototype"]}

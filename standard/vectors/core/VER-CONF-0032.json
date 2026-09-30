@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-003"],"description":"Hangul jamo compose to a syllable","id":"VER-CONF-0032","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"가"},"input":{"text":"가"},"op":"normalize_text"}],"tags":["prototype"]}

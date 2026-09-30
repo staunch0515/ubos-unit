@@ -1,0 +1,1 @@
+{"clauses":["STD-CLS-010"],"description":"the genesis class DataObject lies directly below Object","id":"VER-CONF-0600","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":["DataObject","Object"]},"input":{"class":"DataObject","classes":[]},"op":"linearize"}]}

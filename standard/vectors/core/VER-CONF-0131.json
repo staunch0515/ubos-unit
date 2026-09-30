@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"keyed list with unique keys","id":"VER-CONF-0131","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":[{"qty":1,"sku":"a"},{"qty":2,"sku":"b"}]},"input":{"constraints":{"key":"sku"},"type":"list","value":[{"qty":1,"sku":"a"},{"qty":2,"sku":"b"}]},"op":"validate_value"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-025"],"description":"a text leaf has no children","id":"VER-CONF-0245","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"document","value":{"children":[],"kind":"text","text":"x"}},"op":"validate_value"}],"tags":["prototype"]}

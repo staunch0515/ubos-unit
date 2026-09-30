@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-023"],"description":"subtracting money of one currency","id":"VER-CONF-0201","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"amount":"-2.50","currency":"EUR"}},"input":{"a":{"amount":"10","currency":"EUR"},"b":{"amount":"12.5","currency":"EUR"},"op":"sub"},"op":"money"}],"tags":["prototype"]}

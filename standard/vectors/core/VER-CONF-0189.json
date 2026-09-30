@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"round to scale 2 with half_even","id":"VER-CONF-0189","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"1.00"},"input":{"a":"1.005","op":"round","rounding":"half_even","scale":2},"op":"decimal"}],"tags":["prototype"]}

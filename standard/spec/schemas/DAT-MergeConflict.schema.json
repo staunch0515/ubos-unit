@@ -1,0 +1,48 @@
+{
+  "$id": "DAT-MergeConflict",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "base": {
+      "description": "base value (masked per reader)"
+    },
+    "kind": {
+      "description": "field | ended_vs_changed | key | raw_document | schema",
+      "enum": [
+        "field",
+        "ended_vs_changed",
+        "key",
+        "raw_document",
+        "schema"
+      ],
+      "type": "string"
+    },
+    "object_id": {
+      "description": "object id",
+      "type": "string"
+    },
+    "path": {
+      "description": "JSON Pointer of the field; absent for object-level conflicts",
+      "type": "string"
+    },
+    "source": {
+      "description": "source value"
+    },
+    "source_commit": {
+      "description": "commit that set the source value",
+      "type": "string"
+    },
+    "target": {
+      "description": "target value"
+    },
+    "target_commit": {
+      "description": "commit that set the target value",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object_id",
+    "kind"
+  ],
+  "title": "DAT-MergeConflict",
+  "type": "object"
+}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"map with typed values","id":"VER-CONF-0133","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"de":"Rechnung","en":"Invoice"}},"input":{"constraints":{"value_type":{"type":"text"}},"type":"map","value":{"de":"Rechnung","en":"Invoice"}},"op":"validate_value"}],"tags":["prototype"]}

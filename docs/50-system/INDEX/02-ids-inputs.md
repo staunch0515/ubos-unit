@@ -38,7 +38,7 @@ depends_on: [UBS-IDX-00]
 | IMP-11 | **Progressive disclosure.** Three product layers (business, builder, platform). Business users never | `00-meta/06-inputs.md` |
 | IMP-12 | **Open standards.** JSON Schema, OpenAPI, CloudEvents, OpenTelemetry, OIDC, SCIM, MCP, Parquet/Icebe | `00-meta/06-inputs.md` |
 
-## OQ (5)
+## OQ (6)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -47,4 +47,5 @@ depends_on: [UBS-IDX-00]
 | OQ-003 | Hosted Cell (PH-4) comes after Server (PH-1/PH-2). Is on-premises/private-cloud Server the confirmed | `00-meta/03-progress.md` |
 | OQ-004 | STD-TIME-011 `set_period` rejects an intersecting segment "not fully covered by a segment of the sam | `00-meta/03-progress.md` |
 | OQ-005 | STD-VER-040 builds a virtual merge base "by recursively merging" several best common ancestors in as | `00-meta/03-progress.md` |
+| OQ-006 | STD-VER-013 lists the branch kinds `release`, `draft`, `feature`, `agent`, `overlay`, `loader`, `evo | `00-meta/03-progress.md` |
 

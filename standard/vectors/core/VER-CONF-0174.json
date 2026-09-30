@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"division without a scale is rejected at type-check time","id":"VER-CONF-0174","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"LOGIC.TYPE_ERROR"},"input":{"a":"1","b":"3","op":"div"},"op":"decimal"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"ISO 8601 duration","id":"VER-CONF-0120","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"P1Y2M3DT4H5M6S"},"input":{"type":"duration","value":"P1Y2M3DT4H5M6S"},"op":"validate_value"}],"tags":["prototype"]}

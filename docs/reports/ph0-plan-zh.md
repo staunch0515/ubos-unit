@@ -27,7 +27,7 @@
 | 0 | 规格对齐：DEC-030；PH-0 计划去掉 ENV-REF-BOX（DEC-024），路径改为单仓文件夹（DEC-028）；ASM-001 加 phase note | — | 已完成（PR #2） |
 | 1 | 单仓骨架：`standard/`、`verify/`、`crates/`（Cargo 工作区，含五个原型 crate），各目录许可证，CI（`regen_all.sh`、fmt/clippy、依赖图检查 AR-031） | 基础 | 已完成（PR #3） |
 | 2 | TLA+ 模型 `verify/models/{commit_cas,merge,timeline}.tla`，按 DEC-031 检查（能穷举的穷举，否则最大可完成规模穷举加完整规模 100 万条随机模拟），报告见 `verify/models/reports/README.md` | EXIT-0-02 | 已完成（本 PR）：无违规；发现并修正 1 个设计问题（DSN-DVM-208），提出 OQ-004、OQ-005 |
-| 3 | BPA 0.1：Core、Bitemporal、Ledger 条款，JSON Schema，向量格式，至少 300 个向量；覆盖率报告（MUST 条款覆盖至少 80%） | EXIT-0-01 | 未开始 |
+| 3 | BPA 0.1：Core、Bitemporal、Ledger 条款，JSON Schema，向量格式，至少 300 个向量；覆盖率报告（MUST 条款覆盖至少 80%） | EXIT-0-01 | 3a 已完成（本 PR）：发布构建工具、参考实现、FND/OBJ/CLS/KIND 390 个向量；3b（VER/TIME/TXN/PROOF 向量、覆盖率达标、清单）待做 |
 | 4 | 原型 crate、适配器协议、`forge conform` 运行器；`prototype` 向量 100% 通过；属性测试每条至少 100 万例 | EXIT-0-03、EXIT-0-04 | 未开始 |
 | 5 | ENV-REF-SERVER 基准测试（读 p95 ≤ 6.25 ms，提交 p50 ≤ 19 ms，diff p95 ≤ 62.5 ms），给出 ASM-003 结论 | EXIT-0-05 | 未开始 |
 | 6 | Rhai 沙箱初步验证：100 个逃逸用例，给出 ASM-008 结论 | EXIT-0-06 | 未开始 |

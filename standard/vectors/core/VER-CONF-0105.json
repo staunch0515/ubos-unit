@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"the string \"true\" is not a boolean","id":"VER-CONF-0105","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"boolean","value":"true"},"op":"validate_value"}],"tags":["prototype"]}

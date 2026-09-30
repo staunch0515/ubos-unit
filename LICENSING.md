@@ -6,7 +6,7 @@ is private.
 
 | Folder | Component | Licence | File |
 |---|---|---|---|
-| `standard/` | `bpa-standard` | text of the standard: CC BY 4.0; schemas and conformance vectors: Apache-2.0 | `standard/LICENSE`, `standard/LICENSE-APACHE` |
+| `standard/` | `bpa-standard` | text of the standard: CC BY 4.0; schemas, conformance vectors and the build tools and reference oracle in `standard/tools/`: Apache-2.0 | `standard/LICENSE`, `standard/LICENSE-APACHE` |
 | `verify/` | `ubos-verify` | Apache-2.0 | `verify/LICENSE` |
 | `crates/` | `ubos` (kernel, node, Forge) | AGPL-3.0-only as the open edition; a commercial licence is available for embedding and hosted use without AGPL obligations | `crates/LICENSE` |
 | `packages/` (not yet created) | `ubos` (SDKs and clients) | SDKs Apache-2.0; other packages per DEC-019 | — |

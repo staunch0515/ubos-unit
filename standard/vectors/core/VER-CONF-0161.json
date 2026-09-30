@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"canonical form of an integer has no point","id":"VER-CONF-0161","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"12"},"input":{"a":"12.0","op":"canonical"},"op":"decimal"}],"tags":["prototype"]}

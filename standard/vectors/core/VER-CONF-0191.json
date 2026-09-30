@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-022"],"description":"rounding a small negative value to zero gives 0","id":"VER-CONF-0191","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"0.00"},"input":{"a":"-0.004","op":"round","rounding":"half_up","scale":2},"op":"decimal"}],"tags":["prototype"]}

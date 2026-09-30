@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-020"],"description":"composite with an undeclared member is invalid","id":"VER-CONF-0127","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"constraints":{"members":{"street":{"type":"text"}}},"type":"composite","value":{"city":"y","street":"x"}},"op":"validate_value"}],"tags":["prototype"]}
