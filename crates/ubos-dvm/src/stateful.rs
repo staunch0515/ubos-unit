@@ -125,10 +125,8 @@ impl Engine {
                 .cloned()
                 .unwrap_or_default()
             {
-                if tx
-                    .state
-                    .objects
-                    .get(&oid)
+                if repo
+                    .obj(&mut tx, &oid)?
                     .map(|o| Value::String(o.head.clone()))
                     != Some(vh)
                 {
@@ -140,7 +138,7 @@ impl Engine {
         for ch in &changes {
             if matches!(s(ch, "op"), Some("update" | "end"))
                 && let (Some(oid), Some(b)) = (s(ch, "object_id"), s(ch, "base"))
-                && tx.state.objects.get(oid).is_some_and(|o| o.head != b)
+                && repo.obj(&mut tx, oid)?.is_some_and(|o| o.head != b)
             {
                 stale.push(oid.to_string());
             }
@@ -185,10 +183,8 @@ impl Engine {
         let oid = s(input, "object_id").unwrap_or_default();
         let time = input.get("time").and_then(Value::as_u64);
         let mut repo = Repo::new(self.store.as_mut(), &self.registry);
-        let st = repo.state_at(branch, time)?;
-        let o = st
-            .objects
-            .get(oid)
+        let o = repo
+            .object_at(branch, time, oid)?
             .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown object"))?;
         let a = s(input, "asof")
             .map(str::to_string)
@@ -208,10 +204,11 @@ impl Engine {
         let time = input.get("time").and_then(Value::as_u64);
         let key = canonical(input.get("ledger_key").unwrap_or(&Value::Null))?;
         let class = s(input, "class").unwrap_or_default();
-        let st = Repo::new(self.store.as_mut(), &self.registry).state_at(branch, time)?;
+        let entries =
+            Repo::new(self.store.as_mut(), &self.registry).ledger_at(branch, time, class, &key)?;
         let asof = s(input, "asof");
         let mut out = Vec::new();
-        for e in st.entries(class, &key) {
+        for e in &entries {
             if asof.is_some_and(|a| e.valid_at.as_str() > a) {
                 continue;
             }
@@ -254,6 +251,16 @@ impl Engine {
                 )?;
                 let entries = repo.state_entries(&st)?;
                 let root = ubos_tree::tree_root(&entries)?;
+                let stored = repo.root_at(
+                    s(input, "branch").unwrap_or("main"),
+                    input.get("time").and_then(Value::as_u64),
+                )?;
+                if stored != root {
+                    return Err(BpaError::new(
+                        "NOD.STORAGE_UNAVAILABLE",
+                        "stored state root differs from a rebuild",
+                    ));
+                }
                 Ok(
                     json!({"root": root, "entries": entries.iter().map(|(k, h)| json!([k, h])).collect::<Vec<_>>()}),
                 )
@@ -283,7 +290,7 @@ fn create(
     if kind == "system" || kind == "ledger" {
         return Err(BpaError::new("LOGIC.FORBIDDEN_TARGET", class));
     }
-    if tx.state.objects.contains_key(&oid) || tx.state.find_entry(&oid).is_some() {
+    if repo.obj(tx, &oid)?.is_some() || repo.find_entry(tx, &oid)?.is_some() {
         return Err(BpaError::new("TXN.ALREADY_EXISTS", oid));
     }
     let slug = s(ch, "slug").unwrap_or_default().to_string();
@@ -321,8 +328,8 @@ fn update(
     result: &mut Value,
 ) -> Result<(), BpaError> {
     let oid = s(ch, "object_id").unwrap_or_default().to_string();
-    let Some(o) = tx.state.objects.get(&oid).cloned() else {
-        return Err(if tx.state.find_entry(&oid).is_some() {
+    let Some(o) = repo.obj(tx, &oid)? else {
+        return Err(if repo.find_entry(tx, &oid)?.is_some() {
             BpaError::new("LEDG.IMMUTABLE_ENTRY", oid)
         } else {
             BpaError::new("IAM.NOT_FOUND", "unknown object")

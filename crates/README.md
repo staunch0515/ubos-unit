@@ -17,9 +17,12 @@ cargo build --release -p ubos-runtime
 ./target/release/ubos-sandbox-spike --cases verify/sandbox/l2-escape-cases.json
 ```
 
-The PostgreSQL store keeps each commit's full branch state as one record; the layout with
-kernel indexes and stored tree nodes that the benchmarks need (DSN-DVM-001…011) is built in
-PH-0 step 5.
+PH-0 step 5 preparation (`verify/reports/exit-0-05/`): `ubos-tree` updates stored nodes in
+batches (DSN-DVM-007), and `ubos-bench tree` measures it. The stores keep commits as deltas
+with branch ordinals: an object index with `cseq` intervals, ledger entries, stored tree
+nodes and a state root per commit, written with the head compare-and-set in one
+transaction (DSN-DVM-004, -005, -007, -008). A branch reads its own rows and falls back to
+its parent at the fork point. Tables of the step-4 layout must be dropped before use.
 
 Run the BPA vectors tagged `prototype`:
 

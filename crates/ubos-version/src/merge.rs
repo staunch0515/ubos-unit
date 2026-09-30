@@ -65,11 +65,11 @@ impl Repo<'_> {
                 best.push(*c);
             }
         }
-        let mut acc = self.commit(best[0])?.state;
+        let mut acc = self.commit_state(best[0])?;
         let mut tips: BTreeSet<u64> = [best[0]].into();
         for c in best.iter().skip(1) {
             let b = self.base_state(&tips, &[*c].into(), tx)?;
-            let other = self.commit(*c)?.state;
+            let other = self.commit_state(*c)?;
             acc = self.merge_states(&b, &other, &acc, true, None, None, tx)?.0;
             tips.insert(*c);
         }
@@ -320,9 +320,10 @@ impl Repo<'_> {
             return Ok(json!({"cseq": self.commit(t)?.cseq, "merged": false}));
         }
         let mut tx = self.begin(target)?;
+        self.load_all(&mut tx)?;
         let base = self.base_state(&[t].into(), &[s].into(), &mut tx)?;
-        let sstate = self.commit(s)?.state;
-        let tstate = self.commit(t)?.state;
+        let sstate = self.commit_state(s)?;
+        let tstate = tx.state.clone();
         let cseq = tx.cseq;
         let (st, conflicts) = self.merge_states(
             &base,

@@ -12,6 +12,9 @@
 //! - `merge_determinism` (VER-PROP-0003): merging R into L and L into R from the same histories
 //!   gives the same outcome — the same conflicts, or the same body and valid period of every
 //!   object at every date (STD-VER-040, STD-VER-050).
+//! - `tree_incremental` (VER-PROP-0004): batches of inserts, updates and removals applied to
+//!   stored nodes give the root of a full rebuild, and the tree diff of two roots equals the
+//!   key-wise difference of their entry sets (DSN-DVM-007).
 
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -340,12 +343,103 @@ fn prop_merge(seed: u64, case: u64) -> Result<(), String> {
     Ok(())
 }
 
+// ---- VER-PROP-0004 ----
+
+fn prop_tree(rng: &mut Rng) -> Result<(), String> {
+    let err = |e: ubos_types::BpaError| e.to_string();
+    let size = if rng.chance(3) {
+        rng.below(20_000)
+    } else {
+        rng.below(3_000)
+    };
+    let space = 1 + size * 2;
+    let mut state: BTreeMap<String, String> = BTreeMap::new();
+    for _ in 0..size {
+        state.insert(key(rng.below(space)), value(rng.next()));
+    }
+    let entries: Vec<(String, String)> = state.clone().into_iter().collect();
+    let mut nodes = ubos_tree::MemNodes::default();
+    let built = ubos_tree::build(&entries).map_err(err)?;
+    if built.root != ubos_tree::tree_root(&entries).map_err(err)? {
+        return Err("build differs from tree_root".into());
+    }
+    nodes.extend(built.nodes);
+    let mut root = built.root;
+    for _ in 0..1 + rng.below(4) {
+        let n = match rng.below(10) {
+            0 => 200 + rng.below(800),
+            1 => state.len() as u64,
+            _ => 1 + rng.below(20),
+        };
+        let wipe = rng.chance(3);
+        let mut changes: BTreeMap<String, Option<String>> = BTreeMap::new();
+        let existing: Vec<String> = state.keys().cloned().collect();
+        for _ in 0..n {
+            let k = if !existing.is_empty() && rng.chance(60) {
+                existing[rng.below(existing.len() as u64) as usize].clone()
+            } else {
+                key(rng.below(space + 100))
+            };
+            let v = if wipe || rng.chance(35) {
+                None
+            } else {
+                Some(value(rng.next()))
+            };
+            changes.insert(k, v);
+        }
+        if wipe {
+            for k in &existing {
+                changes.insert(k.clone(), None);
+            }
+        }
+        let before = state.clone();
+        for (k, v) in &changes {
+            match v {
+                Some(v) => state.insert(k.clone(), v.clone()),
+                None => state.remove(k),
+            };
+        }
+        let w = ubos_tree::update(&mut nodes, &root, &changes).map_err(err)?;
+        let expect =
+            ubos_tree::tree_root(&state.clone().into_iter().collect::<Vec<_>>()).map_err(err)?;
+        if w.root != expect {
+            return Err(format!(
+                "incremental root {} differs from rebuild {expect} ({} keys, {} changes)",
+                w.root,
+                state.len(),
+                changes.len()
+            ));
+        }
+        nodes.extend(w.nodes);
+        let d = ubos_tree::diff(&mut nodes, &root, &w.root).map_err(err)?;
+        let mut want = Vec::new();
+        for k in before.keys().chain(state.keys()) {
+            let (a, b) = (before.get(k), state.get(k));
+            if a != b {
+                want.push((k.clone(), a.cloned(), b.cloned()));
+            }
+        }
+        want.sort_by(|x, y| x.0.as_bytes().cmp(y.0.as_bytes()));
+        want.dedup();
+        if d != want {
+            return Err(format!(
+                "tree diff has {} keys, expected {}",
+                d.len(),
+                want.len()
+            ));
+        }
+        root = w.root;
+    }
+    Ok(())
+}
+
 // ---- driver ----
 
 const PROPERTIES: &[(&str, &str, u64)] = &[
     ("root_history_independence", "VER-PROP-0001", 1),
     ("timeline_non_overlap", "VER-PROP-0002", 2),
     ("merge_determinism", "VER-PROP-0003", 3),
+    ("tree_incremental", "VER-PROP-0004", 4),
 ];
 
 fn check(name: &str, id: u64, seed: u64, case: u64) -> Result<(), String> {
@@ -355,6 +449,8 @@ fn check(name: &str, id: u64, seed: u64, case: u64) -> Result<(), String> {
             let mut rng = Rng::new(seed, id, case);
             if name == "root_history_independence" {
                 prop_roots(&mut rng)
+            } else if name == "tree_incremental" {
+                prop_tree(&mut rng)
             } else {
                 prop_timeline(&mut rng)
             }

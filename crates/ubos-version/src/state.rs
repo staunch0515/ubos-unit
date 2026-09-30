@@ -2,12 +2,13 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use ubos_model::Registry;
 use ubos_model::types::decimal::Decimal;
 use ubos_model::types::values::minor_unit;
 use ubos_model::types::{BpaError, canonical, content_id, names};
-use ubos_store::{Flush, Store};
+use ubos_store::{BranchRef, EntryRow, Flush, ObjectRow, Store};
+use ubos_tree::{Node, NodeSource};
 
 /// A valid-time segment `[from, to)` of a timeline; `to = None` is an open end.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -128,19 +129,35 @@ impl State {
     }
 }
 
-/// A commit as stored.
+/// A commit as stored: parents, ordinal, owning branch and state-tree root. The branch
+/// state itself lives in the object and ledger indexes (DSN-DVM-004, -005).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommitRecord {
     /// Parent commits; the first is the previous head of the branch.
     pub parents: Vec<u64>,
-    /// Commit sequence on the branch line.
+    /// Commit ordinal on its branch.
     pub cseq: u64,
-    /// Branch state after the commit.
-    pub state: State,
+    /// Branch the commit was made on.
+    pub branch: String,
+    /// Root of the state tree after the commit (STD-PROOF-001).
+    pub root: String,
 }
 
 fn storage(e: impl std::fmt::Display) -> BpaError {
     BpaError::new("NOD.STORAGE_UNAVAILABLE", e.to_string())
+}
+
+fn parse<T: serde::de::DeserializeOwned>(v: Value) -> Result<T, BpaError> {
+    serde_json::from_value(v).map_err(storage)
+}
+
+/// Tree nodes read from the store.
+struct StoreNodes<'s>(&'s mut dyn Store);
+
+impl NodeSource for StoreNodes<'_> {
+    fn node(&mut self, hash: &str) -> Result<Node, BpaError> {
+        Node::from_json(&self.0.node(hash)?)
+    }
 }
 
 /// Access to the stored branches, commits and versions.
@@ -167,7 +184,7 @@ impl<'a> Repo<'a> {
         if let Some(c) = self.cache.get(&id) {
             return Ok(c.clone());
         }
-        let c: CommitRecord = serde_json::from_value(self.store.commit(id)?).map_err(storage)?;
+        let c: CommitRecord = parse(self.store.commit(id)?)?;
         self.cache.insert(id, c.clone());
         Ok(c)
     }
@@ -175,19 +192,31 @@ impl<'a> Repo<'a> {
     /// Initialise `main` with the empty genesis commit (cseq 0).
     pub fn init(&mut self) -> Result<(), BpaError> {
         let id = self.store.next_commit_id()?;
-        let rec = serde_json::to_value(CommitRecord {
+        let empty = ubos_tree::build(&[])?;
+        let rec = CommitRecord {
             parents: vec![],
             cseq: 0,
-            state: State::default(),
-        })
-        .map_err(storage)?;
-        self.store.create_branch("main", 0)?;
-        let f = Flush {
-            versions: vec![],
-            commit_id: id,
-            commit: rec,
             branch: "main".into(),
+            root: empty.root,
+        };
+        let r = BranchRef {
+            head: 0,
+            head_cseq: 0,
+            parent: None,
+        };
+        self.store.create_branch("main", &r)?;
+        let f = Flush {
+            commit_id: id,
+            commit: serde_json::to_value(&rec).map_err(storage)?,
+            branch: "main".into(),
+            cseq: 0,
             expected_head: 0,
+            nodes: empty
+                .nodes
+                .iter()
+                .map(|(h, n)| (h.clone(), n.to_json()))
+                .collect(),
+            ..Flush::default()
         };
         if !self.store.flush(&f)? {
             return Err(storage("cannot initialise main"));
@@ -195,34 +224,164 @@ impl<'a> Repo<'a> {
         Ok(())
     }
 
+    fn branch_ref(&mut self, branch: &str) -> Result<BranchRef, BpaError> {
+        self.store
+            .branch(branch)?
+            .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown branch"))
+    }
+
     /// The head commit of a branch.
     pub fn head(&mut self, branch: &str) -> Result<u64, BpaError> {
-        self.store
-            .head(branch)?
-            .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown branch"))
+        Ok(self.branch_ref(branch)?.head)
+    }
+
+    /// The branches and ordinals whose local rows make up `branch` at `cseq`, nearest first:
+    /// a branch at or before its fork point is its parent (DSN-DVM-008).
+    fn chain(&mut self, branch: &str, cseq: u64) -> Result<Vec<(String, u64)>, BpaError> {
+        let mut out = Vec::new();
+        let (mut b, mut c) = (branch.to_string(), cseq);
+        loop {
+            let r = self.branch_ref(&b)?;
+            match r.parent {
+                Some((p, fork)) if c <= fork => b = p,
+                Some((p, fork)) => {
+                    out.push((b, c));
+                    b = p;
+                    c = fork;
+                }
+                None => {
+                    out.push((b, c));
+                    return Ok(out);
+                }
+            }
+        }
+    }
+
+    /// The ordinal a read of `branch` at `time` uses (default: head), checked to exist.
+    fn ordinal(&mut self, branch: &str, time: Option<u64>) -> Result<u64, BpaError> {
+        let r = self.branch_ref(branch)?;
+        match time {
+            None => Ok(r.head_cseq),
+            Some(t) if t <= r.head_cseq => Ok(t),
+            Some(_) => Err(BpaError::new("IAM.NOT_FOUND", "no commit with this cseq")),
+        }
     }
 
     /// The commit of a branch with the given cseq (default: head).
     pub fn commit_at(&mut self, branch: &str, time: Option<u64>) -> Result<u64, BpaError> {
-        let mut id = self.head(branch)?;
-        let Some(t) = time else { return Ok(id) };
-        loop {
-            let c = self.commit(id)?;
-            if c.cseq <= t {
-                return if c.cseq == t {
-                    Ok(id)
-                } else {
-                    Err(BpaError::new("IAM.NOT_FOUND", "no commit with this cseq"))
-                };
-            }
-            id = c.parents[0];
-        }
+        let c = self.ordinal(branch, time)?;
+        let (b, c) = self.chain(branch, c)?.remove(0);
+        self.store
+            .commit_at(&b, c)?
+            .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "no commit with this cseq"))
     }
 
-    /// The state of a branch at a cseq.
+    /// One object of a branch at an ordinal, from the object index.
+    fn object_in(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        oid: &str,
+    ) -> Result<Option<ObjectState>, BpaError> {
+        for (b, c) in self.chain(branch, cseq)? {
+            if let Some(row) = self.store.object(&b, c, oid)? {
+                return row.map(parse).transpose();
+            }
+        }
+        Ok(None)
+    }
+
+    /// Objects of a branch at an ordinal, optionally of one class.
+    fn objects_in(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        class: Option<&str>,
+    ) -> Result<BTreeMap<String, ObjectState>, BpaError> {
+        let mut out = BTreeMap::new();
+        for (b, c) in self.chain(branch, cseq)?.into_iter().rev() {
+            for (id, row) in self.store.objects(&b, c, class)? {
+                match row {
+                    Some(v) => {
+                        out.insert(id, parse(v)?);
+                    }
+                    None => {
+                        out.remove(&id);
+                    }
+                }
+            }
+        }
+        Ok(out)
+    }
+
+    /// Ledger entries of a branch at an ordinal, optionally of one key or one identifier.
+    fn entries_in(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        key: Option<(&str, &str)>,
+        entry_id: Option<&str>,
+    ) -> Result<Vec<Entry>, BpaError> {
+        let mut out = Vec::new();
+        for (b, c) in self.chain(branch, cseq)?.into_iter().rev() {
+            for v in self.store.entries(&b, c, key, entry_id)? {
+                out.push(parse(v)?);
+            }
+        }
+        Ok(out)
+    }
+
+    fn materialize(&mut self, branch: &str, cseq: u64) -> Result<State, BpaError> {
+        let mut st = State {
+            objects: self.objects_in(branch, cseq, None)?,
+            ledger: Vec::new(),
+        };
+        for e in self.entries_in(branch, cseq, None, None)? {
+            let key = canonical(&e.ledger_key)?;
+            st.queue(&e.class, &key).push(e);
+        }
+        Ok(st)
+    }
+
+    /// The state of a branch at a cseq (default: head).
     pub fn state_at(&mut self, branch: &str, time: Option<u64>) -> Result<State, BpaError> {
+        let c = self.ordinal(branch, time)?;
+        self.materialize(branch, c)
+    }
+
+    /// The state after a commit.
+    pub fn commit_state(&mut self, id: u64) -> Result<State, BpaError> {
+        let c = self.commit(id)?;
+        self.materialize(&c.branch, c.cseq)
+    }
+
+    /// One object of a branch at a cseq (default: head), read from the index.
+    pub fn object_at(
+        &mut self,
+        branch: &str,
+        time: Option<u64>,
+        oid: &str,
+    ) -> Result<Option<ObjectState>, BpaError> {
+        let c = self.ordinal(branch, time)?;
+        self.object_in(branch, c, oid)
+    }
+
+    /// The entries of one ledger key of a branch at a cseq (default: head).
+    pub fn ledger_at(
+        &mut self,
+        branch: &str,
+        time: Option<u64>,
+        class: &str,
+        key: &str,
+    ) -> Result<Vec<Entry>, BpaError> {
+        let c = self.ordinal(branch, time)?;
+        self.entries_in(branch, c, Some((class, key)), None)
+    }
+
+    /// The stored state-tree root of a branch at a cseq (default: head).
+    pub fn root_at(&mut self, branch: &str, time: Option<u64>) -> Result<String, BpaError> {
         let id = self.commit_at(branch, time)?;
-        Ok(self.commit(id)?.state)
+        Ok(self.commit(id)?.root)
     }
 
     /// A version record by hash.
@@ -239,40 +398,171 @@ impl<'a> Repo<'a> {
     ) -> Result<Value, BpaError> {
         names::check_name("branch-name", name)?;
         let id = self.commit_at(source, time)?;
-        if !self.store.create_branch(name, id)? {
+        let c = self.commit(id)?;
+        let r = BranchRef {
+            head: id,
+            head_cseq: c.cseq,
+            parent: Some((c.branch.clone(), c.cseq)),
+        };
+        if !self.store.create_branch(name, &r)? {
             return Err(BpaError::new("TXN.ALREADY_EXISTS", "branch exists"));
         }
-        Ok(json!({"head": self.commit(id)?.cseq}))
+        Ok(json!({"head": c.cseq}))
     }
 
-    /// Begin a commit on a branch.
+    /// Begin a commit on a branch. The state of the transaction starts empty and is filled
+    /// from the indexes as objects and ledgers are read.
     pub fn begin(&mut self, branch: &str) -> Result<Tx, BpaError> {
-        let head = self.head(branch)?;
-        let c = self.commit(head)?;
+        let r = self.branch_ref(branch)?;
         Ok(Tx {
             branch: branch.to_string(),
-            head,
-            cseq: c.cseq + 1,
-            state: c.state,
+            head: r.head,
+            base: r.head_cseq,
+            cseq: r.head_cseq + 1,
+            state: State::default(),
+            loaded: HashMap::new(),
+            loaded_entries: HashSet::new(),
+            loaded_queues: HashSet::new(),
             versions: Vec::new(),
             appended: Vec::new(),
         })
     }
 
-    /// Write a commit with the given parents and state; `TXN.HEAD_MOVED` if the head moved.
+    /// An object as the transaction sees it, loaded from the index on first use.
+    pub fn obj(&mut self, tx: &mut Tx, oid: &str) -> Result<Option<ObjectState>, BpaError> {
+        if !tx.loaded.contains_key(oid) {
+            let o = self.object_in(&tx.branch, tx.base, oid)?;
+            if let Some(o) = &o {
+                tx.state.objects.insert(oid.to_string(), o.clone());
+            }
+            tx.loaded.insert(oid.to_string(), o);
+        }
+        Ok(tx.state.objects.get(oid).cloned())
+    }
+
+    /// Load every object of a class into the transaction.
+    pub fn load_class(&mut self, tx: &mut Tx, class: &str) -> Result<(), BpaError> {
+        for (id, o) in self.objects_in(&tx.branch, tx.base, Some(class))? {
+            if !tx.loaded.contains_key(&id) {
+                tx.state.objects.insert(id.clone(), o.clone());
+                tx.loaded.insert(id, Some(o));
+            }
+        }
+        Ok(())
+    }
+
+    /// Load the entries of a ledger key into the transaction.
+    pub fn load_queue(&mut self, tx: &mut Tx, class: &str, key: &str) -> Result<(), BpaError> {
+        let k = (class.to_string(), key.to_string());
+        if tx.loaded_queues.contains(&k) {
+            return Ok(());
+        }
+        let entries = self.entries_in(&tx.branch, tx.base, Some((class, key)), None)?;
+        let q = tx.state.queue(class, key);
+        let fresh = std::mem::take(q);
+        for e in &entries {
+            tx.loaded_entries.insert(e.entry_id.clone());
+        }
+        q.extend(entries);
+        q.extend(fresh);
+        tx.loaded_queues.insert(k);
+        Ok(())
+    }
+
+    /// Load the whole branch state into a fresh transaction (merge).
+    pub fn load_all(&mut self, tx: &mut Tx) -> Result<(), BpaError> {
+        let st = self.materialize(&tx.branch.clone(), tx.base)?;
+        for (id, o) in &st.objects {
+            tx.loaded.insert(id.clone(), Some(o.clone()));
+        }
+        for (c, k, q) in &st.ledger {
+            tx.loaded_queues.insert((c.clone(), k.clone()));
+            tx.loaded_entries
+                .extend(q.iter().map(|e| e.entry_id.clone()));
+        }
+        tx.state = st;
+        Ok(())
+    }
+
+    /// An entry by identifier as the transaction sees it.
+    pub fn find_entry(&mut self, tx: &Tx, entry_id: &str) -> Result<Option<Entry>, BpaError> {
+        if let Some(e) = tx.state.find_entry(entry_id) {
+            return Ok(Some(e.clone()));
+        }
+        Ok(self
+            .entries_in(&tx.branch, tx.base, None, Some(entry_id))?
+            .into_iter()
+            .next())
+    }
+
+    /// State-tree key of an entry (STD-PROOF-001).
+    fn entry_key(e: &Entry) -> Result<String, BpaError> {
+        let ch = content_id("ubos.chunk.v1", &json!(e.class))?[7..].to_string();
+        let kh = content_id("ubos.chunk.v1", &e.ledger_key)?[7..].to_string();
+        Ok(format!("l/{ch}/{kh}/{:020}", e.seq))
+    }
+
+    /// Write a commit with the given parents: the changed objects, the new entries, the
+    /// tree nodes and the head compare-and-set in one flush; `TXN.HEAD_MOVED` if the head
+    /// moved.
     pub fn write(&mut self, tx: Tx, parents: Vec<u64>) -> Result<u64, BpaError> {
+        let mut objects = Vec::new();
+        let mut tree: BTreeMap<String, Option<String>> = BTreeMap::new();
+        let ids: BTreeSet<&String> = tx.loaded.keys().chain(tx.state.objects.keys()).collect();
+        for id in ids {
+            let old = tx.loaded.get(id).cloned().flatten();
+            let new = tx.state.objects.get(id);
+            if old.as_ref() == new {
+                continue;
+            }
+            let any = new.or(old.as_ref()).expect("changed object");
+            if any.kind != "system" {
+                tree.insert(format!("o/{id}"), new.map(|o| o.head.clone()));
+            }
+            objects.push(ObjectRow {
+                object_id: id.clone(),
+                class: any.class.clone(),
+                state: new.map(serde_json::to_value).transpose().map_err(storage)?,
+            });
+        }
+        let mut entries = Vec::new();
+        for (class, key, q) in &tx.state.ledger {
+            for e in q
+                .iter()
+                .filter(|e| !tx.loaded_entries.contains(&e.entry_id))
+            {
+                tree.insert(Self::entry_key(e)?, Some(e.entry_hash.clone()));
+                entries.push(EntryRow {
+                    entry_id: e.entry_id.clone(),
+                    class: class.clone(),
+                    ledger_key: key.clone(),
+                    entry: serde_json::to_value(e).map_err(storage)?,
+                });
+            }
+        }
+        let prev = self.commit(tx.head)?.root;
+        let w = ubos_tree::update(&mut StoreNodes(&mut *self.store), &prev, &tree)?;
         let id = self.store.next_commit_id()?;
         let rec = CommitRecord {
             parents,
             cseq: tx.cseq,
-            state: tx.state,
+            branch: tx.branch.clone(),
+            root: w.root,
         };
         let f = Flush {
             versions: tx.versions,
             commit_id: id,
             commit: serde_json::to_value(&rec).map_err(storage)?,
             branch: tx.branch,
+            cseq: tx.cseq,
             expected_head: tx.head,
+            objects,
+            entries,
+            nodes: w
+                .nodes
+                .iter()
+                .map(|(h, n)| (h.clone(), n.to_json()))
+                .collect(),
         };
         if !self.store.flush(&f)? {
             return Err(BpaError::new("TXN.HEAD_MOVED", "the branch head moved"));
@@ -339,7 +629,7 @@ impl<'a> Repo<'a> {
         content_id("ubos.entry.v1", &rec)
     }
 
-    fn check_period(&mut self, tx: &Tx, class: &str, today: &str) -> Result<(), BpaError> {
+    fn check_period(&mut self, tx: &mut Tx, class: &str, today: &str) -> Result<(), BpaError> {
         let Some(scope) = self
             .reg
             .class(class)?
@@ -350,6 +640,7 @@ impl<'a> Repo<'a> {
         else {
             return Ok(());
         };
+        self.load_class(tx, scope)?;
         let objs: Vec<ObjectState> = tx
             .state
             .objects
@@ -461,12 +752,11 @@ impl<'a> Repo<'a> {
                 source_seq: None,
             }
         } else {
-            let target = tx
-                .state
-                .find_entry(&s("entry_id").unwrap_or_default())
-                .cloned()
+            let target = self
+                .find_entry(tx, &s("entry_id").unwrap_or_default())?
                 .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown entry"))?;
             let key = canonical(&target.ledger_key)?;
+            self.load_queue(tx, &target.class, &key)?;
             let q = tx.state.entries(&target.class, &key);
             let body = if op == "reverse" {
                 if target.correction_type.as_deref() == Some("reversal") {
@@ -529,8 +819,8 @@ impl<'a> Repo<'a> {
         if !names::matches("uuid", &entry.entry_id) {
             return Err(BpaError::new("MODEL.INVALID_VALUE", "entry_id is a UUID"));
         }
-        if tx.state.find_entry(&entry.entry_id).is_some()
-            || tx.state.objects.contains_key(&entry.entry_id)
+        if self.find_entry(tx, &entry.entry_id)?.is_some()
+            || self.obj(tx, &entry.entry_id)?.is_some()
         {
             return Err(BpaError::new("TXN.ALREADY_EXISTS", "entry exists"));
         }
@@ -538,6 +828,7 @@ impl<'a> Repo<'a> {
         let key = canonical(&entry.ledger_key)?;
         entry.cseq = tx.cseq;
         entry.entry_hash = self.entry_hash(&entry)?;
+        self.load_queue(tx, &entry.class, &key)?;
         let q = tx.state.queue(&entry.class, &key);
         entry.seq = q.len() as u64 + 1;
         let out = (entry.entry_id.clone(), entry.seq);
@@ -631,10 +922,18 @@ pub struct Tx {
     pub branch: String,
     /// Head the commit is built on.
     pub head: u64,
+    /// Ordinal of the head (the snapshot the transaction reads).
+    pub base: u64,
     /// cseq the commit will get.
     pub cseq: u64,
-    /// State being changed.
+    /// The loaded part of the branch state, with the changes of this commit.
     pub state: State,
+    /// Objects as loaded from the index (`None`: absent).
+    pub loaded: HashMap<String, Option<ObjectState>>,
+    /// Entries that existed before this commit.
+    pub loaded_entries: HashSet<String>,
+    /// Ledger keys whose entries are loaded.
+    pub loaded_queues: HashSet<(String, String)>,
     /// New version records.
     pub versions: Vec<(String, Value)>,
     /// Entries appended in this commit.

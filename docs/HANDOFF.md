@@ -94,12 +94,12 @@ Step 3b done: 551 vectors, MUST coverage 94% (68/72), manifest in
      pass on PostgreSQL (EXIT-0-03, report in `verify/reports/exit-0-03/`).
    - 4c done: VER-PROP-0001…0003 with 1,000,000 cases each, 0 failures (EXIT-0-04, report in
      `verify/reports/exit-0-04/`).
-   - Note for step 5: the PostgreSQL store keeps each commit's full state; the benchmarks need
-     the layout of DSN-DVM-001…011 (kernel indexes, stored tree nodes, deltas).
-3. **PH-0 step 5** — benchmarks on ENV-REF-SERVER (EXIT-0-05). Prerequisites: the storage
-   layout of DSN-DVM-001…011 (kernel indexes, stored tree nodes, deltas) and the workload
-   generator WL-GENERIC-10M; the owner rents the database host and an application node
-   (DEC-030).
+3. **PH-0 step 5** — benchmarks on ENV-REF-SERVER (EXIT-0-05). Preparation in three parts
+   (`verify/reports/exit-0-05/`): 5a done (stored tree nodes with batch update and diff,
+   VER-PROP-0004); 5b done (commits as deltas with ordinals, object index with `cseq`
+   intervals, ledger rows, tree nodes and root per commit in the flush; all prototype vectors
+   pass on both backends); 5c open (WL-GENERIC-10M generator and benchmark driver). Then the
+   owner rents the database host and an application node (DEC-030).
 4. Step 6 done (DEC-034): 100 of 100 L2 escape cases blocked (EXIT-0-06, report in
    `verify/reports/exit-0-06/`); ASM-008 confirmed for L2 with conditions; OQ-007 (L2 sizes)
    and OQ-008 (L2 decimal range) open for step 7.

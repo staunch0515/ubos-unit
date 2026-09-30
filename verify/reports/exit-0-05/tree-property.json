@@ -1,0 +1,15 @@
+{
+  "generator": "SplitMix64",
+  "results": [
+    {
+      "cases": 100000,
+      "failures": [],
+      "item": "VER-PROP-0004",
+      "property": "tree_incremental",
+      "seconds": 628.3,
+      "seed": 20260930
+    }
+  ],
+  "suite": "SUITE-DVM-PROP",
+  "threads": 4
+}
