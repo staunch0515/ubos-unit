@@ -3,21 +3,29 @@
 //! Storage traits; the PostgreSQL adapter (SQLite follows in PH-4, DEC-024); chunk store;
 //! kernel index maintenance. Allowed dependencies: `ubos-types`, `ubos-crypto` (AR-031).
 //!
-//! PH-0 prototype scope (DEC-033, PH-0 step 5): content-addressed version records, commit
-//! records with branch ordinals (`cseq`, DSN-DVM-004), branch references with their fork
-//! point, the object index with `cseq` intervals (`head_index` of DSN-DVM-005, holding each
-//! object's state including its timeline), ledger entries, and stored tree nodes
-//! (DSN-DVM-007). A flush writes all of them and moves the branch head by compare-and-set in
-//! one storage transaction (DSN-DVM-208). Rows are local to a branch; reads of a branch fall
-//! back to its parent at the fork point, which the version layer resolves.
+//! Two layers (DSN-DVM-001, DEC-047):
+//!
+//! * [`kernel`]: the backend-neutral storage traits `StoreTx` (one storage transaction with
+//!   the write operations of the DVM) and `StoreRead` (snapshot reads by commit ordinal),
+//!   implemented for PostgreSQL on sqlx ([`PgBackend`], migrations in `migrations/`);
+//! * [`Store`]: the synchronous engine view used by the version layer, with the in-memory
+//!   reference [`MemStore`], the PostgreSQL view [`PgStore`] over the kernel traits, and the
+//!   commit [`Group`] overlay.
+//!
+//! A flush writes versions, the commit, ledger entries with sequences from the counter rows
+//! (DSN-DVM-402), the kernel indexes (DSN-DVM-005) and tree nodes (DSN-DVM-007), and moves
+//! the branch head under the sequencer lock in one storage transaction (DSN-DVM-006, -208).
+//! Rows are local to a branch; reads of a branch fall back to its parent at the fork point,
+//! which the version layer resolves.
 
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap};
 use ubos_types::BpaError;
 
+pub mod kernel;
 mod pg;
 
-pub use pg::{BulkRows, PgStore};
+pub use pg::{BulkRows, DEFAULT_SCOPE, PgBackend, PgStore, PgTx, key_hash};
 
 /// A branch reference.
 #[derive(Debug, Clone, PartialEq, Eq)]

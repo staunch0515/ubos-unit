@@ -11,7 +11,9 @@ publish.workspace = true
 [dependencies]
 ubos-types.workspace = true
 serde_json.workspace = true
-postgres.workspace = true
+sha2.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true
