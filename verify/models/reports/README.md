@@ -83,7 +83,7 @@ These limits and the bounds reached are for the external reviewer (DEC-030, DEC-
 
 | Stated bound (DEC-046) | Exhaustive run | Distinct states | Depth | Time | Simulation at the stated bound | Evidence |
 |---|---|---|---|---|---|---|
-| 3 processes × 2 nodes × 2 objects × 2 ledger keys × batch 3 × 4 commits, 5 transactions, 1 failed storage transaction | 3 × 2 × 2 × 2 × 3 × **2 commits**, 3 transactions | 551,470 | 21 | 27 s | running: 1,000,000 behaviours, depth ≤ 60 | `group_commit.exhaustive.txt`, `group_commit.simulation.txt` |
+| 3 processes × 2 nodes × 2 objects × 2 ledger keys × batch 3 × 4 commits, 5 transactions, 1 failed storage transaction | 3 × 2 × 2 × 2 × 3 × **2 commits**, 3 transactions | 551,470 | 21 | 27 s | 1,000,000 behaviours, depth ≤ 60, 737,314,895 states checked, 1 h 22 min | `group_commit.exhaustive.txt`, `group_commit.simulation.txt` |
 
 The CI configuration (1 object, 1 ledger key, 3 commits, 4 transactions) completes
 exhaustively: 398,687 distinct states, depth 29, 14 s.
