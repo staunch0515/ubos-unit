@@ -61,6 +61,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-046 | Group commit and ledger sequence model (VER-FORM-0004): two-phase flush, bounds, mutation checks, design clarifications | Accepted |
 | DEC-047 | Storage kernel (PH-1 step 3): parts 3a–3c, asynchronous storage traits on sqlx, migrations, transition layout, local blob and key providers, storage suite environment | Accepted |
 | DEC-048 | Tenancy and physical form of the storage kernel (step 3b): partitions, row-level security with an application role, stored-byte format, chunk placement, adapter reset | Accepted |
+| DEC-049 | Verifiers and storage suite (step 3c): index, sequence and root verifiers, SUITE-DVM-STORE with 20 cases, inspection record, EXIT-1-03 | Accepted |
 
 ---
 
@@ -609,3 +610,16 @@ Decisions are never deleted. A replaced decision is marked
 - **Consequences:** The 453 prototype vectors pass on PostgreSQL in about 6 s. The benchmark tools run unchanged. On the development workstation, custom planning over 64 partitions adds about 2 ms per statement to the commit path. W-1 decides whether the partition count or statement shape must change before the layout is fixed (DEC-038, RSK-016). The storage suite of 3c checks these properties.
 - **Alternatives considered:** Connecting as the owner with `FORCE ROW LEVEL SECURITY` was rejected: superusers still bypass it. Truncating on every reset was rejected: a conformance run took 7.5 minutes instead of 6 s. AES-256-GCM was rejected for stored bytes: random 12-byte nonces limit the number of writes per key, while 24-byte nonces do not.
 - **Affects:** DSN-DVM-002, DSN-DVM-003, DSN-DVM-010, UBS-SYS-DVM-04, DEC-047, RSK-016
+
+### DEC-049 — Verifiers and storage suite (step 3c)
+- **Status:** Accepted · **Date:** 2026-09-30
+- **Context:** Part 3c of PH-1 step 3 (DEC-047) closes EXIT-1-03. It needs two things: the verifier of DSN-DVM-092, and the storage suite of VER-CONF-8402 with its inspection of the storage traits. VER-CONF-8402 lists transactions, snapshot reads, index maintenance, sequences, chunk placement and row-level security. It does not fix the cases.
+- **Decision:**
+  1. **Index verifier.** `ubos_store::verify::verify_indexes(branch, from, to)` works only through `StoreRead`. It rebuilds the `temporal_index` rows of the object rows written in a `cseq` range and the whole `head_index` from the committed object rows (`object_state` in the transition layout). It compares checksums per bucket of object identifiers (XOR of row digests, 16 buckets) and lists the differing rows of every bucket that disagrees, by object key.
+  2. **Sequence verifier.** `ubos_store::verify::verify_sequences(branch)` checks, for each ledger key, that the branch's own entries continue densely after the inherited ones and that `prev_hash` links them. It also checks that the counter row agrees with the last sequence and hash (DSN-DVM-402).
+  3. **Root verifier.** `ubos_dvm::verify::verify_roots(branch, from, to)` recomputes each commit's state root from the committed state and compares it with the recorded root. It then checks that every stored tree node reachable from the roots hashes to its identifier (DSN-DVM-007, STD-PROOF-001).
+  4. **Storage suite.** The binary `ubos-store-suite` runs 20 cases on PostgreSQL after a workload of objects, updates, appends, a child branch and a merge. The cases cover transactions, snapshot reads, index maintenance with an injected corruption, sequences (10,000 appends with 5% injected flush failures, 200 concurrent appends, branches), chunk placement, the physical form, tenancy, and roots with an injected corruption. They use the acceptance criteria of the design items as pass criteria. One case is an automated aid to the trait inspection.
+  5. **Evidence.** The report and the inspection record are in `verify/reports/exit-1-03/`. CI runs the suite with 1,000 appends.
+- **Consequences:** EXIT-1-03 is met on PostgreSQL 16 on the development workstation and in CI. The run on ENV-REF-SERVER named by VER-CONF-8402 follows at gate-1a acceptance (DEC-047). PH-1 step 3 is complete; step 4 (model, versioning, time, ledger and transactions at production quality) is next. When step 4 replaces the transition layout, the verifiers and the suite are adapted with it.
+- **Alternatives considered:** Rebuilding the indexes from versions instead of from the committed object rows was rejected for now. In the transition layout the engine's object rows are authoritative, and versions do not carry branch intervals. Step 4 revisits this together with the layout. A separate SQL-only verifier was rejected: the verifiers must run unchanged on the SQLite adapter (DSN-DVM-001).
+- **Affects:** DSN-DVM-092, DSN-DVM-001, DSN-DVM-002, DSN-DVM-003, DSN-DVM-005, DSN-DVM-402, DSN-DVM-404, DSN-DVM-010, VER-CONF-8402, EXIT-1-03, DEC-047

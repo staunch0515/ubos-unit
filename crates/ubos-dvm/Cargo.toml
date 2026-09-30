@@ -9,6 +9,10 @@ repository.workspace = true
 publish.workspace = true
 
 [[bin]]
+name = "ubos-store-suite"
+path = "src/bin/ubos-store-suite.rs"
+
+[[bin]]
 name = "ubos-props"
 path = "src/bin/ubos-props.rs"
 
@@ -20,6 +24,10 @@ ubos-store.workspace = true
 ubos-version.workspace = true
 ubos-time.workspace = true
 serde_json.workspace = true
+ubos-crypto.workspace = true
+sha2.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true

@@ -1,0 +1,386 @@
+{
+  "backend": "postgresql",
+  "cases": [
+    {
+      "case": "transactions.rollback",
+      "evidence": {
+        "meta_visible": false,
+        "version_visible": false
+      },
+      "result": "pass",
+      "seconds": 0.01,
+      "verifies": "DSN-DVM-001"
+    },
+    {
+      "case": "transactions.head_cas",
+      "evidence": {
+        "first": true,
+        "stale": false
+      },
+      "result": "pass",
+      "seconds": 0.005,
+      "verifies": "DSN-DVM-208"
+    },
+    {
+      "case": "transactions.group_abort_alone",
+      "evidence": {
+        "outcomes": [
+          "ok",
+          "ok",
+          "TXN.HEAD_MOVED",
+          "ok",
+          "ok"
+        ]
+      },
+      "result": "pass",
+      "seconds": 0.018,
+      "verifies": "DSN-DVM-006"
+    },
+    {
+      "case": "snapshot.reads",
+      "evidence": {
+        "at_first_commit": {
+          "body": {
+            "name": "first"
+          },
+          "slug": "snap",
+          "valid": {
+            "from": "2026-01-01",
+            "to": null
+          },
+          "version_hash": "sha256:d00120e69340adf4d64b28d6b9ab3c8d2f3b962dc055f6a28d843ffc0d95a630"
+        },
+        "at_head": {
+          "body": {
+            "name": "second"
+          },
+          "slug": "snap",
+          "valid": {
+            "from": "2026-01-01",
+            "to": null
+          },
+          "version_hash": "sha256:42800e4963b683f9235c9b0a2f106469183813eb7f1ec8025930b134e651b336"
+        }
+      },
+      "result": "pass",
+      "seconds": 0.013,
+      "verifies": "DSN-DVM-004, DSN-DVM-008"
+    },
+    {
+      "case": "indexes.verified",
+      "evidence": {
+        "feature/x": {
+          "buckets_differing": 0,
+          "checked": 15,
+          "findings": []
+        },
+        "main": {
+          "buckets_differing": 0,
+          "checked": 145,
+          "findings": []
+        }
+      },
+      "result": "pass",
+      "seconds": 0.015,
+      "verifies": "DSN-DVM-005, DSN-DVM-092"
+    },
+    {
+      "case": "indexes.corruption_detected",
+      "evidence": {
+        "clean_after_restore": true,
+        "injected": "01890a5d-ac96-7007-8000-000000000007",
+        "report": {
+          "buckets_differing": 1,
+          "checked": 145,
+          "findings": [
+            {
+              "check": "temporal_index",
+              "detail": "missing or different: expected TemporalRow { object_id: \"01890a5d-ac96-7007-8000-000000000007\", valid_from: \"2026-02-01\", valid_to: None, cseq_from: 48, cseq_to: 9223372036854775807, version: [158, 229, 177, 239, 112, 116, 205, 142, 86, 44, 223, 168, 108, 85, 57, 176, 248, 91, 92, 224, 168, 65, 150, 161, 82, 97, 222, 186, 231, 50, 0, 86], class: \"Customer\" }",
+              "key": "01890a5d-ac96-7007-8000-000000000007"
+            },
+            {
+              "check": "temporal_index",
+              "detail": "unexpected row TemporalRow { object_id: \"01890a5d-ac96-7007-8000-000000000007\", valid_from: \"2026-02-01\", valid_to: None, cseq_from: 48, cseq_to: 9223372036854775807, version: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], class: \"Customer\" }",
+              "key": "01890a5d-ac96-7007-8000-000000000007"
+            }
+          ]
+        }
+      },
+      "result": "pass",
+      "seconds": 0.019,
+      "verifies": "DSN-DVM-092"
+    },
+    {
+      "case": "sequences.gap_free_with_failures",
+      "evidence": {
+        "appends": 10000,
+        "committed": 9466,
+        "injected_failures": 534,
+        "report": {
+          "buckets_differing": 0,
+          "checked": 9466,
+          "findings": []
+        },
+        "seconds": 16.877198013
+      },
+      "result": "pass",
+      "seconds": 16.879,
+      "verifies": "DSN-DVM-402"
+    },
+    {
+      "case": "sequences.concurrent_appends",
+      "evidence": {
+        "report": {
+          "buckets_differing": 0,
+          "checked": 200,
+          "findings": []
+        },
+        "succeeded": 200
+      },
+      "result": "pass",
+      "seconds": 0.229,
+      "verifies": "DSN-DVM-404"
+    },
+    {
+      "case": "sequences.branches",
+      "evidence": {
+        "feature/x": {
+          "buckets_differing": 0,
+          "checked": 5,
+          "findings": []
+        },
+        "main": {
+          "buckets_differing": 0,
+          "checked": 45,
+          "findings": []
+        }
+      },
+      "result": "pass",
+      "seconds": 0.005,
+      "verifies": "DSN-DVM-402"
+    },
+    {
+      "case": "chunks.placement",
+      "evidence": {
+        "inline_max": 8192,
+        "large": "ObjectStore",
+        "large_body_in_database": false,
+        "large_bytes": 3145728,
+        "small": "Inline"
+      },
+      "result": "pass",
+      "seconds": 0.078,
+      "verifies": "DSN-DVM-003"
+    },
+    {
+      "case": "chunks.corruption_detected",
+      "evidence": {
+        "modified_byte": {
+          "code": "NOD.BLOB_UNAVAILABLE",
+          "details": {
+            "integrity": true
+          }
+        },
+        "moved_to_other_id": {
+          "code": "NOD.BLOB_UNAVAILABLE",
+          "details": {
+            "integrity": true
+          }
+        }
+      },
+      "result": "pass",
+      "seconds": 0.0,
+      "verifies": "DSN-DVM-002"
+    },
+    {
+      "case": "physical.two_tenants",
+      "evidence": {
+        "same_content_id": true,
+        "stored_bytes_differ": true,
+        "tenant_a_cannot_open_tenant_b": true
+      },
+      "result": "pass",
+      "seconds": 0.0,
+      "verifies": "DSN-DVM-002"
+    },
+    {
+      "case": "physical.version_sealed",
+      "evidence": {
+        "plaintext_visible": false,
+        "read_back": {
+          "body": {
+            "name": "Customer 1 v2"
+          },
+          "slug": "c-1",
+          "valid": {
+            "from": "2026-02-01",
+            "to": null
+          },
+          "version_hash": "sha256:3756a821e0d660996b9550296c9b7de411c279c7e75ee0ffb01ecc186baedca7"
+        },
+        "stored_versions": 53
+      },
+      "result": "pass",
+      "seconds": 0.013,
+      "verifies": "DSN-DVM-002"
+    },
+    {
+      "case": "tenancy.no_tenant",
+      "evidence": {
+        "rows_in_database": 47849,
+        "visible_without_tenant": {
+          "branch_ref": 0,
+          "chunk": 0,
+          "commit": 0,
+          "commit_parent": 0,
+          "derivation_edge": 0,
+          "head_index": 0,
+          "idempotency_record": 0,
+          "kernel_meta": 0,
+          "ledger_entry": 0,
+          "ledger_sequence": 0,
+          "merkle_node": 0,
+          "object_state": 0,
+          "object_version": 0,
+          "outbox": 0,
+          "temporal_index": 0
+        }
+      },
+      "result": "pass",
+      "seconds": 0.106,
+      "verifies": "DSN-DVM-010"
+    },
+    {
+      "case": "tenancy.cross_tenant",
+      "evidence": {
+        "tenant_a_rows_seen_by_b": 0,
+        "write_for_other_tenant": "error returned from database: new row violates row-level security policy for table \"kernel_meta\""
+      },
+      "result": "pass",
+      "seconds": 0.008,
+      "verifies": "DSN-DVM-010"
+    },
+    {
+      "case": "tenancy.ledger_immutable",
+      "evidence": {
+        "delete_as_owner": "error returned from database: LEDG.IMMUTABLE_ENTRY",
+        "update_as_application": "error returned from database: permission denied for table ledger_entry"
+      },
+      "result": "pass",
+      "seconds": 0.021,
+      "verifies": "DSN-DVM-010, STD-KIND-020"
+    },
+    {
+      "case": "tenancy.partitions",
+      "evidence": {
+        "chunk": 64,
+        "ledger_entry": 64,
+        "merkle_node": 64,
+        "object_version": 64,
+        "temporal_index": 64
+      },
+      "result": "pass",
+      "seconds": 0.007,
+      "verifies": "DSN-DVM-010"
+    },
+    {
+      "case": "roots.verified",
+      "evidence": {
+        "feature/x": {
+          "buckets_differing": 0,
+          "checked": 66,
+          "findings": []
+        },
+        "main": {
+          "buckets_differing": 0,
+          "checked": 68,
+          "findings": []
+        }
+      },
+      "result": "pass",
+      "seconds": 0.382,
+      "verifies": "DSN-DVM-007, DSN-DVM-092"
+    },
+    {
+      "case": "roots.corruption_detected",
+      "evidence": {
+        "report": {
+          "buckets_differing": 0,
+          "checked": 68,
+          "findings": [
+            {
+              "check": "node",
+              "detail": "content does not hash to the node identifier",
+              "key": "sha256:402276e8c2ed56ba563f20453852d5b3ad54062e21ebd793f71fd1f8df762339"
+            }
+          ]
+        },
+        "tampered_node": "sha256:402276e8c2ed56ba563f20453852d5b3ad54062e21ebd793f71fd1f8df762339"
+      },
+      "result": "pass",
+      "seconds": 0.271,
+      "verifies": "DSN-DVM-092"
+    },
+    {
+      "case": "inspection.backend_neutral_traits",
+      "evidence": {
+        "file": "crates/ubos-store/src/kernel.rs",
+        "forbidden_tokens": [
+          "sqlx",
+          "Pg",
+          "postgres",
+          "Postgres",
+          "tokio",
+          "Sqlite",
+          "rusqlite"
+        ],
+        "hits": []
+      },
+      "result": "pass",
+      "seconds": 0.0,
+      "verifies": "DSN-DVM-001, VER-CONF-8402"
+    }
+  ],
+  "criterion": "EXIT-1-03",
+  "item": "VER-CONF-8402",
+  "scope": {
+    "tenant": "01900000-0000-7000-8000-0000000000a1",
+    "vae": "cdb9e0a1-db06-4401-8e7f-0229aae8da20"
+  },
+  "server_version": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "suite": "SUITE-DVM-STORE",
+  "summary": {
+    "cases": 20,
+    "failed": 0,
+    "passed": 20,
+    "seconds": 18.7
+  },
+  "workload": {
+    "merge": {
+      "appended": {
+        "01890a5d-ac96-77d0-8000-0000000007d0": {
+          "seq": 15,
+          "source_seq": 15
+        },
+        "01890a5d-ac96-77d1-8000-0000000007d1": {
+          "seq": 16,
+          "source_seq": 16
+        },
+        "01890a5d-ac96-77d2-8000-0000000007d2": {
+          "seq": 17,
+          "source_seq": 17
+        },
+        "01890a5d-ac96-77d3-8000-0000000007d3": {
+          "seq": 18,
+          "source_seq": 18
+        },
+        "01890a5d-ac96-77d4-8000-0000000007d4": {
+          "seq": 19,
+          "source_seq": 19
+        }
+      },
+      "cseq": 61,
+      "merged": true
+    }
+  }
+}

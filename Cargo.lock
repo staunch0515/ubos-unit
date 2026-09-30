@@ -1894,6 +1894,10 @@ name = "ubos-dvm"
 version = "0.0.0"
 dependencies = [
  "serde_json",
+ "sha2",
+ "sqlx",
+ "tokio",
+ "ubos-crypto",
  "ubos-model",
  "ubos-store",
  "ubos-time",
