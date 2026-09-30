@@ -1,0 +1,1 @@
+{"clauses":["STD-PROOF-010"],"description":"the public key of the RFC 8032 test key","id":"VER-CONF-2360","polarity":"positive","profile":"Proof","setup":[],"steps":[{"expect":{"match":"exact","result":"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"},"input":{"seed":"9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"},"op":"public_key"}]}

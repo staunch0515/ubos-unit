@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (41)
+## DEC (42)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -135,4 +135,5 @@ depends_on: [UBS-IDX-00]
 | DEC-039 | Scope of BPA 1.0-rc1 | `90-decisions/000-index.md` |
 | DEC-040 | BPA 1.0-rc1 object and class model (step 1b) | `90-decisions/000-index.md` |
 | DEC-041 | BPA 1.0-rc1 versioning, time and transactions (step 1c) | `90-decisions/000-index.md` |
+| DEC-042 | BPA 1.0-rc1 proofs (step 1d) | `90-decisions/000-index.md` |
 

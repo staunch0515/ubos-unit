@@ -45,7 +45,7 @@ DAT-TreeNode:
 ## 2. Signatures
 
 ### STD-PROOF-010 — Signature format
-- **Clause:** Signatures MUST use Ed25519 (RFC 8032) over the raw bytes of the signed content ID string (UTF-8), and MUST be represented as `DAT-Signature`.
+- **Clause:** Signatures MUST use Ed25519 (RFC 8032) over the raw bytes of the signed content ID string (UTF-8), and MUST be represented as `DAT-Signature`. `sig` is the 64-byte signature in base64url without padding. A `DAT-Signature` with another `alg`, an unknown `role` or a malformed `sig` is rejected (`MODEL.INVALID_VALUE`); a signature that does not verify fails with `PROOF.SIGNATURE_INVALID`. Commit records carry the node signature (role `node`) over the commit ID (DEC-042).
 - **Grammar / Schema:** `DAT-Signature`
 - **Conformance vectors:** VER-CONF-2360…2374
 - **Satisfies:** FR-PROOF-021, FR-PROOF-022, FR-VER-064
@@ -61,7 +61,7 @@ DAT-Signature:
 ```
 
 ### STD-PROOF-011 — Verification with key history
-- **Clause:** A signature is valid if it verifies under the key named by `key_id`, and that key was valid for the signer at the signed item's time (the commit `tx_time` or the item's timestamp), according to the signer's DID history (FR-IAM-033).
+- **Clause:** A signature is valid if it verifies under the key named by `key_id`, and that key was valid for the signer at the signed item's time (the commit `tx_time` or the item's timestamp), according to the signer's DID history (FR-IAM-033). A DID document lists its keys as `{key_id, public_key, valid_from, valid_to}`, with a half-open validity period and the public key as 32 bytes in base64url; the signer MUST be the subject of the document. A rotation closes the retired key at an instant after every transaction time signed with it (DEC-042).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2375…2389
 - **Satisfies:** FR-PROOF-023, FR-IAM-033
@@ -70,7 +70,7 @@ DAT-Signature:
 ## 3. Proofs
 
 ### STD-PROOF-020 — Inclusion proof
-- **Clause:** An inclusion proof MUST contain the key, the value hash and, for each tree level from leaf to root, the canonical node content. A verifier checks the key's presence in the leaf, the hash chain to the root, and the root's presence in a signed commit.
+- **Clause:** An inclusion proof MUST contain the key, the value hash and, for each tree level from leaf to root, the canonical node content. A verifier checks the key's presence in the leaf, the hash chain to the root, and the root's presence in a signed commit. Nodes are `{level, entries}` as hashed by STD-PROOF-001; each node after the leaf holds `[first key of the node below, hash of that node]`, and every node has sorted, distinct keys. With `commit`, the verifier checks the commit ID, the signatures at the commit's `tx_time` (STD-PROOF-011) and that the commit's `root` is the computed root. A proof that does not verify fails with `PROOF.VERIFICATION_FAILED`, a signature with `PROOF.SIGNATURE_INVALID` (DEC-042).
 - **Grammar / Schema:** `DAT-InclusionProof`
 - **Conformance vectors:** VER-CONF-2390…2409
 - **Satisfies:** FR-PROOF-032
@@ -85,14 +85,14 @@ DAT-InclusionProof:
 ```
 
 ### STD-PROOF-021 — Consistency proof
-- **Clause:** A consistency proof from commit A to a later commit B on the same branch MUST be the list of commit records along B's first-parent history back to A. A verifier checks the parent links, the signatures and the monotonic `tx_time`. Implementations MAY provide checkpoint commits (signed tenant roots, STD-PROOF-030) to shorten proofs.
+- **Clause:** A consistency proof from commit A to a later commit B on the same branch MUST be the list of commit records along B's first-parent history back to A. A verifier checks the parent links, the signatures and the monotonic `tx_time`. The list runs from B back to A: each record's commit ID and signatures verify, its first parent is the commit ID of the next record, and `tx_time` strictly decreases along the list (`PROOF.VERIFICATION_FAILED`, `PROOF.SIGNATURE_INVALID`) (DEC-042). Implementations MAY provide checkpoint commits (signed tenant roots, STD-PROOF-030) to shorten proofs.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2410…2419
 - **Satisfies:** FR-PROOF-033
 - **Notes:** —
 
 ### STD-PROOF-030 — Tenant root
-- **Clause:** A tenant root at time t MUST be computed as a prolly tree over the keys `<vae>/<branch>` → head commit ID at t, for all non-archived branches of kinds `main`, `release` and `overlay` (and others if configured), and MUST be signed by the node key.
+- **Clause:** A tenant root at time t MUST be computed as a prolly tree over the keys `<vae>/<branch>` → head commit ID at t, for all non-archived branches of kinds `main`, `release` and `overlay` (and others if configured), and MUST be signed by the node key. The entries are `[<vae>/<branch>, head commit ID]`, and the signature (role `node`) is over the root (DEC-042).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2420…2429
 - **Satisfies:** FR-PROOF-034
@@ -176,6 +176,8 @@ DAT-Seal:
   - `manifest.json` (listing counts, head roots and format version), signed by the exporting node.
 
   Importing it into a conforming implementation MUST reproduce identical head roots.
+
+  Format `ubos.archive.v1` (DEC-042): a JSON document, or the same members as files, with `manifest`, `chunks` (content ID → value: bodies and class declarations), `versions` (version hash → envelope, STD-OBJ-002), `entries` (entry hash → entry record with `class_version` and `body_ref`, STD-KIND-020), `commits` (commit ID → `{record, objects, ledger, hidden, ops}`: the signed commit record and the object index and ledgers of its state), `refs` (branches), `tags` and `dids`. The manifest `{format, vae, counts, heads, classes, signature}` lists the counts of each member, the head commit and root per branch and the class declarations, and is signed (role `signer`) over its content ID without the signature. An importer MUST verify every content ID, commit signature, state root and head root and reject the archive on the first failure (`PROOF.VERIFICATION_FAILED`, `PROOF.SIGNATURE_INVALID`); it imports into an empty store.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2510…2529
 - **Satisfies:** FR-TEN-061, FR-TEN-062, NR-PORT-003

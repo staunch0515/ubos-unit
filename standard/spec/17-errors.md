@@ -117,6 +117,7 @@ DAT-Error:
   | `PKG.CONFIGURATION_INCOMPLETE` | required configuration missing | no | yes | 409 |
   | `PROOF.SIGNATURE_INVALID` | signature verification failed | no | no | 422 |
   | `PROOF.VALUE_ERASED` | value crypto-shredded | no | yes | 410 |
+  | `PROOF.VERIFICATION_FAILED` | a proof, an archive or an authenticated ciphertext does not verify (since 1.0-rc1) | no | yes | 422 |
   | `SYNC.INTEGRITY_FAILURE` | received data invalid | no | no | 422 |
   | `SYNC.UPSTREAM_UNAVAILABLE` | parent unreachable | yes | yes | 502 |
   | `AI.CLASSIFICATION_BLOCKED` | disallowed data for the route | no | yes | 403 |
