@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-001"],"description":"stored references carry no selectors","id":"VER-CONF-5210","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"reference","value":"ubos://acme/Customer/c-1?branch=main"},"op":"validate_value"}]}

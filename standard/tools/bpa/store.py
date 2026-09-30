@@ -20,12 +20,14 @@ from .classes import GENESIS, effective_class, is_reference_list, public
 from .tree import tree_root
 from .workflow import Workflow
 from .proofs import Proofs
+from .lang import Lang, custom_value
+from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
 DEFAULT_NOW = '2026-01-01T00:00:00.000000Z'
 TENANT = 'acme'                  # authority of object URIs in adapter inputs (STD-CONF-005)
 MAX_BODY = 16 * 1024 * 1024      # STD-OBJ-009: bodies up to 16 MiB
-PRINCIPAL = 'did:ubos:acme:adapter'   # initiator when a process names none (DEC-041)
+PRINCIPAL = 'did:ubos:acme:01900000-0000-7000-8000-000000000002'   # initiator when a process names none (DEC-041)
 PROTECTED = ('main', 'release', 'overlay')   # STD-VER-012
 # STD-VER-011: protected targets a branch of each kind may be merged into (DEC-041). Merges
 # into other kinds (refreshing a working branch) are allowed from any kind but sandbox.
@@ -115,7 +117,7 @@ def tl_at(tl, asof):
     return None
 
 
-class Store(Workflow, Proofs):
+class Store(Workflow, Proofs, Lang):
     def __init__(self):
         self.reset()
 
@@ -128,6 +130,8 @@ class Store(Workflow, Proofs):
         self._eff_cache = {}
         self.decls = {}
         self.classes = {}
+        self.value_types = {}
+        _classes.CUSTOM_TYPES = {}
         self.versions = {}                     # version hash -> {object_id, class, body, valid, tombstone}
         self.commits = {}
         self.branches = {}
@@ -197,7 +201,9 @@ class Store(Workflow, Proofs):
     def _process_id(self):
         return '00000000-0000-4000-8000-%012x' % next(self.pids)
 
-    def load_genesis(self, classes):
+    def load_genesis(self, classes, value_types=None):
+        if value_types is not None:
+            self._load_value_types(value_types)
         decls = dict(self.decls)
         for d in classes:
             decls[d['name']] = d
@@ -373,7 +379,10 @@ class Store(Workflow, Proofs):
                     continue
                 raise BpaError('MODEL.INVALID_VALUE', 'undeclared field %s' % k)
             f = eff['fields'][k]
-            out[k] = validate_value(f['type'], f.get('constraints'), v)
+            if f['type'] in self.value_types:
+                out[k] = None if v is None else custom_value(self.value_types[f['type']], v, f.get('constraints'))
+            else:
+                out[k] = validate_value(f['type'], f.get('constraints'), v)
         if not partial:
             for name, f in eff['fields'].items():
                 if f.get('required') and out.get(name) is None:

@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-026"],"description":"a value type declares its base and description","id":"VER-CONF-0263","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.DECLARATION_INCOMPLETE"},"input":{"type":"Isin","value":"US0378331005","value_types":[{"base":"text","name":"Isin"}]},"op":"validate_value"}]}

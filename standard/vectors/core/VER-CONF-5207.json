@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-001"],"description":"reject an unknown selector","id":"VER-CONF-5207","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"uri":"ubos://acme/Customer/c-1?color=red"},"op":"parse_uri"}]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-010"],"description":"reject a key form without multibase prefix","id":"VER-CONF-5284","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"did":"did:ubos:k:6Mk"},"op":"parse_did"}]}

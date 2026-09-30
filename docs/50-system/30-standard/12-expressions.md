@@ -28,13 +28,15 @@ depends_on: [UBS-STD-01, UBS-STD-03]
   primary     = literal / path / call / lambda-call / "(" expr ")"
   call        = fname "(" [ expr *( "," expr ) ] ")"
   lambda-call = coll-fn "(" expr "," ident "->" expr ")"
-  coll-fn     = "any" / "all" / "count" / "sum" / "min" / "max" / "filter" / "map" / "first"
+  coll-fn     = "any" / "all" / "count" / "sum" / "min" / "max" / "filter" / "map" / "first" / "sort_by"
   path        = ( "this" / "ctx" / "params" / "old" / ident ) *( "." member )
   literal     = number / string / "true" / "false" / "null" / date-lit / money-lit / list-lit
   date-lit    = "d'" date "'" / "t'" instant "'"
   money-lit   = decimal-lit currency-code        ; e.g. 1000.00USD
   list-lit    = "[" [ expr *( "," expr ) ] "]"
   ```
+
+  Lexical rules (DEC-043): a number without a fraction is an `integer`, one with a fraction a `decimal` (exact); a money literal has no space before its ISO 4217 code; strings are double-quoted with the escapes `\"`, `\\`, `\/`, `\n`, `\r`, `\t` and `\uXXXX`, and are normalised to NFC; `and`, `or`, `not`, `in`, `is`, `null`, `true`, `false` and `matches` are keywords. `not` applies once. `matches` tests the whole text against a pattern in the common subset of RE2 and ECMAScript syntax. A lambda variable must not hide a root (`this`, `ctx`, `params`, `old`) or another variable. Syntax errors are reported as `LOGIC.TYPE_ERROR` with their position.
 - **Conformance vectors:** VER-CONF-4400…4459
 - **Satisfies:** FR-LOGIC-031, FR-LOGIC-034
 - **Notes:** `this` is the object, `old` is its base version in commit-time rules, `params` are port parameters, and `ctx` is the execution context (read-only members only).
@@ -49,20 +51,22 @@ depends_on: [UBS-STD-01, UBS-STD-03]
   - `instant - instant` gives a `duration`.
 
   Type errors MUST be reported at authoring with position (`LOGIC.TYPE_ERROR`).
+
+  In detail (DEC-043): `integer` op `integer` stays `integer` for `+`, `-`, `*` and `%` (`%` takes integers only and keeps the sign of the dividend); `/` gives a `decimal` rounded to the scale and rounding mode of the target field and is rejected without one (STD-FND-022); `duration ± duration` is a `duration`. `enum` and `reference` values are `text`. A list literal has the common type of its items, or `list<any>` when they differ; each item keeps its own value. `json` fields and the results of `ref` have the dynamic type `any`, which is checked at run time (`LOGIC.TYPE_ERROR`). Error details carry `position`, the zero-based code-point offset of the offending token.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4460…4499
 - **Satisfies:** FR-LOGIC-033
 - **Notes:** —
 
 ### STD-EXPR-003 — Null semantics
-- **Clause:** Evaluation MUST use three-valued logic for comparisons involving `null` (the result is `null`), and `and`/`or` with SQL truth tables. A guard or validation whose result is `null` MUST be treated as `false` for guards and as "not violated" for validations. `?.` returns `null` when the receiver is `null`. Arithmetic with `null` gives `null`.
+- **Clause:** Evaluation MUST use three-valued logic for comparisons involving `null` (the result is `null`), and `and`/`or` with SQL truth tables. A guard or validation whose result is `null` MUST be treated as `false` for guards and as "not violated" for validations. `?.` returns `null` when the receiver is `null`. Arithmetic with `null` gives `null`. In detail (DEC-043): `.` on a `null` receiver fails with `LOGIC.TYPE_ERROR`; a conditional whose condition is `null` takes the else branch; `in` with a `null` value is `null`; a function with a `null` argument returns `null`, except `today`, `now` and `period`; aggregates skip `null` items and give `null` for no items; `any` and `all` follow the SQL truth tables.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4500…4519
 - **Satisfies:** FR-LOGIC-031
 - **Notes:** Authors use `is null` checks for explicit semantics.
 
 ### STD-EXPR-004 — Totality and bounds
-- **Clause:** Expressions MUST always terminate: there is no recursion and no user-defined functions, and collection functions iterate over finite lists bounded by `max_items`. Evaluation MUST be charged to the operation budget. Division by zero MUST raise `LOGIC.DIVISION_BY_ZERO`. Decimal division MUST use the target field's scale, or the explicit `div(a, b, scale, rounding)` function.
+- **Clause:** Expressions MUST always terminate: there is no recursion and no user-defined functions, and collection functions iterate over finite lists bounded by `max_items`. Evaluation MUST be charged to the operation budget. Division by zero MUST raise `LOGIC.DIVISION_BY_ZERO`. Decimal division MUST use the target field's scale, or the explicit `div(a, b, scale, rounding)` function. Evaluation is charged at least one unit per operator, function call and collection item, and `ref` and `exists` are charged as `read.get` (10 units). Lists are bounded by the `max_items` of the profile (65,536 for `strict`); exceeding a bound raises `LOGIC.LIMIT_EXCEEDED` (DEC-043).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4520…4539
 - **Satisfies:** FR-LOGIC-031, STD-FND-022
@@ -83,6 +87,16 @@ depends_on: [UBS-STD-01, UBS-STD-03]
   | References | `ref(uri)` (read at the same coordinates, charged as `read.get`), `exists(uri)` |
   | Identifiers | `luhn_valid`, `iso7064_mod97_10`, `isin_valid`, `lei_valid`, `iban_valid` |
 - **Grammar / Schema:** —
+
+  Details fixed by DEC-043:
+  - Text: lengths and positions count code points; `substr(s, start[, length])` is zero-based and clamps to the text; `format(template, …)` replaces `{n}` with the canonical text of the n-th argument (money as `amount currency`); `pad_left(s, width, fill)` takes one fill character; `lower` and `upper` use full Unicode case mapping, and the result is in NFC.
+  - Numbers: `round` defaults to `half_even` and keeps money a money value; `floor` and `ceil` give integers.
+  - Money: `convert(m, cur, rate_ref)` multiplies by the rate of the rate object `{from, to, rate}` named by `rate_ref` and fails with `MODEL.CURRENCY_MISMATCH` when the rate is for other currencies; `allocate` splits the minor units in proportion to the weights, giving the remaining units by largest remainder and then by position.
+  - Dates: `weekday` is ISO (Monday = 1); `add_months` keeps the day, clamped to the end of the target month; `to_zone` gives the RFC 3339 local time with its offset as text; durations are `P[nD][T[nH][nM][n[.f]S]]`.
+  - Calendars: a calendar is `{weekend, holidays}` (ISO weekdays and dates); business-day steps exclude the start date; `cutoff(d, time, tz, cal)` is the instant of `time` in `tz` on `d`, or on the next business day when `d` is not one.
+  - Periods: `contains(period, x)` and `overlaps` use half-open periods; `period(from, to)` needs `from < to` of one granularity or an open `to`.
+  - References: `ref(uri)` gives the target's body at the same coordinates and fails with `IAM.NOT_FOUND` when there is none.
+  - Identifiers: `isin_valid` converts letters to numbers (A = 10) and checks the Luhn digit; `lei_valid` and `iban_valid` check ISO 7064 MOD 97-10 (the IBAN without spaces and without country-specific lengths).
 - **Conformance vectors:** VER-CONF-4540…4699
 - **Satisfies:** FR-LOGIC-035, FR-LOC-041, FR-LOC-042, FR-MODEL-046
 - **Notes:** Buk-registered pure functions extend the library under namespaced names (FR-LOGIC-035).
@@ -116,6 +130,8 @@ DAT-Query:
   - Row visibility and masking are applied during evaluation.
   - A `where` over masked fields MUST evaluate on masked values, so that no inference through filtering is possible.
   - Paths through references resolve at the query's coordinates.
+
+  In detail (DEC-043): an object whose `where` is `null` is excluded; `order_by` puts `null` first in ascending order, and the object ID breaks ties in ascending order; `limit` is 1 to 1,000 (`QRY.INVALID_QUERY`); a cursor is valid only for the same query and branch. Row visibility and masking are applied with the Governance profile (BPA 1.0-rc2).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4750…4779
 - **Satisfies:** FR-QRY-012, FR-QRY-071, FR-TIME-032

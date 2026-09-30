@@ -15,12 +15,14 @@
               / ( "time=" instant ) / ( "asof=" ( date / instant ) ) / ( "key=" slug )
               / ( "view=" mode )
   ```
+
+  In detail (DEC-043): a malformed URI is rejected with `MODEL.INVALID_VALUE`. `@vN` counts the distinct versions of the object along the first-parent history of the resolved snapshot. Slug redirects follow the slugs of the object's earlier versions; the object that holds a slug now takes precedence. The `view` selector does not change a read; `key` is not supported in BPA 1.0-rc1 (`QRY.INVALID_QUERY`). An authority other than the reader's tenant is not found (`IAM.NOT_FOUND`).
 - **Conformance vectors:** VER-CONF-5200…5239
 - **Satisfies:** FR-VER-104, FR-TEN-013, FR-MODEL-064
 - **Notes:** `@vN` addresses the N-th version on the resolved branch line (1-based). It is a convenience for humans and is never stored.
 
 ### STD-ADDR-002 — Selector precedence
-- **Clause:** At most one of `commit`, `tag` and `time` MAY be given (`ADDR.CONFLICTING_SELECTORS` otherwise). `branch` defaults to `main`. `asof` combines with any of them. `commit` and `tag` imply their branch. A `branch` selector that disagrees with them MUST be rejected.
+- **Clause:** At most one of `commit`, `tag` and `time` MAY be given (`ADDR.CONFLICTING_SELECTORS` otherwise). `branch` defaults to `main`. `asof` combines with any of them. `commit` and `tag` imply their branch. A `branch` selector that disagrees with them MUST be rejected. A selector given twice also conflicts. The branch of a commit is the branch named in its commit record (DEC-043).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-5240…5254
 - **Satisfies:** FR-VER-101
@@ -31,7 +33,7 @@
   - **key form** `did:ubos:k:<multibase-base58btc-ed25519-public-key>`, whose DID document is derived from the key (for devices and federation bootstrap);
   - **registered form** `did:ubos:<authority>:<uuid>`, whose DID document (verification methods with validity periods, service endpoints) is served by the owning node and, in federation, by the registry.
 
-  Key rotation MUST append verification methods with validity periods and MUST NOT delete history.
+  Key rotation MUST append verification methods with validity periods and MUST NOT delete history. The key form encodes the multicodec prefix `0xed 0x01` followed by the 32-byte key; its derived document has one key with ID `<did>#<multibase key>`. Malformed identifiers are rejected with `MODEL.INVALID_VALUE` (DEC-043).
 - **Grammar / Schema:**
   ```
   ubos-did   = "did:ubos:" ( key-form / reg-form )

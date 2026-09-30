@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-010"],"description":"reject a key form that is not an Ed25519 key","id":"VER-CONF-5286","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"did":"did:ubos:k:z11111111"},"op":"parse_did"}]}

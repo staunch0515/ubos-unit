@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-002"],"description":"tag and time together conflict","id":"VER-CONF-5241","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"ADDR.CONFLICTING_SELECTORS"},"input":{"uri":"ubos://acme/Customer/c-1?tag=q1&time=2026-03-15T10:00:00.000000Z"},"op":"parse_uri"}]}

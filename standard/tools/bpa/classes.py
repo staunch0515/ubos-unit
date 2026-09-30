@@ -50,6 +50,8 @@ GENESIS = {
                 'fields': [_f('version', 'text', True), _f('tag', 'text', True), _f('notes', 'text'),
                            _f('change_sets', 'json'), _f('approvals', 'json')]},
 }
+# Custom value types (STD-FND-026) known to the store that loads the declarations.
+CUSTOM_TYPES = {}
 PORT_REQUIRED = ('name', 'kind', 'permission', 'description')
 CARDINALITY = {'one_to_one': 'reference', 'many_to_one': 'reference', 'one_to_many': 'list', 'many_to_many': 'list'}
 
@@ -70,7 +72,7 @@ def check_field(f):
             raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'field member %s' % k)
     if not GRAMMARS['member-name'].match(f['name']):
         raise BpaError('MODEL.INVALID_NAME', f['name'])
-    if f['type'] not in TYPES:
+    if f['type'] not in TYPES and f['type'] not in CUSTOM_TYPES:
         raise BpaError('MODEL.UNKNOWN_TYPE', f['type'])
     if 'classification' in f and f['classification'] not in LEVELS:
         raise BpaError('MODEL.INVALID_VALUE', 'classification')
