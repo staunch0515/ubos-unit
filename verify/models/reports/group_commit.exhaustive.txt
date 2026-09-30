@@ -1,0 +1,15 @@
+# group_commit: exhaustive run, bounds of group_commit.cfg with MaxCommits = 2, MaxTxns = 3 (DEC-031)
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 1.7E-8
+  based on the actual fingerprints:  val = 1.3E-8
+1125965 states generated, 551470 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 21.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 31 and the 95th percentile is 3).
+Finished in 26s at (2026-09-30 11:38:13)
+
+real	0m27.269s
+user	1m37.707s
+sys	0m2.069s

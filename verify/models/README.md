@@ -3,7 +3,7 @@
 TLA+ models of the core semantics, checked with TLC before any kernel code exists
 (AR-033, DEC-030). Each model states its properties as TLC invariants. `group_commit` has a
 constant `Mutation` that selects the deliberately wrong variants of the sensitivity checks
-(`reports/README.md` §3); the configurations use `"none"`.
+(`reports/README.md` §5); the configurations use `"none"`.
 
 | Model | Verification item | Clauses and design items | Properties (invariants) |
 |---|---|---|---|
