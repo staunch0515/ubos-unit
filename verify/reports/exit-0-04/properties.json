@@ -1,0 +1,36 @@
+{
+  "generator": "SplitMix64",
+  "results": [
+    {
+      "cases": 1000000,
+      "failures": [],
+      "item": "VER-PROP-0001",
+      "property": "root_history_independence",
+      "seconds": 106.3,
+      "seed": 20260930
+    },
+    {
+      "cases": 1000000,
+      "failures": [],
+      "item": "VER-PROP-0002",
+      "property": "timeline_non_overlap",
+      "seconds": 0.4,
+      "seed": 20260930
+    },
+    {
+      "cases": 1000000,
+      "failures": [],
+      "item": "VER-PROP-0003",
+      "outcomes": {
+        "conflict": 561759,
+        "merged_unchanged": 0,
+        "merged_with_changes": 438241
+      },
+      "property": "merge_determinism",
+      "seconds": 502.9,
+      "seed": 20260930
+    }
+  ],
+  "suite": "SUITE-DVM-PROP",
+  "threads": 4
+}
