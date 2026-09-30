@@ -8,6 +8,7 @@
 
 pub mod adapter;
 pub mod stateful;
+pub mod verify;
 
 pub use adapter::{Adapter, STATEFUL_OPERATIONS};
 pub use stateful::Engine;

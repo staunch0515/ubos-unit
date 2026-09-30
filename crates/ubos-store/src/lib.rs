@@ -25,8 +25,9 @@ use ubos_types::BpaError;
 pub mod kernel;
 mod pg;
 pub mod physical;
+pub mod verify;
 
-pub use pg::{BulkRows, DEFAULT_SCOPE, PgBackend, PgStore, PgTx, key_hash};
+pub use pg::{BulkRows, DEFAULT_SCOPE, PgBackend, PgStore, PgTx, key_hash, options as pg_options};
 
 /// A branch reference.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,6 +150,52 @@ pub trait Store {
     fn meta(&mut self, key: &str) -> Result<Option<Value>, BpaError>;
     /// Backend name for reports.
     fn backend(&self) -> &'static str;
+    /// Tenant and VAE of a kernel store (verifiers and the storage suite), if any.
+    fn scope(&self) -> Option<kernel::Scope> {
+        None
+    }
+}
+
+/// Kernel index rows of one engine object row: head and valid-time segments come from the
+/// engine state (`head`, `timeline[].{from, to, version}`).
+pub fn index_row(o: &ObjectRow) -> Result<kernel::IndexRow, BpaError> {
+    let (head, segments) = match &o.state {
+        None => (None, Vec::new()),
+        Some(s) => {
+            let head = s
+                .get("head")
+                .and_then(Value::as_str)
+                .map(kernel::hash_of)
+                .transpose()?;
+            let mut segs = Vec::new();
+            for seg in s
+                .get("timeline")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                let from = seg.get("from").and_then(Value::as_str).unwrap_or_default();
+                let to = seg.get("to").and_then(Value::as_str).map(str::to_string);
+                let ver = seg
+                    .get("version")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                segs.push((from.to_string(), to, kernel::hash_of(ver)?));
+            }
+            (head, segs)
+        }
+    };
+    Ok(kernel::IndexRow {
+        object_id: o.object_id.clone(),
+        class: o.class.clone(),
+        state: o
+            .state
+            .as_ref()
+            .map(|v| Ok::<_, BpaError>(ubos_types::canonical(v)?.into_bytes()))
+            .transpose()?,
+        head,
+        segments,
+    })
 }
 
 /// An object-index row as kept in memory.

@@ -135,6 +135,11 @@ impl Adapter {
         })
     }
 
+    /// The engine (storage suite and verifiers).
+    pub fn engine_mut(&mut self) -> &mut Engine {
+        &mut self.engine
+    }
+
     /// Name of the storage backend.
     pub fn backend(&self) -> &'static str {
         self.engine.store.backend()

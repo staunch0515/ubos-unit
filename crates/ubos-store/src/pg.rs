@@ -6,9 +6,9 @@
 //! kernel rows (canonical bytes, 32-byte content IDs, `cseq` intervals).
 
 use crate::kernel::{
-    Allocated, BranchRow, ChunkRow, CommitRow, EntryFilter, Hash, IdempotencyRow, IndexRow,
-    LedgerRow, NodeRow, OPEN, OutboxRow, Placement, Scope, SequenceRequest, StoreRead, StoreTx,
-    VersionRow, hash_of,
+    Allocated, BranchRow, ChunkRow, CommitRow, CounterRow, EntryFilter, EntryMeta, Hash, HeadRow,
+    IdempotencyRow, IndexRow, LedgerRow, NodeRow, OPEN, OutboxRow, Placement, Scope,
+    SequenceRequest, StateRow, StoreRead, StoreTx, TemporalRow, VersionRow, hash_of,
 };
 use crate::physical::{Chunks, LocalBlobs, Physical};
 use crate::{BranchRef, Flush, Store};
@@ -58,8 +58,8 @@ pub fn key_hash(key: &str) -> Hash {
     Sha256::digest(key.as_bytes()).into()
 }
 
-/// Accept both `postgres://` URLs and libpq `key=value` strings.
-fn options(url: &str) -> Result<PgConnectOptions, BpaError> {
+/// Connection options from a `postgres://` URL or a libpq `key=value` string.
+pub fn options(url: &str) -> Result<PgConnectOptions, BpaError> {
     if url.contains("://") {
         return PgConnectOptions::from_str(url).map_err(db);
     }
@@ -365,6 +365,147 @@ impl StoreRead for PgBackend {
         let rows = q.fetch_all(&self.pool).await.map_err(db)?;
         rows.iter().map(|r| r.try_get(0).map_err(db)).collect()
     }
+    async fn branch_commits(&self, branch_id: i64) -> Result<Vec<(u64, u64)>, BpaError> {
+        let rows = self
+            .rows(
+                sqlx::query("SELECT commit_no, cseq FROM commit WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 ORDER BY cseq")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(branch_id),
+            )
+            .await?;
+        rows.iter()
+            .map(|r| {
+                Ok((
+                    uint(r.try_get(0).map_err(db)?),
+                    uint(r.try_get(1).map_err(db)?),
+                ))
+            })
+            .collect()
+    }
+    async fn state_rows(
+        &self,
+        branch_id: i64,
+        from: u64,
+        to: u64,
+    ) -> Result<Vec<StateRow>, BpaError> {
+        let rows = self
+            .rows(
+                sqlx::query("SELECT object_id, cseq_from, cseq_to, class_name, state FROM object_state WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND cseq_from BETWEEN $4 AND $5")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(branch_id)
+                    .bind(int(from))
+                    .bind(int(to)),
+            )
+            .await?;
+        rows.iter().map(state_row).collect()
+    }
+    async fn head_rows(&self, branch_id: i64) -> Result<Vec<HeadRow>, BpaError> {
+        let rows = self
+            .rows(
+                sqlx::query("SELECT object_id, version_id, class_name, hidden FROM head_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(branch_id),
+            )
+            .await?;
+        rows.iter()
+            .map(|r| {
+                Ok(HeadRow {
+                    object_id: r.try_get(0).map_err(db)?,
+                    version: r
+                        .try_get::<Option<Vec<u8>>, _>(1)
+                        .map_err(db)?
+                        .map(hash_col)
+                        .transpose()?,
+                    class: r.try_get(2).map_err(db)?,
+                    hidden: r.try_get(3).map_err(db)?,
+                })
+            })
+            .collect()
+    }
+    async fn temporal_rows(
+        &self,
+        branch_id: i64,
+        from: u64,
+        to: u64,
+    ) -> Result<Vec<TemporalRow>, BpaError> {
+        let rows = self
+            .rows(
+                sqlx::query("SELECT object_id, valid_from, valid_to, cseq_from, cseq_to, version_id, class_name FROM temporal_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND cseq_from BETWEEN $4 AND $5")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(branch_id)
+                    .bind(int(from))
+                    .bind(int(to)),
+            )
+            .await?;
+        rows.iter()
+            .map(|r| {
+                Ok(TemporalRow {
+                    object_id: r.try_get(0).map_err(db)?,
+                    valid_from: r.try_get(1).map_err(db)?,
+                    valid_to: r.try_get(2).map_err(db)?,
+                    cseq_from: uint(r.try_get(3).map_err(db)?),
+                    cseq_to: uint(r.try_get(4).map_err(db)?),
+                    version: hash_col(r.try_get(5).map_err(db)?)?,
+                    class: r.try_get(6).map_err(db)?,
+                })
+            })
+            .collect()
+    }
+    async fn entry_meta(&self, branch_id: i64) -> Result<Vec<EntryMeta>, BpaError> {
+        let rows = self
+            .rows(
+                sqlx::query("SELECT ledger_class, ledger_key, seq, entry_id, prev_hash, entry_hash FROM ledger_entry WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 ORDER BY ledger_class, ledger_key, seq")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(branch_id),
+            )
+            .await?;
+        rows.iter()
+            .map(|r| {
+                Ok(EntryMeta {
+                    class: r.try_get(0).map_err(db)?,
+                    ledger_key: hash_col(r.try_get(1).map_err(db)?)?,
+                    seq: uint(r.try_get(2).map_err(db)?),
+                    entry_id: r.try_get(3).map_err(db)?,
+                    prev_hash: hash_col(r.try_get(4).map_err(db)?)?,
+                    entry_hash: hash_col(r.try_get(5).map_err(db)?)?,
+                })
+            })
+            .collect()
+    }
+    async fn counters(&self, branch_id: i64) -> Result<Vec<CounterRow>, BpaError> {
+        let rows = self
+            .rows(
+                sqlx::query("SELECT ledger_class, ledger_key, next_seq, last_hash FROM ledger_sequence WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(branch_id),
+            )
+            .await?;
+        rows.iter()
+            .map(|r| {
+                Ok(CounterRow {
+                    class: r.try_get(0).map_err(db)?,
+                    ledger_key: hash_col(r.try_get(1).map_err(db)?)?,
+                    next_seq: uint(r.try_get(2).map_err(db)?),
+                    last_hash: hash_col(r.try_get(3).map_err(db)?)?,
+                })
+            })
+            .collect()
+    }
+    async fn inherited(
+        &self,
+        branch_id: i64,
+        class: &str,
+        key: &Hash,
+    ) -> Result<(u64, Hash), BpaError> {
+        let mut conn = self.pool.acquire().await.map_err(db)?;
+        inherited_on(&mut conn, &self.scope, branch_id, class, key).await
+    }
     async fn meta(&self, key: &str) -> Result<Option<Vec<u8>>, BpaError> {
         let r = self
             .opt(
@@ -383,6 +524,25 @@ impl StoreRead for PgBackend {
     }
 }
 
+impl PgBackend {
+    async fn rows(
+        &self,
+        q: sqlx::query::Query<'_, Postgres, sqlx::postgres::PgArguments>,
+    ) -> Result<Vec<PgRow>, BpaError> {
+        q.fetch_all(&self.pool).await.map_err(db)
+    }
+}
+
+fn state_row(r: &PgRow) -> Result<StateRow, BpaError> {
+    Ok(StateRow {
+        object_id: r.try_get(0).map_err(db)?,
+        cseq_from: uint(r.try_get(1).map_err(db)?),
+        cseq_to: uint(r.try_get(2).map_err(db)?),
+        class: r.try_get(3).map_err(db)?,
+        state: r.try_get(4).map_err(db)?,
+    })
+}
+
 /// The ledger queries differ only in their tail; the combined texts are leaked once each.
 fn const_format(base: &'static str, tail: &'static str) -> &'static str {
     use std::sync::{Mutex, OnceLock};
@@ -395,22 +555,53 @@ fn const_format(base: &'static str, tail: &'static str) -> &'static str {
         .or_insert_with(|| Box::leak(format!("{base}{tail}").into_boxed_str()))
 }
 
-impl PgTx {
-    async fn chain_count(
-        &mut self,
-        branch_id: i64,
-        class: &str,
-        key: &Hash,
-    ) -> Result<(u64, Hash), BpaError> {
-        // Entries a new branch inherits through its read-through parents (DSN-DVM-402): the
-        // counter of a key starts after them.
-        let mut count = 0u64;
-        let mut last: Option<Hash> = None;
-        let mut cur = sqlx::query("SELECT parent_branch, fork_cseq FROM branch_ref WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3")
-            .bind(&self.scope.tenant)
-            .bind(&self.scope.vae)
-            .bind(branch_id)
-            .fetch_optional(&mut *self.tx)
+/// Entries a branch inherits for one ledger key through its read-through parents: their
+/// number and the hash of the last one (DSN-DVM-402).
+async fn inherited_on(
+    conn: &mut sqlx::PgConnection,
+    scope: &Scope,
+    branch_id: i64,
+    class: &str,
+    key: &Hash,
+) -> Result<(u64, Hash), BpaError> {
+    // Entries a new branch inherits through its read-through parents (DSN-DVM-402): the
+    // counter of a key starts after them.
+    let mut count = 0u64;
+    let mut last: Option<Hash> = None;
+    let mut cur = sqlx::query("SELECT parent_branch, fork_cseq FROM branch_ref WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3")
+        .bind(&scope.tenant)
+        .bind(&scope.vae)
+        .bind(branch_id)
+        .fetch_optional(&mut *conn)
+        .await
+        .map_err(db)?
+        .and_then(|r| {
+            let p: Option<i64> = r.try_get(0).ok()?;
+            let f: Option<i64> = r.try_get(1).ok()?;
+            Some((p?, f.unwrap_or_default()))
+        });
+    while let Some((pid, fork)) = cur {
+        let r = sqlx::query("SELECT count(*), (SELECT entry_hash FROM ledger_entry WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND ledger_class = $4 AND ledger_key = $5 AND cseq <= $6 ORDER BY seq DESC LIMIT 1) FROM ledger_entry WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND ledger_class = $4 AND ledger_key = $5 AND cseq <= $6")
+            .bind(&scope.tenant)
+            .bind(&scope.vae)
+            .bind(pid)
+            .bind(class)
+            .bind(&key[..])
+            .bind(fork)
+            .fetch_one(&mut *conn)
+            .await
+            .map_err(db)?;
+        count += uint(r.try_get(0).map_err(db)?);
+        if last.is_none()
+            && let Some(h) = r.try_get::<Option<Vec<u8>>, _>(1).map_err(db)?
+        {
+            last = Some(hash_col(h)?);
+        }
+        cur = sqlx::query("SELECT parent_branch, fork_cseq FROM branch_ref WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3")
+            .bind(&scope.tenant)
+            .bind(&scope.vae)
+            .bind(pid)
+            .fetch_optional(&mut *conn)
             .await
             .map_err(db)?
             .and_then(|r| {
@@ -418,37 +609,18 @@ impl PgTx {
                 let f: Option<i64> = r.try_get(1).ok()?;
                 Some((p?, f.unwrap_or_default()))
             });
-        while let Some((pid, fork)) = cur {
-            let r = sqlx::query("SELECT count(*), (SELECT entry_hash FROM ledger_entry WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND ledger_class = $4 AND ledger_key = $5 AND cseq <= $6 ORDER BY seq DESC LIMIT 1) FROM ledger_entry WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND ledger_class = $4 AND ledger_key = $5 AND cseq <= $6")
-                .bind(&self.scope.tenant)
-                .bind(&self.scope.vae)
-                .bind(pid)
-                .bind(class)
-                .bind(&key[..])
-                .bind(fork)
-                .fetch_one(&mut *self.tx)
-                .await
-                .map_err(db)?;
-            count += uint(r.try_get(0).map_err(db)?);
-            if last.is_none()
-                && let Some(h) = r.try_get::<Option<Vec<u8>>, _>(1).map_err(db)?
-            {
-                last = Some(hash_col(h)?);
-            }
-            cur = sqlx::query("SELECT parent_branch, fork_cseq FROM branch_ref WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3")
-                .bind(&self.scope.tenant)
-                .bind(&self.scope.vae)
-                .bind(pid)
-                .fetch_optional(&mut *self.tx)
-                .await
-                .map_err(db)?
-                .and_then(|r| {
-                    let p: Option<i64> = r.try_get(0).ok()?;
-                    let f: Option<i64> = r.try_get(1).ok()?;
-                    Some((p?, f.unwrap_or_default()))
-                });
-        }
-        Ok((count, last.unwrap_or(ZERO)))
+    }
+    Ok((count, last.unwrap_or(ZERO)))
+}
+
+impl PgTx {
+    async fn chain_count(
+        &mut self,
+        branch_id: i64,
+        class: &str,
+        key: &Hash,
+    ) -> Result<(u64, Hash), BpaError> {
+        inherited_on(&mut self.tx, &self.scope, branch_id, class, key).await
     }
 }
 
@@ -829,44 +1001,6 @@ fn json(b: &[u8]) -> Result<Value, BpaError> {
     serde_json::from_slice(b).map_err(db)
 }
 
-/// Kernel index rows of one engine object row: head and valid-time segments come from the
-/// engine state (`head`, `timeline[].{from, to, version}`).
-fn index_row(o: &crate::ObjectRow) -> Result<IndexRow, BpaError> {
-    let (head, segments) = match &o.state {
-        None => (None, Vec::new()),
-        Some(s) => {
-            let head = s
-                .get("head")
-                .and_then(Value::as_str)
-                .map(hash_of)
-                .transpose()?;
-            let mut segs = Vec::new();
-            for seg in s
-                .get("timeline")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-            {
-                let from = seg.get("from").and_then(Value::as_str).unwrap_or_default();
-                let to = seg.get("to").and_then(Value::as_str).map(str::to_string);
-                let ver = seg
-                    .get("version")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                segs.push((from.to_string(), to, hash_of(ver)?));
-            }
-            (head, segs)
-        }
-    };
-    Ok(IndexRow {
-        object_id: o.object_id.clone(),
-        class: o.class.clone(),
-        state: o.state.as_ref().map(bytes).transpose()?,
-        head,
-        segments,
-    })
-}
-
 /// Rows for a bulk load of one branch's history (benchmark datasets, PH-0 step 5).
 #[derive(Debug, Default)]
 pub struct BulkRows {
@@ -1050,7 +1184,7 @@ impl PgStore {
                     &hex(&bytes(state)?),
                 ],
             );
-            let row = index_row(&crate::ObjectRow {
+            let row = crate::index_row(&crate::ObjectRow {
                 object_id: oid.clone(),
                 class: class.clone(),
                 state: Some(state.clone()),
@@ -1378,7 +1512,7 @@ impl Plan {
         let index = f
             .objects
             .iter()
-            .map(index_row)
+            .map(crate::index_row)
             .collect::<Result<Vec<_>, _>>()?;
         let nodes = f
             .nodes
@@ -1634,5 +1768,8 @@ impl Store for PgStore {
     }
     fn backend(&self) -> &'static str {
         "postgresql"
+    }
+    fn scope(&self) -> Option<Scope> {
+        Some(self.backend.scope.clone())
     }
 }

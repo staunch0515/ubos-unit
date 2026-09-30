@@ -193,6 +193,83 @@ pub struct IdempotencyRow {
     pub commit_no: Option<u64>,
 }
 
+/// An `object_state` row (transition table, DEC-047) as read by the verifiers.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StateRow {
+    /// Object identifier.
+    pub object_id: String,
+    /// First ordinal of the row.
+    pub cseq_from: u64,
+    /// End ordinal (exclusive), [`OPEN`] for the current row.
+    pub cseq_to: u64,
+    /// Class name.
+    pub class: String,
+    /// Canonical state, `None` when removed.
+    pub state: Option<Vec<u8>>,
+}
+
+/// A `head_index` row.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct HeadRow {
+    /// Object identifier.
+    pub object_id: String,
+    /// Head version.
+    pub version: Option<Hash>,
+    /// Class name.
+    pub class: String,
+    /// Removed on the branch.
+    pub hidden: bool,
+}
+
+/// A `temporal_index` row.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct TemporalRow {
+    /// Object identifier.
+    pub object_id: String,
+    /// Valid-time start.
+    pub valid_from: String,
+    /// Valid-time end, `None` when open.
+    pub valid_to: Option<String>,
+    /// First ordinal.
+    pub cseq_from: u64,
+    /// End ordinal (exclusive).
+    pub cseq_to: u64,
+    /// Version valid in the segment.
+    pub version: Hash,
+    /// Class name.
+    pub class: String,
+}
+
+/// The sequence facts of one ledger entry, as read by the verifiers.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntryMeta {
+    /// Ledger class.
+    pub class: String,
+    /// Hash of the canonical ledger key.
+    pub ledger_key: Hash,
+    /// Sequence.
+    pub seq: u64,
+    /// Entry identifier.
+    pub entry_id: String,
+    /// Previous hash of the chain.
+    pub prev_hash: Hash,
+    /// Entry hash.
+    pub entry_hash: Hash,
+}
+
+/// A `ledger_sequence` counter row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CounterRow {
+    /// Ledger class.
+    pub class: String,
+    /// Hash of the canonical ledger key.
+    pub ledger_key: Hash,
+    /// Next sequence to allocate.
+    pub next_seq: u64,
+    /// Hash of the last entry.
+    pub last_hash: Hash,
+}
+
 /// Filter of a ledger read.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EntryFilter {
@@ -298,6 +375,36 @@ pub trait StoreRead {
     ) -> Result<Vec<Vec<u8>>, BpaError>;
     /// A setting of the adapter.
     async fn meta(&self, key: &str) -> Result<Option<Vec<u8>>, BpaError>;
+    /// The commits of a branch as `(commit_no, cseq)`, by ordinal.
+    async fn branch_commits(&self, branch_id: i64) -> Result<Vec<(u64, u64)>, BpaError>;
+    /// The `object_state` rows of a branch whose `cseq_from` lies in `[from, to]`.
+    async fn state_rows(
+        &self,
+        branch_id: i64,
+        from: u64,
+        to: u64,
+    ) -> Result<Vec<StateRow>, BpaError>;
+    /// The `head_index` rows of a branch.
+    async fn head_rows(&self, branch_id: i64) -> Result<Vec<HeadRow>, BpaError>;
+    /// The `temporal_index` rows of a branch whose `cseq_from` lies in `[from, to]`.
+    async fn temporal_rows(
+        &self,
+        branch_id: i64,
+        from: u64,
+        to: u64,
+    ) -> Result<Vec<TemporalRow>, BpaError>;
+    /// The sequence facts of the branch's own entries, by class, key and sequence.
+    async fn entry_meta(&self, branch_id: i64) -> Result<Vec<EntryMeta>, BpaError>;
+    /// The counter rows of a branch.
+    async fn counters(&self, branch_id: i64) -> Result<Vec<CounterRow>, BpaError>;
+    /// Entries a branch inherits for one key through its read-through parents: their
+    /// number and the hash of the last one (zero when none).
+    async fn inherited(
+        &self,
+        branch_id: i64,
+        class: &str,
+        key: &Hash,
+    ) -> Result<(u64, Hash), BpaError>;
 }
 
 /// Parse a `sha256:<hex>` content ID.

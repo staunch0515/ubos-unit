@@ -172,7 +172,7 @@ depends_on: [UBS-SYS-DVM-02, UBS-ARC-04, UBS-STD-08]
 ## Verification of indexes
 
 ### DSN-DVM-092 — Index and projection verifier
-- **Statement:** The DVM MUST provide `verify_indexes(branch, range)`. It rebuilds kernel indexes for the range from commits, and compares them by order-independent checksums per partition, reporting mismatching keys.
+- **Statement:** The DVM MUST provide `verify_indexes(branch, range)`. It rebuilds kernel indexes for the range from commits, and compares them by order-independent checksums per partition, reporting mismatching keys. It is complemented by a sequence verifier (dense sequences, hash chain, counter rows) and a root verifier (recomputed state roots, stored tree nodes); in the transition layout the indexes are rebuilt from the committed object rows (DEC-049).
 - **Rationale:** AR-015 and NR-DUR-005.
 - **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
 - **Personas:** PER-PlatformOperator

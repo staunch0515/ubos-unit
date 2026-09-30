@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (48)
+## DEC (49)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -142,4 +142,5 @@ depends_on: [UBS-IDX-00]
 | DEC-046 | Group commit and ledger sequence model (step 2) | `90-decisions/000-index.md` |
 | DEC-047 | Storage kernel (step 3) | `90-decisions/000-index.md` |
 | DEC-048 | Tenancy and physical form of the storage kernel (step 3b) | `90-decisions/000-index.md` |
+| DEC-049 | Verifiers and storage suite (step 3c) | `90-decisions/000-index.md` |
 
