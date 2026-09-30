@@ -8,6 +8,7 @@ virtual bases (STD-VER-040…056), diff (STD-VER-030) and the state tree (STD-PR
 Timelines are lists of segments [from, to, version] with to = None for an open end; valid
 times are canonical dates or instants, so string order is time order."""
 import copy
+import datetime
 import itertools
 
 from . import BpaError
@@ -17,11 +18,33 @@ import hashlib
 
 from .classes import GENESIS, effective_class, is_reference_list, public
 from .tree import tree_root
+from .workflow import Workflow
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
 DEFAULT_NOW = '2026-01-01T00:00:00.000000Z'
 TENANT = 'acme'                  # authority of object URIs in adapter inputs (STD-CONF-005)
 MAX_BODY = 16 * 1024 * 1024      # STD-OBJ-009: bodies up to 16 MiB
+PRINCIPAL = 'did:ubos:acme:adapter'   # initiator when a process names none (DEC-041)
+PROTECTED = ('main', 'release', 'overlay')   # STD-VER-012
+# STD-VER-011: protected targets a branch of each kind may be merged into (DEC-041). Merges
+# into other kinds (refreshing a working branch) are allowed from any kind but sandbox.
+MERGE_TARGETS = {'main': (), 'release': ('main',), 'draft': PROTECTED, 'feature': PROTECTED, 'agent': PROTECTED,
+                 'overlay': (), 'loader': PROTECTED, 'evolution': PROTECTED, 'correction': PROTECTED,
+                 'sandbox': (), 'device': PROTECTED}
+# STD-VER-011: default lifetime in days; draft counts from the last commit (inactivity).
+LIFETIME = {'draft': 180, 'feature': 180, 'agent': 30, 'evolution': 90, 'correction': 90, 'sandbox': 14}
+
+
+def parse_instant(t):
+    return datetime.datetime.strptime(t, '%Y-%m-%dT%H:%M:%S.%fZ')
+
+
+def fmt_instant(d):
+    return d.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+
+
+def branch_kind(name):
+    return 'main' if name == 'main' else name.split('/')[0]
 
 
 def _lt(a, b):
@@ -91,7 +114,7 @@ def tl_at(tl, asof):
     return None
 
 
-class Store:
+class Store(Workflow):
     def __init__(self):
         self.reset()
 
@@ -105,28 +128,77 @@ class Store:
         self.decls = {}
         self.classes = {}
         self.versions = {}                     # version hash -> {object_id, class, body, valid, tombstone}
-        self.commits = {0: {'parents': [], 'state': {'objects': {}, 'ledger': {}}, 'cseq': 0}}
-        self.branches = {'main': {'head': 0}}
+        self.commits = {}
+        self.branches = {}
         self.ids = itertools.count(1)
+        self.tags = {}                         # STD-VER-060: name -> {commit, branch, signer, deleted}
+        self.processes = {}                    # STD-TXN-001, -031
+        self.idempotency = {}                  # STD-TXN-040: (initiator, key) -> {hash, result}
+        self.outbox = []                       # STD-TXN-050: released effects in commit order
+        self.acked = set()
+        self.schedule = []                     # STD-TIME-050: pending became-effective events
+        self.derivations = {}                  # STD-TXN-030: record id -> DAT-Derivation
+        self.derivation_inputs = {}
+        self.max_inputs = 10000
+        self.change_sets = {}                  # STD-VER-020: object id -> {target, merge commit}
+        self.bulks = {}                        # STD-TXN-070
+        self.pids = itertools.count(1)
+        self._cseq = 0
+        root = self._new_commit('main', [], {'objects': {}, 'ledger': {}}, 0, tx=False)
+        self.branches['main'] = {'head': root, 'kind': 'main', 'created_at': self.now, 'active_at': self.now,
+                                 'parent_line': None, 'created_from': root}
         return True
 
     def set_now(self, now):
         self.now = now
+        self._tick()
         return True
 
-    def set_limits(self, max_body_bytes=None):
+    def set_limits(self, max_body_bytes=None, max_derivation_inputs=None):
+        for v in (max_body_bytes, max_derivation_inputs):
+            if v is not None and (not isinstance(v, int) or isinstance(v, bool) or v < 1):
+                raise BpaError('MODEL.INVALID_VALUE', 'a limit is a positive integer')
         if max_body_bytes is not None:
-            if not isinstance(max_body_bytes, int) or isinstance(max_body_bytes, bool) or max_body_bytes < 1:
-                raise BpaError('MODEL.INVALID_VALUE', 'max_body_bytes is a positive integer')
             self.max_body = max_body_bytes
+        if max_derivation_inputs is not None:
+            self.max_inputs = max_derivation_inputs
         return True
+
+    # ---- commit records, transaction time (STD-VER-001, STD-TIME-001) ----
+
+    def _hlc(self, prev):
+        """Hybrid logical clock: the adapter's physical clock reads `now` (DEC-041)."""
+        t = self.now
+        if prev is not None and t <= prev:
+            t = fmt_instant(parse_instant(prev) + datetime.timedelta(microseconds=1))
+        return t
+
+    def _new_commit(self, branch, parents, state, cseq, tx=True, **meta):
+        prev = self.commits[parents[0]]['tx_time'] if parents else None
+        tx_time = self._hlc(prev) if tx else None
+        rec = {'vae': TENANT, 'branch': branch, 'parents': [self.commits[p]['commit_id'] for p in parents],
+               'cseq': cseq, 'tx_time': tx_time, 'root': tree_root(self.state_entries(state))}
+        cid = next(self.ids) if self.commits else 0
+        c = {'parents': list(parents), 'state': state, 'cseq': cseq, 'branch': branch, 'tx_time': tx_time,
+             'commit_id': content_id('ubos.commit.v1', rec), 'ops': {}, 'hidden': []}
+        c.update(meta)
+        self.commits[cid] = c
+        return cid
+
+    def _advance(self, branch, cid):
+        br = self.branches[branch]
+        br['head'] = cid
+        br['active_at'] = self.now
+
+    def _process_id(self):
+        return '00000000-0000-4000-8000-%012x' % next(self.pids)
 
     def load_genesis(self, classes):
         decls = dict(self.decls)
         for d in classes:
             decls[d['name']] = d
         eff = {}
-        for n in decls:
+        for n in list(decls) + ['ChangeSet', 'Release']:
             eff[n] = effective_class(list(decls.values()), n)
         for n, e in eff.items():
             old = self.classes.get(n)
@@ -161,6 +233,106 @@ class Store:
         if self.commits[cid]['cseq'] != time:
             raise BpaError('IAM.NOT_FOUND', 'no commit with this cseq on the branch')
         return cid
+
+    def _first_parents(self, cid):
+        while True:
+            yield cid
+            ps = self.commits[cid]['parents']
+            if not ps:
+                return
+            cid = ps[0]
+
+    def _at_tx(self, branch, t):
+        """Latest commit on the first-parent history with tx_time <= t (STD-VER-090)."""
+        for c in self._first_parents(self._branch(branch)['head']):
+            tx = self.commits[c]['tx_time']
+            if tx is None or tx <= t:
+                return c
+        raise BpaError('IAM.NOT_FOUND', 'no commit at that time')
+
+    def _by_id(self, branch, commit_id):
+        for c in self._first_parents(self._branch(branch)['head']):
+            if self.commits[c]['commit_id'] == commit_id:
+                return c
+        raise BpaError('IAM.NOT_FOUND', 'commit not on the history of the branch')
+
+    def _select(self, branch, i):
+        """Snapshot of a branch (STD-VER-090): (commit, snapshot time); the time is None for
+        the head, which resolves live parent lines at their heads (STD-VER-080)."""
+        sel = [k for k in ('time', 'commit', 'tag', 'tx_time') if i.get(k) is not None]
+        if len(sel) > 1:
+            raise BpaError('QRY.INVALID_QUERY', 'at most one of time, commit, tag and tx_time')
+        pins = i.get('evaluated_at') or {}
+        if pins and sel:
+            raise BpaError('QRY.INVALID_QUERY', 'evaluated_at replaces the selectors')
+        if branch in pins:
+            cid = self._by_id(branch, pins[branch])
+            return cid, self.commits[cid]['tx_time']
+        if not sel:
+            return self._branch(branch)['head'], None
+        k = sel[0]
+        if k == 'time':
+            cid = self._commit_at(branch, i['time'])
+        elif k == 'commit':
+            cid = self._by_id(branch, i['commit'])
+        elif k == 'tag':
+            tag = self.tags.get(i['tag'])
+            if tag is None or tag['deleted']:
+                raise BpaError('IAM.NOT_FOUND', 'unknown tag')
+            cid = self._by_id(branch, self.commits[tag['commit']]['commit_id'])
+        else:
+            validate_value('instant', None, i['tx_time'])
+            cid = self._at_tx(branch, i['tx_time'])
+            return cid, i['tx_time']
+        return cid, self.commits[cid]['tx_time']
+
+    # ---- branch inheritance (STD-VER-080, -081) ----
+
+    def _parent_view(self, branch, cid, tau, pins, depth=0):
+        """(state, provenance, evaluated_at) of the parent line of a branch, or None."""
+        pl = self.branches[branch].get('parent_line')
+        if not pl:
+            return None
+        if depth > 16:
+            raise BpaError('VER.INHERITANCE_CYCLE')
+        p = pl['branch']
+        if p in pins:
+            pcid = self._by_id(p, pins[p])
+        elif pl['mode'] == 'pinned':
+            pcid = pl['pin']
+        elif tau is None:
+            pcid = self.branches[p]['head']
+        else:
+            pcid = self._at_tx(p, tau)
+        ptau = None if (pl['mode'] == 'live' and tau is None and p not in pins) else self.commits[pcid]['tx_time']
+        return self._view(p, pcid, ptau, pins, depth + 1)
+
+    def _view(self, branch, cid, tau=None, pins=None, depth=0):
+        """Objects visible on a branch at a snapshot: its own versions and hide markers over
+        its parent line (STD-VER-080), with the branch and commit each was resolved from."""
+        c = self.commits[cid]
+        ev = {branch: c['commit_id']}
+        parent = self._parent_view(branch, cid, tau, pins or {}, depth)
+        if parent is None:
+            prov = {oid: (branch, cid) for oid in c['state']['objects']}
+            return c['state'], prov, ev
+        pst, pprov, pev = parent
+        objects, prov = dict(pst['objects']), dict(pprov)
+        for oid in c['hidden']:
+            objects.pop(oid, None)
+            prov.pop(oid, None)
+        for oid, o in c['state']['objects'].items():
+            objects[oid] = o
+            prov[oid] = (branch, cid)
+        ev.update(pev)
+        return {'objects': objects, 'ledger': c['state']['ledger']}, prov, ev
+
+    def _state(self, branch, i=None):
+        """(state, provenance, evaluated_at, commit) of a read."""
+        i = i or {}
+        cid, tau = self._select(branch, i)
+        st, prov, ev = self._view(branch, cid, tau, i.get('evaluated_at') or {})
+        return st, prov, ev, cid
 
     def _decl(self, name):
         return self.decls.get(name) or GENESIS[name]
@@ -206,7 +378,7 @@ class Store:
                 raise BpaError('MODEL.OBJECT_TOO_LARGE', 'body larger than the configured limit')
         return out
 
-    def _version(self, oid, cls, slug, body, valid, predecessor=None, tombstone=False):
+    def _version(self, oid, cls, slug, body, valid, predecessor=None, tombstone=False, provenance=None):
         env = {'object_id': oid, 'class': cls, 'class_version': content_id('ubos.chunk.v1', self._decl(cls)),
                'schema_version': self._decl(cls).get('schema_version', 1), 'kind': self._cls(cls)['kind'],
                'slug': slug, 'valid': valid, 'body_ref': content_id('ubos.chunk.v1', body)}
@@ -214,50 +386,253 @@ class Store:
             env['predecessor'] = predecessor
         if tombstone:
             env['tombstone'] = True
+        if provenance:
+            env['provenance_ref'] = provenance
         vh = content_id('ubos.version.v1', env)
+        old = self.versions.get(vh)
         self.versions[vh] = {'object_id': oid, 'class': cls, 'slug': slug, 'body': body, 'valid': valid,
-                             'tombstone': tombstone}
+                             'tombstone': tombstone, 'cseq': old['cseq'] if old else self._cseq}
+        if provenance:
+            self.versions[vh]['provenance_ref'] = provenance
         return vh
 
     # ---- branches (STD-VER-010, -013) ----
 
-    def create_branch(self, name, source='main', time=None):
+    def create_branch(self, name, source='main', time=None, parent_line=None):
         check_name('branch-name', name)
         if name in self.branches:
             raise BpaError('TXN.ALREADY_EXISTS', 'branch exists')
-        cid = self._commit_at(source, time)
-        self.branches[name] = {'head': cid}
+        if parent_line is not None:
+            pl = self._parent_line(name, parent_line)
+            self._cseq = 0
+            cid = self._new_commit(name, [], {'objects': {}, 'ledger': {}}, 0, tx=False)
+            created_from = self.branches[pl['branch']]['head'] if pl['mode'] == 'live' else pl['pin']
+        else:
+            pl = None
+            cid = created_from = self._commit_at(source, time)
+        self.branches[name] = {'head': cid, 'kind': branch_kind(name), 'created_at': self.now,
+                               'active_at': self.now, 'parent_line': pl, 'created_from': created_from}
         return {'head': self.commits[cid]['cseq']}
 
-    # ---- commit (STD-TXN-001…024, STD-KIND-020…025) ----
+    def _parent_line(self, name, pl):
+        if not isinstance(pl, dict) or pl.get('mode', 'live') not in ('live', 'pinned'):
+            raise BpaError('MODEL.INVALID_VALUE', 'parent_line is {branch, mode, pin}')
+        p = pl.get('branch')
+        self._branch(p)
+        out = {'branch': p, 'mode': pl.get('mode', 'live')}
+        if out['mode'] == 'pinned':
+            out['pin'] = self._commit_at(p, pl.get('pin'))
+        seen, b = {name}, p
+        while b is not None:
+            if b in seen:
+                raise BpaError('VER.INHERITANCE_CYCLE')
+            seen.add(b)
+            nxt = self.branches[b].get('parent_line')
+            b = nxt['branch'] if nxt else None
+        return out
+
+    def set_parent_line(self, branch, parent_line):
+        br = self._branch(branch)
+        br['parent_line'] = None if parent_line is None else self._parent_line(branch, parent_line)
+        return True
+
+    def _expires(self, name):
+        br = self.branches[name]
+        days = LIFETIME.get(br['kind'])
+        if days is None:
+            return None
+        start = br['active_at'] if br['kind'] == 'draft' else br['created_at']
+        return fmt_instant(parse_instant(start) + datetime.timedelta(days=days))
+
+    def _branch_state(self, name):
+        exp = self._expires(name)
+        return 'archived' if exp is not None and self.now >= exp else 'active'
+
+    def _check_active(self, name):
+        self._branch(name)
+        if self._branch_state(name) != 'active':
+            raise BpaError('VER.BRANCH_ARCHIVED')
+
+    def branch_info(self, branch):
+        br = self._branch(branch)
+        out = {'name': branch, 'kind': br['kind'], 'state': self._branch_state(branch),
+               'created_from': self.commits[br['created_from']]['commit_id'],
+               'head': self.commits[br['head']]['commit_id'], 'cseq': self.commits[br['head']]['cseq']}
+        exp = self._expires(branch)
+        if exp is not None:
+            out['expires_at'] = exp
+        if br['parent_line']:
+            pl = br['parent_line']
+            out['parent_line'] = {'branch': pl['branch'], 'mode': pl['mode']}
+            if pl['mode'] == 'pinned':
+                out['parent_line']['pin'] = self.commits[pl['pin']]['cseq']
+        return out
+
+    # ---- processes (STD-TXN-001, -031, -040) ----
+
+    PROCESS_KINDS = ('action', 'schedule', 'job', 'handler', 'merge', 'import', 'agent_run', 'sync', 'kernel')
+    TRIGGERS = ('user', 'event', 'schedule', 'job', 'merge', 'external')
+
+    def _process(self, process, kind='action'):
+        p = dict(process or {})
+        explicit = p.get('process_id') is not None
+        if explicit and (not isinstance(p['process_id'], str) or not GRAMMARS['uuid'].match(p['process_id'])):
+            raise BpaError('MODEL.INVALID_VALUE', 'process_id is a UUID')
+        p.setdefault('kind', kind)
+        if p['kind'] not in self.PROCESS_KINDS:
+            raise BpaError('MODEL.INVALID_VALUE', 'process kind')
+        trig = p.setdefault('trigger', {'type': 'user'})
+        if not isinstance(trig, dict) or trig.get('type') not in self.TRIGGERS:
+            raise BpaError('MODEL.INVALID_VALUE', 'trigger type')
+        parent = p.get('parent_process')
+        if parent is None and trig['type'] in ('event', 'job'):
+            raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'a process triggered by an event or job names its parent')
+        if parent is not None and parent not in self.processes:
+            raise BpaError('IAM.NOT_FOUND', 'unknown parent process')
+        p.setdefault('initiator', PRINCIPAL)
+        for e in p.get('effects') or []:
+            if not isinstance(e, dict) or not isinstance(e.get('type'), str):
+                raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'an effect has a type')
+        if not explicit:
+            p['process_id'] = self._process_id()
+        p['explicit'] = explicit
+        return p
+
+    def _record(self, p, state, commit=None):
+        rec = self.processes.get(p['process_id'])
+        if rec is None:
+            rec = {'process_id': p['process_id'], 'kind': p['kind'], 'initiator': p['initiator'],
+                   'trigger': p['trigger'], 'state': state, 'commits': [], 'effects': 0,
+                   'explicit': p['explicit']}
+            for k in ('parent_process', 'bulk', 'idempotency_key'):
+                if p.get(k) is not None:
+                    rec[k] = p[k]
+            self.processes[p['process_id']] = rec
+        rec['state'] = state
+        if commit is not None:
+            rec['commits'].append(commit)
+        return rec
+
+    def process_info(self, process_id):
+        rec = self.processes.get(process_id)
+        if rec is None:
+            raise BpaError('IAM.NOT_FOUND', 'unknown process')
+        out = {k: v for k, v in rec.items() if k not in ('commits', 'effects', 'explicit')}
+        out['commits'] = [{'branch': b, 'cseq': self.commits[c]['cseq']} for b, c in rec['commits']]
+        kids = sorted(k for k, r in self.processes.items() if r.get('bulk') == process_id)
+        if kids:
+            out['children'] = len(kids)
+        return out
+
+    def lineage(self, process_id, direction='ancestors'):
+        if process_id not in self.processes:
+            raise BpaError('IAM.NOT_FOUND', 'unknown process')
+        if direction == 'ancestors':
+            out, p = [], self.processes[process_id].get('parent_process')
+            while p is not None:
+                out.append(p)
+                p = self.processes[p].get('parent_process')
+            return {'processes': out}
+        if direction != 'descendants':
+            raise BpaError('MODEL.INVALID_VALUE', 'direction is ancestors or descendants')
+        return {'processes': sorted(self._descendants({process_id}) - {process_id})}
+
+    def _descendants(self, roots):
+        out, todo = set(roots), list(roots)
+        while todo:
+            x = todo.pop()
+            for k, r in self.processes.items():
+                if r.get('parent_process') == x and k not in out:
+                    out.add(k)
+                    todo.append(k)
+        return out
+
+    # ---- commit (STD-TXN-001…050, STD-KIND-020…025) ----
 
     def commit(self, branch, changes, process=None, tx_time=None):
         if tx_time is not None or any('tx_time' in ch for ch in changes):
             raise BpaError('TIME.RESERVED_FIELD')
+        p = self._process(process)
+        key = None
+        if p.get('idempotency_key') is not None:
+            key = (TENANT, p['initiator'], p['idempotency_key'])
+            h = content_id('ubos.chunk.v1', {'branch': branch, 'changes': changes})
+            known = self.idempotency.get(key)
+            if known is not None:
+                if known['hash'] != h:
+                    raise BpaError('TXN.IDEMPOTENCY_MISMATCH')
+                return copy.deepcopy(known['result'])
+        self._check_active(branch)
+        if p.get('abort'):
+            self._record(p, 'aborted')
+            return {'state': 'aborted'}
+        try:
+            result, cid = self._do_commit(branch, changes, p)
+        except BpaError:
+            self._record(p, 'failed')
+            raise
+        self._record(p, 'committed', (branch, cid))
+        self._effects(p, branch, cid)
+        if key is not None:
+            self.idempotency[key] = {'hash': h, 'result': copy.deepcopy(result), 'at': self.now}
+        return result
+
+    def _do_commit(self, branch, changes, p, via_change_set=False):
         br = self._branch(branch)
         head = self.commits[br['head']]
-        st = copy.deepcopy(head['state'])
+        view, prov, _ = self._view(branch, br['head'])
+        st = copy.deepcopy(view)
+        inh = {oid: (o['head'], o['timeline']) for oid, o in view['objects'].items() if prov[oid][0] != branch}
+        parent = self._parent_view(branch, br['head'], None, {})
+        self._inherit = {'inh': inh, 'hidden': set(head['hidden']),
+                         'parent': set(parent[0]['objects']) if parent else None,
+                         'pstate': parent[0] if parent else None}
         cseq = head['cseq'] + 1
+        self._cseq = cseq
         result = {'cseq': cseq, 'versions': {}, 'entries': {}, 'retroactive': []}
-        if process and process.get('serializable'):
-            for oid, vh in process.get('reads', {}).items():
+        if p.get('serializable'):
+            for oid, vh in p.get('reads', {}).items():
                 if st['objects'].get(oid, {}).get('head') != vh:
                     raise BpaError('TXN.READ_SET_CHANGED')
-        self._exts = self._extensions(st)
-        self._eff_cache = {}
-        self._written, self._ended = [], []
+        self._begin(st, p)
         try:
-            return self._commit(br, head, st, cseq, result, changes, process)
+            appended = self._commit(st, cseq, result, changes)
+            self._write_policy(branch, st, result, via_change_set)
+            binding = self._binding(st, result)
         finally:
             self._exts = None
             self._eff_cache = {}
+        own = {oid: o for oid, o in st['objects'].items() if oid not in inh or (o['head'], o['timeline']) != inh[oid]}
+        state = {'objects': own, 'ledger': st['ledger']}
+        cid = self._new_commit(branch, [br['head']], state, cseq, ops=self._ops, hidden=sorted(self._inherit['hidden']),
+                               process_id=p['process_id'] if p['explicit'] else None, rule_binding=binding,
+                               derived=self._derived, retroactive=result['retroactive'], appended=appended)
+        self._advance(branch, cid)
+        self._schedule(branch, cid, st, result)
+        result['commit_id'] = self.commits[cid]['commit_id']
+        result['tx_time'] = self.commits[cid]['tx_time']
+        return result, cid
 
-    def _commit(self, br, head, st, cseq, result, changes, process):
+    def _begin(self, st, p):
+        self._exts = self._extensions(st)
+        self._eff_cache = {}
+        self._written, self._ended, self._ops, self._derived = [], [], {}, []
+        self._pid = p['process_id']
+
+    def _op(self, oid, kind, a=None, b=None):
+        op = {'kind': kind}
+        if a is not None:
+            op['from'] = a
+        if b is not None:
+            op['to'] = b
+        self._ops.setdefault(oid, []).append(op)
+
+    def _commit(self, st, cseq, result, changes):
         appended = []
         stale = []
         for ch in changes:
             op = ch.get('op')
-            if op in ('update', 'end') and ch.get('base') is not None:
+            if op in ('update', 'end', 'hide') and ch.get('base') is not None:
                 o = st['objects'].get(ch.get('object_id'))
                 if o is not None and o['head'] != ch['base']:
                     stale.append(ch['object_id'])
@@ -271,17 +646,68 @@ class Store:
                 self._update(st, ch, result, op)
             elif op in ('append', 'reverse', 'adjust'):
                 appended.append(self._append(st, ch, result, op, cseq))
+            elif op in ('hide', 'unhide'):
+                self._hide(st, ch, op)
             else:
                 raise BpaError('MODEL.INVALID_VALUE', 'unknown change')
         self._check_double_entry(appended)
         self._relationships(st, result)
         self._integrity(st, appended)
         self._check_extensions(st)
-        cid = next(self.ids)
-        self.commits[cid] = {'parents': [br['head']], 'state': st, 'cseq': cseq}
-        br['head'] = cid
-        return result
+        return [e['entry_id'] for e in appended]
 
+    def _hide(self, st, ch, op):
+        """Hide markers of inherited objects (STD-VER-080)."""
+        inh = self._inherit
+        oid = ch.get('object_id')
+        if inh['parent'] is None:
+            raise BpaError('MODEL.INVALID_VALUE', 'hide and unhide need a parent line')
+        if op == 'hide':
+            if oid not in st['objects']:
+                raise BpaError('IAM.NOT_FOUND', 'unknown object')
+            if oid not in inh['parent']:
+                raise BpaError('MODEL.INVALID_VALUE', 'only objects of the parent line can be hidden')
+            if ch.get('base') is None:
+                raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'hide names its base (STD-TXN-020)')
+            del st['objects'][oid]
+            inh['hidden'].add(oid)
+        else:
+            if oid not in inh['hidden']:
+                raise BpaError('IAM.NOT_FOUND', 'object is not hidden')
+            inh['hidden'].discard(oid)
+            st['objects'][oid] = copy.deepcopy(inh['pstate']['objects'][oid])
+            inh['inh'][oid] = (st['objects'][oid]['head'], st['objects'][oid]['timeline'])
+        self._op(oid, op)
+
+    def _write_policy(self, branch, st, result, via_change_set):
+        """STD-VER-012: on protected branches, change_set classes are written only by the
+        merge of an approved change set."""
+        if via_change_set or self.branches[branch]['kind'] not in PROTECTED:
+            return
+        classes = [st['objects'][oid]['class'] for oid in result['versions']]
+        for q in st['ledger'].values():
+            classes += [e['class'] for e in q if e['entry_id'] in result['entries']]
+        if any(self._cls(c)['write_policy'] == 'change_set' for c in classes):
+            raise BpaError('VER.CHANGE_SET_REQUIRED')
+
+    def _binding(self, st, result, logic=()):
+        """DAT-RuleBinding of a commit (STD-TIME-040): the class versions evaluated for its
+        changes, the extensions applied to them and the logic that produced derived values."""
+        names = {st['objects'][oid]['class'] for oid in result['versions'] if oid in st['objects']}
+        for q in st['ledger'].values():
+            names |= {e['class'] for e in q if e['entry_id'] in result['entries']}
+        lin = set()
+        for n in names:
+            lin |= set(self._cls(n)['linearization'])
+        items = [{'class': c, 'class_version': content_id('ubos.chunk.v1', self._decl(c))} for c in sorted(lin)]
+        for oid, vh, body in self._extension_objects(st):
+            if body.get('target') in lin:
+                items.append({'class': 'ClassExtension', 'object_id': oid, 'class_version': vh})
+        out = {'classes': items}
+        lg = sorted(set(logic) | {x for d in self._derived for x in self.derivations[d[3]]['logic']})
+        if lg:
+            out['logic'] = lg
+        return out
     def _entry_owner(self, st, entry_id):
         for k, q in st['ledger'].items():
             for e in q:
@@ -304,11 +730,15 @@ class Store:
         body = self._check_body(cls, ch.get('body', {}))
         valid = ch.get('valid') or {}
         a = valid.get('from') or self._default_valid(cls)
-        vh = self._version(oid, cls, ch['slug'], body, {'from': a, 'to': None})
+        rid = self._derivation(ch)
+        vh = self._version(oid, cls, ch['slug'], body, {'from': a, 'to': None}, provenance=rid)
         st['objects'][oid] = {'class': cls, 'kind': eff['kind'], 'slug': ch['slug'], 'head': vh,
                               'timeline': tl_apply([], 'create', vh, a)}
         result['versions'][oid] = vh
         self._written.append((oid, vh))
+        self._op(oid, 'create', a)
+        if rid:
+            self._derived.append(('object', oid, vh, rid))
 
     def _update(self, st, ch, result, op):
         oid = ch.get('object_id')
@@ -329,6 +759,7 @@ class Store:
                                predecessor=o['head'], tombstone=True)
             o['timeline'] = tl_apply(o['timeline'], 'end', vh, d)
             self._ended.append((oid, d))
+            self._op(oid, 'end', d)
             if d < self._default_valid(o['class']):
                 result['retroactive'].append({'object_id': oid, 'from': d, 'to': None})
         else:
@@ -341,11 +772,16 @@ class Store:
             a = valid.get('from') or self._default_valid(o['class'])
             b = valid.get('to')
             to = b if kind == 'set_period' else (None if kind == 'replace_future' else tl_range(o['timeline'], kind, a)[1])
-            vh = self._version(oid, o['class'], slug, body, {'from': a, 'to': to}, predecessor=o['head'])
+            rid = self._derivation(ch)
+            vh = self._version(oid, o['class'], slug, body, {'from': a, 'to': to}, predecessor=o['head'],
+                               provenance=rid)
             rng = tl_range(o['timeline'], kind, a, b)
             o['timeline'] = tl_apply(o['timeline'], kind, vh, a, b)
             o['slug'] = slug
             self._written.append((oid, vh))
+            self._op(oid, kind, a, b if kind == 'set_period' else None)
+            if rid:
+                self._derived.append(('object', oid, vh, rid))
             if rng[0] < self._default_valid(o['class']):
                 result['retroactive'].append({'object_id': oid, 'from': rng[0], 'to': rng[1]})
         o['head'] = vh
@@ -404,7 +840,12 @@ class Store:
         q = st['ledger'].setdefault(key, [])
         entry['seq'] = len(q) + 1
         entry['cseq'] = cseq
+        rid = self._derivation(ch)
+        if rid:
+            entry['provenance_ref'] = rid
         entry['entry_hash'] = self.entry_hash(entry)
+        if rid:
+            self._derived.append(('entry', entry['entry_id'], entry['entry_hash'], rid))
         q.append(entry)
         result['entries'][entry['entry_id']] = {'seq': entry['seq']}
         return entry
@@ -418,7 +859,7 @@ class Store:
 
     def entry_hash(self, e):
         rec = {k: e[k] for k in ('entry_id', 'class', 'ledger_key', 'valid_at', 'corrects', 'correction_type',
-                                 'posting_group') if k in e}
+                                 'posting_group', 'provenance_ref') if k in e}
         rec['class_version'] = content_id('ubos.chunk.v1', self.decls[e['class']])
         rec['body_ref'] = content_id('ubos.chunk.v1', e['body'])
         return content_id('ubos.entry.v1', rec)
@@ -453,13 +894,16 @@ class Store:
 
     # ---- extensions (STD-CLS-030) ----
 
-    def _extensions(self, st):
+    def _extension_objects(self, st):
         out = []
         for oid in sorted(st['objects']):
             o = st['objects'][oid]
             if o['class'] == 'ClassExtension' and not self.versions[o['head']]['tombstone']:
-                out.append(self.versions[o['head']]['body'])
-        return tuple(out)
+                out.append((oid, o['head'], self.versions[o['head']]['body']))
+        return out
+
+    def _extensions(self, st):
+        return tuple(body for _, _, body in self._extension_objects(st))
 
     def _check_extensions(self, st):
         """Every extension written in this commit must apply to its target."""
@@ -590,6 +1034,7 @@ class Store:
         o['head'] = vh
         result['versions'][oid] = vh
         self._ended.append((oid, d))
+        self._op(oid, 'end', d)
         if d < self._default_valid(o['class']):
             result['retroactive'].append({'object_id': oid, 'from': d, 'to': None})
 
@@ -632,8 +1077,12 @@ class Store:
                     o['timeline'] = tl_apply(o['timeline'], 'supersede_from', vh, d)
                     o['head'] = vh
                     result['versions'][src] = vh
+                    self._op(src, 'supersede_from', d)
                     if d < self._default_valid(o['class']):
                         result['retroactive'].append({'object_id': src, 'from': rng[0], 'to': rng[1]})
+        self._cardinality(st)
+
+    def _cardinality(self, st):
         counts = {}
         for src, field, rel, tid in self._relations(st):
             if rel['cardinality'] in ('one_to_one', 'one_to_many'):
@@ -643,8 +1092,8 @@ class Store:
 
     # ---- queries of the class system (STD-CLS-022, -030, -040) ----
 
-    def list_objects(self, branch, cls, only=False, time=None):
-        st = self.commits[self._commit_at(branch, time)]['state']
+    def list_objects(self, branch, cls, only=False, sel=None):
+        st = self._state(branch, sel)[0]
         if cls not in self.classes and cls not in GENESIS:
             raise BpaError('MODEL.REFERENCE_INVALID', 'unknown class %s' % cls)
         out = []
@@ -656,8 +1105,8 @@ class Store:
                 out.append(oid)
         return {'objects': sorted(out)}
 
-    def traverse(self, branch, object_id, relation, time=None):
-        st = self.commits[self._commit_at(branch, time)]['state']
+    def traverse(self, branch, object_id, relation, sel=None):
+        st = self._state(branch, sel)[0]
         o = st['objects'].get(object_id)
         if o is None:
             raise BpaError('IAM.NOT_FOUND', 'unknown object')
@@ -691,16 +1140,17 @@ class Store:
             raise BpaError('MODEL.REFERENCE_INVALID', 'unknown relation %s' % relation)
         return {'objects': sorted(out)}
 
-    def class_at(self, branch, cls, time=None):
-        st = self.commits[self._commit_at(branch, time)]['state']
+    def class_at(self, branch, cls, sel=None):
+        st = self._state(branch, sel)[0]
         if cls not in self.classes and cls not in GENESIS:
             raise BpaError('MODEL.REFERENCE_INVALID', 'unknown class %s' % cls)
         return public(effective_class(list(self.decls.values()), cls, self._extensions(st)))
 
     # ---- reads (STD-TIME-012, -020) ----
 
-    def read(self, branch, object_id, asof=None, time=None):
-        st = self.commits[self._commit_at(branch, time)]['state']
+    def read(self, branch, object_id, asof=None, sel=None):
+        sel = sel or {}
+        st, prov, ev, _ = self._state(branch, sel)
         o = st['objects'].get(object_id)
         if o is None:
             raise BpaError('IAM.NOT_FOUND', 'unknown object')
@@ -708,12 +1158,39 @@ class Store:
         seg = tl_at(o['timeline'], a)
         if seg is None:
             raise BpaError('QRY.NOT_FOUND_AT_TIME')
-        v = self.versions[seg[2]]
-        return {'version_hash': seg[2], 'body': v['body'], 'slug': v['slug'],
-                'valid': {'from': seg[0], 'to': seg[1]}}
+        out = self._segment(seg)
+        out['evaluated_at'] = ev
+        if sel.get('provenance'):
+            b, c = prov[object_id]
+            out['provenance'] = {'branch': b, 'cseq': self.commits[c]['cseq'], 'commit_id': self.commits[c]['commit_id']}
+        if sel.get('follow') is not None:
+            out['targets'] = self._follow(st, o, seg, sel['follow'], a)
+        return out
 
-    def read_ledger(self, branch, cls, ledger_key, asof=None, time=None):
-        st = self.commits[self._commit_at(branch, time)]['state']
+    def _segment(self, seg):
+        v = self.versions[seg[2]]
+        out = {'version_hash': seg[2], 'body': v['body'], 'slug': v['slug'], 'valid': {'from': seg[0], 'to': seg[1]}}
+        if v.get('provenance_ref'):
+            out['provenance_ref'] = v['provenance_ref']
+        return out
+
+    def _follow(self, st, o, seg, field, a):
+        """Targets of a reference field at the coordinates of the source (STD-TIME-013)."""
+        eff = self._cls(o['class'])
+        if field not in eff['fields']:
+            raise BpaError('MODEL.INVALID_VALUE', 'unknown field %s' % field)
+        out = []
+        for f, uri in self._refs(eff, self.versions[seg[2]]['body']):
+            if f != field:
+                continue
+            tid = self._resolve(st, uri)
+            tseg = tl_at(st['objects'][tid]['timeline'], a) if tid else None
+            if tseg is not None:
+                out.append(dict(self._segment(tseg), object_id=tid))
+        return out
+
+    def read_ledger(self, branch, cls, ledger_key, asof=None, sel=None):
+        st, _, ev, _ = self._state(branch, sel)
         q = st['ledger'].get((cls, canonical(ledger_key)), [])
         out = []
         for e in q:
@@ -721,8 +1198,10 @@ class Store:
                 continue
             rec = {k: e[k] for k in ('entry_id', 'seq', 'valid_at', 'body', 'corrects', 'correction_type') if k in e}
             rec['entry_hash'] = e['entry_hash']
+            if e.get('provenance_ref'):
+                rec['provenance_ref'] = e['provenance_ref']
             out.append(rec)
-        return {'entries': out}
+        return {'entries': out, 'evaluated_at': ev}
 
     # ---- state tree (STD-PROOF-001) ----
 
@@ -735,8 +1214,8 @@ class Store:
                 ent.append(['l/%s/%s/%020d' % (ch, kh, e['seq']), e['entry_hash']])
         return sorted(ent, key=lambda x: x[0].encode('utf-8'))
 
-    def export_state(self, branch, time=None):
-        st = self.commits[self._commit_at(branch, time)]['state']
+    def export_state(self, branch, sel=None):
+        st = self.commits[self._select(branch, sel or {})[0]]['state']
         ent = self.state_entries(st)
         return {'root': tree_root(ent), 'entries': ent}
 
@@ -751,12 +1230,16 @@ class Store:
                 stack.extend(self.commits[c]['parents'])
         return seen
 
-    def _base_state(self, xs, ys):
-        """Merge base of two sets of commits; a virtual base for several best ancestors."""
+    def _best(self, xs, ys):
         ax = set().union(*(self._anc(x) for x in xs))
         ay = set().union(*(self._anc(y) for y in ys))
         common = ax & ay
-        best = sorted(c for c in common if not any(c != d and c in self._anc(d) for d in common))
+        return sorted((c for c in common if not any(c != d and c in self._anc(d) for d in common)),
+                      key=lambda c: self.commits[c]['commit_id'])
+
+    def _base_state(self, xs, ys):
+        """Merge base of two sets of commits; a virtual base for several best ancestors."""
+        best = self._best(xs, ys)
         acc, tips = self.commits[best[0]]['state'], {best[0]}
         for c in best[1:]:
             b = self._base_state(tips, {c})
@@ -764,10 +1247,12 @@ class Store:
             tips.add(c)
         return acc
 
-    def _merge_states(self, B, S, T, virtual=False, cseq=None, branch=None):
+    def _merge_states(self, B, S, T, virtual=False, cseq=None, branch=None, keep=False):
         conflicts, objects = [], {}
         for oid in sorted(set(B['objects']) | set(S['objects']) | set(T['objects'])):
             o, c = self._merge_object(oid, B['objects'].get(oid), S['objects'].get(oid), T['objects'].get(oid), virtual)
+            if c and keep and not virtual:
+                o = copy.deepcopy(T['objects'].get(oid))
             conflicts += c
             if o is not None:
                 objects[oid] = o
@@ -811,12 +1296,14 @@ class Store:
                 r = vt
             elif vt == vb:
                 r = vs
-            elif vs is None or vt is None:
-                conflicts.append({'object_id': oid, 'kind': 'ended_vs_changed'})
-                r = vb
-            elif meta['kind'] == 'raw_document':
-                conflicts.append({'object_id': oid, 'kind': 'raw_document'})
-                r = vb
+            elif vs is None or vt is None or meta['kind'] == 'raw_document':
+                kind = 'raw_document' if vs is not None and vt is not None else 'ended_vs_changed'
+                res = None if virtual else self._resolution(oid, None, vb, vs, vt)
+                if res is None:
+                    conflicts.append({'object_id': oid, 'kind': kind})
+                    r = vb
+                else:
+                    r = res[0]
             else:
                 r, fc = self._merge_body(oid, vb, vs, vt, virtual)
                 conflicts += fc
@@ -866,43 +1353,174 @@ class Store:
             elif t == b:
                 r = s
             else:
-                conflicts.append({'object_id': oid, 'kind': 'field', 'path': '/' + k})
-                r = b
+                res = None if virtual else self._resolution(oid, '/' + k, b, s, t, absent)
+                if res is None:
+                    conflicts.append({'object_id': oid, 'kind': 'field', 'path': '/' + k})
+                    r = b
+                else:
+                    r = res[0]
             if r is not absent:
                 out[k] = r
         return tuple(sorted(out.items(), key=lambda kv: kv[0])), conflicts
 
-    def merge(self, source, target):
+    RES_CHOICES = ('source', 'target', 'base', 'custom')
+
+    def _resolutions(self, items):
+        """Recorded resolutions supplied with a merge (STD-VER-058)."""
+        out = {}
+        for r in items or []:
+            if not isinstance(r, dict) or not r.get('object_id') or not r.get('resolver') or 'choice' not in r:
+                raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'a resolution names object_id, choice and resolver')
+            if r['choice'] not in self.RES_CHOICES or (r['choice'] == 'custom') != ('value' in r):
+                raise BpaError('MODEL.INVALID_VALUE', 'choice is source, target, base, or custom with a value')
+            out[(r['object_id'], r.get('path'))] = r
+        return out
+
+    def _resolution(self, oid, path, b, s, t, absent=None):
+        """The resolved value of a conflict as a 1-tuple, or None when unresolved."""
+        r = getattr(self, '_res', {}).get((oid, path))
+        if r is None:
+            return None
+        if r['choice'] == 'custom':
+            if path is None:
+                raise BpaError('MODEL.INVALID_VALUE', 'an object-level conflict has no custom value')
+            v = r['value']
+        else:
+            v = {'source': s, 'target': t, 'base': b}[r['choice']]
+        if path is None:
+            chosen = None if v is None else self.versions[v]['body']
+        else:
+            chosen = None if v is absent else v
+        rec = {'object_id': oid, 'choice': r['choice'], 'value_hash': content_id('ubos.chunk.v1', chosen),
+               'resolver': r['resolver']}
+        if path is not None:
+            rec['path'] = path
+        if r.get('reason') is not None:
+            rec['reason'] = r['reason']
+        self._used[(oid, path)] = rec
+        return (v,)
+
+    def _merge_allowed(self, source, target, via_change_set=False):
+        """STD-VER-011 merge targets per branch kind (DEC-041)."""
+        sk, tk = self.branches[source]['kind'], self.branches[target]['kind']
+        if sk == 'sandbox' or (tk in PROTECTED and tk not in MERGE_TARGETS[sk]):
+            raise BpaError('VER.MERGE_NOT_ALLOWED', '%s branches do not merge into %s' % (sk, tk))
+        if tk in PROTECTED and sk == 'agent' and not via_change_set:
+            raise BpaError('VER.CHANGE_SET_REQUIRED', 'agent branches reach protected targets by change set only')
+
+    def _changed(self, T, st):
+        """Objects whose state differs from T, and entries absent from T."""
+        objs = [oid for oid, o in st['objects'].items()
+                if oid not in T['objects'] or not self._same(T['objects'][oid], o)]
+        seen = {e['entry_id'] for q in T['ledger'].values() for e in q}
+        entries = [e for q in st['ledger'].values() for e in q if e['entry_id'] not in seen]
+        return objs, entries
+
+    def _validate(self, T, st, entries):
+        """STD-VER-055: constraints, references, cardinality, double entry and periods of a
+        merged (or reverted) state, relative to the target state T."""
+        objs, _ = self._changed(T, st)
+        self._exts = self._extensions(st)
+        self._eff_cache = {}
+        try:
+            self._written = []
+            for oid in objs:
+                o = st['objects'][oid]
+                v = self.versions[o['head']]
+                if not v['tombstone']:
+                    self._check_body(o['class'], v['body'])
+                    self._written.append((oid, o['head']))
+            for src in sorted(st['objects']):
+                if not self._live(st, src) or (src, st['objects'][src]['head']) in self._written:
+                    continue
+                o = st['objects'][src]
+                refs = self._refs(self._cls(o['class']), self.versions[o['head']]['body'])
+                if any(self._resolve(st, uri) in objs for _, uri in refs):
+                    self._written.append((src, o['head']))
+            self._integrity(st, entries)
+            self._cardinality(st)
+            self._check_double_entry(entries)
+            for cls in sorted({e['class'] for e in entries}):
+                self._check_period(st, cls)
+            self._check_extensions(st)
+        finally:
+            self._exts = None
+            self._eff_cache = {}
+
+    def _merge_result(self, s, t, source, cseq, keep=False):
+        B = self._base_state({t}, {s})
+        return self._merge_states(B, self.commits[s]['state'], self.commits[t]['state'],
+                                  cseq=cseq, branch=source, keep=keep)
+
+    @staticmethod
+    def _unique(items):
+        out = []
+        for c in items:
+            if c not in out:
+                out.append(c)
+        return out
+
+    def merge(self, source, target, resolutions=None, process=None, _change_set=None):
+        self._branch(source)
+        self._check_active(target)
+        self._merge_allowed(source, target, _change_set is not None)
         s, t = self._branch(source)['head'], self._branch(target)['head']
         if s in self._anc(t):
             return {'cseq': self.commits[t]['cseq'], 'merged': False}
-        B = self._base_state({t}, {s})
+        p = self._process(process, kind='merge')
+        self._res, self._used = self._resolutions(resolutions), {}
         cseq = self.commits[t]['cseq'] + 1
-        st, conflicts = self._merge_states(B, self.commits[s]['state'], self.commits[t]['state'],
-                                           cseq=cseq, branch=source)
-        if conflicts:
-            uniq = []
-            for c in conflicts:
-                if c not in uniq:
-                    uniq.append(c)
-            raise BpaError('VER.MERGE_CONFLICT', {'conflicts': uniq})
-        cid = next(self.ids)
-        self.commits[cid] = {'parents': [t, s], 'state': st, 'cseq': cseq}
-        self.branches[target]['head'] = cid
+        self._cseq = cseq
+        try:
+            st, conflicts = self._merge_result(s, t, source, cseq)
+            if conflicts:
+                raise BpaError('VER.MERGE_CONFLICT', {'conflicts': self._unique(conflicts)})
+            unused = set(self._res) - set(self._used)
+            if unused:
+                raise BpaError('MODEL.INVALID_VALUE', 'a resolution matches no conflict')
+            used = [self._used[k] for k in sorted(self._used, key=lambda k: (k[0], k[1] or ''))]
+        finally:
+            self._res, self._used = {}, {}
+        T = self.commits[t]['state']
+        objs, entries = self._changed(T, st)
+        self._begin(st, p)
+        result = {'versions': {oid: st['objects'][oid]['head'] for oid in objs},
+                  'entries': {e['entry_id']: {} for e in entries}}
+        try:
+            self._write_policy(target, st, result, _change_set is not None)
+            binding = self._binding(st, result)
+        finally:
+            self._exts = None
+            self._eff_cache = {}
+        self._validate(T, st, entries)
+        ops = {oid: [{'kind': 'merge'}] for oid in objs}
+        cid = self._new_commit(target, [t, s], st, cseq, ops=ops, rule_binding=binding, resolutions=used,
+                               change_set=_change_set, process_id=p['process_id'] if p['explicit'] else None,
+                               appended=[e['entry_id'] for e in entries])
+        self._advance(target, cid)
+        self._record(p, 'committed', (target, cid))
+        self._effects(p, target, cid)
+        self._schedule(target, cid, st, {'versions': result['versions']})
         appended = {}
         for q in st['ledger'].values():
             for e in q:
                 if e.get('cseq') == cseq and 'source_seq' in e:
                     appended[e['entry_id']] = {'seq': e['seq'], 'source_seq': e['source_seq']['seq']}
-        return {'cseq': cseq, 'merged': True, 'appended': appended}
+        out = {'cseq': cseq, 'merged': True, 'appended': appended, 'commit_id': self.commits[cid]['commit_id'],
+               'tx_time': self.commits[cid]['tx_time']}
+        if used:
+            out['resolutions'] = used
+        return out
 
     # ---- diff (STD-VER-030) ----
 
     def _coord(self, c):
-        return self.commits[self._commit_at(c['branch'], c.get('time'))]['state']
+        return self._state(c['branch'], c)[0]
 
     def diff(self, a, b):
-        A, B = self._coord(a), self._coord(b)
+        return self._diff_states(self._coord(a), self._coord(b))
+
+    def _diff_states(self, A, B):
         out = []
         for oid in sorted(set(A['objects']) | set(B['objects'])):
             x, y = A['objects'].get(oid), B['objects'].get(oid)
@@ -912,7 +1530,7 @@ class Store:
                    'versions': {'a': x['head'] if x else None, 'b': y['head'] if y else None}}
             if x is None:
                 ent['op'] = 'added'
-            elif self.versions[y['head']]['tombstone'] and not self.versions[x['head']]['tombstone']:
+            elif y is None or self.versions[y['head']]['tombstone'] and not self.versions[x['head']]['tombstone']:
                 ent['op'] = 'ended'
             else:
                 vx, vy = self.versions[x['head']], self.versions[y['head']]

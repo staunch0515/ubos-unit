@@ -58,6 +58,8 @@ DAT-Error:
   | `VER.TAG_IMMUTABLE` | tag move or reuse | no | yes | 409 |
   | `VER.INHERITANCE_CYCLE` | branch parent-line cycle | no | yes | 422 |
   | `VER.SELECTION_NOT_CLOSED` | partial acceptance not closed under references | no | yes | 422 |
+  | `VER.MERGE_NOT_ALLOWED` | merge between branch kinds that STD-VER-011 does not allow (since 1.0-rc1) | no | yes | 409 |
+  | `VER.BRANCH_ARCHIVED` | commit to or merge into an archived branch (since 1.0-rc1) | no | yes | 409 |
   | `TIME.OVERLAPPING_VALIDITY` | `set_period` overlap | no | yes | 409 |
   | `TIME.RESERVED_FIELD` | client supplied a transaction time | no | yes | 422 |
   | `LEDG.IMMUTABLE_ENTRY` | update of an entry | no | yes | 409 |

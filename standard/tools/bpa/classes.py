@@ -11,6 +11,14 @@ KINDS = ('definition', 'ledger', 'system', 'raw_document', 'inherit')
 CONCRETE = ('definition', 'ledger', 'raw_document')
 
 # Genesis model (STD-CLS-010): the root and the abstract base classes with their kinds.
+def _f(name, type_, required=False, **extra):
+    f = {'name': name, 'type': type_, 'label': name.replace('_', ' '), 'description': name}
+    if required:
+        f['required'] = True
+    f.update(extra)
+    return f
+
+
 GENESIS = {
     'Object': {'name': 'Object', 'kind': None, 'parent': None, 'abstract': True},
     'DataObject': {'name': 'DataObject', 'kind': None, 'parent': 'Object', 'abstract': True},
@@ -30,6 +38,17 @@ GENESIS = {
                            {'name': 'refinements', 'type': 'json', 'label': 'refinements', 'description': 'refinements'},
                            {'name': 'ports', 'type': 'json', 'label': 'ports', 'description': 'ports'},
                            {'name': 'views', 'type': 'json', 'label': 'views', 'description': 'views'}]},
+    # STD-VER-020, -061 (BPA 1.0-rc1, DEC-041): change sets and releases are Definition objects.
+    'ChangeSet': {'name': 'ChangeSet', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
+                  'fields': [_f('source', 'text', True), _f('target', 'text', True), _f('title', 'text', True),
+                             _f('description', 'text'),
+                             _f('state', 'enum', True, constraints={'allowed_values': [
+                                 'open', 'submitted', 'approved', 'rejected', 'merged', 'abandoned']}),
+                             _f('preview', 'text'), _f('approvals', 'json'), _f('simulations', 'json'),
+                             _f('selection', 'json'), _f('merged_commit', 'text')]},
+    'Release': {'name': 'Release', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
+                'fields': [_f('version', 'text', True), _f('tag', 'text', True), _f('notes', 'text'),
+                           _f('change_sets', 'json'), _f('approvals', 'json')]},
 }
 PORT_REQUIRED = ('name', 'kind', 'permission', 'description')
 CARDINALITY = {'one_to_one': 'reference', 'many_to_one': 'reference', 'one_to_many': 'list', 'many_to_many': 'list'}

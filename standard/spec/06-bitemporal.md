@@ -41,21 +41,21 @@
 - **Notes:** Future-dated versions become effective purely by resolution. No job is needed.
 
 ### STD-TIME-013 — Consistent coordinates across references
-- **Clause:** When a read or query follows references, targets MUST be resolved at the same `(asof, time)` as the source object, unless the reference pins a version.
+- **Clause:** When a read or query follows references, targets MUST be resolved at the same `(asof, time)` as the source object, unless the reference pins a version. Stored references carry no version pin (STD-ADDR-001); the exception applies to references given with a `commit` or `tag` selector in a query (STD-ADDR-002). A target without a segment at `asof` is omitted (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1800…1809
 - **Satisfies:** FR-TIME-032
 - **Notes:** —
 
 ### STD-TIME-014 — Range queries
-- **Clause:** A valid-range query `[a, b)` at time t MUST return the segments of `TL(o, X, t)` that intersect `[a, b)`, clipped to it. A transaction-range query `[c, d)` MUST return the commits on X with `c ≤ tx_time < d` that changed o, with their timeline operations.
+- **Clause:** A valid-range query `[a, b)` at time t MUST return the segments of `TL(o, X, t)` that intersect `[a, b)`, clipped to it. A transaction-range query `[c, d)` MUST return the commits on X with `c ≤ tx_time < d` that changed o, with their timeline operations. Valid bounds use the granularity of the class, and an empty valid range is rejected (`MODEL.INVALID_VALUE`). The commits on X are those of its first-parent history; changes made by relationship rules report their operation, and merge and revert commits report `merge` and `revert` (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1810…1824
 - **Satisfies:** FR-TIME-033, FR-QRY-051
 - **Notes:** —
 
 ### STD-TIME-015 — Evaluation evidence
-- **Clause:** Every bitemporal answer MUST carry `evaluated_at`: the commit ID resolved for each branch consulted. Repeating the request with those commit IDs MUST return identical results.
+- **Clause:** Every bitemporal answer MUST carry `evaluated_at`: the commit ID resolved for each branch consulted. Repeating the request with those commit IDs MUST return identical results. `evaluated_at` maps each branch consulted, including the branches of a parent line (STD-VER-080), to its commit ID; a request that carries `evaluated_at` uses exactly those commits and no other selector (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1825…1829
 - **Satisfies:** FR-TIME-034
@@ -76,7 +76,7 @@
 - **Notes:** —
 
 ### STD-TIME-031 — Impact set
-- **Clause:** For a retroactive change of object o over the valid range R, the impact set MUST be the transitive closure, over derivation records (STD-TXN-030), of every object version and entry whose derivation used a version of o for an `asof` inside R that is superseded by the change.
+- **Clause:** For a retroactive change of object o over the valid range R, the impact set MUST be the transitive closure, over derivation records (STD-TXN-030), of every object version and entry whose derivation used a version of o for an `asof` inside R that is superseded by the change. A version v is superseded for an `asof` a when v is the version at a before the change and not after it. The closure follows every derivation record on the branch whose inputs name an impacted version or entry, at any `asof` (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1860…1874
 - **Satisfies:** FR-TIME-042
@@ -88,7 +88,7 @@
   - governance sheets and decision tables;
   - policies and logic assets.
 
-  These are the items evaluated to validate, decide or compute any change in the commit.
+  These are the items evaluated to validate, decide or compute any change in the commit. `classes` lists the declared class versions of the linearizations of the classes of the changed objects and entries, and the versions of the extension objects applied to them; `logic` lists the logic of the commit's derivation records (STD-TXN-030). Sheets, tables, policies and guards are bound with the Governance profile (DEC-041).
 - **Grammar / Schema:** `DAT-RuleBinding`
 - **Conformance vectors:** VER-CONF-1875…1884
 - **Satisfies:** FR-TIME-061, FR-FLOW-032
@@ -105,7 +105,7 @@ DAT-RuleBinding:
 ```
 
 ### STD-TIME-050 — Emission
-- **Clause:** For classes that declare `emit_became_effective`, the implementation MUST emit, at least once, a `BecameEffective` event for each version segment start in the future at commit time, when wall-clock time reaches it. If the segment is removed before then, no event is emitted.
+- **Clause:** For classes that declare `emit_became_effective`, the implementation MUST emit, at least once, a `BecameEffective` event for each version segment start in the future at commit time, when wall-clock time reaches it. If the segment is removed before then, no event is emitted. A segment start is in the future when it is after the commit date (date granularity) or the commit instant. The event is emitted when the wall clock reaches the start and the segment still starts there with the same version, through the outbox (STD-TXN-050) with effect ID `became-effective/<branch>/<object_id>/<start>` (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1900…1909
 - **Satisfies:** FR-TIME-052

@@ -29,6 +29,10 @@
       "description": "branch name",
       "type": "string"
     },
+    "state": {
+      "description": "open | submitted | approved | rejected | merged | abandoned (DEC-041)",
+      "type": "string"
+    },
     "target": {
       "description": "branch name",
       "type": "string"
@@ -41,7 +45,8 @@
   "required": [
     "source",
     "target",
-    "title"
+    "title",
+    "state"
   ],
   "title": "DAT-ChangeSet",
   "type": "object"

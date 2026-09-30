@@ -84,17 +84,33 @@ DAT-ConformanceReport:
   | `type_selector` | `{classes, class, selector, only}` | `{matches, specificity}` (STD-CLS-022). Since 1.0-rc1. |
   | `blind_index` | `{key, type, constraints, value}` | the blind index of the value under the 32-byte hexadecimal key (STD-OBJ-012). Since 1.0-rc1. |
   | `reset`, `set_now`, `load_genesis` | `{}`, `{now}`, `{classes}` | `true` (STD-CONF-002) |
-  | `set_limits` | `{max_body_bytes}` | `true`; the configured body limit for the following operations (STD-OBJ-009); `reset` restores the default of 16 MiB. Since BPA 1.0-rc1. |
-  | `create_branch` | `{name, from}` | `{head}`, the cseq of the fork commit |
-  | `commit` | `{branch, changes, process}` | `{cseq, versions, entries, retroactive}` (`DAT-AdapterChange`); `process` is `{serializable, reads}` with `reads` mapping objects to the version hashes read; `retroactive` lists `{object_id, from, to}` per retroactive change (STD-TIME-030); a supplied `tx_time` fails with `TIME.RESERVED_FIELD` |
-  | `read` | `{branch, object_id, asof, time}` | `{version_hash, body, valid, tombstone}` |
-  | `read_ledger` | `{branch, class, ledger_key, asof, time}` | `{entries}`, each `{entry_id, seq, entry_hash, valid_at, body}` |
-  | `merge` | `{source, target}` | `{cseq, merged, appended}`; `merged` is false when the source is already contained in the target (no commit); `appended` maps appended entries to `{seq, source_seq}`; on conflict `VER.MERGE_CONFLICT` |
+  | `set_limits` | `{max_body_bytes, max_derivation_inputs}` | `true`; the configured body limit (STD-OBJ-009) and maximum of derivation inputs (STD-TXN-030) for the following operations; `reset` restores the defaults of 16 MiB and 10,000. Since BPA 1.0-rc1. |
+  | `create_branch` | `{name, from, parent_line}` | `{head}`, the cseq of the fork commit; since 1.0-rc1 `parent_line` `{branch, mode, pin}` (`pin` a cseq of the parent) creates an inheriting branch that starts empty at cseq 0 (STD-VER-080) |
+  | `commit` | `{branch, changes, process}` | `{cseq, versions, entries, retroactive}` (`DAT-AdapterChange`); `process` is `{serializable, reads}` with `reads` mapping objects to the version hashes read; `retroactive` lists `{object_id, from, to}` per retroactive change (STD-TIME-030); a supplied `tx_time` fails with `TIME.RESERVED_FIELD`. Since 1.0-rc1 the result also has `commit_id` and `tx_time`, and `process` may give `process_id`, `kind`, `initiator`, `trigger`, `parent_process`, `idempotency_key`, `effects` (list of `{type, object_id, payload}`) and `abort` (the result is then `{state: aborted}`) (STD-TXN-030…050) |
+  | `read` | `{branch, object_id, asof, time}` | `{version_hash, body, valid, tombstone}`; since 1.0-rc1 with the snapshot selectors of convention 9, `provenance` (adds `{branch, cseq, commit_id}`, STD-VER-081) and `follow` (a reference field; adds `targets` read at the same coordinates, STD-TIME-013); the result carries `evaluated_at` (STD-TIME-015) and, for derived versions, `provenance_ref` |
+  | `read_ledger` | `{branch, class, ledger_key, asof, time}` | `{entries}`, each `{entry_id, seq, entry_hash, valid_at, body}`; since 1.0-rc1 with the selectors of convention 9 and `evaluated_at` in the result |
+  | `merge` | `{source, target}` | `{cseq, merged, appended}`; `merged` is false when the source is already contained in the target (no commit); `appended` maps appended entries to `{seq, source_seq}`; on conflict `VER.MERGE_CONFLICT`. Since 1.0-rc1 `resolutions` (list of `{object_id, path, choice, value, resolver, reason}`) resolve conflicts and are returned as `DAT-Resolution` items, and `process` is as for `commit` (STD-VER-011, -055, -058) |
   | `diff` | `{from, to}`, each `{branch, time}` | list of `DAT-DiffEntry` by object, top-level field paths, ledger entries as `appended` (STD-VER-030) |
   | `export_state` | `{branch, time}` | `{root, entries}` of the state tree (STD-PROOF-001) |
   | `list_objects` | `{branch, class, only, time}` | `{objects}`, the sorted identifiers of live objects matching the class filter (STD-CLS-022). Since 1.0-rc1. |
   | `traverse` | `{branch, object_id, relation, time}` | `{objects}`, the sorted identifiers of live objects reached through a relationship field or an inverse name (STD-CLS-040). Since 1.0-rc1. |
   | `class_at` | `{branch, class, time}` | the effective definition with the extensions visible at that coordinate (STD-CLS-030). Since 1.0-rc1. |
+  | `branch_info` | `{branch}` | `{name, kind, state, expires_at, cseq, head, created_from, parent_line}` (STD-VER-010, -011). Since 1.0-rc1. |
+  | `set_parent_line` | `{branch, parent_line}` | `true`; replaces the parent line (STD-VER-080). Since 1.0-rc1. |
+  | `commit_info` | `{branch}` and a selector | `{branch, cseq, commit_id, tx_time, parents, rule_binding, process_id, change_set, resolutions, reverts}` of the selected commit; `rule_binding.classes` items are `{class, class_version}` or `{class: ClassExtension, object_id, class_version}` (STD-TIME-040). Since 1.0-rc1. |
+  | `read_range` | `{branch, object_id, from, to}` and a selector | `{segments, evaluated_at}`, each segment as `read` clipped to `[from, to)` (STD-TIME-014). Since 1.0-rc1. |
+  | `history` | `{branch, object_id, from, to}` | `{commits, evaluated_at}`, each `{cseq, commit_id, tx_time, ops}` for the first-parent commits with `from ≤ tx_time < to` that changed the object; `ops` are `{kind, from, to}` (STD-TIME-014). Since 1.0-rc1. |
+  | `tree_diff` | `{from, to}`, each a branch with a selector | `{keys}`, the state-tree keys whose entries differ (STD-VER-031). Since 1.0-rc1. |
+  | `merge_preview` | `{source, target}` | `DAT-MergePreview` with its content ID in `preview` (STD-VER-057). Since 1.0-rc1. |
+  | `change_set` | `{action, id, …}` | `{state, preview, approvals, merged_commit}`; `action` is `open` (`source`, `target`, `title`, `description`), `get`, `submit`, `approve` or `reject` (`approver`), `merge` (`resolutions`) or `abandon` (STD-VER-020, -021). Since 1.0-rc1. |
+  | `tag`, `delete_tag`, `tag_info` | `{name, branch, signer}` and a selector; `{name}`; `{name}` | `{name, branch, cseq, commit_id}`; `true`; `{name, branch, cseq, commit_id, signer, signature, deleted}` (STD-VER-060). Since 1.0-rc1. |
+  | `release` | `{branch, version, tag, object_id, notes, change_sets}` | `{tag, tagged, cseq, versions}`: the tagged cseq and the commit of the `Release` object (STD-VER-061). Since 1.0-rc1. |
+  | `revert` | `{branch}` with `time`, `commit` or `tag`; or `{process_id}`; or `{change_set}`; with `reversal_ids`, `dry_run`, `process` | `{reverted, dependents, commits}`; `reversal_ids` maps each entry to revert to the identifier of its reversal; `dry_run` omits `commits` and changes nothing (STD-VER-070, -071). Since 1.0-rc1. |
+  | `process_info`, `lineage` | `{process_id}`; `{process_id, direction}` | `DAT-Process` members with `commits` as `{branch, cseq}` and `children` for bulk processes; `{processes}` for `ancestors` (nearest first) or `descendants` (sorted) (STD-TXN-031). Since 1.0-rc1. |
+  | `derivation` | `{branch, object_id}` or `{branch, entry_id}`, and a selector | `DAT-Derivation` of the head version or the entry, with `provenance_ref` (STD-TXN-030). Since 1.0-rc1. |
+  | `impact` | `{branch, time}` | `{impacted, entries}`: the impact set of the retroactive changes of that commit, versions as `{object_id, version_hash}` (STD-TIME-031). Since 1.0-rc1. |
+  | `outbox`, `ack` | `{}`; `{effect_ids}` | `{effects}` released and not acknowledged, in delivery order, each `{effect_id, type, branch, cseq, object_id, payload}`; `true` (STD-TXN-050, STD-TIME-050). Since 1.0-rc1. |
+  | `bulk` | `{process_id, branch, changes, max_changes, mode, staging, resume}` | `{state, children, error, merge}`; `mode` is `independent` or `all_or_nothing`; children are `{n, branch, cseq, changes}`; a failing child gives `state: failed` with its error code (STD-TXN-070). Since 1.0-rc1. |
 
   Conventions of the adapter operations:
   1. Absent inputs take their defaults. `time` is the `cseq` of a commit on the branch (`main` starts at `cseq` 0, empty), and `asof` is a date or an instant. Object and entry identifiers are chosen by the vector.
@@ -102,8 +118,10 @@ DAT-ConformanceReport:
   3. In adapter inputs a class is referenced by its name. A trait is a declaration with `trait: true` and `applies_to`, a list of kinds. A ledger class declares `ledger: {key, amounts, double_entry, period_scope}`; `period_scope` names a class whose objects have the fields `start` and `end` (dates, half-open) and `state` (`open`, `closing`, `closed`).
   4. The business time zone of the adapter is UTC; the posting date of an append is the date of `now` (`set_now`).
   5. An expectation `{error_code, details}` also compares the `details` of the error (`DAT-Error`) with `subset` matching: `TXN.HEAD_MOVED` lists the stale objects in `details.objects`, and `VER.MERGE_CONFLICT` lists `DAT-MergeConflict` items `{object_id, kind, path}` in `details.conflicts`, ordered by object and path.
-  6. Version hashes, entry hashes, roots, commit identifiers, transaction times and signatures of stateful operations are compared only through `same_as` or through the pure operations, because they depend on the implementation's clock, keys and class identifiers. Before an `exact` comparison of a stateful result, the members `version_hash`, `entry_hash`, `root`, `head` and `versions` are removed from it.
+  6. Version hashes, entry hashes, roots, commit identifiers, transaction times and signatures of stateful operations are compared only through `same_as` or through the pure operations, because they depend on the implementation's clock, keys and class identifiers. Before an `exact` comparison of a stateful result, the members `version_hash`, `entry_hash`, `root`, `head` and `versions` are removed from it; since 1.0-rc1 also `commit_id`, `tx_time`, `parents`, `created_from`, `evaluated_at`, `preview`, `base`, `source_head`, `target_head`, `merged_commit`, `signature`, `provenance_ref`, `inputs_commitment` and `class_version`.
   7. Reference values are canonical URIs `ubos://acme/<Class>/<slug>`: the adapter's tenant is `acme` (since 1.0-rc1).
+  8. The adapter's physical clock reads `now`: a commit's `tx_time` is `now`, or one microsecond after the `tx_time` of the head it extends when that is not earlier (STD-TIME-001). The initial commit of a branch has no `tx_time`. The default initiator is `did:ubos:acme:adapter` (since 1.0-rc1).
+  9. A snapshot of a branch is selected by at most one of `time` (cseq), `commit` (commit identifier), `tag` and `tx_time` (instant), or by `evaluated_at` (a map from branch to commit identifier, STD-TIME-015); none selects the head (STD-VER-090) (since 1.0-rc1).
 - **Grammar / Schema:** `DAT-AdapterChange`
 - **Conformance vectors:** —
 - **Satisfies:** FR-STD-021, FR-STD-022
@@ -111,7 +129,7 @@ DAT-ConformanceReport:
 
 ```yaml
 DAT-AdapterChange:
-  op: { type: enum, required: true, description: "create | update | end | append | reverse | adjust" }
+  op: { type: enum, required: true, description: "create | update | end | append | reverse | adjust; since 1.0-rc1 hide | unhide (STD-VER-080)" }
   object_id: { type: text, required: false, description: "Definition or RawDocument object (create, update, end)" }
   class: { type: text, required: false, description: "class name (create, append)" }
   slug: { type: text, required: false, description: "locator slug (create; update when it changes)" }
@@ -123,6 +141,7 @@ DAT-AdapterChange:
   ledger_key: { type: map, required: false, description: "ledger key values (append)" }
   valid_at: { type: text, required: false, description: "date or instant of business effect (append)" }
   posting_group: { type: text, required: false, description: "double-entry group (append)" }
+  derivation: { type: map, required: false, description: "{logic, inputs, mode} for values written by logic (create, update, append; STD-TXN-030); inputs are {object, version, asof}; since 1.0-rc1" }
 ```
 
 ### STD-CONF-010 — Extensions
