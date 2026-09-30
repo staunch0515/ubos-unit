@@ -115,9 +115,13 @@ Reading order:
   - no filesystem, network, time or random functions;
   - floating point disabled (`LOGIC.FLOAT_TO_DECIMAL` on conversion attempts), decimal type from `ubos-expr`;
   - operation and call-depth limits mapped to metering units;
-  - typed object handles generated from effective definitions (`LOGIC.UNKNOWN_FIELD`, `LOGIC.TYPE_ERROR`).
+  - typed object handles generated from effective definitions (`LOGIC.UNKNOWN_FIELD`, `LOGIC.TYPE_ERROR`);
+  - the engine starts without packages and receives an explicit list of pure packages; the language-core package (`sleep`, `exit`, `parse_json`, function reflection) is not loaded;
+  - memory is accounted per execution outside the engine and checked at every metering point, because engine size limits bound single values only;
+  - errors raised by host functions and limit terminations are not catchable by scripts.
 
   Compiled ASTs MUST be cached by asset version hash.
+- **Amendment:** The last three bullets record the findings of the PH-0 sandbox spike (DEC-034, `verify/reports/exit-0-06/`).
 - **Rationale:** Productive scripting with determinism.
 - **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
 - **Personas:** PER-LogicDeveloper

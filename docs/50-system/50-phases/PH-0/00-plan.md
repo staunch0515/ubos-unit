@@ -48,7 +48,7 @@ following design items as prototypes; they are re-verified in PH-1 at production
 | merge pipeline including ledger append | DSN-DVM-240…244 |
 | timeline representation, edit algebra, as-of resolution | DSN-DVM-302, DSN-DVM-303, DSN-DVM-305 |
 | formal models (merge, timelines, concurrency) | DSN-DVM-249, DSN-DVM-326, DSN-DVM-515 |
-| Rhai host skeleton for the sandbox spike | DSN-DVM-612 |
+| Rhai host skeleton for the sandbox spike, crate `ubos-runtime` (DEC-034) | DSN-DVM-612 |
 | standard repository, profiles, coverage, formal models, compatibility, standard-before-code | DSN-BPA-001…004, DSN-BPA-006, DSN-BPA-010 |
 | runner and adapter | DSN-FRG-401, DSN-FRG-402 |
 

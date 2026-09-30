@@ -34,6 +34,7 @@ the work without the earlier conversations. Read `CLAUDE.md` first for the worki
 | DEC-028 | `ubos-unit` is the single implementation monorepo: `standard/`, `verify/`, `crates/`, `packages/`, `buks/` next to `docs/`; the DEC-018 names remain component names (UBS-ARC-07 §1). |
 | DEC-030 | PH-0 is executed by the owner with AI sessions in eight steps (one pull request each), with PH-0 verification work requested, external review at acceptance, benchmark hardware rented for step 5 and owner-signed releases. |
 | DEC-029 | Finance requirements are self-contained, **frozen at version 1.0** (tag `fin-req-v1.0`), copied unchanged into other repositories; work items recorded per `40-comparison-protocol.md` §2 (system codes U and J). |
+| DEC-034 | The Rhai sandbox spike blocks 100 of 100 initial escape cases; ASM-008 is confirmed for L2 with conditions (empty engine with pure packages, per-execution memory accounting, uncatchable host errors, fine-grained time checks), recorded in DSN-DVM-612. |
 
 The full log with context and alternatives is `docs/50-system/90-decisions/000-index.md`.
 
@@ -98,8 +99,11 @@ Step 3b done: 551 vectors, MUST coverage 94% (68/72), manifest in
 3. **PH-0 step 5** — benchmarks on ENV-REF-SERVER (EXIT-0-05). Prerequisites: the storage
    layout of DSN-DVM-001…011 (kernel indexes, stored tree nodes, deltas) and the workload
    generator WL-GENERIC-10M; the owner rents the database host and an application node
-   (DEC-030). Step 6 (Rhai sandbox spike) does not depend on step 5 and can go first.
-4. Then steps 6 and 7 of DEC-030, one pull request each, merged by the owner.
+   (DEC-030).
+4. Step 6 done (DEC-034): 100 of 100 L2 escape cases blocked (EXIT-0-06, report in
+   `verify/reports/exit-0-06/`); ASM-008 confirmed for L2 with conditions; OQ-007 (L2 sizes)
+   and OQ-008 (L2 decimal range) open for step 7.
+5. Then step 7 of DEC-030 (PH-1 re-baseline, external review, acceptance DEC), after step 5.
 3. **Java side** (owner): copy `fin-req-v1.0` into the Java repository
    (`docs/reports/finance-requirements-copy-guide-zh.md`) and start work-item records.
 4. **Accounting review** (external): chart of accounts and expected results of the sample

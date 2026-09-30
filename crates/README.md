@@ -9,6 +9,14 @@ registry), `ubos-store` (memory and PostgreSQL), `ubos-tree`, `ubos-version`, `u
 `ubos-dvm` (adapter of STD-CONF-005) and `ubos-forge` (runner). All 453 BPA 0.1 vectors
 tagged `prototype` pass on both backends (EXIT-0-03).
 
+PH-0 step 6 (DEC-034) adds `ubos-runtime` with a prototype L2 (Rhai) host and the escape
+suite runner `ubos-sandbox-spike`; all 100 initial escape cases are blocked (EXIT-0-06):
+
+```sh
+cargo build --release -p ubos-runtime
+./target/release/ubos-sandbox-spike --cases verify/sandbox/l2-escape-cases.json
+```
+
 The PostgreSQL store keeps each commit's full branch state as one record; the layout with
 kernel indexes and stored tree nodes that the benchmarks need (DSN-DVM-001…011) is built in
 PH-0 step 5.
