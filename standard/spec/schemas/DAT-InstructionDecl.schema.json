@@ -1,0 +1,61 @@
+{
+  "$id": "DAT-InstructionDecl",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "authorization": {
+      "description": "policy action evaluated",
+      "type": "string"
+    },
+    "cost": {
+      "description": "{base: units, per_item: units}",
+      "type": "object"
+    },
+    "determinism": {
+      "description": "pure | snapshot | journaled | deferred",
+      "enum": [
+        "pure",
+        "snapshot",
+        "journaled",
+        "deferred"
+      ],
+      "type": "string"
+    },
+    "errors": {
+      "description": "error codes",
+      "type": "array"
+    },
+    "name": {
+      "description": "family.operation",
+      "type": "string"
+    },
+    "params": {
+      "description": "parameter declarations (value types)",
+      "type": "array"
+    },
+    "profiles": {
+      "description": "execution profiles where available",
+      "type": "array"
+    },
+    "result": {
+      "description": "result type",
+      "type": "string"
+    },
+    "since": {
+      "description": "ABI version introduced",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "since",
+    "params",
+    "result",
+    "errors",
+    "determinism",
+    "cost",
+    "authorization",
+    "profiles"
+  ],
+  "title": "DAT-InstructionDecl",
+  "type": "object"
+}

@@ -1,0 +1,117 @@
+{
+  "$id": "DAT-ExecutionContext",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "asof": {
+      "description": "valid-time coordinate",
+      "type": "string"
+    },
+    "auth_level": {
+      "description": "authentication assurance (for step-up rules)",
+      "type": "string"
+    },
+    "branch": {
+      "description": "branch name",
+      "type": "string"
+    },
+    "budget_remaining": {
+      "description": "remaining units, memory, wall time, calls",
+      "type": "object"
+    },
+    "channel": {
+      "description": "as DAT-Process.channel",
+      "type": "string"
+    },
+    "input": {
+      "description": "invocation payload"
+    },
+    "locale": {
+      "description": "BCP 47 tag",
+      "type": "string"
+    },
+    "now": {
+      "description": "fixed for the whole process; journaled",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "type": "string"
+    },
+    "on_behalf_of": {
+      "description": "delegation chain of DIDs, outermost first",
+      "type": "array"
+    },
+    "principal": {
+      "description": "acting principal DID",
+      "type": "string"
+    },
+    "principal_kind": {
+      "description": "human | service | agent | external | node",
+      "enum": [
+        "human",
+        "service",
+        "agent",
+        "external",
+        "node"
+      ],
+      "type": "string"
+    },
+    "process_id": {
+      "description": "UUID",
+      "type": "string"
+    },
+    "profile": {
+      "description": "strict | standard | batch | simulation | agent",
+      "enum": [
+        "strict",
+        "standard",
+        "batch",
+        "simulation",
+        "agent"
+      ],
+      "type": "string"
+    },
+    "replay": {
+      "description": "true during replay",
+      "type": "boolean"
+    },
+    "tenant": {
+      "description": "tenant id",
+      "type": "string"
+    },
+    "time": {
+      "description": "snapshot selector (head at start, or explicit)",
+      "type": "string"
+    },
+    "time_zone": {
+      "description": "IANA zone of the user (business zone is a VAE setting)",
+      "type": "string"
+    },
+    "trigger": {
+      "description": "as DAT-Process.trigger",
+      "type": "object"
+    },
+    "vae": {
+      "description": "authority",
+      "type": "string"
+    }
+  },
+  "required": [
+    "principal",
+    "principal_kind",
+    "auth_level",
+    "tenant",
+    "vae",
+    "branch",
+    "asof",
+    "time",
+    "now",
+    "locale",
+    "time_zone",
+    "process_id",
+    "trigger",
+    "channel",
+    "profile",
+    "budget_remaining",
+    "replay"
+  ],
+  "title": "DAT-ExecutionContext",
+  "type": "object"
+}

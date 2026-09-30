@@ -51,6 +51,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-036 | PH-1 re-baseline after PH-0: finding dispositions, OQ-007 and OQ-008, risks, dependencies | Accepted |
 | DEC-037 | PH-0 acceptance with EXIT-0-05 carried over and external review at the benchmark | Accepted |
 | DEC-038 | PH-1 execution: owner with AI sessions, gate-1a steps, verification requested, environments and CI | Accepted |
+| DEC-039 | Scope of BPA 1.0-rc1 by rule; releases in development; step 1 in six parts | Accepted |
 
 ---
 
@@ -435,4 +436,18 @@ Decisions are never deleted. A replaced decision is marked
 - **Consequences:** UBS-PH-1 §11 lists the steps; `docs/reports/ph1-plan-zh.md` tracks their status.
 - **Alternatives considered:** Planning both gates in steps now was rejected: gate 1b depends on the kernel interfaces fixed in gate 1a (DEC-014). Rewriting the kernel from scratch was rejected: the prototype crates already pass the BPA 0.1 vectors and properties.
 - **Affects:** UBS-PH-1, DEC-014, DEC-030, DEC-035, DEC-037
+
+### DEC-039 — Scope of BPA 1.0-rc1
+- **Status:** Accepted · **Date:** 2026-09-30
+- **Context:** EXIT-1-01 requires BPA 1.0-rc1 with vectors for 100% of the MUST clauses of Core, Bitemporal, Ledger and Proof (roots, signatures, inclusion). The standard holds 240 clauses, 79 of them in BPA 0.1. Several Core clauses serve later phases (for example anchors, sync, L3 components), and UBS-PH-1 §7.2 placed the expression and addressing vectors at gate 1b although both areas are Core and serve gate-1a requirements. The release builder did not read the instruction-set folder of the standard.
+- **Decision:**
+  1. The scope of BPA 1.0-rc1 is the scope of BPA 0.1 plus every clause of the profiles Core, Bitemporal, Ledger and Proof whose earliest satisfied requirement is in PH-0 or in PH-1 gate 1a (gate from UBS-PHF-1); a clause without a **Satisfies** line is definitional and included when its profile is. `standard/release/1.0-rc1/scope.json` states this rule, and the release builder rejects a scope that differs from it. The result is 171 clauses, 145 of them MUST clauses with a vector range.
+  2. Expressions (EXPR) and addressing (ADDR) are in 1.0-rc1 with the gate-1a clauses. Governance (LGS) and Protocol (PROTO) clauses belong to 1.0-rc2 (gate 1b) even where they serve a gate-1a requirement. Clauses of BPA 0.1 whose requirements were later moved to PH-2 (DEC-022) stay in the release. UBS-PH-1 §7.2 is corrected accordingly.
+  3. BPA 0.1 is frozen as tagged (`bpa-v0.1.0`); its coverage report and manifest are no longer rebuilt. `docs/tools/regen_all.sh` builds the release in development, now 1.0-rc1. Vectors are added, never changed; the vectors of 0.1 keep their identifiers and content.
+  4. The clause loader reads subfolders of the standard (the instruction set).
+  5. Adapter operations are added to STD-CONF-005 with the release that adds them; 1.0-rc1 adds `set_limits`.
+  6. Step 1 of PH-1 is delivered in six parts: 1a scope and tooling; 1b data model (OBJ, CLS, KIND); 1c versioning, time and transactions; 1d proofs; 1e execution (CTX, ISA, BPU, EXPR, ADDR); 1f release. STD-FND-026 (custom value types need L1 expressions) and STD-TXN-023 (retries need logic) are covered in 1e, STD-TIME-031 (impact sets need derivation records) in 1c.
+- **Consequences:** The coverage report of 1.0-rc1 shows the remaining clauses; it reaches 100% at part 1f, when the owner signs `bpa-v1.0.0-rc1`. New vectors are not tagged `prototype` until the kernel implements them (steps 4–7).
+- **Alternatives considered:** Taking every Core, Bitemporal, Ledger and Proof clause was rejected: it would pull PH-2 to PH-5 features into gate 1a. Listing the scope by hand was rejected: the rule keeps it consistent with the requirement phases and is checked by the builder.
+- **Affects:** UBS-PH-1, STD-CONF-005, STD-OBJ-009, EXIT-1-01, DEC-032
 

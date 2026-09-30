@@ -1,0 +1,35 @@
+{
+  "$id": "DAT-RuleBinding",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "classes": {
+      "description": "content-ids of class and extension versions",
+      "type": "array"
+    },
+    "guards": {
+      "description": "guard evaluations {guard, result}",
+      "type": "array"
+    },
+    "logic": {
+      "description": "content-ids of logic asset versions",
+      "type": "array"
+    },
+    "policies": {
+      "description": "content-ids of policy set versions",
+      "type": "array"
+    },
+    "sheets": {
+      "description": "content-ids of sheet versions",
+      "type": "array"
+    },
+    "tables": {
+      "description": "content-ids of decision table versions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "classes"
+  ],
+  "title": "DAT-RuleBinding",
+  "type": "object"
+}

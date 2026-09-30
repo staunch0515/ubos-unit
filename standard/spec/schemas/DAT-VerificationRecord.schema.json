@@ -1,0 +1,41 @@
+{
+  "$id": "DAT-VerificationRecord",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "analyzer_version": {
+      "description": "version of the forbidden-pattern list and analyser",
+      "type": "string"
+    },
+    "asset": {
+      "description": "asset version hash",
+      "type": "string"
+    },
+    "at": {
+      "description": "time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "type": "string"
+    },
+    "checks": {
+      "description": "{name: static_analysis|type_check|tests|capabilities|signature, result, findings_ref}",
+      "type": "array"
+    },
+    "signature": {
+      "description": "DAT-Signature",
+      "type": "object"
+    },
+    "verified_by": {
+      "description": "principal DID (human or pipeline service)",
+      "type": "string"
+    }
+  },
+  "required": [
+    "asset",
+    "checks",
+    "analyzer_version",
+    "verified_by",
+    "at",
+    "signature"
+  ],
+  "title": "DAT-VerificationRecord",
+  "type": "object"
+}

@@ -1,0 +1,60 @@
+{
+  "$id": "DAT-BpuDescriptor",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "class": {
+      "description": "class URI and version hash",
+      "type": "string"
+    },
+    "events": {
+      "description": "declared event types with payload schemas",
+      "type": "array"
+    },
+    "fields": {
+      "description": "effective fields with origin class and classification",
+      "type": "array"
+    },
+    "governance": {
+      "description": "properties governable by sheets with their enforcement points",
+      "type": "array"
+    },
+    "json_schema": {
+      "description": "content-id of the generated JSON Schema",
+      "type": "string"
+    },
+    "knowledge": {
+      "description": "knowledge object URIs",
+      "type": "array"
+    },
+    "ledgers": {
+      "description": "ledger classes that reference this class, with their keys",
+      "type": "array"
+    },
+    "lifecycle": {
+      "description": "states, transitions, guards (effective)",
+      "type": "object"
+    },
+    "linearization": {
+      "description": "class URIs",
+      "type": "array"
+    },
+    "ports": {
+      "description": "effective ports with signatures, availability states, permission",
+      "type": "array"
+    },
+    "proof": {
+      "description": "{signed_commits: true, merkle: true, anchoring: boolean}",
+      "type": "object"
+    }
+  },
+  "required": [
+    "class",
+    "linearization",
+    "fields",
+    "ports",
+    "proof",
+    "json_schema"
+  ],
+  "title": "DAT-BpuDescriptor",
+  "type": "object"
+}

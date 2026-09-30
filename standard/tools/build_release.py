@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from bpa.canon import canonical, content_id    # noqa: E402
 from bpa.ops import OPERATIONS, run_vector     # noqa: E402
 from bpa.spec import clauses, REPO, STD_DIR    # noqa: E402
+from bpa.scope import rule_scope               # noqa: E402
 
 STD = os.path.join(REPO, 'standard')
 VECTOR_REQUIRED = ('id', 'clauses', 'profile', 'polarity', 'setup', 'steps', 'description')
@@ -43,11 +44,17 @@ TYPE_SCHEMA = {
 FIELD = re.compile(r'^  ([a-z_]+): \{ type: ([a-z_]+), required: (true|false), description: "(.*)" \}$')
 
 
+def std_files():
+    """Markdown files of the standard, with subfolders, as paths relative to STD_DIR."""
+    out = []
+    for dirpath, _, names in os.walk(STD_DIR):
+        out += [os.path.relpath(os.path.join(dirpath, n), STD_DIR) for n in names if n.endswith('.md')]
+    return sorted(out)
+
+
 def dat_blocks():
     out = {}
-    for f in sorted(os.listdir(STD_DIR)):
-        if not f.endswith('.md'):
-            continue
+    for f in std_files():
         text = open(os.path.join(STD_DIR, f), encoding='utf-8').read()
         for block in re.findall(r'```yaml\n(.*?)```', text, re.S):
             name = None
@@ -85,19 +92,26 @@ def write(path, text):
 
 
 def main():
-    version = sys.argv[1] if len(sys.argv) > 1 else '0.1'
+    version = sys.argv[1] if len(sys.argv) > 1 else '1.0-rc1'
     rel = os.path.join(STD, 'release', version)
     scope_doc = json.load(open(os.path.join(rel, 'scope.json')))
     cat = clauses()
     scope = ['STD-%s-%s' % (a, n) for a, ns in scope_doc['clauses'].items() for n in ns]
     errors = [('scope', 'unknown clause %s' % c) for c in scope if c not in cat]
     scope = [c for c in scope if c in cat]
+    ruled = rule_scope(cat, scope_doc, STD)
+    if ruled is not None:
+        for c in sorted(set(ruled) - set(scope)):
+            errors.append(('scope', '%s is required by the scope rule but missing' % c))
+        for c in sorted(set(scope) - set(ruled)):
+            errors.append(('scope', '%s is not given by the scope rule' % c))
 
     # 2. clauses
     spec_dir = os.path.join(STD, 'spec')
-    for f in os.listdir(spec_dir) if os.path.isdir(spec_dir) else []:
-        if f.endswith('.md'):
-            os.remove(os.path.join(spec_dir, f))
+    for dirpath, _, names in os.walk(spec_dir):
+        for f in names:
+            if f.endswith('.md'):
+                os.remove(os.path.join(dirpath, f))
     by_file = {}
     for c in scope:
         by_file.setdefault(cat[c]['file'], []).append(c)

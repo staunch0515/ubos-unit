@@ -81,7 +81,7 @@ DAT-ChunkingParams:
 ```
 
 ### STD-OBJ-009 — Size limits
-- **Clause:** Implementations MUST support bodies up to 16 MiB and blobs up to 5 GiB. They MAY support more. A body larger than the configured limit MUST be rejected with `MODEL.OBJECT_TOO_LARGE`.
+- **Clause:** Implementations MUST support bodies up to 16 MiB and blobs up to 5 GiB. They MAY support more. A body larger than the configured limit MUST be rejected with `MODEL.OBJECT_TOO_LARGE`. The size of a body is the length in bytes of its canonical JSON (STD-FND-001) after validation, measured on the complete body that a create or an update produces.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0375…0379
 - **Satisfies:** FR-FILE-012

@@ -1,0 +1,44 @@
+{
+  "$id": "DAT-ClassExtension",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "fields": {
+      "description": "added DAT-FieldDecl items",
+      "type": "array"
+    },
+    "namespace": {
+      "description": "owner namespace of the added members",
+      "type": "string"
+    },
+    "order": {
+      "description": "application order among extensions of the same target (ties broken by namespace)",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "ports": {
+      "description": "added DAT-PortDecl items",
+      "type": "array"
+    },
+    "refinements": {
+      "description": "narrowing refinements of existing members",
+      "type": "array"
+    },
+    "target": {
+      "description": "class URI",
+      "type": "string"
+    },
+    "views": {
+      "description": "added or overriding views, subject to overlay_policy",
+      "type": "array"
+    }
+  },
+  "required": [
+    "target",
+    "namespace",
+    "order"
+  ],
+  "title": "DAT-ClassExtension",
+  "type": "object"
+}

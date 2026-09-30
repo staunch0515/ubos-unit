@@ -1,0 +1,43 @@
+{
+  "$id": "DAT-Signature",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "alg": {
+      "description": "ed25519",
+      "type": "string"
+    },
+    "key_id": {
+      "description": "verification method id in the DID document",
+      "type": "string"
+    },
+    "role": {
+      "description": "author | node | approver | signer | notary | tagger",
+      "enum": [
+        "author",
+        "node",
+        "approver",
+        "signer",
+        "notary",
+        "tagger"
+      ],
+      "type": "string"
+    },
+    "sig": {
+      "description": "base64url signature",
+      "type": "string"
+    },
+    "signer": {
+      "description": "DID",
+      "type": "string"
+    }
+  },
+  "required": [
+    "role",
+    "signer",
+    "key_id",
+    "alg",
+    "sig"
+  ],
+  "title": "DAT-Signature",
+  "type": "object"
+}

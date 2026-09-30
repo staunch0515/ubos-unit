@@ -123,7 +123,7 @@ DSN-SDK items with **Phase** PH-1; DSN-BPA-003, DSN-BPA-004, DSN-BPA-010.
 
 | Scope | Suite | Gate | VER range |
 |---|---|---|---|
-| standard vectors of Core, Bitemporal, Ledger, Proof (subset) and the instruction set | SUITE-DVM-CONF | 1a | VER-CONF-0001…4399 (clause areas FND…CTX) |
+| standard vectors of BPA 1.0-rc1: Core, Bitemporal, Ledger and Proof (subset), including the instruction set, expressions, addressing and errors (DEC-039) | SUITE-DVM-CONF | 1a | VER-CONF-0001…4799, VER-CONF-5200…5309, VER-CONF-6000…6199 |
 | storage adapter parity | SUITE-DVM-STORE | 1a | VER-CONF-8400…8499 |
 | kernel properties | SUITE-DVM-PROP | 1a | VER-PROP-0100…0399 |
 | concurrency and crash simulation (10,000 seeds per night) | SUITE-DVM-SIM | 1a | VER-SIM-0001…0199 |
@@ -133,7 +133,7 @@ DSN-SDK items with **Phase** PH-1; DSN-BPA-003, DSN-BPA-004, DSN-BPA-010.
 | L2 sandbox escape suite (≥ 300 cases) | SUITE-DVM-SEC | 1a | VER-SEC-0100…0499 |
 | replay corpus across OS and CPU | SUITE-DVM-REPLAY | 1a | VER-CONF-8500…8549 |
 | Forge commands and checks | SUITE-FRG-CLI, SUITE-FRG-CHECK | 1a | VER-CONF-7700…7799 |
-| standard vectors of expressions, Governance profile, addressing, UBTP and errors | SUITE-DVM-CONF | 1b | VER-CONF-4400…5599, VER-CONF-6000…6099 |
+| standard vectors of the Governance and Protocol profiles (BPA 1.0-rc2) | SUITE-DVM-CONF | 1b | VER-CONF-4800…5199, VER-CONF-5400…5599 |
 | UBTP protocol | SUITE-NOD-PROTO | 1b | VER-CONF-7000…7099 |
 | isolation suite | SUITE-NOD-ISO | 1b | VER-SEC-2000…2099 |
 | authentication and sessions (local) | SUITE-NOD-AUTH | 1b | VER-SEC-2100…2199 |

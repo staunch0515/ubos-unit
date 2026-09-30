@@ -1,0 +1,45 @@
+{
+  "$id": "DAT-Journal",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "context": {
+      "description": "DAT-ExecutionContext",
+      "type": "object"
+    },
+    "entropy_seed": {
+      "description": "base64url seed (encrypted with tenant key)",
+      "type": "string"
+    },
+    "logic": {
+      "description": "logic asset version hashes",
+      "type": "array"
+    },
+    "outputs": {
+      "description": "{commits, result_hash, effects}",
+      "type": "object"
+    },
+    "records": {
+      "description": "ordered {seq, instruction, args_hash, result_ref}",
+      "type": "array"
+    },
+    "snapshots": {
+      "description": "branch \u2192 commit id",
+      "type": "object"
+    },
+    "tzdb": {
+      "description": "tz database version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "context",
+    "snapshots",
+    "logic",
+    "entropy_seed",
+    "tzdb",
+    "records",
+    "outputs"
+  ],
+  "title": "DAT-Journal",
+  "type": "object"
+}

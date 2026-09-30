@@ -1,0 +1,80 @@
+{
+  "$id": "DAT-LogicAsset",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "abi": {
+      "description": "ABI version M.m",
+      "type": "string"
+    },
+    "capabilities": {
+      "description": "declared instruction families and targets",
+      "type": "array"
+    },
+    "exports": {
+      "description": "exported functions/ports with signatures",
+      "type": "array"
+    },
+    "imports": {
+      "description": "pinned logic asset versions",
+      "type": "array"
+    },
+    "name": {
+      "description": "namespaced name",
+      "type": "string"
+    },
+    "profile": {
+      "description": "minimum profile needed",
+      "type": "string"
+    },
+    "publisher_signature": {
+      "description": "DAT-Signature (L3 required)",
+      "type": "object"
+    },
+    "source": {
+      "description": "Rhai source, or component binary"
+    },
+    "source_ref": {
+      "description": "for L3: content-id of the source archive (for audit)",
+      "type": "string"
+    },
+    "state": {
+      "description": "draft | committed | verified | deprecated | retired",
+      "enum": [
+        "draft",
+        "committed",
+        "verified",
+        "deprecated",
+        "retired"
+      ],
+      "type": "string"
+    },
+    "tests": {
+      "description": "test case URIs",
+      "type": "array"
+    },
+    "tier": {
+      "description": "l2 | l3",
+      "enum": [
+        "l2",
+        "l3"
+      ],
+      "type": "string"
+    },
+    "verification": {
+      "description": "content-id of DAT-VerificationRecord",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "tier",
+    "abi",
+    "source",
+    "exports",
+    "capabilities",
+    "profile",
+    "state"
+  ],
+  "title": "DAT-LogicAsset",
+  "type": "object"
+}

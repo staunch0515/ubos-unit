@@ -39,6 +39,7 @@ the work without the earlier conversations. Read `CLAUDE.md` first for the worki
 | DEC-036 | PH-1 re-baselined after PH-0: every finding dispositioned (UBS-PHR-0), work items W-1…W-12, OQ-007 and OQ-008 resolved, RSK-004 closed, RSK-016 and RSK-017 added. |
 | DEC-037 | PH-0 accepted with EXIT-0-05 carried over; external review together with the carried benchmark. |
 | DEC-038 | PH-1 executed by the owner with AI sessions: gate-1a steps 0–9, verification requested, ENV-REF-SERVER rented for W-1 and gate 1a, GitHub-hosted CI incl. nightly and ARM64/macOS runners. |
+| DEC-039 | BPA 1.0-rc1 scope by rule (0.1 plus Core, Bitemporal, Ledger, Proof clauses serving gate 1a), checked by the builder; BPA 0.1 frozen; regen builds rc1; step 1 in parts 1a–1f. |
 
 The full log with context and alternatives is `docs/50-system/90-decisions/000-index.md`.
 
@@ -99,8 +100,9 @@ re-baselined (DEC-036, EXIT-0-07) with work items W-1…W-12, OQ-007 and OQ-008 
 PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
 `docs/reports/ph1-plan-zh.md` and UBS-PH-1 §11.
 
-1. **Next AI step:** PH-1 step 1 — BPA 1.0-rc1 clauses and vectors (EXIT-1-01), standard
-   before code, split by clause area.
+1. **Next AI step:** PH-1 step 1 in six parts (DEC-039): 1a done (rc1 scope rule, tooling,
+   STD-OBJ-009); next 1b data model (OBJ, CLS, KIND), then 1c versioning, time and
+   transactions, 1d proofs, 1e execution, 1f release (owner signs `bpa-v1.0.0-rc1`).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
    occasion.
