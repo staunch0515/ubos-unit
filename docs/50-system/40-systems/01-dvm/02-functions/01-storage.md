@@ -15,6 +15,8 @@ depends_on: [UBS-SYS-DVM-02, UBS-ARC-04, UBS-STD-08]
   - `outbox_append`, `idempotency_put`;
   - snapshot reads by commit ordinal.
 
+  The operations are split into `StoreTx` (one storage transaction) and `StoreRead` (snapshot reads by commit ordinal); both are asynchronous and use only backend-neutral row types (DEC-047).
+
   The PostgreSQL 16+ adapter MUST exist from PH-1. The SQLite 3.45+ adapter follows in PH-4 (DEC-024) and MUST then pass the same storage conformance suite; the trait MUST stay backend-neutral so that SQLite needs no kernel change.
 - **Rationale:** One kernel, several editions (AR-002, CST-002).
 - **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM

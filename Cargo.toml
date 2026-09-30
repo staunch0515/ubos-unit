@@ -47,7 +47,9 @@ rhai = { version = "1", default-features = false, features = ["std", "no_float",
 rust_decimal = { version = "1", default-features = false, features = ["std"] }
 # counting allocator: memory probe of the sandbox spike binary
 cap = "0.1"
-postgres = { version = "0.19", features = ["with-serde_json-1"] }
+# kernel storage on PostgreSQL (DEC-007, DEC-047)
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "macros", "migrate"] }
+tokio = { version = "1", features = ["rt"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

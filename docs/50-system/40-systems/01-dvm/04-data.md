@@ -33,6 +33,12 @@ The logical columns `tx_from` and `tx_to` of `temporal_index` (UBS-ARC-04) are s
 commit ordinals `cseq_from` and `cseq_to`. Transaction time is read from `commit` when
 needed.
 
+**Transition layout (DEC-047).** Until PH-1 step 4 gives the engine production identities,
+the migrations of `ubos-store` key commits by the engine's integer `commit_no` (with
+`commit_id` as the content ID of the body), store class and object identifiers and valid
+times as text, and keep the engine's per-object state in a table `object_state` with `cseq`
+intervals, from which `head_index` and `temporal_index` are maintained in the same flush.
+
 ## 2. Authoritative tables (categories A–C)
 
 ```sql

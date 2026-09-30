@@ -47,6 +47,7 @@ the work without the earlier conversations. Read `CLAUDE.md` first for the worki
 | DEC-044 | BPA 1.0-rc1 execution clarified: host programs as the conformance binding (genesis `Logic`), context, gateway, profiles, metering, entropy, journal and replay, asset verification and static analysis, instructions, BPU views, automatic retry; rc1 MUST coverage 100%. |
 | DEC-045 | BPA 1.0-rc1 released: hand-written notes listed in the manifest, owner-signed tag `bpa-v1.0.0-rc1`, frozen once tagged; PH-1 step 1 complete. |
 | DEC-046 | Group commit and ledger sequence model (VER-FORM-0004, EXIT-1-07): two-phase flush of W-8 checked with 0 violations; DSN-DVM-006 states the two-phase flush, DSN-DVM-402 requires a transactional counter row. |
+| DEC-047 | Storage kernel in parts 3a–3c: asynchronous `StoreTx`/`StoreRead` on sqlx, DVM-04 schema as migrations with transition columns until step 4, local blob and key providers until step 7, storage suite on PostgreSQL 16 locally and in CI (ENV-REF-SERVER run at step 9). |
 
 The full log with context and alternatives is `docs/50-system/90-decisions/000-index.md`.
 
@@ -114,8 +115,10 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    DEC-044; rc1 MUST coverage 146/146); 1f done (release, DEC-045). Owner: sign the tag
    `bpa-v1.0.0-rc1` (`docs/reports/ph1-plan-zh.md`). Step 2 done (group commit and ledger
    sequence model `verify/models/group_commit.tla`, VER-FORM-0004, EXIT-1-07, DEC-046).
-   Next AI step: PH-1 step 3 (storage kernel, EXIT-1-03, W-7); W-1 should run before its
-   storage layout is fixed.
+   Step 3 (storage kernel, EXIT-1-03, W-7) in parts 3a–3c (DEC-047): 3a done (async
+   storage traits, sqlx adapter, migrations with transition layout, two-phase group commit);
+   next 3b (row-level security, partitions, physical form, chunk placement). W-1 should run
+   before the storage layout is fixed.
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
    occasion.
