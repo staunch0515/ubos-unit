@@ -7,7 +7,7 @@ import hmac
 
 from .classes import linearize, effective_class, public, dispatch, type_selector
 from .store import Store
-from . import crypto, proofs, expr, addr
+from . import crypto, proofs, expr, addr, isa
 from .lang import custom_value, check_value_type
 from .tree import tree_root
 
@@ -93,6 +93,11 @@ PURE = {
     'parse_uri': lambda i: addr.parse_uri(i['uri']),
     'parse_did': lambda i: addr.parse_did(i['did']),
     'key_did': lambda i: addr.key_did(i['public_key']),
+    # BPA 1.0-rc1, PH-1 step 1e-2 (DEC-044)
+    'instructions': lambda i: {'abi': isa.ABI, 'instructions': [{k: v for k, v in d.items() if k != 'clause'}
+                                                                for d in isa.instructions()]},
+    'profile_limits': lambda i: dict(isa.PROFILE_LIMITS[i['profile']], families=list(isa.PROFILE_FAMILIES[i['profile']]))
+    if i.get('profile') in isa.PROFILE_LIMITS else (_ for _ in ()).throw(BpaError('MODEL.INVALID_VALUE', 'unknown profile')),
     'verify_consistency': lambda i: proofs.verify_consistency(i['commits'], i.get('from'), i.get('to'), i.get('dids')),
 }
 
@@ -145,6 +150,16 @@ STATEFUL = {
     'resolve': lambda s, i: s.resolve(i['uri']),
     'query': lambda s, i: s.query(i),
     'did_document': lambda s, i: s.did_document(i['did']),
+    # BPA 1.0-rc1, PH-1 step 1e-2 (DEC-044)
+    'execute': lambda s, i: s.execute(i),
+    'journal': lambda s, i: s.journal(i['process_id']),
+    'metering': lambda s, i: s.metering_record(i['process_id']),
+    'metering_total': lambda s, i: s.metering_total(),
+    'replay': lambda s, i: s.replay(i['process_id'], i.get('tamper'), i.get('drop')),
+    'verify_asset': lambda s, i: s.verify_asset(i.get('branch', 'main'), i['object_id'], i.get('verifier')),
+    'bpu_descriptor': lambda s, i: s.bpu_descriptor(i.get('branch', 'main'), i['class']),
+    'bpu_state': lambda s, i: s.bpu_state(i.get('branch', 'main'), i['object_id'], i),
+    'verify_bpu': lambda s, i: s.verify_bpu(i.get('branch', 'main'), i['class']),
 }
 
 OPERATIONS = set(PURE) | set(STATEFUL)
@@ -157,7 +172,10 @@ IMPLEMENTATION_DEPENDENT = ('version_hash', 'entry_hash', 'root', 'head', 'versi
                             # since 1.0-rc1 (DEC-042): signed records, proofs and archives
                             'signatures', 'proof', 'records', 'heads', 'archive', 'from_commit', 'to_commit',
                             # since 1.0-rc1 (DEC-043): query cursors bind a commit
-                            'cursor')
+                            'cursor',
+                            # since 1.0-rc1 (DEC-044): journals, metering and verification records
+                            'snapshots', 'logic_versions', 'commit_ids', 'changes_hash', 'cpu_us', 'peak_memory',
+                            'wall_us', 'asset', 'record_id', 'json_schema')
 
 
 def strip(value):

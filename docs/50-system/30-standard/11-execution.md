@@ -12,6 +12,8 @@ depends_on: [UBS-STD-10]
 
 ### STD-CTX-001 — Execution context
 - **Clause:** Every execution MUST receive an immutable context conforming to `DAT-ExecutionContext`. It is established by the host (AR-007) and extended only by the implementation (for example the `trigger` of nested runs). Logic MUST NOT be able to modify it.
+
+  In detail (DEC-044): the caller may give `principal`, `principal_kind`, `on_behalf_of`, `auth_level`, `asof`, `locale`, `time_zone`, `channel`, `profile` and `input`; the implementation sets every other member, and a caller that gives one fails with `LOGIC.CONTEXT_IMMUTABLE`. `time` is `head` for the head at start. Binding a name `ctx`, `this`, `params` or `old` in logic also fails with `LOGIC.CONTEXT_IMMUTABLE`.
 - **Grammar / Schema:** `DAT-ExecutionContext`
 - **Conformance vectors:** VER-CONF-4000…4019
 - **Satisfies:** FR-LOGIC-021, FR-LOGIC-022
@@ -42,6 +44,8 @@ DAT-ExecutionContext:
 
 ### STD-CTX-002 — Identity comes only from the context
 - **Clause:** No instruction MAY accept tenant, VAE or principal as a parameter, except delegation-specific operations defined by the standard. Cross-VAE access is expressed only through canonical URIs of published objects and is authorised against the context principal.
+
+  An identity parameter fails with `LOGIC.PARAMETER_FORBIDDEN`; a URI of another VAE is not found (`IAM.NOT_FOUND`) until published objects are defined (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4020…4029
 - **Satisfies:** FR-LOGIC-022, CST-014
@@ -54,6 +58,8 @@ DAT-ExecutionContext:
   3. the ABI version declared by the asset.
 
   Calls to anything else MUST fail with `LOGIC.FORBIDDEN_CAPABILITY`.
+
+  A declared capability is a family (`read`) or one instruction (`read.get`). An instruction outside the ABI is a forbidden capability; an instruction of the ABI that the release does not provide fails with `LOGIC.NOT_AVAILABLE` (in BPA 1.0-rc1: `commit.transition`, `read.explain`, `run.decision`, `run.validate`, `emit.notify` and the `search`, `call` and `ask` families) (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4030…4049
 - **Satisfies:** FR-LOGIC-023, FR-LOGIC-092
@@ -80,6 +86,8 @@ DAT-ExecutionContext:
   | L2 array and map size (elements, nested ones counted) | 65,536 | 524,288 | 4,194,304 | 8,388,608 | 524,288 |
   | L2 variables, functions per asset | 1,024, 256 | 1,024, 256 | 1,024, 256 | 1,024, 256 | 1,024, 256 |
   | L2 source size, expression depth (top level, in functions) | 64 KiB, 64/32 | 64 KiB, 64/32 | 64 KiB, 64/32 | 64 KiB, 64/32 | 64 KiB, 64/32 |
+
+  A lowered limit is given per execution; a request to raise one fails with `IAM.DENIED`. CPU time, memory and wall time are measured by the implementation and verified by benchmarks and the L2 escape suite rather than by vectors (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4050…4079
 - **Satisfies:** FR-LOGIC-061, FR-AI-093, FR-RULE-072
@@ -87,6 +95,8 @@ DAT-ExecutionContext:
 
 ### STD-CTX-005 — Termination
 - **Clause:** Exceeding any limit, or receiving cancellation, MUST terminate the execution with `LOGIC.LIMIT_EXCEEDED` or `LOGIC.CANCELLED` at the next metering point (at most every 10,000 units or 10 ms). This termination MUST NOT be catchable. The enclosing process MUST abort (STD-TXN-003).
+
+  Host programs reach a metering point at every statement and instruction; the metering record keeps the outcome `limit` or `cancelled` (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4080…4099
 - **Satisfies:** FR-LOGIC-062, FR-AI-022
@@ -94,6 +104,8 @@ DAT-ExecutionContext:
 
 ### STD-CTX-006 — Metering record
 - **Clause:** Each execution MUST produce a `DAT-MeteringRecord`, attached to its process and aggregated per tenant for billing.
+
+  For host programs the units are exact: one per statement, the units of the L1 expressions (STD-EXPR-004) and the declared cost of each instruction (STD-ISA-004). `cpu_us`, `peak_memory` and `wall_us` are measured and compared only through `same_as` (DEC-044).
 - **Grammar / Schema:** `DAT-MeteringRecord`
 - **Conformance vectors:** VER-CONF-4100…4109
 - **Satisfies:** FR-LOGIC-063, FR-BILL-011
@@ -122,6 +134,8 @@ DAT-MeteringRecord:
   - `journaled` instructions (STD-ISA-003).
 
   Host clocks, environment variables, thread scheduling, hash-map iteration order and floating-point modes MUST NOT influence results. Iteration over maps MUST follow key order.
+
+  The entropy of a process is a 32-byte seed: given with the invocation, or SHA-256 of `ubos.entropy.v1` 0x00 and the process ID. Random bytes are the concatenation of SHA-256(seed ‖ uint64 counter) blocks; `sys.uuid` takes 16 bytes and sets the version 4 and variant bits. The seed is journaled, so replay draws the same values (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4120…4149
 - **Satisfies:** FR-LOGIC-071, FR-LOGIC-074, NR-DET-001
@@ -129,6 +143,8 @@ DAT-MeteringRecord:
 
 ### STD-CTX-011 — Execution journal
 - **Clause:** Each process MUST record a journal (`DAT-Journal`) sufficient to replay it: context, snapshot commits per branch, logic versions, the ordered list of journaled instruction results, entropy seed and tz database version.
+
+  A record is `{seq, instruction, args_hash, result_ref}` with content IDs of the arguments and the result; `outputs` holds the commit IDs, `result_hash`, `changes_hash` (the unit of work) and the effect types (DEC-044).
 - **Grammar / Schema:** `DAT-Journal`
 - **Conformance vectors:** VER-CONF-4150…4164
 - **Satisfies:** FR-LOGIC-072, FR-AI-014
@@ -152,6 +168,8 @@ DAT-Journal:
   - it compares outputs.
 
   The result MUST be `identical`, or `diverged` with the first divergence (record sequence, expected, actual). A missing journal record MUST fail with `LOGIC.REPLAY_INPUT_MISSING`, never with a live call.
+
+  The first divergence is the first record whose instruction or arguments differ, or else the first output that differs, reported with `seq` one after the last record. Replay writes nothing and produces no metering record (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4165…4184
 - **Satisfies:** FR-LOGIC-073, FR-AI-092, FR-DEV-092
@@ -169,6 +187,8 @@ DAT-Journal:
   - custom types are generated from the model.
 
   Implementations in other languages MUST provide an L2 language with equivalent observable semantics for the conformance vectors, or declare the L2 profile unsupported.
+
+  Static analysis of L2 sources rejects `eval`, `print`, `debug`, module statements (`import`, `export`), function pointers and reflection (`Fn`, `call`, `curry`, `is_def_fn`, `is_def_var`), `sleep`, `exit` and `parse_json`, and closures that name `sys`. Instructions are bound as `sys.<family>.<operation>(…)`. An implementation without an L2 engine fails L2 execution with `LOGIC.NOT_AVAILABLE`. The run-time behaviour of the engine is verified by the L2 escape suite (EXIT-1-10) (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4200…4239
 - **Satisfies:** FR-LOGIC-041, FR-LOGIC-042, FR-LOGIC-045
@@ -187,6 +207,8 @@ DAT-Journal:
 
 ### STD-CTX-022 — Logic asset declaration
 - **Clause:** Every L2 or L3 asset MUST be an object of class `LogicAsset` (`DAT-LogicAsset`).
+
+  The genesis model defines the concrete class `Logic` below `LogicAsset` with the members of `DAT-LogicAsset`. The tier `host` marks host programs of conformance adapters (STD-ISA-007); it is a test interface under STD-CONF-002 (DEC-044).
 - **Grammar / Schema:** `DAT-LogicAsset`
 - **Conformance vectors:** VER-CONF-4270…4284
 - **Satisfies:** FR-LOGIC-041, FR-LOGIC-081
@@ -195,7 +217,7 @@ DAT-Journal:
 ```yaml
 DAT-LogicAsset:
   name: { type: text, required: true, description: "namespaced name" }
-  tier: { type: enum, required: true, description: "l2 | l3" }
+  tier: { type: enum, required: true, description: "l2 | l3 | host (conformance adapters only, DEC-044)" }
   abi: { type: text, required: true, description: "ABI version M.m" }
   source: { type: blob, required: true, description: "Rhai source, or component binary" }
   source_ref: { type: text, required: false, description: "for L3: content-id of the source archive (for audit)" }
@@ -211,6 +233,8 @@ DAT-LogicAsset:
 
 ### STD-CTX-023 — Verification record and gate
 - **Clause:** An asset becomes `verified` only when a `DAT-VerificationRecord` exists with all checks passed and a signature by an authorised verifier principal. On `main`, `release` and `overlay` branches, only `verified` and `deprecated` assets MUST execute (`LOGIC.UNVERIFIED_ASSET` otherwise).
+
+  An asset is verified when its `verification` names a record whose checks (`static_analysis`, `type_check`, `capabilities`, `tests`, `signature`) all passed and whose asset has the same code as the current version (tier, ABI, source, exports, imports and capabilities). Verification commits `state` and `verification`; setting the state alone does not verify, and a change of code needs a new record. `retired` assets do not execute on any branch (DEC-044).
 - **Grammar / Schema:** `DAT-VerificationRecord`
 - **Conformance vectors:** VER-CONF-4285…4304
 - **Satisfies:** FR-LOGIC-082, FR-LOGIC-083, FR-LOGIC-054
@@ -235,6 +259,8 @@ DAT-VerificationRecord:
   - scripts exceeding size or AST-depth limits.
 
   The forbidden list is versioned with the ABI. Findings MUST be recorded (FR-LOGIC-094).
+
+  Findings are recorded as `{rule, …}` with the rules `forbidden_construct`, `unknown_instruction`, `undeclared_instruction`, `unbounded_recursion`, `type_error`, `nesting_depth`, `source_size` and `import_outside_world`. For host programs, recursion is bounded by a function's `max_depth`, and nesting is limited to 32 per function (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4305…4344
 - **Satisfies:** FR-LOGIC-091, FR-LOGIC-092, FR-LOGIC-094
@@ -244,6 +270,8 @@ DAT-VerificationRecord:
 
 ### STD-CTX-030 — Version pinning per process
 - **Clause:** A process MUST resolve every logic asset once, at first use, from its snapshot, and MUST use that version for its whole duration. New versions affect only processes that start after the commit making them effective.
+
+  Assets are pinned per asset object at the process snapshot. A change of an asset committed by the process itself takes effect for later processes only (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4345…4354
 - **Satisfies:** FR-LOGIC-085

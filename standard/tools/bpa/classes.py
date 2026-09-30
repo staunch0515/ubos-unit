@@ -46,6 +46,18 @@ GENESIS = {
                                  'open', 'submitted', 'approved', 'rejected', 'merged', 'abandoned']}),
                              _f('preview', 'text'), _f('approvals', 'json'), _f('simulations', 'json'),
                              _f('selection', 'json'), _f('merged_commit', 'text')]},
+    # STD-CTX-022 (BPA 1.0-rc1, DEC-044): logic assets are objects of this class (DAT-LogicAsset).
+    'Logic': {'name': 'Logic', 'kind': 'definition', 'parent': 'LogicAsset', 'abstract': False,
+              'fields': [_f('name', 'text', True),
+                         _f('tier', 'enum', True, constraints={'allowed_values': ['l2', 'l3', 'host']}),
+                         _f('abi', 'text', True), _f('source', 'json', True), _f('source_ref', 'text'),
+                         _f('exports', 'json', True), _f('imports', 'json'), _f('capabilities', 'json', True),
+                         _f('profile', 'enum', True, constraints={'allowed_values': [
+                             'strict', 'standard', 'batch', 'simulation', 'agent']}),
+                         _f('tests', 'json'),
+                         _f('state', 'enum', True, constraints={'allowed_values': [
+                             'draft', 'committed', 'verified', 'deprecated', 'retired']}),
+                         _f('verification', 'text'), _f('publisher_signature', 'json')]},
     'Release': {'name': 'Release', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
                 'fields': [_f('version', 'text', True), _f('tag', 'text', True), _f('notes', 'text'),
                            _f('change_sets', 'json'), _f('approvals', 'json')]},

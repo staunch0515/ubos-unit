@@ -22,6 +22,8 @@ business state. ABI version 1.0 is specified here.
 
 ### STD-ISA-001 — Instruction descriptor
 - **Clause:** Every instruction MUST be described by a `DAT-InstructionDecl`. The set of descriptors of an ABI version is normative, and implementations MUST NOT expose other instructions to logic, except registered extensions (STD-CONF-*).
+
+  The descriptors are those of the family files; a conformance adapter lists them with the adapter operation `instructions` (DEC-044).
 - **Grammar / Schema:** `DAT-InstructionDecl`
 - **Conformance vectors:** VER-CONF-3000…3009
 - **Satisfies:** FR-LOGIC-011, FR-LOGIC-013
@@ -42,6 +44,8 @@ DAT-InstructionDecl:
 
 ### STD-ISA-002 — ABI versioning
 - **Clause:** The ABI version has the form `MAJOR.MINOR`. A minor version MUST only add instructions, optional parameters, result members or error codes. A logic asset declares `abi = M.m`, and implementations supporting `M.n` with `n ≥ m` MUST execute it with the `M.m` semantics. A major version MUST be supported for at least 24 months after its successor's release.
+
+  An implementation of ABI 1.0 rejects assets declaring another major version or a higher minor version (`LOGIC.ABI_UNSUPPORTED`) and malformed versions (`MODEL.INVALID_VALUE`) (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3010…3019
 - **Satisfies:** FR-LOGIC-012, NR-COMPAT-001
@@ -63,6 +67,8 @@ DAT-InstructionDecl:
 
 ### STD-ISA-004 — Metering units
 - **Clause:** Every instruction MUST charge its declared cost in *units* against the execution's operation budget, in addition to the script operations and component fuel of the calling tier. Version 1.0 defines 1 unit ≈ one script operation. The costs in the family files are normative minimums for conformance of budget exhaustion.
+
+  Items are counted as follows: `field`, a member of the map argument; `KiB`, a started KiB of the canonical fields returned; `item`, `segment` and `entry`, an element of the result (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3030…3039
 - **Satisfies:** FR-LOGIC-061, FR-LOGIC-063
@@ -70,6 +76,8 @@ DAT-InstructionDecl:
 
 ### STD-ISA-005 — Authorization at every instruction
 - **Clause:** Before executing, every instruction MUST evaluate its authorization action with the execution context's principal chain against the target resource (STD-CTX-001). Denials MUST raise `IAM.DENIED`, or `IAM.NOT_FOUND` for invisible resources, and are not catchable as success.
+
+  Until the Governance profile defines policies, conformance adapters take the principal's grants as a list of actions or `action:Class` items; a denied read-type action (`read`, `read_history`, `reflect`, `explain`) is reported as `IAM.NOT_FOUND` (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3040…3049
 - **Satisfies:** FR-LOGIC-014, FR-IAM-041, FR-IAM-043
@@ -81,6 +89,8 @@ DAT-InstructionDecl:
   - limit, cancellation and integrity errors (`catchable: false`) MUST terminate the execution.
 
   The catchability of each code is defined in the error registry (STD-ERR).
+
+  Logic may raise registered codes only (`MODEL.INVALID_VALUE` otherwise) (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3050…3059
 - **Satisfies:** FR-LOGIC-044, FR-LOGIC-062
@@ -88,6 +98,8 @@ DAT-InstructionDecl:
 
 ### STD-ISA-007 — Tier neutrality
 - **Clause:** Instruction semantics MUST be identical whether invoked from L2 scripts, L3 components or an in-process host adapter. Host bindings map the descriptors one-to-one: Rhai functions under the `sys` object, WIT interface `ubos:isa/v1` functions, and the Rust host API.
+
+  Host programs of conformance adapters are the in-process binding used by the vectors (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3060…3069
 - **Satisfies:** FR-LOGIC-015

@@ -78,6 +78,8 @@ DAT-Process:
 
 ### STD-TXN-023 — Automatic retry
 - **Clause:** Processes of logic declared `retryable` MAY be re-executed from the start by the implementation after `TXN.HEAD_MOVED` or `TXN.READ_SET_CHANGED`. Each attempt uses a fresh snapshot and the same idempotency key, up to the configured maximum (default 5). Non-deterministic journal values MUST be re-drawn per attempt, and only the successful attempt's journal is kept.
+
+  `retryable` is declared on the exported function. `max_attempts` (default 5) counts all attempts. Each attempt draws its entropy from SHA-256 of the seed and the attempt number (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2100…2109
 - **Satisfies:** FR-TXN-025

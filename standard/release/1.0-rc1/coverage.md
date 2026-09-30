@@ -6,11 +6,11 @@
 
 | Profile | MUST clauses with a range | Covered | Coverage | Vectors | Prototype vectors |
 |---|---|---|---|---|---|
-| Core | 118 | 91 | 77% | 881 | 355 |
+| Core | 118 | 118 | 100% | 1038 | 355 |
 | Bitemporal | 10 | 10 | 100% | 61 | 30 |
-| Ledger | 9 | 9 | 100% | 52 | 52 |
+| Ledger | 9 | 9 | 100% | 55 | 52 |
 | Proof | 9 | 9 | 100% | 73 | 16 |
-| **All** | **146** | **119** | **82%** | **1067** | **453** |
+| **All** | **146** | **146** | **100%** | **1227** | **453** |
 
 ## Clauses
 
@@ -110,7 +110,7 @@
 | STD-TXN-020 | Core | yes | 3 (VER-CONF-2060…VER-CONF-2062) |
 | STD-TXN-021 | Core | yes | 5 (VER-CONF-2070…VER-CONF-2074) |
 | STD-TXN-022 | Core | yes | 3 (VER-CONF-2090…VER-CONF-2092) |
-| STD-TXN-023 | Core | yes | **none** |
+| STD-TXN-023 | Core | yes | 4 (VER-CONF-2100…VER-CONF-2103) |
 | STD-TXN-024 | Ledger | yes | 2 (VER-CONF-2110…VER-CONF-2111) |
 | STD-TXN-030 | Core | yes | 8 (VER-CONF-2120…VER-CONF-2127) |
 | STD-TXN-031 | Core | yes | 7 (VER-CONF-2135…VER-CONF-2141) |
@@ -126,48 +126,48 @@
 | STD-PROOF-021 | Proof | yes | 9 (VER-CONF-2410…VER-CONF-2418) |
 | STD-PROOF-030 | Proof | yes | 4 (VER-CONF-2420…VER-CONF-2423) |
 | STD-PROOF-070 | Proof | yes | 11 (VER-CONF-2510…VER-CONF-2520) |
-| STD-BPU-001 | Core | yes | **none** |
-| STD-BPU-002 | Core | yes | **none** |
-| STD-BPU-004 | Core | yes | **none** |
-| STD-BPU-010 | Core | yes | **none** |
-| STD-BPU-011 | Core | yes | **none** |
-| STD-ISA-001 | Core | yes | **none** |
-| STD-ISA-002 | Core | yes | **none** |
+| STD-BPU-001 | Core | yes | 4 (VER-CONF-2600…VER-CONF-2603) |
+| STD-BPU-002 | Core | yes | 4 (VER-CONF-2610…VER-CONF-2613) |
+| STD-BPU-004 | Core | yes | 3 (VER-CONF-2635…VER-CONF-2637) |
+| STD-BPU-010 | Core | yes | 3 (VER-CONF-2650…VER-CONF-2652) |
+| STD-BPU-011 | Core | yes | 4 (VER-CONF-2660…VER-CONF-2663) |
+| STD-ISA-001 | Core | yes | 2 (VER-CONF-3000…VER-CONF-3001) |
+| STD-ISA-002 | Core | yes | 5 (VER-CONF-3010…VER-CONF-3014) |
 | STD-ISA-003 | Core | no | **none** |
-| STD-ISA-004 | Core | yes | **none** |
-| STD-ISA-005 | Core | yes | **none** |
-| STD-ISA-006 | Core | yes | **none** |
-| STD-ISA-007 | Core | yes | **none** |
-| STD-ISA-010 | Core | yes | **none** |
-| STD-ISA-011 | Core | no | **none** |
-| STD-ISA-012 | Core | no | **none** |
-| STD-ISA-013 | Core | no | **none** |
-| STD-ISA-014 | Ledger | no | **none** |
-| STD-ISA-015 | Ledger | no | **none** |
-| STD-ISA-016 | Core | no | **none** |
-| STD-ISA-030 | Core | no | **none** |
-| STD-ISA-031 | Core | no | **none** |
-| STD-ISA-032 | Core | no | **none** |
-| STD-ISA-033 | Core | no | **none** |
-| STD-ISA-034 | Core | no | **none** |
-| STD-ISA-050 | Core | yes | **none** |
-| STD-ISA-051 | Core | no | **none** |
-| STD-ISA-052 | Core | no | **none** |
-| STD-ISA-055 | Core | no | **none** |
-| STD-CTX-001 | Core | yes | **none** |
-| STD-CTX-002 | Core | no | **none** |
-| STD-CTX-003 | Core | yes | **none** |
-| STD-CTX-004 | Core | yes | **none** |
-| STD-CTX-005 | Core | yes | **none** |
-| STD-CTX-006 | Core | yes | **none** |
-| STD-CTX-010 | Core | yes | **none** |
-| STD-CTX-011 | Core | yes | **none** |
-| STD-CTX-012 | Core | yes | **none** |
-| STD-CTX-020 | Core | yes | **none** |
-| STD-CTX-022 | Core | yes | **none** |
-| STD-CTX-023 | Core | yes | **none** |
-| STD-CTX-024 | Core | yes | **none** |
-| STD-CTX-030 | Core | yes | **none** |
+| STD-ISA-004 | Core | yes | 3 (VER-CONF-3030…VER-CONF-3032) |
+| STD-ISA-005 | Core | yes | 6 (VER-CONF-3040…VER-CONF-3045) |
+| STD-ISA-006 | Core | yes | 5 (VER-CONF-3050…VER-CONF-3054) |
+| STD-ISA-007 | Core | yes | 2 (VER-CONF-3060…VER-CONF-3061) |
+| STD-ISA-010 | Core | yes | 6 (VER-CONF-3100…VER-CONF-3105) |
+| STD-ISA-011 | Core | no | 5 (VER-CONF-3120…VER-CONF-3124) |
+| STD-ISA-012 | Core | no | 1 (VER-CONF-3150…VER-CONF-3150) |
+| STD-ISA-013 | Core | no | 1 (VER-CONF-3165…VER-CONF-3165) |
+| STD-ISA-014 | Ledger | no | 1 (VER-CONF-3170…VER-CONF-3170) |
+| STD-ISA-015 | Ledger | no | 2 (VER-CONF-3195…VER-CONF-3196) |
+| STD-ISA-016 | Core | no | 2 (VER-CONF-3215…VER-CONF-3216) |
+| STD-ISA-030 | Core | no | 4 (VER-CONF-3300…VER-CONF-3303) |
+| STD-ISA-031 | Core | no | 1 (VER-CONF-3330…VER-CONF-3330) |
+| STD-ISA-032 | Core | no | 1 (VER-CONF-3340…VER-CONF-3340) |
+| STD-ISA-033 | Core | no | 1 (VER-CONF-3350…VER-CONF-3350) |
+| STD-ISA-034 | Core | no | 2 (VER-CONF-3360…VER-CONF-3361) |
+| STD-ISA-050 | Core | yes | 4 (VER-CONF-3400…VER-CONF-3403) |
+| STD-ISA-051 | Core | no | 2 (VER-CONF-3430…VER-CONF-3431) |
+| STD-ISA-052 | Core | no | 2 (VER-CONF-3440…VER-CONF-3441) |
+| STD-ISA-055 | Core | no | 1 (VER-CONF-3480…VER-CONF-3480) |
+| STD-CTX-001 | Core | yes | 6 (VER-CONF-4000…VER-CONF-4005) |
+| STD-CTX-002 | Core | no | 3 (VER-CONF-4020…VER-CONF-4022) |
+| STD-CTX-003 | Core | yes | 7 (VER-CONF-4030…VER-CONF-4036) |
+| STD-CTX-004 | Core | yes | 11 (VER-CONF-4050…VER-CONF-4060) |
+| STD-CTX-005 | Core | yes | 4 (VER-CONF-4080…VER-CONF-4083) |
+| STD-CTX-006 | Core | yes | 3 (VER-CONF-4100…VER-CONF-4102) |
+| STD-CTX-010 | Core | yes | 5 (VER-CONF-4120…VER-CONF-4124) |
+| STD-CTX-011 | Core | yes | 3 (VER-CONF-4150…VER-CONF-4152) |
+| STD-CTX-012 | Core | yes | 5 (VER-CONF-4165…VER-CONF-4169) |
+| STD-CTX-020 | Core | yes | 7 (VER-CONF-4200…VER-CONF-4206) |
+| STD-CTX-022 | Core | yes | 7 (VER-CONF-4270…VER-CONF-4276) |
+| STD-CTX-023 | Core | yes | 8 (VER-CONF-4285…VER-CONF-4292) |
+| STD-CTX-024 | Core | yes | 8 (VER-CONF-4305…VER-CONF-4312) |
+| STD-CTX-030 | Core | yes | 2 (VER-CONF-4345…VER-CONF-4346) |
 | STD-EXPR-001 | Core | yes | 23 (VER-CONF-4400…VER-CONF-4422) |
 | STD-EXPR-002 | Core | yes | 21 (VER-CONF-4460…VER-CONF-4480) |
 | STD-EXPR-003 | Core | yes | 16 (VER-CONF-4500…VER-CONF-4515) |

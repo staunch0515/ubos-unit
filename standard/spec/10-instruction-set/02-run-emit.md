@@ -15,6 +15,8 @@
   | Authorization | the port's `permission` |
 
   Decisions returning `require` MUST raise `RULE.DECISION_REQUIRES` with the list of required steps. The caller may catch it only to report. It MUST NOT be converted into success.
+
+  A port implementation names `<asset>#<function>`; the function sees the target as `this` and its identifier as `self_id` (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3400…3429
 - **Satisfies:** FR-MODEL-031, FR-FLOW-022, FR-RULE-051
@@ -43,6 +45,8 @@
   | Determinism | as the callee |
   | Cost | 10 plus the callee |
   | Authorization | `execute` on the asset |
+
+  Imports are `{name, version}` items with the version hash of the library (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3440…3449
 - **Satisfies:** FR-LOGIC-043, FR-LOGIC-082
@@ -58,6 +62,8 @@
   | Determinism | `deferred` |
   | Cost | 20 |
   | Authorization | as for the target port or function |
+
+  The job request is an effect of type `Job` whose payload holds `job_id`, `port`, `params`, `not_before` and `parent_process` (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3480…3489
 - **Satisfies:** FR-TXN-014, FR-EVT-031
