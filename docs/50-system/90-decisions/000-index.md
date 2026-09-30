@@ -57,6 +57,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-042 | BPA 1.0-rc1 proofs: signatures and key histories, inclusion and consistency proofs, tenant roots, portable archive format, algorithm registry | Accepted |
 | DEC-043 | BPA 1.0-rc1 L1 expressions, queries, addressing and custom value types; part 1e of step 1 split into 1e-1 and 1e-2 | Accepted |
 | DEC-044 | BPA 1.0-rc1 execution: host programs, context, gateway, profiles, metering, entropy, journal and replay, logic assets and verification, instructions, BPU views and automatic retry | Accepted |
+| DEC-045 | Release of BPA 1.0-rc1: notes in the manifest, signed tag `bpa-v1.0.0-rc1`, frozen once tagged | Accepted |
 
 ---
 
@@ -547,3 +548,15 @@ Decisions are never deleted. A replaced decision is marked
 - **Consequences:** 160 vectors (VER-CONF-2100…2103, 2600…2603, 2610…2613, 2635…2637, 2650…2652, 2660…2663, 3000…3001, 3010…3014, 3030…3032, 3040…3045, 3050…3054, 3060…3061, 3100…3105, 3120…3124, 3150, 3165, 3170, 3195…3196, 3215…3216, 3300…3303, 3330, 3340, 3350, 3360…3361, 3400…3403, 3430…3431, 3440…3441, 3480, 4000…4005, 4020…4022, 4030…4036, 4050…4060, 4080…4083, 4100…4102, 4120…4124, 4150…4152, 4165…4169, 4200…4206, 4270…4276, 4285…4292, 4305…4312, 4345…4346), not tagged `prototype`. MUST coverage of 1.0-rc1 is 146/146 (100%). The earlier vectors are unchanged. The kernel implements the runtime in step 5. The growth of the L2 escape suite to 300 cases (W-12, EXIT-1-10) remains part of step 5.
 - **Alternatives considered:** Leaving the nesting limit of host programs at 64 was rejected: such a program is nested deeper than the default recursion limit of common JSON parsers (128). The limit follows the L2 expression depth in functions instead. Executing L2 scripts in the oracle was rejected as in DEC-043.
 - **Affects:** STD-CTX-001…006, STD-CTX-010…012, STD-CTX-020, STD-CTX-022…024, STD-CTX-030, STD-ISA-001…007, STD-ISA-010…016, STD-ISA-030, STD-ISA-050, STD-ISA-052, STD-ISA-055, STD-BPU-001, STD-BPU-002, STD-BPU-011, STD-TXN-023, STD-CONF-005
+
+### DEC-045 — Release of BPA 1.0-rc1 (step 1f)
+- **Status:** Accepted · **Date:** 2026-09-30
+- **Context:** Part 1f of PH-1 step 1 (DEC-039) releases BPA 1.0-rc1. After parts 1a–1e-2 the release holds 171 clauses and 1,227 vectors, and all 146 MUST clauses with a vector range are covered (EXIT-1-01).
+- **Decision:**
+  1. **Release notes.** `standard/release/<version>/notes.md` is written by hand, like `scope.json`, and lists the content, the changes since the previous release and the known limits. The builder lists it in the manifest when it exists; BPA 0.1 has none and stays frozen.
+  2. **Tag.** After merge the owner creates the signed tag `bpa-v1.0.0-rc1` on the merge commit, with the manifest `content_id` in the tag message (DSN-BPA-001, DEC-030).
+  3. **Freeze.** Once tagged, BPA 1.0-rc1 is frozen like BPA 0.1 (DEC-039): its clauses and vectors are not changed. `regen_all.sh` keeps building 1.0-rc1 and its output must stay identical until a decision opens BPA 1.0-rc2 (gate 1b, EXIT-1-14). Defects found later are recorded in `standard/errata/` and corrected in the next release.
+  4. **Known limits** stated in the notes: vectors added after 0.1 are not tagged `prototype` and are run by the kernel (EXIT-1-02); L2-specific behaviour is verified by the escape suite (W-12, EXIT-1-10); rules that need the principal and policy model, and link objects of attributes classes, follow in 1.0-rc2.
+- **Consequences:** EXIT-1-01 is met when the tag exists. PH-1 step 1 is complete; step 2 (extended formal models, EXIT-1-07) is next.
+- **Alternatives considered:** Keeping the notes outside the manifest was rejected: the known limits belong to what the signature covers. Changing a tagged release in place was rejected: a signed manifest must stay verifiable.
+- **Affects:** DSN-BPA-001, EXIT-1-01, DEC-039
