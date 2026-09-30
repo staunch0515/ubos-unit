@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (32)
+## DEC (33)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -126,4 +126,5 @@ depends_on: [UBS-IDX-00]
 | DEC-030 | PH-0 execution model: owner with AI sessions, external review at acceptance | `90-decisions/000-index.md` |
 | DEC-031 | Model-checking bounds: exhaustive where feasible, simulation at the stated bound otherwise | `90-decisions/000-index.md` |
 | DEC-032 | BPA 0.1 release: scope, build, adapter operations, generated vectors, clarifications | `90-decisions/000-index.md` |
+| DEC-033 | PH-0 prototype: crate set, PostgreSQL client, property-test harness | `90-decisions/000-index.md` |
 

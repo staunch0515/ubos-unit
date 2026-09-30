@@ -45,6 +45,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-030 | PH-0 execution model: owner with AI sessions, external review at acceptance | Accepted |
 | DEC-031 | Model-checking bounds: exhaustive where feasible, simulation at the stated bound otherwise | Accepted |
 | DEC-032 | BPA 0.1 release: scope, build from the specification, adapter operations, generated vectors, clarifications | Accepted |
+| DEC-033 | PH-0 prototype: crate set, PostgreSQL client, property-test harness, pull-request split | Accepted |
 
 ---
 
@@ -355,3 +356,16 @@ Decisions are never deleted. A replaced decision is marked
 - **Alternatives considered:** Copying the clauses into `standard/` by hand was rejected (two sources drift); hand-written expected values were rejected (error-prone at 300+ vectors); waiting for UBTP was rejected (PH-0 needs executable vectors).
 - **Addendum (2026-09-30, step 3b):** STD-PROOF-001 now states the byte encoding of the level in the boundary hash, the node-closing rule, the level construction and the class and ledger-key hashes; STD-CONF-005 adds error `details` in expectations (`TXN.HEAD_MOVED`, `VER.MERGE_CONFLICT`), the `retroactive` member of commit results (STD-TIME-030) and the `merge` and `diff` results; OQ-006 is resolved by aligning DSN-DVM-206 with STD-VER-013. Four MUST clauses of 0.1 have no vector (STD-FND-026 custom value types, STD-OBJ-009 size limits, STD-TIME-031 impact set, STD-TXN-023 automatic retry) because they need L1 expressions, very large bodies, derivation records or retry control that 0.1 does not expose; they are covered in later releases.
 - **Affects:** OQ-004, OQ-005, OQ-006, STD-TIME-011, STD-VER-040, STD-OBJ-002, STD-PROOF-001, STD-ERR-002, STD-CONF-001, STD-CONF-005, DSN-DVM-206, EXIT-0-01, EXIT-0-03, DSN-BPA-001
+
+### DEC-033 — PH-0 prototype: crate set, PostgreSQL client, property-test harness
+- **Status:** Accepted · **Date:** 2026-09-30
+- **Context:** PH-0 step 4 (DEC-030) builds the prototype that must pass every vector tagged `prototype` on PostgreSQL through the runner (EXIT-0-03) and check root history independence and other properties with at least 1,000,000 generated cases (EXIT-0-04). UBS-PH-0 §2 lists the prototype crates `ubos-types`, `ubos-store`, `ubos-tree`, `ubos-version` and `ubos-time` and the FRG runner.
+- **Decision:**
+  1. Three more crates are added in their UBS-ARC-07 §2 layers: a minimal `ubos-model` (class registry with the field types, kinds and ledger declarations the vectors use; C3 and narrowing follow in PH-1), `ubos-dvm` (the adapter operations of STD-CONF-005) and `ubos-forge` (the runner `forge conform`, producing `DAT-ConformanceReport`).
+  2. The prototype accesses PostgreSQL with the synchronous `postgres` crate instead of sqlx (DEC-007); the PH-1 kernel returns to sqlx.
+  3. Third-party crates: serde and serde_json, sha2, unicode-normalization, num-bigint, chrono and chrono-tz, postgres, ed25519-dalek.
+  4. Property tests use a seeded generator in a release-mode binary (no property-test framework); CI runs 10,000 cases per property, and the 1,000,000-case runs are reported in `verify/reports/`.
+  5. Step 4 is delivered in three pull requests: 4a pure operations and runner; 4b stores, model, versioning, time and PostgreSQL (EXIT-0-03); 4c property tests (EXIT-0-04).
+- **Consequences:** The dependency checker (AR-031) covers the added crates; UBS-PH-0 §2 refers to this decision.
+- **Alternatives considered:** Using sqlx already in PH-0 was rejected (asynchronous runtime without benefit for a single-threaded adapter); proptest was rejected (a fixed-seed generator reports and replays each case deterministically, as DSN-DVM-516 asks).
+- **Affects:** UBS-PH-0, DEC-007, UBS-ARC-07
