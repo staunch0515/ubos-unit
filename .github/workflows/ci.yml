@@ -52,6 +52,10 @@ jobs:
         run: |
           cargo build --release --locked -p ubos-dvm --bin ubos-props
           ./target/release/ubos-props --cases 10000
+      - name: L2 escape suite, 100 of 100 blocked (VER-SEC-0001, DEC-034)
+        run: |
+          cargo build --release --locked -p ubos-runtime
+          ./target/release/ubos-sandbox-spike --cases verify/sandbox/l2-escape-cases.json
 
   models:
     name: formal models (reduced bounds)

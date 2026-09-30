@@ -46,6 +46,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-031 | Model-checking bounds: exhaustive where feasible, simulation at the stated bound otherwise | Accepted |
 | DEC-032 | BPA 0.1 release: scope, build from the specification, adapter operations, generated vectors, clarifications | Accepted |
 | DEC-033 | PH-0 prototype: crate set, PostgreSQL client, property-test harness, pull-request split | Accepted |
+| DEC-034 | Rhai sandbox spike: ASM-008 confirmed for L2 with conditions, crate `ubos-runtime`, open questions on L2 sizes and decimals | Accepted |
 
 ---
 
@@ -369,3 +370,15 @@ Decisions are never deleted. A replaced decision is marked
 - **Consequences:** The dependency checker (AR-031) covers the added crates; UBS-PH-0 §2 refers to this decision.
 - **Alternatives considered:** Using sqlx already in PH-0 was rejected (asynchronous runtime without benefit for a single-threaded adapter); proptest was rejected (a fixed-seed generator reports and replays each case deterministically, as DSN-DVM-516 asks).
 - **Affects:** UBS-PH-0, DEC-007, UBS-ARC-07
+
+### DEC-034 — Rhai sandbox spike: ASM-008 confirmed for L2 with conditions
+- **Status:** Accepted · **Date:** 2026-09-30
+- **Context:** PH-0 step 6 (DEC-030) runs the 100 initial L2 escape cases of VER-SEC-0001 against a Rhai host hardened per STD-CTX-020 and DSN-DVM-612 (EXIT-0-06, MET-SEC-001). ASM-008 assumes that Rhai and a WASM component runtime meet the determinism and sandboxing requirements with the planned hardening; RSK-004 is the risk that Rhai cannot be made deterministic without floats.
+- **Decision:**
+  1. The prototype L2 host is built in crate `ubos-runtime` (its UBS-ARC-07 §2 layer, no internal dependencies yet) with the binary `ubos-sandbox-spike`; the suite is `verify/sandbox/l2-escape-cases.json` (L2E-001…100) and the report `verify/reports/exit-0-06/`. Third-party crates: `rhai` (features `no_float`, `decimal`, `no_time`, `no_module`, `no_closure`, `no_custom_syntax`), `rust_decimal`, and `cap` (counting allocator, spike binary only).
+  2. All 100 cases are blocked and replay identically. ASM-008 is **confirmed for the L2 language (Rhai)**, without a fork, under these conditions, which DSN-DVM-612 now states: the engine starts empty with an explicit list of pure packages (Rhai's language-core package carries `sleep`, `exit`, `parse_json` and function reflection); memory is accounted per execution outside the engine and checked at every metering point; host errors are not catchable by scripts; elapsed time is checked often enough to keep the 10 ms bound of STD-CTX-005 when a single unit is a native call on a large value.
+  3. The WASM half of ASM-008 stays an assumption until the L3 host is verified in PH-1.
+  4. Open questions OQ-007 (L2 sizes per profile missing from STD-CTX-004) and OQ-008 (L2 decimal range versus the kernel decimal) are decided at the PH-1 re-baseline (step 7), together with closing RSK-004, which did not occur.
+- **Consequences:** EXIT-0-06 is met. The per-worker memory count, a weighted unit cost for native calls on large values, and the quadratic cost of Rhai's size checks (findings F-2…F-4 of the report) are inputs to the PH-1 plan and to the NR-PERF-010 benchmark.
+- **Alternatives considered:** Forking Rhai was not needed (RSK-004 did not occur). Enforcing memory only through engine size limits was rejected: they bound single values, and 1,000 variables reached about 450 MB under the 64 MB `strict` profile. Disabling `try … catch` was rejected: host errors and terminations are already uncatchable, and catching an unknown-function error reaches no capability.
+- **Affects:** ASM-008, RSK-004, DSN-DVM-612, STD-CTX-004, STD-CTX-020, UBS-PH-0, UBS-ARC-07

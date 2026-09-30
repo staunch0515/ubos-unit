@@ -1,0 +1,1843 @@
+{
+  "blocked": 100,
+  "cases": 100,
+  "categories": {
+    "entropy": {
+      "blocked": 12,
+      "cases": 12
+    },
+    "file": {
+      "blocked": 12,
+      "cases": 12
+    },
+    "float": {
+      "blocked": 14,
+      "cases": 14
+    },
+    "host-abuse": {
+      "blocked": 20,
+      "cases": 20
+    },
+    "network": {
+      "blocked": 12,
+      "cases": 12
+    },
+    "resource-exhaustion": {
+      "blocked": 18,
+      "cases": 18
+    },
+    "time": {
+      "blocked": 12,
+      "cases": 12
+    }
+  },
+  "engine": "rhai 1.26.1",
+  "profile_default": "strict",
+  "results": [
+    {
+      "actual": {
+        "detail": "Function not found: open (&str | ImmutableString | String) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-001",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "open a host file"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: read_file (&str | ImmutableString | String) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-002",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "read a file by a free function"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: write_file (&str | ImmutableString | String, &str | ImmutableString | String) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-003",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "write a file"
+    },
+    {
+      "actual": {
+        "detail": "Syntax error: 'import' is a reserved keyword (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-004",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 0,
+      "replay_identical": true,
+      "title": "import a module from a file"
+    },
+    {
+      "actual": {
+        "detail": "Syntax error: Undefined variable: std (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-005",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 0,
+      "replay_identical": true,
+      "title": "namespaced std file API"
+    },
+    {
+      "actual": {
+        "detail": "Syntax error: reserved keyword 'eval' is disabled (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-006",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 0,
+      "replay_identical": true,
+      "title": "eval of a script string"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: open (&str | ImmutableString | String) (line 1, position 23)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-007",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 8,
+      "replay_identical": true,
+      "title": "file access through a function pointer"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: read (&str | ImmutableString | String) (line 1, position 15)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-008",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "file access as a string method"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: run_file (&str | ImmutableString | String) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-009",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "run another script file"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: load (&str | ImmutableString | String) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-010",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "load or include a script"
+    },
+    {
+      "actual": {
+        "detail": "sys.fs",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-011",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 8,
+      "replay_identical": true,
+      "title": "file capability on the gateway"
+    },
+    {
+      "actual": {
+        "detail": "sys.files",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-012",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 5,
+      "replay_identical": true,
+      "title": "file capability by gateway index"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: http_get (&str | ImmutableString | String) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-013",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "HTTP GET"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: fetch (&str | ImmutableString | String) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-014",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "fetch"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: connect (&str | ImmutableString | String, i64) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-015",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "raw socket connect"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: socket () (line 1, position 9)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-016",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "socket constructor"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: dns_lookup (&str | ImmutableString | String) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-017",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "DNS lookup"
+    },
+    {
+      "actual": {
+        "detail": "Syntax error: 'import' is a reserved keyword (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-018",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 0,
+      "replay_identical": true,
+      "title": "import an HTTP module"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: http_get (&str | ImmutableString | String) (line 1, position 16)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-019",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 6,
+      "replay_identical": true,
+      "title": "HTTP through a function pointer"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: fetch (&str | ImmutableString | String) (line 1, position 22)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-020",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "HTTP as a string method"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: connector (Gateway, &str | ImmutableString | String) (line 1, position 5)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-021",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 6,
+      "replay_identical": true,
+      "title": "connector method on the gateway"
+    },
+    {
+      "actual": {
+        "detail": "sys.net",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-022",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 5,
+      "replay_identical": true,
+      "title": "network capability by gateway index"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: send_mail (&str | ImmutableString | String, &str | ImmutableString | String) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-023",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "send mail"
+    },
+    {
+      "actual": {
+        "detail": "Context has no field connector",
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "blocked": true,
+      "category": "network",
+      "expect": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "id": "L2E-024",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 5,
+      "replay_identical": true,
+      "title": "connector field on the context"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: timestamp () (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-025",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "host timestamp"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: now () (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-026",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "host clock now()"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: sleep (i64) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-027",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "sleep (language core package)"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: timestamp () (line 1, position 9)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-028",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "elapsed time of a timestamp"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: now (Gateway) (line 1, position 5)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-029",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "clock method on the gateway"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: env (&str | ImmutableString | String) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-030",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "environment variable TZ"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: system_time () (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-031",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "system time"
+    },
+    {
+      "actual": {
+        "value": "2026-01-01T00:00:00.000000Z"
+      },
+      "blocked": true,
+      "category": "time",
+      "expect": {
+        "value": "2026-01-01T00:00:00.000000Z"
+      },
+      "id": "L2E-032",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "ctx.now is the fixed execution time"
+    },
+    {
+      "actual": {
+        "detail": "Cannot modify property 'now' of constant (line 1, position 5)",
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "time",
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-033",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "assign ctx.now"
+    },
+    {
+      "actual": {
+        "detail": "Cannot assign to indexer of constant (line 1, position 4)",
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "time",
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-034",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 5,
+      "replay_identical": true,
+      "title": "assign ctx by index"
+    },
+    {
+      "actual": {
+        "detail": "Cannot modify constant ctx (line 1, position 1)",
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "time",
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-035",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "replace the ctx object"
+    },
+    {
+      "actual": {
+        "detail": "Cannot modify property 'now' of constant (line 1, position 19)\nin call to function 'shift' (line 1, position 55)",
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "time",
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-036",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 8,
+      "replay_identical": true,
+      "title": "mutate ctx through a method with this"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: rand () (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-037",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "rand()"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: random () (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-038",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "random()"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: rand_int (i64, i64) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-039",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "rand_int"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: random (Gateway) (line 1, position 5)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-040",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "random method on the gateway"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: shuffle (array) (line 1, position 22)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-041",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 6,
+      "replay_identical": true,
+      "title": "shuffle"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: hash (&str | ImmutableString | String) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-042",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "hash of a value"
+    },
+    {
+      "actual": {
+        "value": "c9f0c16053e9b08a"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "expect": {
+        "journaled": 1
+      },
+      "id": "L2E-043",
+      "instruction_calls": 1,
+      "journal": 1,
+      "milliseconds": 0,
+      "operations": 6,
+      "replay_identical": true,
+      "title": "sys.random_bytes is journaled and replayable"
+    },
+    {
+      "actual": {
+        "value": [
+          "c9f0c160-53e9-408a-9c71-4a27558de5a2",
+          "86aff39e-8f4a-489b-8c28-13461975e1b2"
+        ]
+      },
+      "blocked": true,
+      "category": "entropy",
+      "expect": {
+        "journaled": 2
+      },
+      "id": "L2E-044",
+      "instruction_calls": 2,
+      "journal": 2,
+      "milliseconds": 0,
+      "operations": 8,
+      "replay_identical": true,
+      "title": "sys.uuid is journaled and replayable"
+    },
+    {
+      "actual": {
+        "value": [
+          "a",
+          "m",
+          "z"
+        ]
+      },
+      "blocked": true,
+      "category": "entropy",
+      "expect": {
+        "value": [
+          "a",
+          "m",
+          "z"
+        ]
+      },
+      "id": "L2E-045",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 18,
+      "replay_identical": true,
+      "title": "map iteration follows key order"
+    },
+    {
+      "actual": {
+        "value": "{\"a\":2,\"b\":1}"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "expect": {
+        "value": "{\"a\":2,\"b\":1}"
+      },
+      "id": "L2E-046",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 14,
+      "replay_identical": true,
+      "title": "map JSON output follows key order"
+    },
+    {
+      "actual": {
+        "value": "Gateway"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "expect": {
+        "deterministic": true
+      },
+      "id": "L2E-047",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "textual form of the gateway leaks no address"
+    },
+    {
+      "actual": {
+        "detail": "random_bytes takes 1..1024",
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-048",
+      "instruction_calls": 1,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 6,
+      "replay_identical": true,
+      "title": "random_bytes above the per-call maximum"
+    },
+    {
+      "actual": {
+        "value": "3.75"
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "value": "3.75"
+      },
+      "id": "L2E-049",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "decimal literal addition is exact"
+    },
+    {
+      "actual": {
+        "value": true
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "value": true
+      },
+      "id": "L2E-050",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "0.1 + 0.2 == 0.3 (exact decimals)"
+    },
+    {
+      "actual": {
+        "detail": "to_float",
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-051",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "to_float"
+    },
+    {
+      "actual": {
+        "detail": "to_float",
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-052",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 6,
+      "replay_identical": true,
+      "title": "to_float as a method"
+    },
+    {
+      "actual": {
+        "detail": "parse_float",
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-053",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "parse_float"
+    },
+    {
+      "actual": {
+        "detail": "sqrt",
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-054",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "sqrt"
+    },
+    {
+      "actual": {
+        "detail": "sin",
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-055",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "sin"
+    },
+    {
+      "actual": {
+        "detail": "exp",
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-056",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "exp"
+    },
+    {
+      "actual": {
+        "detail": "pi",
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-057",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "pi"
+    },
+    {
+      "actual": {
+        "detail": "f32_to_f64",
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-058",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "f32_to_f64"
+    },
+    {
+      "actual": {
+        "value": "0.3333333333333333333333333333"
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "value": "0.3333333333333333333333333333"
+      },
+      "id": "L2E-059",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "decimal division is exact to 28 digits"
+    },
+    {
+      "actual": {
+        "detail": "Division by zero: 1 / 0",
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "id": "L2E-060",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "integer division by zero"
+    },
+    {
+      "actual": {
+        "detail": "Division by zero: 1.5 / 0.0",
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "id": "L2E-061",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 5,
+      "replay_identical": true,
+      "title": "decimal division by zero"
+    },
+    {
+      "actual": {
+        "detail": "Invoice.amount expects Decimal, got string",
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "float",
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-062",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "string to a decimal field"
+    },
+    {
+      "actual": {
+        "detail": "Invoice has no field secret",
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "id": "L2E-063",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 5,
+      "replay_identical": true,
+      "title": "unknown field on a handle"
+    },
+    {
+      "actual": {
+        "detail": "Invoice has no field password",
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "id": "L2E-064",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 5,
+      "replay_identical": true,
+      "title": "unknown field by index"
+    },
+    {
+      "actual": {
+        "detail": "Invoice.qty expects Integer, got string",
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-065",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "string into an integer field"
+    },
+    {
+      "actual": {
+        "detail": "Invoice.paid expects Boolean, got i64",
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-066",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "integer into a boolean field"
+    },
+    {
+      "actual": {
+        "detail": "value of type Handle cannot leave the sandbox",
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-067",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "return the object handle"
+    },
+    {
+      "actual": {
+        "detail": "value of type Gateway cannot leave the sandbox",
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-068",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "return the gateway"
+    },
+    {
+      "actual": {
+        "detail": "value of type Gateway cannot leave the sandbox",
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-069",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "return the gateway inside an array"
+    },
+    {
+      "actual": {
+        "detail": "value of type Context cannot leave the sandbox",
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-070",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "return the context inside a map"
+    },
+    {
+      "actual": {
+        "detail": "value of type Fn cannot leave the sandbox",
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-071",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 2,
+      "replay_identical": true,
+      "title": "return a function pointer"
+    },
+    {
+      "actual": {
+        "detail": "Variable not found: sys (line 1, position 13)\nin closure call (line 1, position 27)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-072",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 11,
+      "replay_identical": true,
+      "title": "closure capturing the gateway"
+    },
+    {
+      "actual": {
+        "detail": "Variable not found: sys (line 1, position 13)\nin call to function 'leak' (line 1, position 26)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-073",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 5,
+      "replay_identical": true,
+      "title": "script function reaching the gateway"
+    },
+    {
+      "actual": {
+        "detail": "Cannot modify property 'tenant' of constant (line 1, position 5)",
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-074",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 4,
+      "replay_identical": true,
+      "title": "assign ctx.tenant"
+    },
+    {
+      "actual": {
+        "detail": "Cannot assign to indexer of constant (line 1, position 4)",
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-075",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 5,
+      "replay_identical": true,
+      "title": "overwrite a gateway member"
+    },
+    {
+      "actual": {
+        "detail": "random_bytes takes 1..1024",
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-076",
+      "instruction_calls": 1,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 6,
+      "replay_identical": true,
+      "title": "negative random_bytes length"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: random_bytes (Gateway, &str | ImmutableString | String) (line 1, position 5)",
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-077",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 6,
+      "replay_identical": true,
+      "title": "wrong argument type to a gateway call"
+    },
+    {
+      "actual": {
+        "detail": "Syntax error: reserved keyword 'print' is disabled (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-078",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 0,
+      "replay_identical": true,
+      "title": "print to the host console"
+    },
+    {
+      "actual": {
+        "detail": "Syntax error: reserved keyword 'debug' is disabled (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-079",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 0,
+      "replay_identical": true,
+      "title": "debug to the host console"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: exit (i64) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-080",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "exit the host"
+    },
+    {
+      "actual": {
+        "detail": "Function not found: parse_json (&str | ImmutableString | String) (line 1, position 1)",
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-081",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 3,
+      "replay_identical": true,
+      "title": "host JSON parser"
+    },
+    {
+      "actual": {
+        "detail": "random_bytes takes 1..1024",
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-082",
+      "instruction_calls": 1,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 7,
+      "replay_identical": true,
+      "title": "host errors cannot be caught"
+    },
+    {
+      "actual": {
+        "detail": "Too many operations (line 1, position 6)",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-083",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 6,
+      "operations": 1000000,
+      "replay_identical": true,
+      "title": "infinite loop"
+    },
+    {
+      "actual": {
+        "detail": "Script terminated (line 65, position 1)",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-084",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 98,
+      "operations": 577,
+      "replay_identical": true,
+      "title": "memory across 1,000 arrays of 65,536 elements"
+    },
+    {
+      "actual": {
+        "detail": "Stack overflow (line 1, position 22)",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-085",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 83,
+      "replay_identical": true,
+      "title": "unbounded recursion"
+    },
+    {
+      "actual": {
+        "detail": "Length of string too large (line 1, position 23)",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-086",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 1,
+      "operations": 66,
+      "replay_identical": true,
+      "title": "string doubling"
+    },
+    {
+      "actual": {
+        "detail": "Script terminated (line 1, position 20)",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-087",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 500,
+      "operations": 193352,
+      "replay_identical": true,
+      "title": "array growth"
+    },
+    {
+      "actual": {
+        "detail": "Too many operations",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-088",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 162,
+      "operations": 1000000,
+      "replay_identical": true,
+      "title": "map growth"
+    },
+    {
+      "actual": {
+        "detail": "Size of array/BLOB too large (line 1, position 15)",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-089",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 9,
+      "replay_identical": true,
+      "title": "array pad to 10^8"
+    },
+    {
+      "actual": {
+        "detail": "Length of string too large (line 1, position 16)",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-090",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 9,
+      "replay_identical": true,
+      "title": "string pad to 10^8"
+    },
+    {
+      "actual": {
+        "detail": "Size of array/BLOB too large (line 1, position 29)",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-091",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 19,
+      "operations": 77,
+      "replay_identical": true,
+      "title": "nested array doubling"
+    },
+    {
+      "actual": {
+        "detail": "Syntax error: Expression exceeds maximum complexity (line 1, position 32)",
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "id": "L2E-092",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 0,
+      "replay_identical": true,
+      "title": "expression nesting of 200 levels"
+    },
+    {
+      "actual": {
+        "detail": "source exceeds 65536 bytes",
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "id": "L2E-093",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 0,
+      "replay_identical": true,
+      "title": "source above 64 KiB"
+    },
+    {
+      "actual": {
+        "detail": "Syntax error: Number of functions defined exceeds maximum limit (line 257, position 1)",
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "id": "L2E-094",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 0,
+      "operations": 0,
+      "replay_identical": true,
+      "title": "300 script functions"
+    },
+    {
+      "actual": {
+        "detail": "Too many variables defined (line 1022, position 1)",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-095",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 16,
+      "operations": 2043,
+      "replay_identical": true,
+      "title": "2,000 variables"
+    },
+    {
+      "actual": {
+        "detail": "Script terminated (line 1, position 6)",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-096",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 100,
+      "operations": 14547232,
+      "replay_identical": true,
+      "title": "time budget without an operation budget"
+    },
+    {
+      "actual": {
+        "detail": "Script terminated (line 1, position 6)",
+        "error": "LOGIC.CANCELLED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.CANCELLED"
+      },
+      "id": "L2E-097",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 50,
+      "operations": 7107249,
+      "replay_identical": true,
+      "title": "cancellation"
+    },
+    {
+      "actual": {
+        "detail": "Too many operations (line 1, position 12)",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-098",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 7,
+      "operations": 1000000,
+      "replay_identical": true,
+      "title": "limit termination cannot be caught"
+    },
+    {
+      "actual": {
+        "detail": "instruction calls exceed 1000 at sys.uuid",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-099",
+      "instruction_calls": 1001,
+      "journal": 1000,
+      "milliseconds": 2,
+      "operations": 4006,
+      "replay_identical": true,
+      "title": "instruction call budget"
+    },
+    {
+      "actual": {
+        "detail": "Script terminated (line 1, position 38)",
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-100",
+      "instruction_calls": 0,
+      "journal": 0,
+      "milliseconds": 500,
+      "operations": 10512,
+      "replay_identical": true,
+      "title": "repeated sort of a large array"
+    }
+  ],
+  "seconds": 3.0,
+  "suite": "UBOS L2 escape suite (initial)",
+  "version": "0.1"
+}

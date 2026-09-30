@@ -38,7 +38,7 @@ depends_on: [UBS-IDX-00]
 | IMP-11 | **Progressive disclosure.** Three product layers (business, builder, platform). Business users never | `00-meta/06-inputs.md` |
 | IMP-12 | **Open standards.** JSON Schema, OpenAPI, CloudEvents, OpenTelemetry, OIDC, SCIM, MCP, Parquet/Icebe | `00-meta/06-inputs.md` |
 
-## OQ (6)
+## OQ (8)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -48,4 +48,6 @@ depends_on: [UBS-IDX-00]
 | OQ-004 | STD-TIME-011 `set_period` rejects an intersecting segment "not fully covered by a segment of the sam | `00-meta/03-progress.md` |
 | OQ-005 | STD-VER-040 builds a virtual merge base "by recursively merging" several best common ancestors in as | `00-meta/03-progress.md` |
 | OQ-006 | STD-VER-013 lists the branch kinds `release`, `draft`, `feature`, `agent`, `overlay`, `loader`, `evo | `00-meta/03-progress.md` |
+| OQ-007 | STD-CTX-020 says the L2 string length, array and map sizes "follow the profile", but STD-CTX-004 lis | `00-meta/03-progress.md` |
+| OQ-008 | Rhai's `decimal` type is a 96-bit, 28-digit decimal, while L1 expressions use the arbitrary-precisio | `00-meta/03-progress.md` |
 

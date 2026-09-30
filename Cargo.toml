@@ -9,6 +9,7 @@ members = [
     "crates/ubos-version",
     "crates/ubos-time",
     "crates/ubos-model",
+    "crates/ubos-runtime",
     "crates/ubos-dvm",
     "crates/ubos-forge",
 ]
@@ -41,6 +42,11 @@ chrono = { version = "0.4", default-features = false, features = ["std"] }
 chrono-tz = "0.10"
 regex = "1"
 ed25519-dalek = "2"
+# Rhai for the L2 sandbox spike (STD-CTX-020, DSN-DVM-612); floats off, exact decimals on
+rhai = { version = "1", default-features = false, features = ["std", "no_float", "decimal", "no_time", "no_module", "no_closure", "no_custom_syntax"] }
+rust_decimal = { version = "1", default-features = false, features = ["std"] }
+# counting allocator: memory probe of the sandbox spike binary
+cap = "0.1"
 postgres = { version = "0.19", features = ["with-serde_json-1"] }
 
 [workspace.lints.rust]
