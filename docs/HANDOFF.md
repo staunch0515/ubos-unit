@@ -96,7 +96,10 @@ Step 3b done: 551 vectors, MUST coverage 94% (68/72), manifest in
      `verify/reports/exit-0-04/`).
    - Note for step 5: the PostgreSQL store keeps each commit's full state; the benchmarks need
      the layout of DSN-DVM-001…011 (kernel indexes, stored tree nodes, deltas).
-3. **PH-0 step 5** — benchmarks on ENV-REF-SERVER (EXIT-0-05). Prerequisites: the storage
+3. **PH-0 step 5** — benchmarks on ENV-REF-SERVER (EXIT-0-05). Preparation in three parts
+   (`verify/reports/exit-0-05/`): 5a done (stored tree nodes with batch update and diff,
+   VER-PROP-0004); 5b storage layout; 5c workload generator and benchmark driver.
+   Prerequisites: the storage
    layout of DSN-DVM-001…011 (kernel indexes, stored tree nodes, deltas) and the workload
    generator WL-GENERIC-10M; the owner rents the database host and an application node
    (DEC-030).

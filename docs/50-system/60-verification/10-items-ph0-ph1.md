@@ -106,6 +106,18 @@ Numbers follow UBS-VER-00 §3.
 - **Evidence:** property report.
 - **Supports:** EXIT-0-04
 
+### VER-PROP-0004 — Incremental tree maintenance
+- **Verifies:** DSN-DVM-007, STD-PROOF-001
+- **Suite:** SUITE-DVM-PROP · **Phase:** PH-0
+- **Environment:** CI workers
+- **Procedure:**
+  1. Build a tree of 0 to 20,000 keys and store its nodes.
+  2. Apply one to four batches of inserts, updates and removals (1 to 1,000 keys, or every key) to the stored nodes.
+  3. After each batch compare the root with a full rebuild (STD-PROOF-001), and the tree diff of the two roots with the key-wise difference of the entry sets.
+- **Pass criterion:** equal roots and diffs in 100% of ≥ 100,000 cases.
+- **Evidence:** property report.
+- **Supports:** EXIT-0-05
+
 ### VER-BENCH-0001 — Prototype storage benchmark
 - **Verifies:** ASM-003, DEC-020, NR-PERF-001, NR-PERF-002, NR-PERF-005
 - **Suite:** SUITE-DVM-BENCH · **Phase:** PH-0

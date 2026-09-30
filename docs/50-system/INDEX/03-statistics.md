@@ -38,7 +38,7 @@ depends_on: [UBS-IDX-00]
 | SCN | 67 |
 | STD | 240 |
 | SUITE | 77 |
-| VER | 92 |
+| VER | 93 |
 
 ## Requirements by phase
 

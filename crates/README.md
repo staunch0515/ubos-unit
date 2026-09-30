@@ -17,6 +17,9 @@ cargo build --release -p ubos-runtime
 ./target/release/ubos-sandbox-spike --cases verify/sandbox/l2-escape-cases.json
 ```
 
+PH-0 step 5 preparation: `ubos-tree` updates stored nodes in batches (DSN-DVM-007), and
+`ubos-bench tree` measures it (`verify/reports/exit-0-05/`).
+
 The PostgreSQL store keeps each commit's full branch state as one record; the layout with
 kernel indexes and stored tree nodes that the benchmarks need (DSN-DVM-001…011) is built in
 PH-0 step 5.

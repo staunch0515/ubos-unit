@@ -27,7 +27,19 @@ pub fn nfc(text: &str) -> String {
     text.nfc().collect()
 }
 
+/// ASCII without characters that need escaping: already NFC and written as is.
+fn plain(text: &str) -> bool {
+    text.bytes()
+        .all(|b| (0x20..0x7f).contains(&b) && b != b'"' && b != b'\\')
+}
+
 fn write_string(out: &mut String, text: &str) {
+    if plain(text) {
+        out.push('"');
+        out.push_str(text);
+        out.push('"');
+        return;
+    }
     out.push('"');
     for c in nfc(text).chars() {
         match c {
@@ -79,10 +91,16 @@ fn write(out: &mut String, value: &Value) -> Result<(), BpaError> {
         }
         Value::Object(map) => {
             let mut keys: Vec<&String> = map.keys().collect();
-            keys.sort_by_key(|k| utf16_key(k));
-            let normed: std::collections::BTreeSet<String> = keys.iter().map(|k| nfc(k)).collect();
-            if normed.len() != keys.len() {
-                return Err(invalid("duplicate member after NFC"));
+            if keys.iter().all(|k| plain(k)) {
+                // ASCII: UTF-16 order is byte order, and NFC changes nothing.
+                keys.sort();
+            } else {
+                keys.sort_by_key(|k| utf16_key(k));
+                let normed: std::collections::BTreeSet<String> =
+                    keys.iter().map(|k| nfc(k)).collect();
+                if normed.len() != keys.len() {
+                    return Err(invalid("duplicate member after NFC"));
+                }
             }
             out.push('{');
             for (i, k) in keys.iter().enumerate() {
@@ -125,5 +143,11 @@ pub fn content_id(domain: &str, value: &Value) -> Result<String, BpaError> {
 
 /// Lowercase hexadecimal encoding.
 pub fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
+    const DIGITS: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        out.push(DIGITS[usize::from(b >> 4)] as char);
+        out.push(DIGITS[usize::from(b & 0x0f)] as char);
+    }
+    out
 }
