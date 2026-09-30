@@ -94,13 +94,19 @@ DAT-BranchRef:
   | `correction` | authorised correctors | protected targets via change set | yes | 90 days |
   | `sandbox` | any writer | none | yes | 14 days |
   | `device` | sync (STD-SYNC) | target via integration rules | device principal | until integrated |
+
+  In detail (DEC-041):
+  - The "May merge into" column restricts merges into the protected kinds `main`, `release` and `overlay`: a merge into one of them from a kind whose row does not list it MUST fail with `VER.MERGE_NOT_ALLOWED`. A merge into any other kind (refreshing a working branch) is allowed from every kind except `sandbox`, which is never a merge source. The `loader` and `device` rows allow the protected kinds.
+  - "Via change set" is the write policy of STD-VER-012. `agent` branches reach protected targets only through a change set: a direct merge fails with `VER.CHANGE_SET_REQUIRED`.
+  - The lifetime counts from the creation of the branch, for `draft` from its last commit. A branch past its lifetime is `archived`: commits to it and merges into it MUST fail with `VER.BRANCH_ARCHIVED`. `loader` and `device` branches end with their process.
+  - The "Created by" and "Direct commits" columns are authorisation rules; they are checked with the principal model of the Governance profile (BPA 1.0-rc2).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1250…1279
 - **Satisfies:** FR-VER-022, FR-AI-031
 - **Notes:** —
 
 ### STD-VER-012 — Write policy on protected branches
-- **Clause:** `main`, `release` and `overlay` are protected branches. On them, a commit that creates or changes an object whose class has `write_policy: change_set` MUST be the merge commit of an approved change set. Otherwise it MUST fail with `VER.CHANGE_SET_REQUIRED`. Ledger appends follow the ledger class's write policy (default `direct`).
+- **Clause:** `main`, `release` and `overlay` are protected branches. On them, a commit that creates or changes an object whose class has `write_policy: change_set` MUST be the merge commit of an approved change set. Otherwise it MUST fail with `VER.CHANGE_SET_REQUIRED`. Ledger appends follow the ledger class's write policy (default `direct`). The policy is the effective write policy of the class (STD-CLS-012); it applies to direct commits and direct merges, including changes made by relationship rules (STD-CLS-040) (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1280…1289
 - **Satisfies:** FR-VER-024
@@ -132,6 +138,8 @@ DAT-BranchRef:
   | `approved` | source or target change | `submitted` | approvals invalidated (STD-VER-021) |
   | `approved` | merge | `merged` | preview unchanged since approval |
   | `open`, `submitted` | abandon | `abandoned` | — |
+
+  The genesis class `ChangeSet` is a concrete class below `Object` with write policy `direct`; the object is written on the target branch and holds the lifecycle state in `state`. The merge rules of STD-VER-011 apply when the change set is opened. An action from a state the table does not list MUST fail with `FLOW.TRANSITION_NOT_ALLOWED`. A submit whose preview has conflicts fails with `VER.MERGE_CONFLICT`, one whose preview does not validate with the error of the first violation. Without the Governance profile, one approval is final (DEC-041).
 - **Grammar / Schema:** `DAT-ChangeSet`
 - **Conformance vectors:** VER-CONF-1300…1329
 - **Satisfies:** FR-VER-031, FR-VER-034
@@ -148,10 +156,11 @@ DAT-ChangeSet:
   simulations: { type: list, required: false, description: "simulation run URIs" }
   selection: { type: list, required: false, description: "accepted object ids for partial acceptance" }
   merged_commit: { type: text, required: false, description: "commit id after merge" }
+  state: { type: enum, required: true, description: "open | submitted | approved | rejected | merged | abandoned (DEC-041)" }
 ```
 
 ### STD-VER-021 — Approval invalidation
-- **Clause:** Each approval MUST record the content ID of the merge preview it approved. When the source head or the relevant target state changes so that the preview content ID changes, all approvals MUST be invalidated and the change set returned to `submitted`.
+- **Clause:** Each approval MUST record the content ID of the merge preview it approved. When the source head or the relevant target state changes so that the preview content ID changes, all approvals MUST be invalidated and the change set returned to `submitted`. The check is made at the latest when the change set is next read or acted on (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1330…1339
 - **Satisfies:** FR-VER-032, FR-FLOW-045
@@ -191,7 +200,7 @@ DAT-DiffEntry:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1380…1384
 - **Satisfies:** FR-VER-045, NR-PERF-005
-- **Notes:** —
+- **Notes:** The cost is not observable in results. Vectors check that the difference of two state trees lists exactly the keys whose entries differ (adapter operation `tree_diff`); the cost is measured by MET-PERF-003 (DEC-041).
 
 ## 5. Merge
 
@@ -282,6 +291,8 @@ DAT-MergeConflict:
   - double-entry balance and period rules.
 
   Any error-severity failure MUST abort the merge.
+
+  The checks cover, relative to the target state: the bodies of changed objects, the references of changed objects and of objects that reference a changed object (STD-CLS-041), relationship cardinality (STD-CLS-040), double entry of appended entries (STD-KIND-024) and the period rule at the merge date (STD-KIND-025). Governance-sheet declarations are checked with the Governance profile. Reverts (STD-VER-070) are checked in the same way (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1525…1544
 - **Satisfies:** FR-VER-055
@@ -295,7 +306,7 @@ DAT-MergeConflict:
 - **Notes:** —
 
 ### STD-VER-057 — Merge preview
-- **Clause:** A merge preview (`DAT-MergePreview`) MUST contain the base, the result changes, the conflicts and the validation results. It MUST be a pure function of (B, S, T, class versions in effect), so that equal inputs give equal preview content IDs.
+- **Clause:** A merge preview (`DAT-MergePreview`) MUST contain the base, the result changes, the conflicts and the validation results. It MUST be a pure function of (B, S, T, class versions in effect), so that equal inputs give equal preview content IDs. The preview content ID is the content ID (`ubos.chunk.v1`) of `changes`, `conflicts`, `validation` and `summary`, without `base`, `source_head` and `target_head`, so that target changes that do not alter the preview keep it (STD-VER-021). `summary` holds `counts` by class and operation (DEC-041).
 - **Grammar / Schema:** `DAT-MergePreview`
 - **Conformance vectors:** VER-CONF-1550…1559
 - **Satisfies:** FR-VER-057, FR-VER-032
@@ -313,7 +324,7 @@ DAT-MergePreview:
 ```
 
 ### STD-VER-058 — Recorded resolutions
-- **Clause:** Conflict resolutions MUST be recorded as a `DAT-Resolution` list referenced by the merge commit, stating path, chosen value (or its hash when masked), resolver and optional reason.
+- **Clause:** Conflict resolutions MUST be recorded as a `DAT-Resolution` list referenced by the merge commit, stating path, chosen value (or its hash when masked), resolver and optional reason. Resolutions are supplied with the merge. A field conflict accepts `source`, `target`, `base` or `custom` with a value; an object-level conflict accepts all but `custom`. `value_hash` is the content ID (`ubos.chunk.v1`) of the chosen field value, or of the chosen body for an object-level conflict (`null` when the chosen side ended the object). A resolution that matches no conflict MUST be rejected (`MODEL.INVALID_VALUE`); conflicts without a resolution fail the merge as in STD-VER-052 (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1560…1564
 - **Satisfies:** FR-VER-058
@@ -332,14 +343,14 @@ DAT-Resolution:
 ## 6. Tags and releases
 
 ### STD-VER-060 — Tags
-- **Clause:** A tag MUST bind a slug name to one commit, MUST be signed by its creator, and MUST NOT be moved. Deleting a tag MUST leave a tombstone that prevents reuse of the name.
+- **Clause:** A tag MUST bind a slug name to one commit, MUST be signed by its creator, and MUST NOT be moved. Deleting a tag MUST leave a tombstone that prevents reuse of the name. Tags are scoped by VAE, and a tag names a commit on the history of its branch. The signature follows STD-PROOF-010 (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1565…1574
 - **Satisfies:** FR-VER-061, FR-VER-064
 - **Notes:** —
 
 ### STD-VER-061 — Releases
-- **Clause:** A release MUST be a tag plus a `Release` object (semantic version, notes, included change sets, approvals). Its semantic version MUST be unique per branch line.
+- **Clause:** A release MUST be a tag plus a `Release` object (semantic version, notes, included change sets, approvals). Its semantic version MUST be unique per branch line. The genesis class `Release` is a concrete class below `Object` with write policy `direct`; the Release object is committed on the branch after the tagged commit. The version follows Semantic Versioning 2.0.0; a second release of a version on the same branch fails with `MODEL.KEY_CONFLICT` (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1575…1579
 - **Satisfies:** FR-VER-062
@@ -353,13 +364,15 @@ DAT-Resolution:
   - for objects created by C, end them unless changed since (a conflict);
   - for objects ended by C, restore their last version;
   - for ledger entries appended by C, append reversals (STD-KIND-023).
+
+  This is the three-way merge (STD-VER-050) of the state before C into the head of X, with the state after C as base; objects created by C are ended from the start of their timeline, and reversals are appended in the order of the original entries. A conflict fails the revert as a whole with `VER.MERGE_CONFLICT`. The result is validated as in STD-VER-055 (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1580…1604
 - **Satisfies:** FR-VER-071, FR-VER-074
 - **Notes:** —
 
 ### STD-VER-071 — Revert of a process or change set
-- **Clause:** Reverting a process MUST revert all its commits on each branch, as one process, in reverse commit order. Reverting a merged change set MUST revert its merge commit relative to the first parent. The implementation MUST report dependent processes (those triggered by the reverted ones) before execution.
+- **Clause:** Reverting a process MUST revert all its commits on each branch, as one process, in reverse commit order. Reverting a merged change set MUST revert its merge commit relative to the first parent. The implementation MUST report dependent processes (those triggered by the reverted ones) before execution. Dependents are the descendants of the reverted processes by STD-TXN-031. The commits of all branches are validated before any is written (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1605…1614
 - **Satisfies:** FR-VER-072, FR-VER-073, FR-VER-075
@@ -374,13 +387,15 @@ DAT-Resolution:
   3. otherwise resolve o on P at P's head (live, as of the time of s) or at the pin (pinned), recursively.
 
   A hide marker (`op: hide`) MUST make o not found on X without affecting P. Chains MUST support depth 8 and reject cycles (`VER.INHERITANCE_CYCLE`).
+
+  In detail (DEC-041): a branch created with a parent line starts with an empty state of its own, and `created_from` records the parent's commit. The time of s is the transaction time of the selected commit, or the time of a `time` selector (STD-VER-090); a read at the head resolves a live parent at its head. An update of an inherited object writes an override on X with the parent version as base. Only objects of the parent line can be hidden, and `unhide` removes the marker. Parent lines resolve objects; ledger entries stay on their branch.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1615…1644
 - **Satisfies:** FR-VER-081, FR-VER-082, FR-VER-083, FR-VER-084
 - **Notes:** Merkle roots of X cover only X's own entries plus the parent-line reference (commit ID). Proofs of inherited objects chain through the parent root.
 
 ### STD-VER-081 — Provenance of resolution
-- **Clause:** Every read MUST be able to report the branch and commit from which each returned version was resolved.
+- **Clause:** Every read MUST be able to report the branch and commit from which each returned version was resolved: the branch that holds the version and the snapshot commit of that branch (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1645…1649
 - **Satisfies:** FR-VER-085
@@ -403,6 +418,8 @@ DAT-Resolution:
   - no selector: the head at request start.
 
   Resolution MUST be identical for all readers.
+
+  At most one selector MAY be given (`QRY.INVALID_QUERY`). A commit or tag that is not on X's first-parent history selects nothing (`IAM.NOT_FOUND`), and neither does a deleted tag. A time before every commit selects the initial state of the branch (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1660…1674
 - **Satisfies:** FR-VER-101, FR-VER-104

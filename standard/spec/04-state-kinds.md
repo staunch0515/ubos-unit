@@ -27,6 +27,7 @@ DAT-LedgerEntry:
   valid_at: { type: text, required: true, description: "date or instant of business effect" }
   body_ref: { type: text, required: true, description: "content-id of the body (amounts and other fields)" }
   corrects: { type: list, required: false, description: "entry_ids corrected by this entry" }
+  provenance_ref: { type: text, required: false, description: "content-id of the derivation record for logic-produced entries (STD-TXN-030, DEC-041)" }
   correction_type: { type: enum, required: false, description: "reversal | adjustment | repost" }
   posting_group: { type: text, required: false, description: "group id for double-entry balancing" }
   source_refs: { type: list, required: false, description: "canonical URIs of originating objects" }

@@ -39,6 +39,10 @@
       "description": "group id for double-entry balancing",
       "type": "string"
     },
+    "provenance_ref": {
+      "description": "content-id of the derivation record for logic-produced entries (STD-TXN-030, DEC-041)",
+      "type": "string"
+    },
     "seq": {
       "description": "branch-assigned sequence within the ledger key (1-based, gap-free)",
       "type": [

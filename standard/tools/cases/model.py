@@ -228,19 +228,23 @@ def cases(g):
         commit([mk], branch='feature/crm'),
         commit([create(uid(1), 'Customer', 'c-1', {'name': 'A', 'acme.crm.segment': 'retail'})],
                error='MODEL.INVALID_VALUE')])
+    # ClassExtension is a ConfigAsset class, written on protected branches only by change sets
+    # (STD-VER-012, DEC-041), so these cases commit extensions on working branches.
+    fb = {'op': 'create_branch', 'input': {'name': 'feature/crm', 'from': 'main'}}
     S('STD-CLS-030', 'a branch created after the extension inherits it', C3, [
-        commit([mk]),
-        {'op': 'create_branch', 'input': {'name': 'feature/later', 'from': 'main'}},
+        {'op': 'create_branch', 'input': {'name': 'draft/crm', 'from': 'main'}},
+        commit([mk], branch='draft/crm'),
+        {'op': 'create_branch', 'input': {'name': 'feature/later', 'from': 'draft/crm'}},
         {'op': 'class_at', 'input': {'branch': 'feature/later', 'class': 'VipCustomer'}}])
     S('STD-CLS-030', 'ending the extension object removes its members', C3, [
-        commit([mk], label='c1'),
-        commit([{'op': 'end', 'object_id': uid(90), 'base': base('c1', uid(90))}]),
-        {'op': 'class_at', 'input': {'branch': 'main', 'class': 'Customer'}}])
+        fb, commit([mk], branch='feature/crm', label='c1'),
+        commit([{'op': 'end', 'object_id': uid(90), 'base': base('c1', uid(90))}], branch='feature/crm'),
+        {'op': 'class_at', 'input': {'branch': 'feature/crm', 'class': 'Customer'}}])
     S('STD-CLS-030', 'an extension of an unknown class is rejected', C3, [
-        commit([dict(mk, body=ext('Vendor', fields=[seg]))], error='MODEL.REFERENCE_INVALID')])
+        fb, commit([dict(mk, body=ext('Vendor', fields=[seg]))], branch='feature/crm', error='MODEL.REFERENCE_INVALID')])
     S('STD-CLS-030', 'an extension that breaks the narrowing rules is rejected on commit', C3, [
-        commit([dict(mk, body=ext('Customer', refinements=[{'name': 'name', 'type': 'integer'}]))],
-               error='MODEL.NARROWING_VIOLATION')])
+        fb, commit([dict(mk, body=ext('Customer', refinements=[{'name': 'name', 'type': 'integer'}]))],
+                   branch='feature/crm', error='MODEL.NARROWING_VIOLATION')])
 
     # ---- STD-CLS-040 relationships ----
     customer = cls('Customer', [field('name', 'text', True)])

@@ -92,6 +92,8 @@ DAT-Process:
 
 ### STD-TXN-030 — Derivation records
 - **Clause:** For every version or entry written by logic (not by direct field input), the process MUST record a `DAT-Derivation`: the producing logic versions, and the input versions and entries read, as `(object, version, asof)` triples. The record MUST be referenced from the output's `provenance_ref`. When the input set exceeds the configured maximum (default 10,000), it MUST be summarised per class as version ranges plus a Merkle commitment to the full list, which is stored as a chunk.
+
+  In detail (DEC-041): inputs are deduplicated and sorted by object, `asof` and version. The record's content ID (`ubos.chunk.v1`) is the `provenance_ref`, which is part of the version envelope (STD-OBJ-002) and of the entry hash (STD-KIND-020). `mode` defaults to `as_effective`, and `logic` is not empty. `version_range` holds the lowest and highest commit sequence numbers of the input versions of the class, and `inputs_commitment` is the content ID of the full sorted list. An input that names no version of its object fails with `MODEL.REFERENCE_INVALID`.
 - **Grammar / Schema:** `DAT-Derivation`
 - **Conformance vectors:** VER-CONF-2120…2134
 - **Satisfies:** FR-TXN-042, FR-TIME-062, FR-AUD-021
@@ -108,7 +110,7 @@ DAT-Derivation:
 ```
 
 ### STD-TXN-031 — Trigger lineage
-- **Clause:** Every process MUST record its trigger, and its `parent_process` when triggered by an event, job or process. The implementation MUST answer ancestor and descendant queries over these links.
+- **Clause:** Every process MUST record its trigger, and its `parent_process` when triggered by an event, job or process. The implementation MUST answer ancestor and descendant queries over these links. A process with trigger type `event` or `job` and no parent fails with `MODEL.DECLARATION_INCOMPLETE`, and a named parent must exist (`IAM.NOT_FOUND`). Ancestors are listed from the nearest parent; descendants are the transitive closure (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2135…2144
 - **Satisfies:** FR-TXN-041, FR-TXN-043
@@ -119,20 +121,22 @@ DAT-Derivation:
   - A request with a known key and an equal payload hash MUST return the stored result without effect.
   - A request with a known key and a different payload hash MUST fail with `TXN.IDEMPOTENCY_MISMATCH`.
   - Records MUST be kept at least 7 days.
+
+  The payload hash is the content ID of the request (branch and changes). Only committed requests store a record, and a replay writes no effects (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2150…2164
 - **Satisfies:** FR-TXN-031, FR-TXN-032, FR-TXN-033
 - **Notes:** —
 
 ### STD-TXN-050 — Effects after commit
-- **Clause:** Effects (events, job enqueues, notifications, deferred connector calls) requested by a process MUST be written to the outbox in the flush, with stable effect IDs. They are released only after the commit is durable, delivered at least once, and ordered per object by commit order. Aborted processes MUST release nothing.
+- **Clause:** Effects (events, job enqueues, notifications, deferred connector calls) requested by a process MUST be written to the outbox in the flush, with stable effect IDs. They are released only after the commit is durable, delivered at least once, and ordered per object by commit order. Aborted processes MUST release nothing. Effect IDs are `<process_id>/<n>`, numbered from 1 in request order within the process; delivery follows commit order, and an effect is delivered again until it is acknowledged (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2165…2179
 - **Satisfies:** FR-TXN-051, FR-TXN-052, FR-EVT-014
 - **Notes:** —
 
 ### STD-TXN-070 — Bulk processes
-- **Clause:** A bulk process MUST divide its work into child processes of at most the configured change count (default 100,000), linked by `bulk`. In `all_or_nothing` mode, children commit to a staging branch, and completion merges the staging branch once. Resumption MUST continue after the last committed child.
+- **Clause:** A bulk process MUST divide its work into child processes of at most the configured change count (default 100,000), linked by `bulk`. In `all_or_nothing` mode, children commit to a staging branch, and completion merges the staging branch once. Resumption MUST continue after the last committed child. Children are `job` processes triggered by the bulk process (`parent_process` and `bulk`). In `all_or_nothing` mode the staging branch is created from the target at the start. A failing child stops the bulk process in state `failed`; resumption divides the work again and starts with the first child that is not committed (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2215…2224
 - **Satisfies:** FR-TXN-015, FR-MIG-032

@@ -13,6 +13,10 @@
       "description": "class name (create, append)",
       "type": "string"
     },
+    "derivation": {
+      "description": "{logic, inputs, mode} for values written by logic (create, update, append; STD-TXN-030); inputs are {object, version, asof}; since 1.0-rc1",
+      "type": "object"
+    },
     "entry_id": {
       "description": "entry to append, or entry to reverse or adjust",
       "type": "string"
@@ -30,15 +34,7 @@
       "type": "string"
     },
     "op": {
-      "description": "create | update | end | append | reverse | adjust",
-      "enum": [
-        "create",
-        "update",
-        "end",
-        "append",
-        "reverse",
-        "adjust"
-      ],
+      "description": "create | update | end | append | reverse | adjust; since 1.0-rc1 hide | unhide (STD-VER-080)",
       "type": "string"
     },
     "posting_group": {

@@ -1,4 +1,4 @@
-"""Adapter operations of release 0.1 (STD-CONF-005) and a vector runner."""
+"""Adapter operations (STD-CONF-005) and a vector runner."""
 from . import BpaError
 from . import values
 from .canon import canonical, content_id, nfc
@@ -68,22 +68,48 @@ PURE = {
 STATEFUL = {
     'reset': lambda s, i: s.reset(),
     'set_now': lambda s, i: s.set_now(i['now']),
-    'set_limits': lambda s, i: s.set_limits(i.get('max_body_bytes')),
+    'set_limits': lambda s, i: s.set_limits(i.get('max_body_bytes'), i.get('max_derivation_inputs')),
     'load_genesis': lambda s, i: s.load_genesis(i['classes']),
-    'create_branch': lambda s, i: s.create_branch(i['name'], i.get('from', 'main'), i.get('time')),
+    'create_branch': lambda s, i: s.create_branch(i['name'], i.get('from', 'main'), i.get('time'), i.get('parent_line')),
     'commit': lambda s, i: s.commit(i['branch'], i['changes'], i.get('process'), i.get('tx_time')),
-    'read': lambda s, i: s.read(i['branch'], i['object_id'], i.get('asof'), i.get('time')),
-    'read_ledger': lambda s, i: s.read_ledger(i['branch'], i['class'], i['ledger_key'], i.get('asof'), i.get('time')),
-    'merge': lambda s, i: s.merge(i['source'], i['target']),
+    'read': lambda s, i: s.read(i['branch'], i['object_id'], i.get('asof'), i),
+    'read_ledger': lambda s, i: s.read_ledger(i['branch'], i['class'], i['ledger_key'], i.get('asof'), i),
+    'merge': lambda s, i: s.merge(i['source'], i['target'], i.get('resolutions'), i.get('process')),
     'diff': lambda s, i: s.diff(i['from'], i['to']),
-    'export_state': lambda s, i: s.export_state(i['branch'], i.get('time')),
-    'list_objects': lambda s, i: s.list_objects(i.get('branch', 'main'), i['class'], i.get('only', False), i.get('time')),
-    'traverse': lambda s, i: s.traverse(i.get('branch', 'main'), i['object_id'], i['relation'], i.get('time')),
-    'class_at': lambda s, i: s.class_at(i.get('branch', 'main'), i['class'], i.get('time')),
+    'export_state': lambda s, i: s.export_state(i['branch'], i),
+    'list_objects': lambda s, i: s.list_objects(i.get('branch', 'main'), i['class'], i.get('only', False), i),
+    'traverse': lambda s, i: s.traverse(i.get('branch', 'main'), i['object_id'], i['relation'], i),
+    'class_at': lambda s, i: s.class_at(i.get('branch', 'main'), i['class'], i),
+    # BPA 1.0-rc1, PH-1 step 1c (DEC-041)
+    'branch_info': lambda s, i: s.branch_info(i['branch']),
+    'set_parent_line': lambda s, i: s.set_parent_line(i['branch'], i.get('parent_line')),
+    'commit_info': lambda s, i: s.commit_info(i['branch'], i),
+    'read_range': lambda s, i: s.read_range(i['branch'], i['object_id'], i['from'], i.get('to'), i),
+    'history': lambda s, i: s.history(i['branch'], i['object_id'], i.get('from'), i.get('to')),
+    'tree_diff': lambda s, i: s.tree_diff(i['from'], i['to']),
+    'merge_preview': lambda s, i: s.merge_preview(i['source'], i['target']),
+    'change_set': lambda s, i: s.change_set(i),
+    'tag': lambda s, i: s.tag(i['name'], i['branch'], i, i.get('signer')),
+    'delete_tag': lambda s, i: s.delete_tag(i['name']),
+    'tag_info': lambda s, i: s.tag_info(i['name']),
+    'release': lambda s, i: s.release(i),
+    'revert': lambda s, i: s.revert(i),
+    'process_info': lambda s, i: s.process_info(i['process_id']),
+    'lineage': lambda s, i: s.lineage(i['process_id'], i.get('direction', 'ancestors')),
+    'derivation': lambda s, i: s.derivation(i['branch'], i.get('object_id'), i.get('entry_id'), i),
+    'impact': lambda s, i: s.impact(i['branch'], i['time']),
+    'outbox': lambda s, i: s.outbox_list(),
+    'ack': lambda s, i: s.ack(i['effect_ids']),
+    'bulk': lambda s, i: s.bulk(i),
 }
 
 OPERATIONS = set(PURE) | set(STATEFUL)
-IMPLEMENTATION_DEPENDENT = ('version_hash', 'entry_hash', 'root', 'head', 'versions')
+IMPLEMENTATION_DEPENDENT = ('version_hash', 'entry_hash', 'root', 'head', 'versions',
+                            # since 1.0-rc1 (DEC-041): commit identifiers, transaction times,
+                            # signatures and content identifiers over them
+                            'commit_id', 'tx_time', 'parents', 'created_from', 'evaluated_at', 'preview',
+                            'base', 'source_head', 'target_head', 'merged_commit', 'signature',
+                            'provenance_ref', 'inputs_commitment', 'class_version')
 
 
 def strip(value):
