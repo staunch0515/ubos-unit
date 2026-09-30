@@ -91,10 +91,15 @@ Step 3b done: 551 vectors, MUST coverage 94% (68/72), manifest in
    453 vectors tagged `prototype` pass.
    - 4b done: stores (memory, PostgreSQL), model, versioning, time; all 453 prototype vectors
      pass on PostgreSQL (EXIT-0-03, report in `verify/reports/exit-0-03/`).
-   - **4c** — property tests with ≥ 1,000,000 cases (EXIT-0-04).
+   - 4c done: VER-PROP-0001…0003 with 1,000,000 cases each, 0 failures (EXIT-0-04, report in
+     `verify/reports/exit-0-04/`).
    - Note for step 5: the PostgreSQL store keeps each commit's full state; the benchmarks need
      the layout of DSN-DVM-001…011 (kernel indexes, stored tree nodes, deltas).
-3. Then steps 5…7 of DEC-030 in order, one pull request each, merged by the owner.
+3. **PH-0 step 5** — benchmarks on ENV-REF-SERVER (EXIT-0-05). Prerequisites: the storage
+   layout of DSN-DVM-001…011 (kernel indexes, stored tree nodes, deltas) and the workload
+   generator WL-GENERIC-10M; the owner rents the database host and an application node
+   (DEC-030). Step 6 (Rhai sandbox spike) does not depend on step 5 and can go first.
+4. Then steps 6 and 7 of DEC-030, one pull request each, merged by the owner.
 3. **Java side** (owner): copy `fin-req-v1.0` into the Java repository
    (`docs/reports/finance-requirements-copy-guide-zh.md`) and start work-item records.
 4. **Accounting review** (external): chart of accounts and expected results of the sample
