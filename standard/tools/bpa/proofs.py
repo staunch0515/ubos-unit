@@ -182,7 +182,7 @@ class Proofs:
 
     def _entry_record(self, e):
         rec = {k: e[k] for k in ('entry_id', 'class', 'ledger_key', 'valid_at', 'corrects', 'correction_type',
-                                 'posting_group', 'provenance_ref') if k in e}
+                                 'posting_group', 'provenance_ref', 'source_refs') if k in e}
         rec['class_version'] = e['class_version']
         rec['body_ref'] = content_id('ubos.chunk.v1', e['body'])
         return rec

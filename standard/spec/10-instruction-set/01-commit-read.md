@@ -15,6 +15,8 @@
   | Authorization | `create` on the class |
 
   Validation MAY be deferred to flush, but MUST be complete before commit.
+
+  The object ID is drawn from the process entropy (STD-CTX-010) and the slug defaults to it; `version` is `null` until flush. Values written by logic carry a derivation record (STD-TXN-030) naming the asset version and the versions read (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3100…3119
 - **Satisfies:** FR-MODEL-011, FR-MODEL-043, FR-TIME-021
@@ -31,6 +33,8 @@
   | Determinism | `snapshot` |
   | Cost | 40 + 1 per field |
   | Authorization | `update` on the object, and field-level write permissions |
+
+  Changes to an object created or changed earlier in the process are merged into that change (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3120…3149
 - **Satisfies:** FR-TXN-021, FR-TIME-022, FR-FLOW-012
@@ -95,6 +99,8 @@
   | Determinism | `snapshot` |
   | Cost | 40 |
   | Authorization | `correct` on the ledger class |
+
+  In BPA 1.0-rc1 an adjustment corrects exactly one entry (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3195…3214
 - **Satisfies:** FR-LEDG-021, FR-LEDG-022, FR-LEDG-023
@@ -111,6 +117,8 @@
   | Determinism | `snapshot` |
   | Cost | 40 |
   | Authorization | `update` on the source object |
+
+  BPA 1.0-rc1 covers relationships without an attributes class; the link objects of attributes classes follow in 1.0-rc2 (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3215…3229
 - **Satisfies:** FR-MODEL-061, FR-MODEL-062
@@ -127,6 +135,8 @@
   | Determinism | `snapshot` |
   | Cost | 10 + 1 per KiB |
   | Authorization | `read` on the object, field-level masking |
+
+  The first read of a branch fixes the process snapshot (STD-TXN-002) (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3300…3329
 - **Satisfies:** FR-VER-101, FR-TIME-031, FR-VER-085

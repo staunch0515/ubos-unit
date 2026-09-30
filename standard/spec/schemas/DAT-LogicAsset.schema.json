@@ -53,11 +53,7 @@
       "type": "array"
     },
     "tier": {
-      "description": "l2 | l3",
-      "enum": [
-        "l2",
-        "l3"
-      ],
+      "description": "l2 | l3 | host (conformance adapters only, DEC-044)",
       "type": "string"
     },
     "verification": {

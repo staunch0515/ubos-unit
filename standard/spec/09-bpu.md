@@ -14,6 +14,8 @@
   | 5 | Governance binding | the governance-sheet blocks and policies whose selectors match the instance (STD-LGS-*) |
   | 6 | Knowledge | the knowledge objects bound to the class chain (FR-AI-051) |
   | 7 | Proof | commit signatures, inclusion proofs and anchors covering the instance's versions and entries (STD-PROOF-*) |
+
+  Ledger, System and abstract classes are not BPU classes (`MODEL.INVALID_VALUE`); element 2 names the entries whose `source_refs` include the object's URI (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2600…2609
 - **Satisfies:** UBS-META-06 §4, EXT-BPU
@@ -21,6 +23,8 @@
 
 ### STD-BPU-002 — BPU descriptor
 - **Clause:** An implementation MUST produce, for any BPU class on any branch and time, a `DAT-BpuDescriptor` that is a pure function of the effective definitions involved. Tools, AI tool exposure and certification of Buks MUST use this descriptor.
+
+  `fields` name the class that first declares each field (or the extension namespace); `ledgers` are the ledger classes with a reference field to the class; `governance` and `knowledge` are empty until their profiles; `json_schema` is compared only through `same_as` (DEC-044).
 - **Grammar / Schema:** `DAT-BpuDescriptor`
 - **Conformance vectors:** VER-CONF-2610…2624
 - **Satisfies:** FR-MODEL-101, FR-MODEL-105, FR-AI-041
@@ -71,6 +75,8 @@ DAT-BpuDescriptor:
   3. every declared event is emitted by at least one port or lifecycle effect;
   4. the class, its fields, ports and states are documented (FR-MODEL-017);
   5. the class's declared test cases and scenarios pass.
+
+  The checks are reported as `ports_verified`, `lifecycle`, `events_emitted`, `documented` and `tests`; a port lists the events it emits in `emits`. In BPA 1.0-rc1 `lifecycle` and `tests` are `not_applicable` until the Governance profile (DEC-044).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2660…2674
 - **Satisfies:** FR-PKG-061, FR-LOGIC-083

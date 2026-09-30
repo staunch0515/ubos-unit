@@ -45,6 +45,10 @@
       "description": "locator slug (create; update when it changes)",
       "type": "string"
     },
+    "source_refs": {
+      "description": "canonical URIs of originating objects (append); since 1.0-rc1",
+      "type": "array"
+    },
     "valid": {
       "description": "timeline operation {kind: create|supersede_from|set_period|replace_future|end, from, to} (STD-TIME-011)",
       "type": "object"

@@ -21,6 +21,7 @@ from .tree import tree_root
 from .workflow import Workflow
 from .proofs import Proofs
 from .lang import Lang, custom_value
+from .exec import Exec
 from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
@@ -117,7 +118,7 @@ def tl_at(tl, asof):
     return None
 
 
-class Store(Workflow, Proofs, Lang):
+class Store(Workflow, Proofs, Lang, Exec):
     def __init__(self):
         self.reset()
 
@@ -149,6 +150,7 @@ class Store(Workflow, Proofs, Lang):
         self.bulks = {}                        # STD-TXN-070
         self.pids = itertools.count(1)
         self._cseq = 0
+        self._exec_init()
         self._node_init()
         root = self._new_commit('main', [], {'objects': {}, 'ledger': {}}, 0, tx=False)
         self.branches['main'] = {'head': root, 'kind': 'main', 'created_at': self.now, 'active_at': self.now,
@@ -208,7 +210,7 @@ class Store(Workflow, Proofs, Lang):
         for d in classes:
             decls[d['name']] = d
         eff = {}
-        for n in list(decls) + ['ChangeSet', 'Release']:
+        for n in list(decls) + ['ChangeSet', 'Release', 'Logic']:
             eff[n] = effective_class(list(decls.values()), n)
         for n, e in eff.items():
             old = self.classes.get(n)
@@ -821,6 +823,11 @@ class Store(Workflow, Proofs, Lang):
                      'valid_at': ch.get('valid_at') or self._default_valid(cls), 'body': body}
             if ch.get('posting_group'):
                 entry['posting_group'] = ch['posting_group']
+            if ch.get('source_refs') is not None:
+                refs = ch['source_refs']
+                if not isinstance(refs, list) or not all(isinstance(r, str) and REFERENCE.match(r) for r in refs):
+                    raise BpaError('MODEL.INVALID_VALUE', 'source_refs are canonical URIs')
+                entry['source_refs'] = list(refs)
         else:
             key, target = self._entry_owner(st, ch['entry_id'])
             if target is None:
@@ -873,7 +880,7 @@ class Store(Workflow, Proofs, Lang):
 
     def entry_hash(self, e):
         rec = {k: e[k] for k in ('entry_id', 'class', 'ledger_key', 'valid_at', 'corrects', 'correction_type',
-                                 'posting_group', 'provenance_ref') if k in e}
+                                 'posting_group', 'provenance_ref', 'source_refs') if k in e}
         rec['class_version'] = e.get('class_version') or content_id('ubos.chunk.v1', self.decls[e['class']])
         rec['body_ref'] = content_id('ubos.chunk.v1', e['body'])
         return content_id('ubos.entry.v1', rec)
