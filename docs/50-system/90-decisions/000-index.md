@@ -49,7 +49,8 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-034 | Rhai sandbox spike: ASM-008 confirmed for L2 with conditions, crate `ubos-runtime`, open questions on L2 sizes and decimals | Accepted |
 | DEC-035 | EXIT-0-05 (storage benchmark) carried over into PH-1 for lack of rented hosts | Accepted |
 | DEC-036 | PH-1 re-baseline after PH-0: finding dispositions, OQ-007 and OQ-008, risks, dependencies | Accepted |
-| DEC-037 | PH-0 acceptance with EXIT-0-05 carried over and external review at the benchmark | Proposed |
+| DEC-037 | PH-0 acceptance with EXIT-0-05 carried over and external review at the benchmark | Accepted |
+| DEC-038 | PH-1 execution: owner with AI sessions, gate-1a steps, verification requested, environments and CI | Accepted |
 
 ---
 
@@ -412,10 +413,26 @@ Decisions are never deleted. A replaced decision is marked
 - **Affects:** UBS-PH-1, UBS-PHR-0, STD-CTX-004, DSN-DVM-612, RSK-001, RSK-004, EXIT-0-07
 
 ### DEC-037 — PH-0 acceptance
-- **Status:** Proposed · **Date:** 2026-09-30
+- **Status:** Accepted · **Date:** 2026-09-30 (proposed), confirmed by the owner 2026-09-30
 - **Context:** PH-0 exits EXIT-0-01…04, EXIT-0-06 and EXIT-0-07 are met; EXIT-0-05 is carried over (DEC-035). DEC-030 asks for an external reviewer with database and formal-methods expertise at acceptance; the owner has not yet named one.
-- **Decision (proposed):** PH-0 is accepted with EXIT-0-05 carried over; PH-1 may start. The external review takes place together with the carried benchmark, on the acceptance package `docs/reports/ph0-acceptance-zh.md`; its findings are dispositioned in UBS-PHR-0.
-- **Consequences:** The status becomes Accepted when the owner confirms; the external review is recorded in an addendum.
+- **Decision:** PH-0 is accepted with EXIT-0-05 carried over; PH-1 may start. The external review takes place together with the carried benchmark, on the acceptance package `docs/reports/ph0-acceptance-zh.md`; its findings are dispositioned in UBS-PHR-0.
+- **Consequences:** PH-1 starts (DEC-038); the external review is recorded in an addendum.
 - **Alternatives considered:** A separate external review now was not chosen by the owner, to combine both external engagements.
 - **Affects:** UBS-PH-0, UBS-PH-1, DEC-030
+
+### DEC-038 — PH-1 execution
+- **Status:** Accepted · **Date:** 2026-09-30
+- **Context:** PH-1 has 338 requirements (237 at gate 1a, 101 at gate 1b; DEC-014) and a reference team of 10–12 engineers (UBS-PH-1 §11). As in PH-0 (DEC-030), the product owner executes it with AI sessions. PH-0 was accepted with EXIT-0-05 carried over (DEC-035, DEC-037).
+- **Decision:**
+  1. PH-1 is executed by the product owner with AI sessions, one pull request per step (a step may be split), merged by the owner; progress is reported per step. No calendar duration is fixed.
+  2. Only gate 1a is planned in steps now (UBS-PH-1 §11): (0) alignment; (1) BPA 1.0-rc1 clauses and vectors, standard before code (AR-033); (2) extended formal models; (3) storage kernel; (4) model, versioning, time, ledger and transactions; (5) runtime; (6) proofs, export and import; (7) in-process host services, Forge and gate-1a scenarios; (8) verification close-out; (9) gate-1a acceptance. Gate 1b is planned in steps at the gate-1a acceptance.
+  3. Confirming this plan requests the verification work that the PH-1 exit criteria require (CLAUDE.md rule 4 exception, as DEC-030 for PH-0).
+  4. The prototype crates of PH-0 evolve into the kernel crates; the kernel accesses PostgreSQL through sqlx (DEC-007, DEC-033). The storage layout stays open to change until the carried benchmark (W-1, DEC-035) is decided.
+  5. Environments: the owner rents ENV-REF-SERVER at least twice — as early as possible for W-1, and for the gate-1a benchmarks (EXIT-1-09) — and ENV-REF-SMALL for gate 1b. Performance requirements are Must and cannot be carried over (UBS-PH-00 §3.7); if the hosts are still unavailable at gate 1a, a decision re-phases them with its reason.
+  6. CI: GitHub-hosted runners, including nightly jobs (simulation seeds for 30 consecutive nights, long property runs, benchmark regression) and Linux ARM64 and macOS ARM64 runners for the replay corpus (EXIT-1-08). If the Actions minutes do not suffice, the AI session reports it and the owner decides on more minutes or self-hosted runners.
+  7. Fault injection: process kills run in CI; power-loss simulation with dm-flakey is tried on GitHub-hosted Ubuntu runners and otherwise runs on the rented host.
+  8. The Phase Acceptance Board of PH-1 is the owner and the external reviewer; the external review of PH-0 takes place with W-1 (DEC-037).
+- **Consequences:** UBS-PH-1 §11 lists the steps; `docs/reports/ph1-plan-zh.md` tracks their status.
+- **Alternatives considered:** Planning both gates in steps now was rejected: gate 1b depends on the kernel interfaces fixed in gate 1a (DEC-014). Rewriting the kernel from scratch was rejected: the prototype crates already pass the BPA 0.1 vectors and properties.
+- **Affects:** UBS-PH-1, DEC-014, DEC-030, DEC-035, DEC-037
 

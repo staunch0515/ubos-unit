@@ -271,6 +271,24 @@ items W-1…W-12 belong to this phase. W-1 (the carried storage benchmark) comes
 PH-0, the phase is executed by the product owner with AI sessions and reported per step;
 the figures below remain a reference only.
 
+**Execution (DEC-038):** one pull request per step, merged by the owner. Gate-1a steps:
+
+| Step | Content | Exits |
+|---|---|---|
+| 0 | alignment: DEC-037 accepted, DEC-038, this section, status tracking | — |
+| 1 | BPA 1.0-rc1: clauses and vectors of Core, Bitemporal, Ledger, Proof (subset) and execution (CTX), 100% MUST coverage; standard before code (AR-033); split by clause area | EXIT-1-01 (W-6, W-11) |
+| 2 | extended formal models: group commit, ledger sequences | EXIT-1-07 (W-8) |
+| 3 | storage kernel: StoreTx (DSN-DVM-001) on sqlx, row-level security and partitions, remaining kernel indexes, chunks, compression and encryption, verifier; storage suite | EXIT-1-03 (W-7) |
+| 4 | model, versioning, time, ledger and transactions at production quality: full registry (C3, narrowing), tenants and IAM basics of gate 1a | EXIT-1-02 (W-10) |
+| 5 | runtime: L1 expressions, L2 host (memory and weighted metering, kernel decimal), instruction set, journal and replay; escape suite of at least 300 cases | EXIT-1-10 (W-2…W-5, W-12) |
+| 6 | proofs (signatures, inclusion), portable export and import, verifier library | EXIT-1-12 |
+| 7 | in-process host services on PostgreSQL, Forge check, types, test and conform, the ten gate-1a scenarios | EXIT-1-02, EXIT-1-13 |
+| 8 | verification close-out: properties, simulation (30 nights), fault injection, replay on three platforms, coverage and mutation score | EXIT-1-04, -05, -06, -08, -11 |
+| 9 | gate-1a acceptance: benchmarks on ENV-REF-SERVER, external review, acceptance decision | EXIT-1-09 |
+
+W-1 (carried benchmark, DEC-035) runs whenever the owner has the hosts, before the storage
+layout of step 3 is fixed. Gate 1b is planned in steps at the gate-1a acceptance.
+
 Non-normative. 9 months: gate 1a after 5 months, gate 1b after 4 more. Team of 10–12
 engineers: 5 kernel (Rust), 1 formal methods, 2 node/host, 1 SDK/TypeScript, 1 quality and
 performance, 1 security (half-time), the standards steward, the engineering lead and the

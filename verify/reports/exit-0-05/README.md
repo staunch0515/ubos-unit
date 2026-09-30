@@ -74,8 +74,8 @@ also checks the tree maintained in the flush. VER-PROP-0001…0003 pass on the n
 
 Not in the prototype layout (PH-1): row-level security and tenant partitioning
 (DSN-DVM-010, no tenants in PH-0), relationship, unique-key and derivation indexes
-(DSN-DVM-005, not used by BPA 0.1), group commit (DSN-DVM-006), chunk compression and
-encryption (DSN-DVM-002, -003).
+(DSN-DVM-005, not used by BPA 0.1), chunk compression and encryption (DSN-DVM-002, -003).
+Group commit (DSN-DVM-006) was added in part 5c.
 
 ## 5c — Workload generator and benchmark driver
 
