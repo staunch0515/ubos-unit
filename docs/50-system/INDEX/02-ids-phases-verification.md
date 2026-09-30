@@ -295,7 +295,7 @@ depends_on: [UBS-IDX-00]
 | SUITE-WSP-SEC | portal scoping, widget sandbox, XSS and CSP tests | `40-systems/06-wsp/08-verification.md` |
 | SUITE-WSP-USE | usability studies with business users, approvers and auditors (NR-USE-001…003, NR-USE-007) | `40-systems/06-wsp/08-verification.md` |
 
-## VER (90)
+## VER (92)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -358,6 +358,8 @@ depends_on: [UBS-IDX-00]
 | VER-PILOT-3001 | Agent acceptance and revertibility in the demonstration operation | `60-verification/13-items-ph3.md` |
 | VER-PILOT-5000 | Shared contract BPU pilot | `60-verification/15-items-ph5.md` |
 | VER-PROP-0001 | Root history independence | `60-verification/10-items-ph0-ph1.md` |
+| VER-PROP-0002 | Timeline non-overlap | `60-verification/10-items-ph0-ph1.md` |
+| VER-PROP-0003 | Merge determinism | `60-verification/10-items-ph0-ph1.md` |
 | VER-PROP-0100 | Kernel property set | `60-verification/10-items-ph0-ph1.md` |
 | VER-SCN-1000 | Gate-1a scenarios in process | `60-verification/10-items-ph0-ph1.md` |
 | VER-SCN-1001 | All PH-1 scenarios over UBTP | `60-verification/10-items-ph0-ph1.md` |

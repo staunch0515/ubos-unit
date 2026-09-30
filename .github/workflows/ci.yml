@@ -48,6 +48,10 @@ jobs:
           ./target/release/forge conform --vectors standard/vectors --tag prototype --verbose
           ./target/release/forge conform --vectors standard/vectors --tag prototype --verbose \
             --backend postgres --database "host=127.0.0.1 user=postgres dbname=bpa"
+      - name: property checks, 10,000 cases each (SUITE-DVM-PROP, DEC-033)
+        run: |
+          cargo build --release --locked -p ubos-dvm --bin ubos-props
+          ./target/release/ubos-props --cases 10000
 
   models:
     name: formal models (reduced bounds)

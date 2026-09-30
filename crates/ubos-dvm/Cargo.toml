@@ -8,6 +8,10 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 
+[[bin]]
+name = "ubos-props"
+path = "src/bin/ubos-props.rs"
+
 [dependencies]
 ubos-types.workspace = true
 ubos-tree.workspace = true

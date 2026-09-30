@@ -83,6 +83,29 @@ Numbers follow UBS-VER-00 §3.
 - **Evidence:** property report.
 - **Supports:** EXIT-0-04, EXIT-1-04
 
+### VER-PROP-0002 — Timeline non-overlap
+- **Verifies:** STD-TIME-011, DSN-DVM-303
+- **Suite:** SUITE-DVM-PROP · **Phase:** PH-0
+- **Environment:** CI workers
+- **Procedure:**
+  1. Generate sequences of up to eight timeline operations (`create`, `supersede_from`, `set_period`, `replace_future`, `end`) over twenty dates.
+  2. After every accepted operation, check that segments are non-empty, sorted and non-overlapping.
+- **Pass criterion:** 0 violations in ≥ 1,000,000 sequences (UBS-PH-0 §7.4).
+- **Evidence:** property report.
+- **Supports:** EXIT-0-04
+
+### VER-PROP-0003 — Merge determinism
+- **Verifies:** STD-VER-040, STD-VER-050, STD-VER-052, DSN-DVM-240
+- **Suite:** SUITE-DVM-PROP · **Phase:** PH-0
+- **Environment:** CI workers
+- **Procedure:**
+  1. Generate a base with one to three objects and two branches with one to four random changes each (field updates and clears, valid-time supersedes, ends).
+  2. Merge the right branch into the left one, and, from an identical history, the left into the right.
+  3. Compare the outcomes: the same conflict set, or the same body and valid period of every object at every date.
+- **Pass criterion:** equal outcomes in 100% of ≥ 1,000,000 cases (UBS-PH-0 §7.4).
+- **Evidence:** property report.
+- **Supports:** EXIT-0-04
+
 ### VER-BENCH-0001 — Prototype storage benchmark
 - **Verifies:** ASM-003, DEC-020, NR-PERF-001, NR-PERF-002, NR-PERF-005
 - **Suite:** SUITE-DVM-BENCH · **Phase:** PH-0
