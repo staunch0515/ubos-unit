@@ -84,8 +84,8 @@ fn canonical_eq(a: &Value, b: &Value) -> bool {
     matches!((canonical(a), canonical(b)), (Ok(x), Ok(y)) if x == y)
 }
 
-/// Run one vector on a fresh adapter.
-pub fn run_vector(vector: &Value, tag: Option<&str>) -> Outcome {
+/// Run one vector on the adapter after resetting it.
+pub fn run_vector(adapter: &mut Adapter, vector: &Value, tag: Option<&str>) -> Outcome {
     if let Some(t) = tag {
         let tagged = vector["tags"]
             .as_array()
@@ -94,7 +94,9 @@ pub fn run_vector(vector: &Value, tag: Option<&str>) -> Outcome {
             return Outcome::NotApplicable(format!("not tagged {t}"));
         }
     }
-    let mut adapter = Adapter::new();
+    if let Err(e) = adapter.execute("reset", &json!({})) {
+        return Outcome::Fail(format!("reset: {e}"));
+    }
     let mut results: HashMap<String, Value> = HashMap::new();
     for phase in ["setup", "steps"] {
         let steps = vector[phase].as_array().cloned().unwrap_or_default();
@@ -119,7 +121,13 @@ pub fn run_vector(vector: &Value, tag: Option<&str>) -> Outcome {
             if let Err(e) = &out
                 && e.code == UNSUPPORTED
             {
-                return Outcome::NotApplicable(format!("{label}: {}", e.message));
+                // a vector selected by tag must be executable: unsupported is then a failure
+                let detail = format!("{label}: {}", e.message);
+                return if tag.is_some() {
+                    Outcome::Fail(detail)
+                } else {
+                    Outcome::NotApplicable(detail)
+                };
             }
             if let Ok(v) = &out {
                 results.insert(label.clone(), v.clone());

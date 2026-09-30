@@ -5,11 +5,12 @@ use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-use ubos_dvm::canonical;
+use ubos_dvm::{Adapter, canonical};
 use ubos_forge::runner::{Outcome, run_vector};
 
 const USAGE: &str = "usage: forge conform --vectors <dir> [--tag <tag>] [--profiles <p1,p2>] \
-[--report <file>] [--key <file with 64 hex chars>] [--standard <version>] [--build <hash>] [--verbose]";
+[--report <file>] [--key <file with 64 hex chars>] [--standard <version>] [--build <hash>] \
+[--backend memory|postgres] [--database <connection string>] [--verbose]";
 
 fn files(dir: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
     for e in std::fs::read_dir(dir)? {
@@ -57,7 +58,7 @@ fn conform(args: &[String]) -> Result<bool, String> {
         match a.as_str() {
             "--verbose" => verbose = true,
             "--vectors" | "--tag" | "--profiles" | "--report" | "--key" | "--standard"
-            | "--build" => {
+            | "--build" | "--backend" | "--database" => {
                 opts.insert(a.as_str(), it.next().ok_or(USAGE)?.clone());
             }
             _ => return Err(USAGE.into()),
@@ -72,6 +73,20 @@ fn conform(args: &[String]) -> Result<bool, String> {
                 .map(String::from)
                 .to_vec()
         });
+    let mut adapter = match opts
+        .get("--backend")
+        .map(String::as_str)
+        .unwrap_or("memory")
+    {
+        "memory" => Adapter::new(),
+        "postgres" => Adapter::postgres(
+            opts.get("--database")
+                .map(String::as_str)
+                .unwrap_or("host=127.0.0.1 user=postgres"),
+        ),
+        _ => return Err(USAGE.into()),
+    }
+    .map_err(|e| e.to_string())?;
     let mut paths = Vec::new();
     files(Path::new(dir), &mut paths).map_err(|e| e.to_string())?;
     paths.sort();
@@ -84,7 +99,7 @@ fn conform(args: &[String]) -> Result<bool, String> {
                 .map_err(|e| e.to_string())?;
         let profile = v["profile"].as_str().unwrap_or_default().to_string();
         let outcome = if profiles.contains(&profile) {
-            run_vector(&v, opts.get("--tag").map(String::as_str))
+            run_vector(&mut adapter, &v, opts.get("--tag").map(String::as_str))
         } else {
             Outcome::NotApplicable("profile not claimed".into())
         };
@@ -110,7 +125,7 @@ fn conform(args: &[String]) -> Result<bool, String> {
     let mut report = json!({
         "standard_version": opts.get("--standard").cloned().unwrap_or_else(|| "0.1.0".into()),
         "implementation": {"name": "ubos-dvm prototype", "vendor": "UBOS", "version": env!("CARGO_PKG_VERSION"),
-                           "build_hash": opts.get("--build").cloned().unwrap_or_default(), "backends": ["memory"]},
+                           "build_hash": opts.get("--build").cloned().unwrap_or_default(), "backends": [adapter.backend()]},
         "profiles_claimed": profiles,
         "results": results,
         "summary": summary,

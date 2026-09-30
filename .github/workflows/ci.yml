@@ -23,6 +23,15 @@ jobs:
   rust:
     name: rust workspace
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: bpa
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - name: toolchain from rust-toolchain.toml
@@ -37,6 +46,8 @@ jobs:
         run: |
           cargo build --release --locked -p ubos-forge
           ./target/release/forge conform --vectors standard/vectors --tag prototype --verbose
+          ./target/release/forge conform --vectors standard/vectors --tag prototype --verbose \
+            --backend postgres --database "host=127.0.0.1 user=postgres dbname=bpa"
 
   models:
     name: formal models (reduced bounds)

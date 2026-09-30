@@ -7,6 +7,7 @@
 //! operations of STD-CONF-005 for the runner (`ubos-forge`).
 
 pub mod adapter;
+pub mod stateful;
 
 pub use adapter::{Adapter, STATEFUL_OPERATIONS};
 pub use ubos_types::{BpaError, canonical, content_id};

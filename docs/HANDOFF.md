@@ -89,9 +89,11 @@ Step 3b done: 551 vectors, MUST coverage 94% (68/72), manifest in
    `docs/reports/ph0-plan-zh.md` §5).
 2. PH-0 step 4 (DEC-033) in three parts. 4a done: pure operations and runner; 275 of the
    453 vectors tagged `prototype` pass.
-   - **4b** — `ubos-model`, `ubos-store` (memory and PostgreSQL), `ubos-version`, `ubos-time`
-     and the stateful operations; all 453 prototype vectors on PostgreSQL (EXIT-0-03).
+   - 4b done: stores (memory, PostgreSQL), model, versioning, time; all 453 prototype vectors
+     pass on PostgreSQL (EXIT-0-03, report in `verify/reports/exit-0-03/`).
    - **4c** — property tests with ≥ 1,000,000 cases (EXIT-0-04).
+   - Note for step 5: the PostgreSQL store keeps each commit's full state; the benchmarks need
+     the layout of DSN-DVM-001…011 (kernel indexes, stored tree nodes, deltas).
 3. Then steps 5…7 of DEC-030 in order, one pull request each, merged by the owner.
 3. **Java side** (owner): copy `fin-req-v1.0` into the Java repository
    (`docs/reports/finance-requirements-copy-guide-zh.md`) and start work-item records.

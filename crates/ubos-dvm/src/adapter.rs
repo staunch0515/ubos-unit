@@ -1,6 +1,8 @@
 //! Adapter operations of release 0.1 (STD-CONF-005).
 
+use crate::stateful::Engine;
 use serde_json::{Map, Value, json};
+use ubos_store::{MemStore, PgStore};
 use ubos_types::error::invalid;
 use ubos_types::{BpaError, content_id, names, nfc, time, values};
 
@@ -114,19 +116,48 @@ fn tree_entries(v: &Value) -> Result<Vec<(String, String)>, BpaError> {
 }
 
 /// The conformance adapter (STD-CONF-002, STD-CONF-005).
-#[derive(Default)]
-pub struct Adapter {}
+pub struct Adapter {
+    engine: Engine,
+}
 
 impl Adapter {
-    /// A new adapter with empty state.
-    pub fn new() -> Self {
-        Adapter {}
+    /// A new adapter over an in-memory store.
+    pub fn new() -> Result<Self, BpaError> {
+        Ok(Adapter {
+            engine: Engine::new(Box::new(MemStore::default()))?,
+        })
+    }
+
+    /// A new adapter over a PostgreSQL database (for example `host=127.0.0.1 user=postgres`).
+    pub fn postgres(url: &str) -> Result<Self, BpaError> {
+        Ok(Adapter {
+            engine: Engine::new(Box::new(PgStore::connect(url)?))?,
+        })
+    }
+
+    /// Name of the storage backend.
+    pub fn backend(&self) -> &'static str {
+        self.engine.store.backend()
     }
 
     /// Execute one operation.
     pub fn execute(&mut self, op: &str, input: &Value) -> Result<Value, BpaError> {
         let i = input;
         Ok(match op {
+            "reset" => {
+                self.engine.reset()?;
+                Value::Bool(true)
+            }
+            "set_now" => {
+                ubos_types::time::parse_instant(text(i, "now")?)?;
+                self.engine.now = text(i, "now")?.to_string();
+                Value::Bool(true)
+            }
+            "load_genesis" => self.engine.load_genesis(field(i, "classes")?)?,
+            "commit" => self.engine.commit(i)?,
+            "read" => self.engine.read(i)?,
+            "read_ledger" => self.engine.read_ledger(i)?,
+            "create_branch" | "merge" | "diff" | "export_state" => self.engine.other(op, i)?,
             "canonical_json" => Value::String(ubos_types::canonical(field(i, "value")?)?),
             "content_id" => Value::String(content_id(text(i, "domain")?, field(i, "value")?)?),
             "normalize_text" => Value::String(nfc(text(i, "text")?)),
