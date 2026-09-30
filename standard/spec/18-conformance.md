@@ -73,7 +73,10 @@ DAT-ConformanceReport:
   | `commit_id` | `{commit}` | commit identifier (STD-VER-001) |
   | `tree_root` | `{entries}` | root of the prolly tree over sorted `[key, hash]` pairs (STD-PROOF-001) |
   | `linearize` | `{classes, class}` | `L(class)` as a list of class names (STD-CLS-011) |
-  | `effective_class` | `{classes, class}` | the effective definition (STD-CLS-001…014) |
+  | `effective_class` | `{classes, class, extensions}` | the effective definition (STD-CLS-001…014); since 1.0-rc1 with `ports` when any are declared, and with the given `DAT-ClassExtension` items applied (STD-CLS-030) |
+  | `dispatch` | `{classes, class, port, after, extensions}` | `{class, impl}` of the implementation that runs; `after` continues the search as `run.super` does (STD-CLS-020). Since 1.0-rc1. |
+  | `type_selector` | `{classes, class, selector, only}` | `{matches, specificity}` (STD-CLS-022). Since 1.0-rc1. |
+  | `blind_index` | `{key, type, constraints, value}` | the blind index of the value under the 32-byte hexadecimal key (STD-OBJ-012). Since 1.0-rc1. |
   | `reset`, `set_now`, `load_genesis` | `{}`, `{now}`, `{classes}` | `true` (STD-CONF-002) |
   | `set_limits` | `{max_body_bytes}` | `true`; the configured body limit for the following operations (STD-OBJ-009); `reset` restores the default of 16 MiB. Since BPA 1.0-rc1. |
   | `create_branch` | `{name, from}` | `{head}`, the cseq of the fork commit |
@@ -83,6 +86,9 @@ DAT-ConformanceReport:
   | `merge` | `{source, target}` | `{cseq, merged, appended}`; `merged` is false when the source is already contained in the target (no commit); `appended` maps appended entries to `{seq, source_seq}`; on conflict `VER.MERGE_CONFLICT` |
   | `diff` | `{from, to}`, each `{branch, time}` | list of `DAT-DiffEntry` by object, top-level field paths, ledger entries as `appended` (STD-VER-030) |
   | `export_state` | `{branch, time}` | `{root, entries}` of the state tree (STD-PROOF-001) |
+  | `list_objects` | `{branch, class, only, time}` | `{objects}`, the sorted identifiers of live objects matching the class filter (STD-CLS-022). Since 1.0-rc1. |
+  | `traverse` | `{branch, object_id, relation, time}` | `{objects}`, the sorted identifiers of live objects reached through a relationship field or an inverse name (STD-CLS-040). Since 1.0-rc1. |
+  | `class_at` | `{branch, class, time}` | the effective definition with the extensions visible at that coordinate (STD-CLS-030). Since 1.0-rc1. |
 
   Conventions of the adapter operations:
   1. Absent inputs take their defaults. `time` is the `cseq` of a commit on the branch (`main` starts at `cseq` 0, empty), and `asof` is a date or an instant. Object and entry identifiers are chosen by the vector.
@@ -91,6 +97,7 @@ DAT-ConformanceReport:
   4. The business time zone of the adapter is UTC; the posting date of an append is the date of `now` (`set_now`).
   5. An expectation `{error_code, details}` also compares the `details` of the error (`DAT-Error`) with `subset` matching: `TXN.HEAD_MOVED` lists the stale objects in `details.objects`, and `VER.MERGE_CONFLICT` lists `DAT-MergeConflict` items `{object_id, kind, path}` in `details.conflicts`, ordered by object and path.
   6. Version hashes, entry hashes, roots, commit identifiers, transaction times and signatures of stateful operations are compared only through `same_as` or through the pure operations, because they depend on the implementation's clock, keys and class identifiers. Before an `exact` comparison of a stateful result, the members `version_hash`, `entry_hash`, `root`, `head` and `versions` are removed from it.
+  7. Reference values are canonical URIs `ubos://acme/<Class>/<slug>`: the adapter's tenant is `acme` (since 1.0-rc1).
 - **Grammar / Schema:** `DAT-AdapterChange`
 - **Conformance vectors:** —
 - **Satisfies:** FR-STD-021, FR-STD-022

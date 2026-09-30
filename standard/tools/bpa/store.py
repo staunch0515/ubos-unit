@@ -12,11 +12,15 @@ import itertools
 
 from . import BpaError
 from .canon import canonical, content_id
-from .classes import effective_class
+import hmac
+import hashlib
+
+from .classes import GENESIS, effective_class, is_reference_list, public
 from .tree import tree_root
-from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS
+from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
 DEFAULT_NOW = '2026-01-01T00:00:00.000000Z'
+TENANT = 'acme'                  # authority of object URIs in adapter inputs (STD-CONF-005)
 MAX_BODY = 16 * 1024 * 1024      # STD-OBJ-009: bodies up to 16 MiB
 
 
@@ -96,6 +100,8 @@ class Store:
     def reset(self):
         self.now = DEFAULT_NOW
         self.max_body = MAX_BODY
+        self._exts = None
+        self._eff_cache = {}
         self.decls = {}
         self.classes = {}
         self.versions = {}                     # version hash -> {object_id, class, body, valid, tombstone}
@@ -156,7 +162,18 @@ class Store:
             raise BpaError('IAM.NOT_FOUND', 'no commit with this cseq on the branch')
         return cid
 
+    def _decl(self, name):
+        return self.decls.get(name) or GENESIS[name]
+
     def _cls(self, name):
+        exts = getattr(self, '_exts', None)
+        if exts or name == 'ClassExtension':
+            if name != 'ClassExtension' and name not in self.classes:
+                raise BpaError('MODEL.REFERENCE_INVALID', 'unknown class %s' % name)
+            key = (name, id(exts))
+            if key not in self._eff_cache:
+                self._eff_cache[key] = effective_class(list(self.decls.values()), name, exts or ())
+            return self._eff_cache[key]
         if name not in self.classes:
             raise BpaError('MODEL.REFERENCE_INVALID', 'unknown class %s' % name)
         return self.classes[name]
@@ -165,7 +182,7 @@ class Store:
         return self.now[:10]
 
     def _default_valid(self, cls):
-        return self._today() if self.decls[cls].get('valid_time', 'date') == 'date' else self.now
+        return self._today() if self._decl(cls).get('valid_time', 'date') == 'date' else self.now
 
     def _check_body(self, cls, body, partial=False):
         eff = self._cls(cls)
@@ -190,8 +207,8 @@ class Store:
         return out
 
     def _version(self, oid, cls, slug, body, valid, predecessor=None, tombstone=False):
-        env = {'object_id': oid, 'class': cls, 'class_version': content_id('ubos.chunk.v1', self.decls[cls]),
-               'schema_version': self.decls[cls]['schema_version'], 'kind': self.classes[cls]['kind'],
+        env = {'object_id': oid, 'class': cls, 'class_version': content_id('ubos.chunk.v1', self._decl(cls)),
+               'schema_version': self._decl(cls).get('schema_version', 1), 'kind': self._cls(cls)['kind'],
                'slug': slug, 'valid': valid, 'body_ref': content_id('ubos.chunk.v1', body)}
         if predecessor:
             env['predecessor'] = predecessor
@@ -226,6 +243,16 @@ class Store:
             for oid, vh in process.get('reads', {}).items():
                 if st['objects'].get(oid, {}).get('head') != vh:
                     raise BpaError('TXN.READ_SET_CHANGED')
+        self._exts = self._extensions(st)
+        self._eff_cache = {}
+        self._written, self._ended = [], []
+        try:
+            return self._commit(br, head, st, cseq, result, changes, process)
+        finally:
+            self._exts = None
+            self._eff_cache = {}
+
+    def _commit(self, br, head, st, cseq, result, changes, process):
         appended = []
         stale = []
         for ch in changes:
@@ -247,6 +274,9 @@ class Store:
             else:
                 raise BpaError('MODEL.INVALID_VALUE', 'unknown change')
         self._check_double_entry(appended)
+        self._relationships(st, result)
+        self._integrity(st, appended)
+        self._check_extensions(st)
         cid = next(self.ids)
         self.commits[cid] = {'parents': [br['head']], 'state': st, 'cseq': cseq}
         br['head'] = cid
@@ -278,6 +308,7 @@ class Store:
         st['objects'][oid] = {'class': cls, 'kind': eff['kind'], 'slug': ch['slug'], 'head': vh,
                               'timeline': tl_apply([], 'create', vh, a)}
         result['versions'][oid] = vh
+        self._written.append((oid, vh))
 
     def _update(self, st, ch, result, op):
         oid = ch.get('object_id')
@@ -297,6 +328,7 @@ class Store:
             vh = self._version(oid, o['class'], o['slug'], base['body'], {'from': d, 'to': None},
                                predecessor=o['head'], tombstone=True)
             o['timeline'] = tl_apply(o['timeline'], 'end', vh, d)
+            self._ended.append((oid, d))
             if d < self._default_valid(o['class']):
                 result['retroactive'].append({'object_id': oid, 'from': d, 'to': None})
         else:
@@ -313,6 +345,7 @@ class Store:
             rng = tl_range(o['timeline'], kind, a, b)
             o['timeline'] = tl_apply(o['timeline'], kind, vh, a, b)
             o['slug'] = slug
+            self._written.append((oid, vh))
             if rng[0] < self._default_valid(o['class']):
                 result['retroactive'].append({'object_id': oid, 'from': rng[0], 'to': rng[1]})
         o['head'] = vh
@@ -417,6 +450,252 @@ class Store:
         for totals in groups.values():
             if any(t != 0 for t in totals.values()):
                 raise BpaError('LEDG.UNBALANCED')
+
+    # ---- extensions (STD-CLS-030) ----
+
+    def _extensions(self, st):
+        out = []
+        for oid in sorted(st['objects']):
+            o = st['objects'][oid]
+            if o['class'] == 'ClassExtension' and not self.versions[o['head']]['tombstone']:
+                out.append(self.versions[o['head']]['body'])
+        return tuple(out)
+
+    def _check_extensions(self, st):
+        """Every extension written in this commit must apply to its target."""
+        exts = self._extensions(st)
+        for oid, vh in self._written:
+            if st['objects'][oid]['class'] != 'ClassExtension':
+                continue
+            target = self.versions[vh]['body']['target']
+            if target not in self.classes:
+                raise BpaError('MODEL.REFERENCE_INVALID', 'unknown target class %s' % target)
+            for name, e in self.classes.items():
+                if target in e['linearization']:
+                    effective_class(list(self.decls.values()), name, exts)
+
+    # ---- references and relationships (STD-CLS-040, -041) ----
+
+    def _uri(self, o):
+        return 'ubos://%s/%s/%s' % (TENANT, o['class'], o['slug'])
+
+    def _resolve(self, st, uri):
+        """Object ID of the object a canonical URI names on this state, or None."""
+        if not REFERENCE.match(uri):
+            return None
+        authority, cls, slug = uri[len('ubos://'):].split('/')
+        if authority != TENANT:
+            return None
+        for oid, o in st['objects'].items():
+            if o['class'] == cls and o['slug'] == slug:
+                return oid
+        return None
+
+    def _live(self, st, oid):
+        o = st['objects'].get(oid)
+        return o is not None and not self.versions[o['head']]['tombstone']
+
+    def _refs(self, eff, body):
+        """[(field, uri)] of the reference values of a body."""
+        out = []
+        for name, f in eff['fields'].items():
+            v = body.get(name)
+            if v is None:
+                continue
+            if f['type'] == 'reference':
+                out.append((name, v))
+            elif is_reference_list(f):
+                out += [(name, x) for x in v]
+        return out
+
+    def _covered(self, tl, f, t):
+        """True when the segments of a timeline cover [f, t) without a gap."""
+        at = f
+        for sf, stt, _ in sorted(tl, key=lambda x: x[0]):
+            if _lt(at, sf):
+                break
+            if _lt(at, stt) or stt is None:
+                at = stt
+                if at is None or (t is not None and not _lt(at, t)):
+                    return True
+        return at is None or (t is not None and not _lt(at, t))
+
+    def _target_ok(self, st, uri, field, eff, period=None, instant=None):
+        oid = self._resolve(st, uri)
+        if oid is None:
+            raise BpaError('MODEL.REFERENCE_INVALID', 'reference %s does not resolve' % uri)
+        o = st['objects'][oid]
+        tc = (eff['fields'][field].get('constraints') or {}).get('target_class')
+        item = (eff['fields'][field].get('constraints') or {}).get('item_type') or {}
+        tc = tc or (item.get('constraints') or {}).get('target_class')
+        if tc and tc not in self._cls(o['class'])['linearization']:
+            raise BpaError('MODEL.REFERENCE_INVALID', 'target is not a %s' % tc)
+        if period is not None and not self._covered(o['timeline'], period[0], period[1]):
+            raise BpaError('MODEL.REFERENCE_INVALID', 'target not valid for the whole period')
+        if instant is not None and tl_at(o['timeline'], instant) is None:
+            raise BpaError('MODEL.REFERENCE_INVALID', 'target not valid at the entry time')
+        return oid
+
+    def _integrity(self, st, appended):
+        for oid, vh in self._written:
+            v = self.versions[vh]
+            if v['tombstone'] or not self._live(st, oid):
+                continue
+            eff = self._cls(v['class'])
+            for field, uri in self._refs(eff, v['body']):
+                self._target_ok(st, uri, field, eff, period=(v['valid']['from'], v['valid']['to']))
+            self._links(st, oid, eff, v['body'])
+        for e in appended:
+            eff = self._cls(e['class'])
+            for field, uri in self._refs(eff, e['body']):
+                self._target_ok(st, uri, field, eff, instant=e['valid_at'])
+
+    def _links(self, st, oid, eff, body):
+        """Link objects of relationships with an attributes class (STD-CLS-040)."""
+        me = self._uri(st['objects'][oid])
+        for name, f in eff['fields'].items():
+            rel = f.get('relationship') or {}
+            if not rel.get('attributes_class') or body.get(name) is None:
+                continue
+            for uri in (body[name] if isinstance(body[name], list) else [body[name]]):
+                lid = self._resolve(st, uri)
+                link = st['objects'].get(lid) if lid else None
+                if link is None or rel['attributes_class'] not in self._cls(link['class'])['linearization']:
+                    raise BpaError('MODEL.REFERENCE_INVALID', 'link is not a %s' % rel['attributes_class'])
+                if self.versions[link['head']]['body'].get('source') != me:
+                    raise BpaError('MODEL.REFERENCE_INVALID', 'link does not reference its source')
+
+    def _relations(self, st):
+        """[(source oid, field, relationship, target oid)] over live sources."""
+        out = []
+        for oid in sorted(st['objects']):
+            if not self._live(st, oid):
+                continue
+            o = st['objects'][oid]
+            eff = self._cls(o['class'])
+            body = self.versions[o['head']]['body']
+            for field, uri in self._refs(eff, body):
+                rel = eff['fields'][field].get('relationship')
+                tid = self._resolve(st, uri)
+                if rel and tid:
+                    out.append((oid, field, rel, tid))
+        return out
+
+    def _end_object(self, st, oid, d, result):
+        o = st['objects'][oid]
+        base = self.versions[o['head']]
+        vh = self._version(oid, o['class'], o['slug'], base['body'], {'from': d, 'to': None},
+                           predecessor=o['head'], tombstone=True)
+        o['timeline'] = tl_apply(o['timeline'], 'end', vh, d)
+        o['head'] = vh
+        result['versions'][oid] = vh
+        self._ended.append((oid, d))
+        if d < self._default_valid(o['class']):
+            result['retroactive'].append({'object_id': oid, 'from': d, 'to': None})
+
+    def _relationships(self, st, result):
+        """on_end rules, composition and cardinality (STD-CLS-040)."""
+        done = set()
+        while True:
+            todo = [(x, d) for x, d in self._ended if x not in done]
+            if not todo:
+                break
+            for x, d in todo:
+                done.add(x)
+                o = st['objects'][x]
+                eff = self._cls(o['class'])
+                for field, uri in self._refs(eff, self.versions[o['head']]['body']):
+                    rel = eff['fields'][field].get('relationship') or {}
+                    tid = self._resolve(st, uri)
+                    if rel.get('ownership') == 'composition' and tid and self._live(st, tid):
+                        self._end_object(st, tid, d, result)
+                for src, field, rel, tid in self._relations(st):
+                    if tid != x or src == x:
+                        continue
+                    rule = rel.get('on_end', 'restrict')
+                    if rule == 'restrict':
+                        raise BpaError('MODEL.REFERENCE_RESTRICTED', 'referenced by %s' % src)
+                    if rule == 'cascade':
+                        if self._live(st, src):
+                            self._end_object(st, src, d, result)
+                        continue
+                    o = st['objects'][src]
+                    body = dict(self.versions[o['head']]['body'])
+                    uri = self._uri(st['objects'][x])
+                    body[field] = [u for u in body[field] if u != uri] if isinstance(body[field], list) else None
+                    if body[field] is None:
+                        del body[field]
+                    self._check_body(o['class'], body)
+                    rng = tl_range(o['timeline'], 'supersede_from', d)
+                    vh = self._version(src, o['class'], o['slug'], body, {'from': rng[0], 'to': rng[1]},
+                                       predecessor=o['head'])
+                    o['timeline'] = tl_apply(o['timeline'], 'supersede_from', vh, d)
+                    o['head'] = vh
+                    result['versions'][src] = vh
+                    if d < self._default_valid(o['class']):
+                        result['retroactive'].append({'object_id': src, 'from': rng[0], 'to': rng[1]})
+        counts = {}
+        for src, field, rel, tid in self._relations(st):
+            if rel['cardinality'] in ('one_to_one', 'one_to_many'):
+                counts.setdefault((field, tid), set()).add(src)
+        if any(len(v) > 1 for v in counts.values()):
+            raise BpaError('MODEL.CARDINALITY_VIOLATED')
+
+    # ---- queries of the class system (STD-CLS-022, -030, -040) ----
+
+    def list_objects(self, branch, cls, only=False, time=None):
+        st = self.commits[self._commit_at(branch, time)]['state']
+        if cls not in self.classes and cls not in GENESIS:
+            raise BpaError('MODEL.REFERENCE_INVALID', 'unknown class %s' % cls)
+        out = []
+        for oid, o in st['objects'].items():
+            if not self._live(st, oid):
+                continue
+            lin = self._cls(o['class'])['linearization']
+            if (o['class'] == cls) if only else (cls in lin):
+                out.append(oid)
+        return {'objects': sorted(out)}
+
+    def traverse(self, branch, object_id, relation, time=None):
+        st = self.commits[self._commit_at(branch, time)]['state']
+        o = st['objects'].get(object_id)
+        if o is None:
+            raise BpaError('IAM.NOT_FOUND', 'unknown object')
+        eff = self._cls(o['class'])
+        f = eff['fields'].get(relation)
+        out = set()
+        if f is not None and f.get('relationship'):
+            rel = f['relationship']
+            for fld, uri in self._refs(eff, self.versions[o['head']]['body']):
+                if fld != relation:
+                    continue
+                tid = self._resolve(st, uri)
+                if tid and rel.get('attributes_class'):
+                    tid = self._resolve(st, self.versions[st['objects'][tid]['head']]['body'].get('target', ''))
+                if tid and self._live(st, tid):
+                    out.add(tid)
+            return {'objects': sorted(out)}
+        known = False
+        for src, field, rel, tid in self._relations(st):
+            if rel.get('inverse') != relation:
+                continue
+            known = True
+            if rel.get('attributes_class'):
+                link = self.versions[st['objects'][tid]['head']]['body']
+                if self._resolve(st, link.get('target', '')) == object_id:
+                    out.add(src)
+            elif tid == object_id:
+                out.add(src)
+        if not known and not any((fd.get('relationship') or {}).get('inverse') == relation
+                                 for c in self.classes.values() for fd in c['fields'].values()):
+            raise BpaError('MODEL.REFERENCE_INVALID', 'unknown relation %s' % relation)
+        return {'objects': sorted(out)}
+
+    def class_at(self, branch, cls, time=None):
+        st = self.commits[self._commit_at(branch, time)]['state']
+        if cls not in self.classes and cls not in GENESIS:
+            raise BpaError('MODEL.REFERENCE_INVALID', 'unknown class %s' % cls)
+        return public(effective_class(list(self.decls.values()), cls, self._extensions(st)))
 
     # ---- reads (STD-TIME-012, -020) ----
 

@@ -1,0 +1,1 @@
+{"clauses":["STD-OBJ-012"],"description":"a value invalid for its type is rejected before indexing","id":"VER-CONF-0409","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"key":"00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff","type":"integer","value":"twelve"},"op":"blind_index"}]}

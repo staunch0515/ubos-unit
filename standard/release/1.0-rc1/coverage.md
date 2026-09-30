@@ -6,11 +6,11 @@
 
 | Profile | MUST clauses with a range | Covered | Coverage | Vectors | Prototype vectors |
 |---|---|---|---|---|---|
-| Core | 118 | 53 | 45% | 458 | 355 |
+| Core | 118 | 60 | 51% | 542 | 355 |
 | Bitemporal | 10 | 4 | 40% | 30 | 30 |
 | Ledger | 9 | 9 | 100% | 52 | 52 |
 | Proof | 8 | 3 | 38% | 16 | 16 |
-| **All** | **145** | **69** | **48%** | **556** | **453** |
+| **All** | **145** | **76** | **52%** | **640** | **453** |
 
 ## Clauses
 
@@ -38,7 +38,7 @@
 | STD-OBJ-005 | Core | yes | 5 (VER-CONF-0345…VER-CONF-0349) |
 | STD-OBJ-008 | Core | yes | 2 (VER-CONF-0360…VER-CONF-0361) |
 | STD-OBJ-009 | Core | yes | 5 (VER-CONF-0375…VER-CONF-0379) |
-| STD-OBJ-012 | Core | yes | **none** |
+| STD-OBJ-012 | Core | yes | 5 (VER-CONF-0405…VER-CONF-0409) |
 | STD-CLS-001 | Core | yes | 16 (VER-CONF-0500…VER-CONF-0515) |
 | STD-CLS-002 | Core | yes | 25 (VER-CONF-0530…VER-CONF-0554) |
 | STD-CLS-010 | Core | yes | 5 (VER-CONF-0600…VER-CONF-0604) |
@@ -47,12 +47,12 @@
 | STD-CLS-013 | Core | yes | 25 (VER-CONF-0650…VER-CONF-0674) |
 | STD-CLS-014 | Core | yes | 9 (VER-CONF-0700…VER-CONF-0708) |
 | STD-CLS-015 | Core | yes | 2 (VER-CONF-0710…VER-CONF-0711) |
-| STD-CLS-020 | Core | yes | **none** |
-| STD-CLS-021 | Core | yes | **none** |
-| STD-CLS-022 | Core | yes | **none** |
-| STD-CLS-030 | Core | yes | **none** |
-| STD-CLS-040 | Core | yes | **none** |
-| STD-CLS-041 | Core | yes | **none** |
+| STD-CLS-020 | Core | yes | 11 (VER-CONF-0720…VER-CONF-0730) |
+| STD-CLS-021 | Core | yes | 10 (VER-CONF-0740…VER-CONF-0749) |
+| STD-CLS-022 | Core | yes | 12 (VER-CONF-0755…VER-CONF-0766) |
+| STD-CLS-030 | Core | yes | 15 (VER-CONF-0780…VER-CONF-0794) |
+| STD-CLS-040 | Core | yes | 18 (VER-CONF-0810…VER-CONF-0827) |
+| STD-CLS-041 | Core | yes | 13 (VER-CONF-0840…VER-CONF-0852) |
 | STD-KIND-001 | Core | yes | 4 (VER-CONF-1000…VER-CONF-1003) |
 | STD-KIND-020 | Ledger | yes | 13 (VER-CONF-1020…VER-CONF-1032) |
 | STD-KIND-021 | Ledger | yes | 4 (VER-CONF-1040…VER-CONF-1043) |

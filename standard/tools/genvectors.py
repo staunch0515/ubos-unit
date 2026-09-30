@@ -22,7 +22,7 @@ from bpa.spec import clauses, REPO                       # noqa: E402
 from bpa.store import Store                              # noqa: E402
 
 OUT = os.path.join(REPO, 'standard', 'vectors')
-AREAS = ['fnd', 'obj', 'cls', 'kind', 'ver', 'time', 'txn', 'proof', 'err']
+AREAS = ['fnd', 'obj', 'cls', 'kind', 'ver', 'time', 'txn', 'proof', 'err', 'model']
 
 
 # The time-zone vectors use only transitions that are stable in every tz database release

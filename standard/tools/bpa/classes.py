@@ -18,7 +18,21 @@ GENESIS = {
     'ViewAsset': {'name': 'ViewAsset', 'kind': 'definition', 'parent': 'Object', 'abstract': True},
     'ConfigAsset': {'name': 'ConfigAsset', 'kind': 'definition', 'parent': 'Object', 'abstract': True},
     'SystemObject': {'name': 'SystemObject', 'kind': 'system', 'parent': 'Object', 'abstract': True},
+    # STD-CLS-030 (BPA 1.0-rc1): extensions are objects of this class; in adapter inputs the
+    # target is a class name and the member lists are JSON.
+    'ClassExtension': {'name': 'ClassExtension', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
+                       'fields': [
+                           {'name': 'target', 'type': 'text', 'required': True, 'label': 'target', 'description': 'target'},
+                           {'name': 'namespace', 'type': 'text', 'required': True, 'label': 'namespace',
+                            'description': 'namespace'},
+                           {'name': 'order', 'type': 'integer', 'required': True, 'label': 'order', 'description': 'order'},
+                           {'name': 'fields', 'type': 'json', 'label': 'fields', 'description': 'fields'},
+                           {'name': 'refinements', 'type': 'json', 'label': 'refinements', 'description': 'refinements'},
+                           {'name': 'ports', 'type': 'json', 'label': 'ports', 'description': 'ports'},
+                           {'name': 'views', 'type': 'json', 'label': 'views', 'description': 'views'}]},
 }
+PORT_REQUIRED = ('name', 'kind', 'permission', 'description')
+CARDINALITY = {'one_to_one': 'reference', 'many_to_one': 'reference', 'one_to_many': 'list', 'many_to_many': 'list'}
 
 CLASS_REQUIRED = ('name', 'namespace', 'kind', 'parent', 'label', 'description', 'schema_version', 'fields')
 TRAIT_REQUIRED = ('name', 'namespace', 'applies_to', 'label', 'description', 'schema_version', 'fields')
@@ -41,6 +55,45 @@ def check_field(f):
         raise BpaError('MODEL.UNKNOWN_TYPE', f['type'])
     if 'classification' in f and f['classification'] not in LEVELS:
         raise BpaError('MODEL.INVALID_VALUE', 'classification')
+    if 'lookup' in f and f['lookup'] not in ('none', 'equality'):
+        raise BpaError('MODEL.INVALID_VALUE', 'lookup')
+    rel = f.get('relationship')
+    if rel is not None:
+        check_relationship(f, rel)
+
+
+def is_reference_list(f):
+    item = (f.get('constraints') or {}).get('item_type') or {}
+    return f['type'] == 'list' and item.get('type') == 'reference'
+
+
+def check_relationship(f, rel):
+    """STD-CLS-040: a relationship on a reference or list-of-reference field."""
+    if not isinstance(rel, dict) or 'target' not in rel or 'cardinality' not in rel:
+        raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'relationship needs target and cardinality')
+    shape = CARDINALITY.get(rel['cardinality'])
+    if shape is None:
+        raise BpaError('MODEL.INVALID_VALUE', 'cardinality')
+    if (shape == 'reference' and f['type'] != 'reference') or (shape == 'list' and not is_reference_list(f)):
+        raise BpaError('MODEL.INVALID_VALUE', 'cardinality does not fit the field type')
+    if rel.get('ownership', 'association') not in ('association', 'composition'):
+        raise BpaError('MODEL.INVALID_VALUE', 'ownership')
+    if rel.get('on_end', 'restrict') not in ('restrict', 'cascade', 'detach'):
+        raise BpaError('MODEL.INVALID_VALUE', 'on_end')
+    if 'inverse' in rel and not GRAMMARS['member-name'].match(rel['inverse']):
+        raise BpaError('MODEL.INVALID_NAME', rel['inverse'])
+
+
+def check_port(p):
+    for k in PORT_REQUIRED:
+        if k not in p:
+            raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'port member %s' % k)
+    if not GRAMMARS['member-name'].match(p['name']):
+        raise BpaError('MODEL.INVALID_NAME', p['name'])
+    if p['kind'] not in ('query', 'command'):
+        raise BpaError('MODEL.INVALID_VALUE', 'port kind')
+    for q in p.get('params', []):
+        check_field(q)
 
 
 def check_decl(d):
@@ -59,6 +112,11 @@ def check_decl(d):
         check_field(f)
     if len(set(names)) != len(names):
         raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'duplicate field')
+    ports = [p.get('name') for p in d.get('ports', [])]
+    for p in d.get('ports', []):
+        check_port(p)
+    if len(set(ports)) != len(ports):
+        raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'duplicate port')
 
 
 def _registry(classes):
@@ -156,9 +214,41 @@ def refine(old, new):
     return merged
 
 
-def effective_class(classes, name):
-    """Effective definition of a class: linearization, kind, write policy and fields
-    (STD-CLS-001, -002, -011…-014)."""
+def check_override(general, special):
+    """STD-CLS-021: an override `special` of port `general`."""
+    gp = {q['name']: q for q in general.get('params', [])}
+    sp = {q['name']: q for q in special.get('params', [])}
+    if set(gp) != set(sp):
+        raise BpaError('MODEL.PORT_SIGNATURE_INCOMPATIBLE', 'parameter names')
+    for n in gp:
+        try:
+            refine(sp[n], gp[n])        # the inherited parameter must narrow the override's
+        except BpaError:
+            raise BpaError('MODEL.PORT_SIGNATURE_INCOMPATIBLE', 'parameter %s' % n)
+    if special.get('result') != general.get('result'):
+        raise BpaError('MODEL.PORT_SIGNATURE_INCOMPATIBLE', 'result type')
+    if not set(special.get('errors', [])) <= set(general.get('errors', [])):
+        raise BpaError('MODEL.PORT_SIGNATURE_INCOMPATIBLE', 'error codes')
+    if special['kind'] != general['kind']:
+        raise BpaError('MODEL.PORT_SIGNATURE_INCOMPATIBLE', 'port kind')
+
+
+def check_extension(ext):
+    """DAT-ClassExtension as given in adapter inputs (STD-CLS-030)."""
+    for k in ('target', 'namespace', 'order'):
+        if k not in ext:
+            raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'extension member %s' % k)
+    if not GRAMMARS['namespace'].match(ext['namespace']):
+        raise BpaError('MODEL.INVALID_NAME', ext['namespace'])
+    for f in ext.get('fields') or []:
+        check_field(f)
+    for p in ext.get('ports') or []:
+        check_port(p)
+
+
+def effective_class(classes, name, extensions=()):
+    """Effective definition of a class: linearization, kind, write policy, fields and ports,
+    with the extensions of the classes in its linearization (STD-CLS-001…-030)."""
     for d in classes:
         check_decl(d)
     reg = _registry(classes)
@@ -168,7 +258,7 @@ def effective_class(classes, name):
         d = reg[c]
         if d.get('trait') and kind is not None and kind not in d['applies_to']:
             raise BpaError('MODEL.KIND_MISMATCH', 'trait does not apply to the kind')
-    fields, policy = {}, None
+    fields, ports, policy = {}, {}, None
     for c in reversed(lin):
         d = reg[c]
         wp = d.get('write_policy')
@@ -178,6 +268,82 @@ def effective_class(classes, name):
             policy = wp
         for f in d.get('fields', []):
             fields[f['name']] = refine(fields[f['name']], f) if f['name'] in fields else dict(f)
+        for p in d.get('ports', []):
+            if p['name'] in ports:
+                check_override(ports[p['name']], p)
+            ports[p['name']] = dict(p, declared_by=c,
+                                    impl_by=c if p.get('impl') else ports.get(p['name'], {}).get('impl_by'))
+    # Extensions of the classes in L(C): most general target first, then order, then namespace.
+    pos = {c: i for i, c in enumerate(reversed(lin))}
+    exts = [e for e in extensions if e.get('target') in pos]
+    for e in sorted(exts, key=lambda e: (pos[e['target']], e['order'], e['namespace'])):
+        check_extension(e)
+        for f in e.get('fields') or []:
+            key = '%s.%s' % (e['namespace'], f['name'])
+            if key in fields:
+                raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'duplicate member %s' % key)
+            fields[key] = dict(f, name=key)
+        for r in e.get('refinements') or []:
+            if r.get('name') not in fields:
+                raise BpaError('MODEL.NARROWING_VIOLATION', 'refinement of an unknown member')
+            fields[r['name']] = refine(fields[r['name']], r)
+        for p in e.get('ports') or []:
+            key = '%s.%s' % (e['namespace'], p['name'])
+            if key in ports:
+                raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'duplicate member %s' % key)
+            ports[key] = dict(p, name=key, declared_by=e['target'], impl_by=e['target'] if p.get('impl') else None)
     if policy is None:
         policy = 'change_set' if 'ConfigAsset' in lin else 'direct'
-    return {'linearization': lin, 'kind': kind, 'write_policy': policy, 'fields': fields}
+    out = {'linearization': lin, 'kind': kind, 'write_policy': policy, 'fields': fields}
+    if ports:
+        out['ports'] = {k: {m: v for m, v in p.items() if m not in ('declared_by', 'impl_by')} for k, p in ports.items()}
+    out['_ports'] = ports
+    return out
+
+
+def public(eff):
+    """The effective definition as returned by the adapter (internal members removed)."""
+    return {k: v for k, v in eff.items() if not k.startswith('_')}
+
+
+def dispatch(classes, name, port, after=None, extensions=()):
+    """STD-CLS-020: the class whose implementation of `port` runs for an object of `name`;
+    with `after`, the search continues after that class (run.super)."""
+    eff = effective_class(classes, name, extensions)
+    reg = _registry(classes)
+    lin = eff['linearization']
+    start = lin.index(after) + 1 if after in lin else 0
+    if after is not None and after not in lin:
+        raise BpaError('MODEL.REFERENCE_INVALID', 'class %s is not in the linearization' % after)
+    if '.' in port:
+        p = eff['_ports'].get(port)
+        if p and p.get('impl') and p['declared_by'] in lin[start:]:
+            return {'class': p['declared_by'], 'impl': p['impl']}
+        raise BpaError('MODEL.PORT_NOT_IMPLEMENTED', port)
+    for c in lin[start:]:
+        for p in reg[c].get('ports', []):
+            if p['name'] == port and p.get('impl'):
+                return {'class': c, 'impl': p['impl']}
+    raise BpaError('MODEL.PORT_NOT_IMPLEMENTED', port)
+
+
+def depth(reg, name):
+    """Position depth in the hierarchy: Object 0, each parent step +1; traits have depth 1."""
+    d = reg[name]
+    if d.get('trait'):
+        return 1
+    n = 0
+    while reg[name].get('parent'):
+        name = reg[name]['parent']
+        n += 1
+    return n
+
+
+def type_selector(classes, name, selector, only=False):
+    """STD-CLS-022: whether a type selector matches an object of class `name`, and its
+    specificity contribution."""
+    reg = _registry(classes)
+    if selector not in reg:
+        raise BpaError('MODEL.REFERENCE_INVALID', 'unknown class %s' % selector)
+    lin = linearize(classes, name, reg)
+    return {'matches': selector == name if only else selector in lin, 'specificity': depth(reg, selector)}

@@ -1,0 +1,1 @@
+{"clauses":["STD-OBJ-012"],"description":"a key that is not 32 bytes of hexadecimal is rejected","id":"VER-CONF-0408","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"key":"abc","type":"text","value":"x"},"op":"blind_index"}]}

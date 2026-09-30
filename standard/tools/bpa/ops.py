@@ -2,7 +2,10 @@
 from . import BpaError
 from . import values
 from .canon import canonical, content_id, nfc
-from .classes import linearize, effective_class
+import hashlib
+import hmac
+
+from .classes import linearize, effective_class, public, dispatch, type_selector
 from .store import Store
 from .tree import tree_root
 
@@ -31,6 +34,16 @@ def commit_id(commit):
     return content_id('ubos.commit.v1', {k: v for k, v in commit.items() if k != 'signatures'})
 
 
+def blind_index(key, type_, constraints, value):
+    """STD-OBJ-012: HMAC-SHA-256 under the tenant lookup key over the canonical JSON of the
+    normalised value."""
+    if not isinstance(key, str) or len(key) != 64 or any(c not in '0123456789abcdef' for c in key):
+        raise BpaError('MODEL.INVALID_VALUE', 'a lookup key is 32 bytes in lowercase hexadecimal')
+    norm = values.validate_value(type_, constraints, value)
+    mac = hmac.new(bytes.fromhex(key), canonical(norm).encode('utf-8'), hashlib.sha256).hexdigest()
+    return 'hmac-sha256:' + mac
+
+
 PURE = {
     'canonical_json': lambda i: canonical(i['value']),
     'content_id': lambda i: content_id(i['domain'], i['value']),
@@ -46,7 +59,10 @@ PURE = {
     'commit_id': lambda i: commit_id(i['commit']),
     'tree_root': lambda i: tree_root(i['entries']),
     'linearize': lambda i: linearize(i['classes'], i['class']),
-    'effective_class': lambda i: effective_class(i['classes'], i['class']),
+    'effective_class': lambda i: public(effective_class(i['classes'], i['class'], i.get('extensions', ()))),
+    'dispatch': lambda i: dispatch(i['classes'], i['class'], i['port'], i.get('after'), i.get('extensions', ())),
+    'type_selector': lambda i: type_selector(i['classes'], i['class'], i['selector'], i.get('only', False)),
+    'blind_index': lambda i: blind_index(i['key'], i['type'], i.get('constraints'), i['value']),
 }
 
 STATEFUL = {
@@ -61,6 +77,9 @@ STATEFUL = {
     'merge': lambda s, i: s.merge(i['source'], i['target']),
     'diff': lambda s, i: s.diff(i['from'], i['to']),
     'export_state': lambda s, i: s.export_state(i['branch'], i.get('time')),
+    'list_objects': lambda s, i: s.list_objects(i.get('branch', 'main'), i['class'], i.get('only', False), i.get('time')),
+    'traverse': lambda s, i: s.traverse(i.get('branch', 'main'), i['object_id'], i['relation'], i.get('time')),
+    'class_at': lambda s, i: s.class_at(i.get('branch', 'main'), i['class'], i.get('time')),
 }
 
 OPERATIONS = set(PURE) | set(STATEFUL)

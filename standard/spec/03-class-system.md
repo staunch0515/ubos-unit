@@ -62,7 +62,7 @@ DAT-FieldDecl:
 ```
 
 ### STD-CLS-010 — Root and base classes
-- **Clause:** The genesis model MUST define `Object` (abstract) and, directly below it, the abstract base classes `DataObject`, `LogicAsset`, `ViewAsset`, `ConfigAsset` and `SystemObject`. Every class MUST have exactly one parent, except `Object`. `LogicAsset`, `ViewAsset` and `ConfigAsset` have the kind `definition`, `SystemObject` the kind `system`; `Object` and `DataObject` have no kind (STD-CLS-014) (DEC-032).
+- **Clause:** The genesis model MUST define `Object` (abstract) and, directly below it, the abstract base classes `DataObject`, `LogicAsset`, `ViewAsset`, `ConfigAsset` and `SystemObject`. Every class MUST have exactly one parent, except `Object`. `LogicAsset`, `ViewAsset` and `ConfigAsset` have the kind `definition`, `SystemObject` the kind `system`; `Object` and `DataObject` have no kind (STD-CLS-014) (DEC-032). The genesis model also defines the concrete class `ClassExtension` below `ConfigAsset` (STD-CLS-030, DEC-040).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0600…0604
 - **Satisfies:** FR-MODEL-021
@@ -129,7 +129,7 @@ DAT-FieldDecl:
 - **Notes:** —
 
 ### STD-CLS-020 — Port dispatch
-- **Clause:** Invoking port `p` on object `o` of class C MUST execute the implementation declared by the first class in `L(C)`, after applying extensions, that provides an implementation of `p`. When no class provides one, the invocation MUST fail with `MODEL.PORT_NOT_IMPLEMENTED`. `run.super` MUST continue the search from the class after the current one in `L(C)`.
+- **Clause:** Invoking port `p` on object `o` of class C MUST execute the implementation declared by the first class in `L(C)`, after applying extensions, that provides an implementation of `p`. When no class provides one, the invocation MUST fail with `MODEL.PORT_NOT_IMPLEMENTED`. `run.super` MUST continue the search from the class after the current one in `L(C)`. A class provides an implementation of `p` when its declaration of `p` names an `impl`; a port declared without `impl` everywhere, or not declared at all, is not implemented. A port added by an extension is named `<namespace>.<port>` and is provided by the extension's target class (DEC-040).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0720…0739
 - **Satisfies:** FR-MODEL-031, FR-MODEL-033
@@ -140,23 +140,28 @@ DAT-FieldDecl:
   - declare the same parameter names;
   - declare each parameter type equal to or more general than the overridden declaration (the reverse of the narrowing matrix);
   - declare a result type equal to or narrower;
-  - declare an error-code set that is a subset.
+  - declare an error-code set that is a subset;
+  - declare the same port kind (`query` or `command`).
 
-  Otherwise the class commit MUST fail with `MODEL.PORT_SIGNATURE_INCOMPATIBLE`.
+  Parameters are matched by name; "more general" means that the overridden parameter declaration is a valid narrowing (STD-CLS-013) of the override's. Otherwise the class commit MUST fail with `MODEL.PORT_SIGNATURE_INCOMPATIBLE`.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0740…0754
 - **Satisfies:** FR-MODEL-032
 - **Notes:** —
 
 ### STD-CLS-022 — Polymorphic queries and selectors
-- **Clause:** A class filter in queries and a type selector in governance sheets MUST match every object whose class has the named class in its linearization, unless `only: true` is given. The specificity contribution of a type selector MUST equal the position depth of the named class in the hierarchy (depth of `Object` = 0).
+- **Clause:** A class filter in queries and a type selector in governance sheets MUST match every object whose class has the named class in its linearization, unless `only: true` is given. The specificity contribution of a type selector MUST equal the position depth of the named class in the hierarchy (depth of `Object` = 0, one more per parent step; a trait has depth 1). With `only: true` a filter or selector matches instances of the named class itself only. A class filter returns objects whose current version is not a tombstone.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0755…0769
 - **Satisfies:** FR-MODEL-034, FR-MODEL-035
 - **Notes:** Because traits appear in linearizations, a selector on a trait matches every class that includes it.
 
 ### STD-CLS-030 — Extension objects
-- **Clause:** An extension MUST be an object of class `ClassExtension` that names a target class and adds fields, ports, views, constraints and merge strategies under the narrowing rules. Members added by extensions MUST be stored under the key `<namespace>.<member>`. An extension is effective only on branches where it is visible (by commit or inheritance).
+- **Clause:** An extension MUST be an object of class `ClassExtension` that names a target class and adds fields, ports, views, constraints and merge strategies under the narrowing rules. Members added by extensions MUST be stored under the key `<namespace>.<member>`. An extension is effective only on branches where it is visible (by commit or inheritance). In detail (DEC-040):
+  - an extension applies to its target and to every subclass of it; in the effective definition of C (STD-CLS-012) the extensions of the classes in `L(C)` are applied after the fold, most general target first, then by `order`, then by namespace;
+  - `refinements` name existing members (with their full key) and follow the narrowing rules; a refinement of a member that is not yet defined at its turn fails with `MODEL.NARROWING_VIOLATION`, and two extensions adding the same key fail with `MODEL.DECLARATION_INCOMPLETE`;
+  - an extension is visible on a branch while its object exists there and its current version is not a tombstone; it takes effect for the commits after the commit that writes it;
+  - a commit that writes an extension MUST fail when its target is unknown (`MODEL.REFERENCE_INVALID`) or when the effective definition of the target or of a subclass would violate the class rules.
 - **Grammar / Schema:** `DAT-ClassExtension`
 - **Conformance vectors:** VER-CONF-0780…0799
 - **Satisfies:** FR-MODEL-071 … FR-MODEL-074
@@ -181,13 +186,19 @@ DAT-ClassExtension:
   4. for composition, end owned objects when the owner ends.
 
   When `attributes_class` is declared, each link MUST be an object of that class (Definition kind), with its own versions and valid time, referencing both ends.
+
+  The members of `relationship` are (DEC-040): `target` (class); `cardinality`, one of `one_to_one` and `many_to_one` on a reference field, `one_to_many` and `many_to_many` on a list of references; `inverse` (member name used to traverse from the target); `ownership`, `association` (default) or `composition`; `on_end`, `restrict` (default), `cascade` or `detach`; `attributes_class`. The rules apply to live objects (whose current version is not a tombstone) within the commit:
+  - for `one_to_one` and `one_to_many`, a target MAY be referred to through the field by at most one live object, otherwise `MODEL.CARDINALITY_VIOLATED`;
+  - when a target ends, a live object referring to it fails the commit with `MODEL.REFERENCE_RESTRICTED` under `restrict`, ends at the same date under `cascade`, and under `detach` receives a new version without the reference from that date;
+  - when an owner ends, the targets of its `composition` fields end at the same date;
+  - with `attributes_class`, the field holds references to link objects, whose `source` field refers to the owner and whose `target` field refers to the other end; traversal passes through the links.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0810…0839
 - **Satisfies:** FR-MODEL-061, FR-MODEL-062
 - **Notes:** —
 
 ### STD-CLS-041 — Referential integrity at valid time
-- **Clause:** On commit, every reference in a Definition version with period `[f, t)` MUST resolve on the same branch to a target that is not ended for the whole period `[f, t)` as known at the commit. Ledger entries' references MUST resolve at the entry's valid time. Violations MUST fail with `MODEL.REFERENCE_INVALID`.
+- **Clause:** On commit, every reference in a Definition version with period `[f, t)` MUST resolve on the same branch to a target that is not ended for the whole period `[f, t)` as known at the commit. Ledger entries' references MUST resolve at the entry's valid time. Violations MUST fail with `MODEL.REFERENCE_INVALID`. A reference resolves to the object whose class and current slug the canonical URI names (STD-ADDR-001) in the branch state after the commit, including objects created in the same commit. "Not ended for the whole period" means that the target's valid-time segments cover `[f, t)` without a gap. A `target_class` constraint requires the target's class to have the named class in its linearization.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0840…0859
 - **Satisfies:** FR-MODEL-063

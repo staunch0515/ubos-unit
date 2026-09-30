@@ -118,7 +118,7 @@ DAT-EncryptedField:
 - **Notes:** —
 
 ### STD-OBJ-012 — Equality lookups on encrypted fields
-- **Clause:** A field declared `lookup: equality` MAY additionally store a keyed blind index `HMAC(tenant_lookup_key, normalised value)` for uniqueness and equality queries. Blind indexes MUST use a per-tenant key and MUST be destroyed together with the subject key when the field is erased.
+- **Clause:** A field declared `lookup: equality` MAY additionally store a keyed blind index `HMAC(tenant_lookup_key, normalised value)` for uniqueness and equality queries. Blind indexes MUST use a per-tenant key and MUST be destroyed together with the subject key when the field is erased. The index MUST be `hmac-sha256:` followed by the lowercase hexadecimal HMAC-SHA-256, keyed with the 32-byte tenant lookup key, over the UTF-8 canonical JSON (STD-FND-001) of the value after validation and normalisation (STD-FND-020…027).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0405…0409
 - **Satisfies:** AR-021, FR-MODEL-013

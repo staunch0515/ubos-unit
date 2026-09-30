@@ -11,6 +11,9 @@ from .canon import MAX_SAFE, canonical, nfc
 # ---- names (STD-FND-016, STD-VER-013, STD-FND-015) ----
 
 SLUG = r'[a-z0-9][a-z0-9_-]{0,62}'
+# Canonical object URI without selectors or version suffix (STD-ADDR-001, STD-FND-020).
+REFERENCE = re.compile(r'\Aubos://' + SLUG + r'(\.' + SLUG + r')?/[A-Z][A-Za-z0-9]{0,63}/' + SLUG + r'\Z')
+
 GRAMMARS = {
     'slug': re.compile(r'\A' + SLUG + r'\Z'),
     'class-name': re.compile(r'\A[A-Z][A-Za-z0-9]{0,63}\Z'),
@@ -328,7 +331,9 @@ def validate_value(type_, constraints, value):
             raise BpaError('MODEL.CONSTRAINT_VIOLATED', 'not an allowed value')
         return value
     if type_ == 'reference':
-        raise BpaError('MODEL.UNKNOWN_TYPE', 'reference values are not in release 0.1 vectors')
+        if not isinstance(value, str) or not REFERENCE.match(value):
+            raise BpaError('MODEL.INVALID_VALUE', 'a reference is a canonical URI without selectors')
+        return value
     if type_ == 'composite':
         members = c.get('members', {})
         if not isinstance(value, dict):
