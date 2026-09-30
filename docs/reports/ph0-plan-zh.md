@@ -31,7 +31,7 @@
 | 4 | 原型 crate、适配器协议、`forge conform` 运行器；`prototype` 向量 100% 通过；属性测试每条至少 100 万例 | EXIT-0-03、EXIT-0-04 | 已完成：453 个 prototype 向量在内存与 PostgreSQL 上全部通过（EXIT-0-03，见 `verify/reports/exit-0-03/`）；三条性质各 100 万例 0 失败（EXIT-0-04，见 `verify/reports/exit-0-04/`） |
 | 5 | ENV-REF-SERVER 基准测试（读 p95 ≤ 6.25 ms，提交 p50 ≤ 19 ms，diff p95 ≤ 62.5 ms），给出 ASM-003 结论 | EXIT-0-05 | 准备工作已完成（5a–5c）；正式测试因暂时租不到主机，**转入 PH-1**（DEC-035），租到主机后按 `docs/reports/ph0-step5-runbook-zh.md` 补跑 |
 | 6 | Rhai 沙箱初步验证：100 个逃逸用例，给出 ASM-008 结论 | EXIT-0-06 | 已完成：100 个用例全部拦截且重放一致（见 `verify/reports/exit-0-06/`）；ASM-008 对 L2 成立（附条件，DEC-034），提出 OQ-007、OQ-008 |
-| 7 | 根据 PH-0 结果重新制定 PH-1 计划；外部评审；用一条 DEC 记录验收结论 | EXIT-0-07 | 已完成：PH-1 已重新制定（DEC-036），发现处置表见 `docs/50-system/50-phases/PH-0/02-findings.md`；PH-0 验收提案 DEC-037 待业主确认，外部评审与补跑基准一起进行 |
+| 7 | 根据 PH-0 结果重新制定 PH-1 计划；外部评审；用一条 DEC 记录验收结论 | EXIT-0-07 | 已完成：PH-1 已重新制定（DEC-036），发现处置表见 `docs/50-system/50-phases/PH-0/02-findings.md`；PH-0 已验收（DEC-037），外部评审与补跑基准一起进行 |
 
 第 2、3 步在写代码之前完成（AR-033，标准先于代码）。
 

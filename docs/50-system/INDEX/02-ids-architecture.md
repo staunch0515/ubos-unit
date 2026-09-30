@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (37)
+## DEC (38)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -131,4 +131,5 @@ depends_on: [UBS-IDX-00]
 | DEC-035 | EXIT-0-05 carried over into PH-1 | `90-decisions/000-index.md` |
 | DEC-036 | PH-1 re-baseline after PH-0 | `90-decisions/000-index.md` |
 | DEC-037 | PH-0 acceptance | `90-decisions/000-index.md` |
+| DEC-038 | PH-1 execution | `90-decisions/000-index.md` |
 

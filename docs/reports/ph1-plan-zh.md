@@ -1,0 +1,31 @@
+# PH-1 执行计划（DEC-038）
+
+PH-1 分两个门（DEC-014）：gate 1a 引擎核心（237 项需求，EXIT-1-01 至 EXIT-1-13），gate 1b 治理与服务（101 项需求，EXIT-1-14 至 EXIT-1-20）。PH-1 由业主和 AI 会话执行，一步一个 PR，业主合并；目前只细化 gate 1a，gate 1b 在 1a 验收时再细化。规格见 `docs/50-system/50-phases/PH-1/00-plan.md` §11。
+
+## 1. Gate 1a 步骤
+
+| 步骤 | 内容 | 退出标准 | 状态 |
+|---|---|---|---|
+| 0 | 对齐：DEC-037 改为 Accepted，新增 DEC-038，UBS-PH-1 §11 写入步骤，建立本表 | — | 本 PR |
+| 1 | BPA 1.0-rc1：补全 Core、Bitemporal、Ledger、Proof（子集）和执行（CTX）条款与向量，MUST 覆盖 100%；先标准后代码，按条款区拆成几个 PR | EXIT-1-01 | 未开始 |
+| 2 | 扩展形式化模型：group commit、账本序列 | EXIT-1-07 | 未开始 |
+| 3 | 存储内核：StoreTx、sqlx、RLS 与分区、其余索引、分块/压缩/加密、校验器、存储套件；布局等 W-1 结论后定型 | EXIT-1-03 | 未开始 |
+| 4 | 模型、版本、时间、账本、事务生产化：完整类注册（C3、收窄）、租户和 IAM 基础 | EXIT-1-02（部分） | 未开始 |
+| 5 | 运行时：L1 表达式、L2 生产化（内存计量、加权计量、内核小数）、指令集、journal、重放；逃逸用例扩到 300 个以上 | EXIT-1-10 | 未开始 |
+| 6 | 证明（签名、包含证明）、便携导出/导入、校验库 | EXIT-1-12 | 未开始 |
+| 7 | 进程内宿主服务、Forge 的 check/types/test/conform、1a 的 10 个场景 | EXIT-1-02、EXIT-1-13 | 未开始 |
+| 8 | 验证收口：属性、模拟（连续 30 晚）、故障注入、三平台重放、覆盖率与变异分数 | EXIT-1-04、05、06、08、11 | 未开始 |
+| 9 | Gate 1a 验收：ENV-REF-SERVER 上的基准、外部评审、验收 DEC | EXIT-1-09 | 未开始 |
+
+W-1（从 PH-0 结转的存储基准，DEC-035）：业主租到主机时随时进行，须在第 3 步存储布局定型之前完成。
+
+## 2. 需要业主做的事
+
+| 时间 | 事项 |
+|---|---|
+| 尽早 | 租用 ENV-REF-SERVER，按 `docs/reports/ph0-step5-runbook-zh.md` 补跑 W-1，同时请外部评审人评审 PH-0 |
+| 第 8 步前 | 确认 GitHub Actions 额度够用（每晚任务、ARM64 Linux 和 macOS runner）；不够时由 AI 报告，业主决定加额度或自托管 |
+| 第 9 步 | 再次租用 ENV-REF-SERVER 做 gate 1a 基准；外部评审人参加验收 |
+| gate 1b | 租用 ENV-REF-SMALL |
+
+性能需求是 Must，不能结转（UBS-PH-00 §3.7）。如果到 gate 1a 仍租不到主机，只能用 DEC 重新分期。
