@@ -3,6 +3,13 @@
 //! Commits, branches, change sets, merge, revert, inheritance resolution.
 //! Allowed dependencies: `ubos-model`, `ubos-store`, `ubos-tree` (AR-031).
 //!
-//! PH-0 prototype scope: commit construction, zero-copy branches and head CAS
-//! (DSN-DVM-201, DSN-DVM-204, DSN-DVM-208) and the merge pipeline with ledger append
-//! (DSN-DVM-240…244), minimal and sufficient for the BPA 0.1 vectors (UBS-PH-0 §2, §3).
+//! PH-0 prototype scope (UBS-PH-0 §3, DEC-033): branch state with object timelines and
+//! ledgers, commit construction with head compare-and-set (DSN-DVM-201, -204, -208), ledger
+//! appends, reversals, double entry and periods (STD-KIND-020…025), merge with best common
+//! ancestor and virtual base, per-segment three-way merge and ledger append (DSN-DVM-240…244,
+//! STD-VER-040…056), diff (STD-VER-030) and the state tree entries (STD-PROOF-001).
+
+pub mod merge;
+pub mod state;
+
+pub use state::{Entry, ObjectState, Repo, Segment, State, Tx, at, lt};

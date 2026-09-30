@@ -10,6 +10,8 @@ publish.workspace = true
 
 [dependencies]
 ubos-types.workspace = true
+serde_json.workspace = true
+postgres.workspace = true
 
 [lints]
 workspace = true

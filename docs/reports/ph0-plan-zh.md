@@ -28,7 +28,7 @@
 | 1 | 单仓骨架：`standard/`、`verify/`、`crates/`（Cargo 工作区，含五个原型 crate），各目录许可证，CI（`regen_all.sh`、fmt/clippy、依赖图检查 AR-031） | 基础 | 已完成（PR #3） |
 | 2 | TLA+ 模型 `verify/models/{commit_cas,merge,timeline}.tla`，按 DEC-031 检查（能穷举的穷举，否则最大可完成规模穷举加完整规模 100 万条随机模拟），报告见 `verify/models/reports/README.md` | EXIT-0-02 | 已完成（本 PR）：无违规；发现并修正 1 个设计问题（DSN-DVM-208），提出 OQ-004、OQ-005 |
 | 3 | BPA 0.1：Core、Bitemporal、Ledger 条款，JSON Schema，向量格式，至少 300 个向量；覆盖率报告（MUST 条款覆盖至少 80%） | EXIT-0-01 | 已完成（PR #5 与本 PR）：551 个向量（453 个标 `prototype`），MUST 条款覆盖率 94%（68/72），发布清单已生成；待业主签名标签 `bpa-v0.1.0` |
-| 4 | 原型 crate、适配器协议、`forge conform` 运行器；`prototype` 向量 100% 通过；属性测试每条至少 100 万例 | EXIT-0-03、EXIT-0-04 | 4a 已完成（本 PR）：纯函数操作与运行器，453 个 prototype 向量中 275 个通过；4b（存储与 PostgreSQL，EXIT-0-03）、4c（属性测试，EXIT-0-04）待做 |
+| 4 | 原型 crate、适配器协议、`forge conform` 运行器；`prototype` 向量 100% 通过；属性测试每条至少 100 万例 | EXIT-0-03、EXIT-0-04 | 4a、4b 已完成：453 个 prototype 向量在内存与 PostgreSQL 上全部通过（EXIT-0-03，签名报告见 `verify/reports/exit-0-03/`）；4c（属性测试，EXIT-0-04）待做 |
 | 5 | ENV-REF-SERVER 基准测试（读 p95 ≤ 6.25 ms，提交 p50 ≤ 19 ms，diff p95 ≤ 62.5 ms），给出 ASM-003 结论 | EXIT-0-05 | 未开始 |
 | 6 | Rhai 沙箱初步验证：100 个逃逸用例，给出 ASM-008 结论 | EXIT-0-06 | 未开始 |
 | 7 | 根据 PH-0 结果重新制定 PH-1 计划；外部评审；用一条 DEC 记录验收结论 | EXIT-0-07 | 未开始 |
