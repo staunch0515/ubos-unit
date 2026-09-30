@@ -211,12 +211,13 @@ Numbers follow UBS-VER-00 §3.
 - **Supports:** EXIT-1-06
 
 ### VER-FORM-0004 — Group commit and ledger sequence model
-- **Verifies:** DSN-DVM-006, DSN-DVM-402, DSN-DVM-404
+- **Verifies:** DSN-DVM-006, DSN-DVM-402, DSN-DVM-404, DSN-DVM-424
 - **Suite:** SUITE-DVM-FORM · **Phase:** PH-1
 - **Environment:** model-checking workstation
 - **Procedure:**
   1. Extend the commit model with batches, per-process abort within a batch, and ledger counters.
   2. Check gap-freeness, per-key total order and batch atomicity per process.
+  3. Bound (DEC-031, DEC-046): 3 processes × 2 nodes × 2 objects × 2 ledger keys × batch 3 × 4 commits, with one failed storage transaction; model `verify/models/group_commit.tla`.
 - **Pass criterion:** 0 violated properties.
 - **Evidence:** model and checker output.
 - **Supports:** EXIT-1-07

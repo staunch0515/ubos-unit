@@ -75,5 +75,5 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - name: model-check commit_cas, merge, timeline (VER-FORM-0001..0003)
+      - name: model-check commit_cas, merge, timeline, group_commit (VER-FORM-0001..0004)
         run: sh verify/models/check.sh ci
