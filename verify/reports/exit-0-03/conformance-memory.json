@@ -1,0 +1,2346 @@
+{
+  "environment": {
+    "arch": "x86_64",
+    "os": "linux"
+  },
+  "implementation": {
+    "backends": [
+      "memory"
+    ],
+    "build_hash": "6a2215b96d3798517178fb27fb321d5ead0938b9",
+    "name": "ubos-dvm prototype",
+    "vendor": "UBOS",
+    "version": "0.0.0"
+  },
+  "profiles_claimed": [
+    "Core",
+    "Bitemporal",
+    "Ledger",
+    "Proof"
+  ],
+  "results": [
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1700"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1701"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1702"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1715"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1716"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1717"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1725"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1726"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1727"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1728"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1729"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1730"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1731"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1732"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1733"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1734"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1735"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1736"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1737"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1775"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1776"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1777"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1778"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1779"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1780"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1850"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1851"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1852"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1853"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1854"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0001"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0002"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0003"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0004"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0005"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0006"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0007"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0008"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0009"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0010"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0011"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0012"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0013"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0014"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0015"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0016"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0017"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0018"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0019"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0020"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0021"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0022"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0023"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0024"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0025"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0026"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0027"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0028"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0029"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0030"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0031"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0032"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0033"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0034"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0035"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0040"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0041"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0042"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0043"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0044"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0045"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0046"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0047"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0048"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0049"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0050"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0051"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0052"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0053"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0054"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0055"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0056"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0057"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0058"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0059"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0060"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0061"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0062"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0063"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0064"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0065"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0066"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0067"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0068"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0069"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0070"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0071"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0072"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0073"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0074"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0075"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0076"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0077"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0078"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0079"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0080"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0081"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0082"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0083"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0084"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0085"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0086"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0087"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0088"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0089"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0090"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0091"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0092"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0093"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0094"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0095"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0096"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0097"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0098"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0099"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0100"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0101"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0102"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0103"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0104"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0105"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0106"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0107"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0108"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0109"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0110"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0111"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0112"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0113"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0114"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0115"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0116"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0117"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0118"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0119"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0120"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0121"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0122"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0123"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0124"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0125"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0126"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0127"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0128"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0129"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0130"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0131"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0132"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0133"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0134"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0135"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0136"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0137"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0138"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0139"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0140"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0150"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0151"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0152"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0153"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0160"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0161"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0162"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0163"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0164"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0165"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0166"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0167"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0168"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0169"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0170"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0171"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0172"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0173"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0174"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0175"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0176"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0177"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0178"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0179"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0180"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0181"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0182"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0183"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0184"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0185"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0186"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0187"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0188"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0189"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0190"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0191"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0192"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0193"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0200"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0201"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0202"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0203"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0204"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0205"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0206"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0207"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0215"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0216"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0217"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0218"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0219"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0220"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0221"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0222"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0223"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0224"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0225"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0226"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0227"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0228"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0240"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0241"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0242"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0243"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0244"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0245"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0246"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0247"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0270"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0271"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0272"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0273"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0274"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0275"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0276"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0277"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0300"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0301"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0302"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0303"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0305"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0306"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0307"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0308"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0309"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0310"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0311"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0312"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0313"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0314"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0315"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0316"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0317"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0318"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0319"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0330"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0331"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0332"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0340"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0341"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0342"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0345"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0346"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0347"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0348"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0349"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0360"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0361"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0500"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0501"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0502"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0503"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0504"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0505"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0506"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0507"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0508"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0509"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0510"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0511"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0512"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0513"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0514"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0515"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0530"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0531"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0532"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0533"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0534"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0535"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0536"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0537"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0538"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0539"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0540"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0541"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0542"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0543"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0544"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0545"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0546"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0547"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0548"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0549"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0550"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0551"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0552"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0553"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0554"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0600"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0601"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0602"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0603"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0604"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0605"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0606"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0607"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0608"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0609"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0610"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0611"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0612"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0613"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0614"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0615"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0630"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0631"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0632"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0633"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0650"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0651"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0652"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0653"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0654"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0655"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0656"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0657"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0658"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0659"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0660"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0661"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0662"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0663"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0664"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0665"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0666"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0667"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0668"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0669"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0670"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0671"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0672"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0673"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0674"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0700"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0701"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0702"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0703"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0704"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0705"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0706"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0707"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0708"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0710"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0711"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1000"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1001"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1002"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1003"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1120"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1121"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1140"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1141"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1142"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1160"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1161"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1200"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1201"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1202"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1203"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1204"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1205"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1206"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1207"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1208"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1220"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1221"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1222"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1225"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1226"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1227"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1230"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1231"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1232"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1233"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1234"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1235"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1290"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1291"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1292"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1293"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1294"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1295"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1296"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1297"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1298"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1299"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1350"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1351"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1352"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1353"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1354"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1355"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1356"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1357"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1358"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1400"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1401"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1402"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1403"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1404"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1415"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1416"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1417"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1418"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1419"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1420"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1421"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1422"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1423"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1424"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1425"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1426"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1427"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1428"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1429"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1460"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1461"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1490"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1491"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1492"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1493"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1500"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1501"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1545"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1546"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1547"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1548"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2000"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2001"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2015"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2016"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2030"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2031"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2032"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2045"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2060"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2061"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2062"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2070"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2071"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2072"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2073"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2074"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2090"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2091"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2092"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6000"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6001"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6010"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6011"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6012"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6013"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6014"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6015"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6016"
+    },
+    {
+      "detail": "not tagged prototype",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-6017"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1020"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1021"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1022"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1023"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1024"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1025"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1026"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1027"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1028"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1029"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1030"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1031"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1032"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1040"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1041"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1042"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1043"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1050"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1051"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1052"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1053"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1054"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1055"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1070"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1071"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1072"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1073"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1074"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1085"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1086"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1087"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1088"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1089"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1095"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1096"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1097"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1098"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1099"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1505"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1506"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1507"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1508"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1509"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1510"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1511"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1830"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1831"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1832"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1833"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1834"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2110"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2111"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2300"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2301"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2302"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2303"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2304"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2305"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2306"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2307"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2308"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2309"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2310"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2340"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2341"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2342"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2350"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2351"
+    }
+  ],
+  "signature": {
+    "alg": "ed25519",
+    "key": "a2ebf37b9545754f263d0e97e781df45ebf302bde4a1817b9f11a787f9c90ddb",
+    "sig": "ece33e14e514056f4f91e976944f48c64a9487a2d1062f1a9d765be41edeca7290df4bbae2365452b60c5cf4988bf8422757a256fcc51fc29092c601f5d8e903"
+  },
+  "standard_version": "0.1.0",
+  "summary": {
+    "Bitemporal": {
+      "pass": 30
+    },
+    "Core": {
+      "not_applicable": 98,
+      "pass": 355
+    },
+    "Ledger": {
+      "pass": 52
+    },
+    "Proof": {
+      "pass": 16
+    }
+  }
+}
