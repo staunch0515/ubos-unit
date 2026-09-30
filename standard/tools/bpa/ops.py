@@ -7,6 +7,7 @@ import hmac
 
 from .classes import linearize, effective_class, public, dispatch, type_selector
 from .store import Store
+from . import crypto, proofs
 from .tree import tree_root
 
 ENVELOPE_REQUIRED = ('object_id', 'class', 'class_version', 'schema_version', 'kind', 'slug', 'valid')
@@ -63,6 +64,14 @@ PURE = {
     'dispatch': lambda i: dispatch(i['classes'], i['class'], i['port'], i.get('after'), i.get('extensions', ())),
     'type_selector': lambda i: type_selector(i['classes'], i['class'], i['selector'], i.get('only', False)),
     'blind_index': lambda i: blind_index(i['key'], i['type'], i.get('constraints'), i['value']),
+    # BPA 1.0-rc1, PH-1 step 1d (DEC-042)
+    'public_key': lambda i: crypto.public_key(i['seed']),
+    'sign': lambda i: crypto.sign(i['seed'], i['content_id'], i['signer'], i['key_id'], i.get('role', 'signer')),
+    'verify_signature': lambda i: crypto.verify(i['signature'], i['content_id'], i['did'], i.get('at')),
+    'aead_decrypt': lambda i: crypto.aead_decrypt(i['alg'], i['key'], i['nonce'], i['ciphertext'], i.get('aad', '')),
+    'inclusion_proof': lambda i: proofs.inclusion_proof(i['entries'], i['key']),
+    'verify_inclusion': lambda i: proofs.verify_inclusion(i['proof'], i.get('root'), i.get('dids')),
+    'verify_consistency': lambda i: proofs.verify_consistency(i['commits'], i.get('from'), i.get('to'), i.get('dids')),
 }
 
 STATEFUL = {
@@ -101,6 +110,15 @@ STATEFUL = {
     'outbox': lambda s, i: s.outbox_list(),
     'ack': lambda s, i: s.ack(i['effect_ids']),
     'bulk': lambda s, i: s.bulk(i),
+    # BPA 1.0-rc1, PH-1 step 1d (DEC-042)
+    'node_did': lambda s, i: s.node_did(),
+    'rotate_node_key': lambda s, i: s.rotate_node_key(i['seed']),
+    'commit_record': lambda s, i: s.commit_record(i['branch'], i),
+    'prove': lambda s, i: s.prove(i['branch'], i.get('object_id'), i.get('entry_id'), i),
+    'consistency_proof': lambda s, i: s.consistency_proof(i['branch'], i['from'], i.get('to')),
+    'tenant_root': lambda s, i: s.tenant_root(),
+    'export_archive': lambda s, i: s.export_archive(),
+    'import_archive': lambda s, i: s.import_archive(i['archive']),
 }
 
 OPERATIONS = set(PURE) | set(STATEFUL)
@@ -109,7 +127,9 @@ IMPLEMENTATION_DEPENDENT = ('version_hash', 'entry_hash', 'root', 'head', 'versi
                             # signatures and content identifiers over them
                             'commit_id', 'tx_time', 'parents', 'created_from', 'evaluated_at', 'preview',
                             'base', 'source_head', 'target_head', 'merged_commit', 'signature',
-                            'provenance_ref', 'inputs_commitment', 'class_version')
+                            'provenance_ref', 'inputs_commitment', 'class_version',
+                            # since 1.0-rc1 (DEC-042): signed records, proofs and archives
+                            'signatures', 'proof', 'records', 'heads', 'archive', 'from_commit', 'to_commit')
 
 
 def strip(value):

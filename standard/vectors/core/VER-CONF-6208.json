@@ -1,0 +1,1 @@
+{"clauses":["STD-CONF-011"],"description":"content identifiers use sha256","id":"VER-CONF-6208","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"sha256:d02a22fd28a80134e3fae486cececa4bf85a1bdb780f40f1ed5114b2853ff7a6"},"input":{"domain":"ubos.chunk.v1","value":"abc"},"op":"content_id"}]}

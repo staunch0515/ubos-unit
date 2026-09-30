@@ -54,6 +54,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-039 | Scope of BPA 1.0-rc1 by rule; releases in development; step 1 in six parts | Accepted |
 | DEC-040 | BPA 1.0-rc1 object and class model: clarifications of ports, selectors, extensions, relationships, reference integrity and blind indexes | Accepted |
 | DEC-041 | BPA 1.0-rc1 versioning, time and transactions: clarifications of branch kinds, change sets, previews, resolutions, tags, revert, inheritance, snapshots, evidence, impact sets, rule binding, derivations, lineage, idempotency, outbox and bulk processes | Accepted |
+| DEC-042 | BPA 1.0-rc1 proofs: signatures and key histories, inclusion and consistency proofs, tenant roots, portable archive format, algorithm registry | Accepted |
 
 ---
 
@@ -492,3 +493,19 @@ Decisions are never deleted. A replaced decision is marked
 - **Alternatives considered:** Requiring a change set for every merge into a protected branch was rejected: it would invalidate 44 direct merges of the frozen BPA 0.1 vectors. Eager invalidation of approvals by a kernel commit after every source or target change was rejected in favour of checking at the next action, which gives the same observable states. A Merkle tree over derivation inputs was replaced by the content ID of the sorted list, which already commits to the whole list.
 - **Affects:** STD-VER-011, STD-VER-012, STD-VER-020, STD-VER-021, STD-VER-031, STD-VER-055, STD-VER-057, STD-VER-058, STD-VER-060, STD-VER-061, STD-VER-070, STD-VER-071, STD-VER-080, STD-VER-081, STD-VER-090, STD-TIME-013, STD-TIME-014, STD-TIME-015, STD-TIME-031, STD-TIME-040, STD-TIME-050, STD-TXN-030, STD-TXN-031, STD-TXN-040, STD-TXN-050, STD-TXN-070, STD-KIND-020, STD-ERR-002, STD-CONF-005
 
+### DEC-042 — BPA 1.0-rc1 proofs (step 1d)
+- **Status:** Accepted · **Date:** 2026-09-30
+- **Context:** Part 1d of PH-1 step 1 (DEC-039) writes the oracle and vectors for the proof clauses of 1.0-rc1 that BPA 0.1 did not cover: STD-PROOF-010, -011, -020, -021, -030 and -070. STD-CONF-011 (algorithm registry) belongs with them because its algorithms are the ones proofs use. Several clauses left formats open that vectors must fix.
+- **Decision:**
+  1. STD-PROOF-010, -011: `sig` is base64url without padding; malformed signatures are `MODEL.INVALID_VALUE`, failed ones `PROOF.SIGNATURE_INVALID`. DID documents list keys with half-open validity, and the signer must be the subject of the document. A rotation closes the retired key after every transaction time it signed. Commit records carry the node signature over the commit ID.
+  2. STD-PROOF-020: nodes are `{level, entries}` as hashed by STD-PROOF-001, and each parent holds `[first key, hash]` of the node below. With a commit, the verifier checks the commit ID, its signatures at `tx_time` and its root.
+  3. STD-PROOF-021: records run from the later commit back to the earlier one; first-parent links and strictly decreasing transaction times are checked.
+  4. STD-PROOF-030: entries `[<vae>/<branch>, head commit ID]`, with the node signature over the root.
+  5. STD-PROOF-070: archive format `ubos.archive.v1` with a signed manifest. The importer verifies every content ID, signature, state root and head root, and imports into an empty store.
+  6. STD-CONF-011: AEAD inputs are key, nonce (12 or 24 bytes), associated data and ciphertext with the tag appended; XChaCha20-Poly1305 follows draft-irtf-cfrg-xchacha.
+  7. STD-ERR-002: new code `PROOF.VERIFICATION_FAILED`.
+  8. STD-CONF-005 (1.0-rc1): convention 10 (the adapter's node key and signed commit records). Pure operations `public_key`, `sign`, `verify_signature`, `aead_decrypt`, `inclusion_proof`, `verify_inclusion` and `verify_consistency`; stateful operations `node_did`, `rotate_node_key`, `commit_record`, `prove`, `consistency_proof`, `tenant_root`, `export_archive` and `import_archive`.
+  9. The oracle implements Ed25519, ChaCha20-Poly1305 with HChaCha20, and AES-256-GCM in plain Python so that it needs no third-party package. Each algorithm was checked against the published test vectors of RFC 8032, RFC 8439, draft-irtf-cfrg-xchacha, FIPS 197 and the GCM specification. This code is reference code for vectors only.
+- **Consequences:** 66 vectors (VER-CONF-2360…2370, 2375…2383, 2390…2402, 2410…2418, 2420…2423, 2510…2520, 6200…6208), not tagged `prototype`. Tampered proofs and archives, and one archive written by the oracle, are embedded as literals, so importing an archive of another implementation is tested. The earlier vectors are unchanged. MUST coverage of 1.0-rc1 is 109/146 (STD-PROOF-011 now states a MUST). The kernel implements this in step 6.
+- **Alternatives considered:** The `cryptography` package was rejected for the oracle: it is a native dependency that is not present in every environment. Comparing archive counts of chunks was rejected because chunking is an implementation choice; version records, entries, commits, refs and tags are compared instead.
+- **Affects:** STD-PROOF-010, STD-PROOF-011, STD-PROOF-020, STD-PROOF-021, STD-PROOF-030, STD-PROOF-070, STD-CONF-011, STD-ERR-002, STD-CONF-005

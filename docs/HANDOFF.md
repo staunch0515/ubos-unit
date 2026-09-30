@@ -42,6 +42,7 @@ the work without the earlier conversations. Read `CLAUDE.md` first for the worki
 | DEC-039 | BPA 1.0-rc1 scope by rule (0.1 plus Core, Bitemporal, Ledger, Proof clauses serving gate 1a), checked by the builder; BPA 0.1 frozen; regen builds rc1; step 1 in parts 1a–1f. |
 | DEC-040 | BPA 1.0-rc1 object and class model clarified: ports and dispatch, selectors, extensions (genesis `ClassExtension`), relationships, reference integrity, blind indexes; new adapter operations. |
 | DEC-041 | BPA 1.0-rc1 versioning, time and transactions clarified: branch kinds and write policy, change sets (genesis `ChangeSet`), previews, resolutions, tags and releases (genesis `Release`), revert, inheritance, snapshots and evidence, impact sets, rule binding, derivations, lineage, idempotency, outbox, bulk processes; two error codes and 20 adapter operations. |
+| DEC-042 | BPA 1.0-rc1 proofs clarified: signature format and key histories, signed commit records, inclusion and consistency proofs, tenant root, archive format `ubos.archive.v1`, AEAD inputs; error code `PROOF.VERIFICATION_FAILED`; plain-Python crypto in the oracle. |
 
 The full log with context and alternatives is `docs/50-system/90-decisions/000-index.md`.
 
@@ -104,8 +105,8 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
 
 1. **Next AI step:** PH-1 step 1 in six parts (DEC-039): 1a done (rc1 scope rule, tooling,
    STD-OBJ-009); 1b done (object and class model, DEC-040); 1c done (versioning, time and
-   transactions, DEC-041; rc1 MUST coverage 102/145); next 1d proofs, 1e execution, 1f
-   release (owner signs `bpa-v1.0.0-rc1`).
+   transactions, DEC-041); 1d done (proofs, DEC-042; rc1 MUST coverage 109/146); next 1e
+   execution, 1f release (owner signs `bpa-v1.0.0-rc1`).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
    occasion.

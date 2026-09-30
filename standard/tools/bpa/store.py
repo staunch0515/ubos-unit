@@ -19,6 +19,7 @@ import hashlib
 from .classes import GENESIS, effective_class, is_reference_list, public
 from .tree import tree_root
 from .workflow import Workflow
+from .proofs import Proofs
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
 DEFAULT_NOW = '2026-01-01T00:00:00.000000Z'
@@ -114,7 +115,7 @@ def tl_at(tl, asof):
     return None
 
 
-class Store(Workflow):
+class Store(Workflow, Proofs):
     def __init__(self):
         self.reset()
 
@@ -144,6 +145,7 @@ class Store(Workflow):
         self.bulks = {}                        # STD-TXN-070
         self.pids = itertools.count(1)
         self._cseq = 0
+        self._node_init()
         root = self._new_commit('main', [], {'objects': {}, 'ledger': {}}, 0, tx=False)
         self.branches['main'] = {'head': root, 'kind': 'main', 'created_at': self.now, 'active_at': self.now,
                                  'parent_line': None, 'created_from': root}
@@ -179,8 +181,10 @@ class Store(Workflow):
         rec = {'vae': TENANT, 'branch': branch, 'parents': [self.commits[p]['commit_id'] for p in parents],
                'cseq': cseq, 'tx_time': tx_time, 'root': tree_root(self.state_entries(state))}
         cid = next(self.ids) if self.commits else 0
+        commit_id = content_id('ubos.commit.v1', rec)
+        rec['signatures'] = [self._node_sign(commit_id)]
         c = {'parents': list(parents), 'state': state, 'cseq': cseq, 'branch': branch, 'tx_time': tx_time,
-             'commit_id': content_id('ubos.commit.v1', rec), 'ops': {}, 'hidden': []}
+             'commit_id': commit_id, 'ops': {}, 'hidden': [], 'record': rec}
         c.update(meta)
         self.commits[cid] = c
         return cid
@@ -391,7 +395,7 @@ class Store(Workflow):
         vh = content_id('ubos.version.v1', env)
         old = self.versions.get(vh)
         self.versions[vh] = {'object_id': oid, 'class': cls, 'slug': slug, 'body': body, 'valid': valid,
-                             'tombstone': tombstone, 'cseq': old['cseq'] if old else self._cseq}
+                             'tombstone': tombstone, 'cseq': old['cseq'] if old else self._cseq, 'envelope': env}
         if provenance:
             self.versions[vh]['provenance_ref'] = provenance
         return vh
@@ -843,6 +847,7 @@ class Store(Workflow):
         rid = self._derivation(ch)
         if rid:
             entry['provenance_ref'] = rid
+        entry['class_version'] = content_id('ubos.chunk.v1', self.decls[entry['class']])
         entry['entry_hash'] = self.entry_hash(entry)
         if rid:
             self._derived.append(('entry', entry['entry_id'], entry['entry_hash'], rid))
@@ -860,7 +865,7 @@ class Store(Workflow):
     def entry_hash(self, e):
         rec = {k: e[k] for k in ('entry_id', 'class', 'ledger_key', 'valid_at', 'corrects', 'correction_type',
                                  'posting_group', 'provenance_ref') if k in e}
-        rec['class_version'] = content_id('ubos.chunk.v1', self.decls[e['class']])
+        rec['class_version'] = e.get('class_version') or content_id('ubos.chunk.v1', self.decls[e['class']])
         rec['body_ref'] = content_id('ubos.chunk.v1', e['body'])
         return content_id('ubos.entry.v1', rec)
 

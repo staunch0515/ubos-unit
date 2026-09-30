@@ -95,6 +95,17 @@ DAT-ConformanceReport:
   | `list_objects` | `{branch, class, only, time}` | `{objects}`, the sorted identifiers of live objects matching the class filter (STD-CLS-022). Since 1.0-rc1. |
   | `traverse` | `{branch, object_id, relation, time}` | `{objects}`, the sorted identifiers of live objects reached through a relationship field or an inverse name (STD-CLS-040). Since 1.0-rc1. |
   | `class_at` | `{branch, class, time}` | the effective definition with the extensions visible at that coordinate (STD-CLS-030). Since 1.0-rc1. |
+  | `public_key`, `sign` | `{seed}`; `{seed, content_id, signer, key_id, role}` | the Ed25519 public key of a 32-byte hexadecimal seed in base64url; a `DAT-Signature` (STD-PROOF-010). Since 1.0-rc1. |
+  | `verify_signature` | `{signature, content_id, did, at}` | `true`; `did` is a DID document `{id, keys}`, `at` the signed time (STD-PROOF-010, -011). Since 1.0-rc1. |
+  | `aead_decrypt` | `{alg, key, nonce, aad, ciphertext}` | the plaintext; hexadecimal inputs and output (STD-CONF-011). Since 1.0-rc1. |
+  | `inclusion_proof`, `verify_inclusion` | `{entries, key}`; `{proof, root, dids}` | `DAT-InclusionProof` without `commit` over the given tree entries; `true` (STD-PROOF-020). Since 1.0-rc1. |
+  | `verify_consistency` | `{commits, from, to, dids}` | `true` (STD-PROOF-021). Since 1.0-rc1. |
+  | `node_did`, `rotate_node_key` | `{}`; `{seed}` | the DID document of the adapter's node key with its history (convention 10) (STD-PROOF-011). Since 1.0-rc1. |
+  | `commit_record` | `{branch}` and a selector | the signed commit record with its `commit_id` (STD-VER-001, STD-PROOF-010). Since 1.0-rc1. |
+  | `prove` | `{branch, object_id}` or `{branch, entry_id}`, and a selector | `{key, proof}`, a `DAT-InclusionProof` with the signed commit record (STD-PROOF-020). Since 1.0-rc1. |
+  | `consistency_proof` | `{branch, from, to}` (cseqs) | `{length, records, from_commit, to_commit}` (STD-PROOF-021). Since 1.0-rc1. |
+  | `tenant_root` | `{}` | `{branches, heads, root, signature}` (STD-PROOF-030). Since 1.0-rc1. |
+  | `export_archive`, `import_archive` | `{}`; `{archive}` | `{counts, archive}` with counts of version records, entries, commits, refs and tags; `{branches}` mapping each imported branch to its head cseq (STD-PROOF-070). Since 1.0-rc1. |
   | `branch_info` | `{branch}` | `{name, kind, state, expires_at, cseq, head, created_from, parent_line}` (STD-VER-010, -011). Since 1.0-rc1. |
   | `set_parent_line` | `{branch, parent_line}` | `true`; replaces the parent line (STD-VER-080). Since 1.0-rc1. |
   | `commit_info` | `{branch}` and a selector | `{branch, cseq, commit_id, tx_time, parents, rule_binding, process_id, change_set, resolutions, reverts}` of the selected commit; `rule_binding.classes` items are `{class, class_version}` or `{class: ClassExtension, object_id, class_version}` (STD-TIME-040). Since 1.0-rc1. |
@@ -118,10 +129,11 @@ DAT-ConformanceReport:
   3. In adapter inputs a class is referenced by its name. A trait is a declaration with `trait: true` and `applies_to`, a list of kinds. A ledger class declares `ledger: {key, amounts, double_entry, period_scope}`; `period_scope` names a class whose objects have the fields `start` and `end` (dates, half-open) and `state` (`open`, `closing`, `closed`).
   4. The business time zone of the adapter is UTC; the posting date of an append is the date of `now` (`set_now`).
   5. An expectation `{error_code, details}` also compares the `details` of the error (`DAT-Error`) with `subset` matching: `TXN.HEAD_MOVED` lists the stale objects in `details.objects`, and `VER.MERGE_CONFLICT` lists `DAT-MergeConflict` items `{object_id, kind, path}` in `details.conflicts`, ordered by object and path.
-  6. Version hashes, entry hashes, roots, commit identifiers, transaction times and signatures of stateful operations are compared only through `same_as` or through the pure operations, because they depend on the implementation's clock, keys and class identifiers. Before an `exact` comparison of a stateful result, the members `version_hash`, `entry_hash`, `root`, `head` and `versions` are removed from it; since 1.0-rc1 also `commit_id`, `tx_time`, `parents`, `created_from`, `evaluated_at`, `preview`, `base`, `source_head`, `target_head`, `merged_commit`, `signature`, `provenance_ref`, `inputs_commitment` and `class_version`.
+  6. Version hashes, entry hashes, roots, commit identifiers, transaction times and signatures of stateful operations are compared only through `same_as` or through the pure operations, because they depend on the implementation's clock, keys and class identifiers. Before an `exact` comparison of a stateful result, the members `version_hash`, `entry_hash`, `root`, `head` and `versions` are removed from it; since 1.0-rc1 also `commit_id`, `tx_time`, `parents`, `created_from`, `evaluated_at`, `preview`, `base`, `source_head`, `target_head`, `merged_commit`, `signature`, `provenance_ref`, `inputs_commitment` and `class_version`, and `signatures`, `proof`, `records`, `heads`, `archive`, `from_commit` and `to_commit`.
   7. Reference values are canonical URIs `ubos://acme/<Class>/<slug>`: the adapter's tenant is `acme` (since 1.0-rc1).
   8. The adapter's physical clock reads `now`: a commit's `tx_time` is `now`, or one microsecond after the `tx_time` of the head it extends when that is not earlier (STD-TIME-001). The initial commit of a branch has no `tx_time`. The default initiator is `did:ubos:acme:adapter` (since 1.0-rc1).
   9. A snapshot of a branch is selected by at most one of `time` (cseq), `commit` (commit identifier), `tag` and `tx_time` (instant), or by `evaluated_at` (a map from branch to commit identifier, STD-TIME-015); none selects the head (STD-VER-090) (since 1.0-rc1).
+  10. The adapter's node is `did:ubos:acme:node` with key `did:ubos:acme:node#k1` from the seed of 32 bytes `0x01`; `rotate_node_key` adds `#k2`, `#k3` … Every commit record `{vae, branch, parents, cseq, tx_time, root, signatures}`, the subset of `DAT-Commit` that the adapter keeps, is signed by the current node key (since 1.0-rc1).
 - **Grammar / Schema:** `DAT-AdapterChange`
 - **Conformance vectors:** —
 - **Satisfies:** FR-STD-021, FR-STD-022
@@ -152,7 +164,7 @@ DAT-AdapterChange:
 - **Notes:** —
 
 ### STD-CONF-011 — Algorithm registry
-- **Clause:** Algorithm identifiers for hashes, signatures and AEAD are registered by the standard. Version 1.0 registers `sha256`, `ed25519`, `aes-256-gcm` and `xchacha20-poly1305`. Adding an algorithm is a minor release. Implementations MUST verify content produced with every registered algorithm of their major version.
+- **Clause:** Algorithm identifiers for hashes, signatures and AEAD are registered by the standard. Version 1.0 registers `sha256`, `ed25519`, `aes-256-gcm` and `xchacha20-poly1305`. Adding an algorithm is a minor release. Implementations MUST verify content produced with every registered algorithm of their major version. AEAD content is given as key, nonce (12 bytes for `aes-256-gcm`; 24 bytes for `xchacha20-poly1305`, which applies HChaCha20 to the first 16 bytes and ChaCha20-Poly1305 of RFC 8439 to the rest), associated data and ciphertext with the 16-byte tag appended. A tag that does not verify fails with `PROOF.VERIFICATION_FAILED`; an unregistered algorithm is rejected (`MODEL.INVALID_VALUE`) (DEC-042).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-6200…6209
 - **Satisfies:** FR-PROOF-012, NR-SEC-004

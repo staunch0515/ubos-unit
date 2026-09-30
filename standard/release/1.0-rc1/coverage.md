@@ -6,11 +6,11 @@
 
 | Profile | MUST clauses with a range | Covered | Coverage | Vectors | Prototype vectors |
 |---|---|---|---|---|---|
-| Core | 118 | 80 | 68% | 698 | 355 |
+| Core | 118 | 81 | 69% | 707 | 355 |
 | Bitemporal | 10 | 10 | 100% | 61 | 30 |
 | Ledger | 9 | 9 | 100% | 52 | 52 |
-| Proof | 8 | 3 | 38% | 16 | 16 |
-| **All** | **145** | **102** | **70%** | **827** | **453** |
+| Proof | 9 | 9 | 100% | 73 | 16 |
+| **All** | **146** | **109** | **75%** | **893** | **453** |
 
 ## Clauses
 
@@ -120,12 +120,12 @@
 | STD-PROOF-001 | Proof | yes | 11 (VER-CONF-2300…VER-CONF-2310) |
 | STD-PROOF-002 | Proof | yes | 3 (VER-CONF-2340…VER-CONF-2342) |
 | STD-PROOF-003 | Proof | yes | 2 (VER-CONF-2350…VER-CONF-2351) |
-| STD-PROOF-010 | Proof | yes | **none** |
-| STD-PROOF-011 | Proof | no | **none** |
-| STD-PROOF-020 | Proof | yes | **none** |
-| STD-PROOF-021 | Proof | yes | **none** |
-| STD-PROOF-030 | Proof | yes | **none** |
-| STD-PROOF-070 | Proof | yes | **none** |
+| STD-PROOF-010 | Proof | yes | 11 (VER-CONF-2360…VER-CONF-2370) |
+| STD-PROOF-011 | Proof | yes | 9 (VER-CONF-2375…VER-CONF-2383) |
+| STD-PROOF-020 | Proof | yes | 13 (VER-CONF-2390…VER-CONF-2402) |
+| STD-PROOF-021 | Proof | yes | 9 (VER-CONF-2410…VER-CONF-2418) |
+| STD-PROOF-030 | Proof | yes | 4 (VER-CONF-2420…VER-CONF-2423) |
+| STD-PROOF-070 | Proof | yes | 11 (VER-CONF-2510…VER-CONF-2520) |
 | STD-BPU-001 | Core | yes | **none** |
 | STD-BPU-002 | Core | yes | **none** |
 | STD-BPU-004 | Core | yes | **none** |
@@ -185,5 +185,5 @@
 | STD-CONF-004 | Core | yes | no range |
 | STD-CONF-005 | Core | yes | no range |
 | STD-CONF-010 | Core | yes | no range |
-| STD-CONF-011 | Core | yes | **none** |
+| STD-CONF-011 | Core | yes | 9 (VER-CONF-6200…VER-CONF-6208) |
 | STD-CONF-030 | Core | yes | no range |
