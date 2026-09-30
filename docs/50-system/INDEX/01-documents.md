@@ -223,6 +223,7 @@ depends_on: [UBS-IDX-00]
 | UBS-PH-00 | Phase Plan — Index and Common Rules | draft | ALL | `50-phases/00-index.md` |
 | UBS-PH-0 | PH-0 — Foundations and De-risking | draft | PH-0 | `50-phases/PH-0/00-plan.md` |
 | UBS-PHF-0 | PH-0 — Feature List (generated) | draft | PH-0 | `50-phases/PH-0/01-features.md` |
+| UBS-PHR-0 | PH-0 — Findings and Dispositions | draft | PH-0 | `50-phases/PH-0/02-findings.md` |
 | UBS-PH-1 | PH-1 — Kernel and Single-Node Server (gates PH-1a and PH-1b) | draft | PH-1 | `50-phases/PH-1/00-plan.md` |
 | UBS-PHF-1 | PH-1 — Feature List (generated) | draft | PH-1 | `50-phases/PH-1/01-features.md` |
 | UBS-PH-2 | PH-2 — First Business Package (Basic Finance) and Production Server | draft | PH-2 | `50-phases/PH-2/00-plan.md` |

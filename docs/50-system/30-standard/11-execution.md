@@ -76,10 +76,14 @@ DAT-ExecutionContext:
   | `call.connector` | 0 | 50 | 10,000 | 0 (recorded only) | 20 |
   | `ask.model` | 0 | 5 | 1,000 | 0 (recorded only) | 50 |
   | allowed families | read, search, run, commit, emit | all | all | all, with effects suppressed | all except `call` without an explicit grant |
+  | L2 string length | 1 MiB | 8 MiB | 64 MiB | 128 MiB | 8 MiB |
+  | L2 array and map size (elements, nested ones counted) | 65,536 | 524,288 | 4,194,304 | 8,388,608 | 524,288 |
+  | L2 variables, functions per asset | 1,024, 256 | 1,024, 256 | 1,024, 256 | 1,024, 256 | 1,024, 256 |
+  | L2 source size, expression depth (top level, in functions) | 64 KiB, 64/32 | 64 KiB, 64/32 | 64 KiB, 64/32 | 64 KiB, 64/32 | 64 KiB, 64/32 |
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4050…4079
 - **Satisfies:** FR-LOGIC-061, FR-AI-093, FR-RULE-072
-- **Notes:** The `standard` CPU and memory values are the EXT-RFC sandbox limits (UBS-META-06 §6).
+- **Notes:** The `standard` CPU and memory values are the EXT-RFC sandbox limits (UBS-META-06 §6). The L2 rows come from the PH-0 sandbox spike and apply from BPA 1.0-rc1 (DEC-036); exceeding them raises `LOGIC.LIMIT_EXCEEDED`, and a source or expression beyond its limit raises `LOGIC.SCRIPT_TOO_COMPLEX`.
 
 ### STD-CTX-005 — Termination
 - **Clause:** Exceeding any limit, or receiving cancellation, MUST terminate the execution with `LOGIC.LIMIT_EXCEEDED` or `LOGIC.CANCELLED` at the next metering point (at most every 10,000 units or 10 ms). This termination MUST NOT be catchable. The enclosing process MUST abort (STD-TXN-003).

@@ -47,6 +47,9 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-032 | BPA 0.1 release: scope, build from the specification, adapter operations, generated vectors, clarifications | Accepted |
 | DEC-033 | PH-0 prototype: crate set, PostgreSQL client, property-test harness, pull-request split | Accepted |
 | DEC-034 | Rhai sandbox spike: ASM-008 confirmed for L2 with conditions, crate `ubos-runtime`, open questions on L2 sizes and decimals | Accepted |
+| DEC-035 | EXIT-0-05 (storage benchmark) carried over into PH-1 for lack of rented hosts | Accepted |
+| DEC-036 | PH-1 re-baseline after PH-0: finding dispositions, OQ-007 and OQ-008, risks, dependencies | Accepted |
+| DEC-037 | PH-0 acceptance with EXIT-0-05 carried over and external review at the benchmark | Proposed |
 
 ---
 
@@ -382,3 +385,37 @@ Decisions are never deleted. A replaced decision is marked
 - **Consequences:** EXIT-0-06 is met. The per-worker memory count, a weighted unit cost for native calls on large values, and the quadratic cost of Rhai's size checks (findings F-2…F-4 of the report) are inputs to the PH-1 plan and to the NR-PERF-010 benchmark.
 - **Alternatives considered:** Forking Rhai was not needed (RSK-004 did not occur). Enforcing memory only through engine size limits was rejected: they bound single values, and 1,000 variables reached about 450 MB under the 64 MB `strict` profile. Disabling `try … catch` was rejected: host errors and terminations are already uncatchable, and catching an unknown-function error reaches no capability.
 - **Affects:** ASM-008, RSK-004, DSN-DVM-612, STD-CTX-004, STD-CTX-020, UBS-PH-0, UBS-ARC-07
+
+### DEC-035 — EXIT-0-05 carried over into PH-1
+- **Status:** Accepted · **Date:** 2026-09-30
+- **Context:** EXIT-0-05 needs VER-BENCH-0001 on ENV-REF-SERVER, which the owner rents (DEC-030). The owner cannot rent the hosts at present. The preparation is complete: storage layout, tree maintenance, WL-GENERIC generator and loader, benchmark driver, group commit, environment definition and runbook (`verify/reports/exit-0-05/`, `docs/reports/ph0-step5-runbook-zh.md`). The local trial found that commit capacity is bound by sequencer CPU (finding C-1), so ASM-003 and RSK-001 remain open.
+- **Decision:**
+  1. EXIT-0-05 and VER-BENCH-0001 are carried over into PH-1 under the entry rule of UBS-PH-00 §3.1. Owner of the carried criterion: the product owner (hosts) with an AI session (run and report). Due: before the storage layout of the PH-1 kernel is fixed, and at the latest at gate 1a.
+  2. The criterion, the metrics MET-PERF-001…003, the procedure and the tools are unchanged; the result is recorded in a DEC that confirms ASM-003 or records the remedy or the fallback of DEC-020.
+  3. Until then, PH-1 work that depends on the storage layout (DSN-DVM-001…011) proceeds on the prototype layout and may change with the result.
+- **Consequences:** EXIT-0-05 and VER-BENCH-0001 carry phase notes; UBS-PH-1 lists the benchmark as a dependency at start and ENV-REF-SERVER as needed at start instead of month 2 (DEC-036).
+- **Alternatives considered:** Keeping PH-0 open until the hosts are rented was rejected: the remaining PH-0 work does not depend on it. Accepting local trial numbers as evidence was rejected: the workstation lacks SHA extensions and the database host differs from ENV-REF-SERVER.
+- **Affects:** EXIT-0-05, VER-BENCH-0001, ASM-003, RSK-001, UBS-PH-0, UBS-PH-1
+
+### DEC-036 — PH-1 re-baseline after PH-0
+- **Status:** Accepted · **Date:** 2026-09-30
+- **Context:** EXIT-0-07 requires UBS-PH-1 to be re-baselined with the PH-0 findings (VER-INSP-9003). DEC-034 left OQ-007 and OQ-008 open for this step and asked to close RSK-004.
+- **Decision:**
+  1. Every PH-0 finding has a disposition in UBS-PHR-0.
+  2. OQ-007: the L2 sizes of the spike become part of STD-CTX-004 (strings 1 MiB, arrays and maps 65,536 elements for `strict`, scaled ×8 for `standard` and `agent`, ×64 for `batch`, ×128 for `simulation`; 1,024 variables, 256 functions, 64 KiB source, expression depth 64 and 32). The clause is not in the scope of BPA 0.1, so the change applies from BPA 1.0-rc1.
+  3. OQ-008: DSN-DVM-612 stands: the L2 decimal type is the kernel decimal of `ubos-expr`, registered as a Rhai custom type with its operators; Rhai's built-in 96-bit decimal is not used by the kernel. The spike's use of it was a prototype shortcut.
+  4. RSK-004 is closed: it did not occur (DEC-034). RSK-001 stays open with likelihood H and is continued in PH-1 as RSK-016; the dependence of commit capacity on SHA-256 throughput is RSK-017.
+  5. UBS-PH-1: the carried VER-BENCH-0001 is a dependency at start; ENV-REF-SERVER is needed at start; the work items of UBS-PHR-0 §3 are added to the plan; the non-normative reference duration is unchanged and stated as PH-0 stated it (owner with AI sessions, progress per step).
+  6. DEC-034 item 3 is corrected: L3 components are out of scope for PH-1 (UBS-PH-1 §5), so the WASM part of ASM-008 is verified with the L3 host in PH-3.
+- **Consequences:** STD-CTX-004 gains the size limits with a note on BPA 1.0-rc1; OQ-007 and OQ-008 are resolved; UBS-PH-0 marks RSK-001 raised and RSK-004 closed.
+- **Alternatives considered:** Keeping Rhai's decimal (bounding L1 decimals to 28 digits) was rejected: STD-FND-022, released in BPA 0.1, requires exact decimal arithmetic without a digit bound and division with an explicit scale and rounding mode, which Rhai's decimal division does not ask for. Leaving the sizes to implementations was rejected: STD-CTX-020 requires them to follow the profile, which needs numbers.
+- **Affects:** UBS-PH-1, UBS-PHR-0, STD-CTX-004, DSN-DVM-612, RSK-001, RSK-004, EXIT-0-07
+
+### DEC-037 — PH-0 acceptance
+- **Status:** Proposed · **Date:** 2026-09-30
+- **Context:** PH-0 exits EXIT-0-01…04, EXIT-0-06 and EXIT-0-07 are met; EXIT-0-05 is carried over (DEC-035). DEC-030 asks for an external reviewer with database and formal-methods expertise at acceptance; the owner has not yet named one.
+- **Decision (proposed):** PH-0 is accepted with EXIT-0-05 carried over; PH-1 may start. The external review takes place together with the carried benchmark, on the acceptance package `docs/reports/ph0-acceptance-zh.md`; its findings are dispositioned in UBS-PHR-0.
+- **Consequences:** The status becomes Accepted when the owner confirms; the external review is recorded in an addendum.
+- **Alternatives considered:** A separate external review now was not chosen by the owner, to combine both external engagements.
+- **Affects:** UBS-PH-0, UBS-PH-1, DEC-030
+

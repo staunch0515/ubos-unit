@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (34)
+## DEC (37)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -128,4 +128,7 @@ depends_on: [UBS-IDX-00]
 | DEC-032 | BPA 0.1 release: scope, build, adapter operations, generated vectors, clarifications | `90-decisions/000-index.md` |
 | DEC-033 | PH-0 prototype: crate set, PostgreSQL client, property-test harness | `90-decisions/000-index.md` |
 | DEC-034 | Rhai sandbox spike: ASM-008 confirmed for L2 with conditions | `90-decisions/000-index.md` |
+| DEC-035 | EXIT-0-05 carried over into PH-1 | `90-decisions/000-index.md` |
+| DEC-036 | PH-1 re-baseline after PH-0 | `90-decisions/000-index.md` |
+| DEC-037 | PH-0 acceptance | `90-decisions/000-index.md` |
 

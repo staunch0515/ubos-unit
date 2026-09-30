@@ -3,7 +3,7 @@ id: UBS-PH-0
 title: PH-0 — Foundations and De-risking
 status: draft
 phase: PH-0
-depends_on: [UBS-PH-00, UBS-STD-00, UBS-SYS-DVM-00, UBS-SYS-BPA-00, DEC-028, DEC-030]
+depends_on: [UBS-PH-00, UBS-STD-00, UBS-SYS-DVM-00, UBS-SYS-BPA-00, DEC-028, DEC-030, DEC-035, DEC-036]
 ---
 
 # PH-0 — Foundations and De-risking
@@ -157,7 +157,7 @@ The PH-0 vectors, properties and models become permanent members of the PH-1 sui
 | EXIT-0-02 | The three formal models are checked with no violation at the stated state-space bounds, as defined by DEC-031 | model-checking reports |
 | EXIT-0-03 | The prototype passes 100% of `prototype` vectors on PostgreSQL through the runner | signed runner reports |
 | EXIT-0-04 | Root history independence holds in ≥ 1,000,000 generated cases | property report |
-| EXIT-0-05 | Benchmarks meet MET-PERF-001…003, or a decision records the storage fallback of DEC-020 | benchmark report and DEC entry |
+| EXIT-0-05 | Benchmarks meet MET-PERF-001…003, or a decision records the storage fallback of DEC-020. **Carried over to PH-1 (DEC-035).** | benchmark report and DEC entry |
 | EXIT-0-06 | The Rhai sandbox spike blocks all 100 initial escape cases, or a decision revises ASM-008 | sandbox report and DEC entry |
 | EXIT-0-07 | The PH-1 plan is re-baselined with the PH-0 findings (durations, risks) | updated UBS-PH-1 |
 
@@ -165,10 +165,10 @@ The PH-0 vectors, properties and models become permanent members of the PH-1 sui
 
 | Risk | Description | L | I | Mitigation | Early warning | Owner |
 |---|---|---|---|---|---|---|
-| RSK-001 | PostgreSQL cannot meet commit latency with in-flush index and tree maintenance | M | H | group commit, deferred tree node writes, fallback log-structured layer (DEC-020) | MET-PERF-002 above 25 ms in the first prototype benchmark (step 4) | engineering lead |
+| RSK-001 | PostgreSQL cannot meet commit latency with in-flush index and tree maintenance (raised to H and continued as RSK-016 by DEC-036) | H | H | group commit, deferred tree node writes, fallback log-structured layer (DEC-020) | MET-PERF-002 above 25 ms in the first prototype benchmark (step 4) | engineering lead |
 | RSK-002 | Prolly-tree write amplification too high on hot keys | M | M | tune chunking parameters, cache upper levels, batch per commit | node writes per change > 6 | kernel engineer |
 | RSK-003 | Formal models find a semantic defect late | L | H | model first, then code (steps 2 and 3 before step 4); model review before each code step | any violation | formal-methods engineer |
-| RSK-004 | Rhai cannot be made deterministic without float support | L | M | disable floats, decimal type, fork if needed (ASM-008) | spike findings | kernel engineer |
+| RSK-004 | Rhai cannot be made deterministic without float support (**closed** by DEC-036: did not occur) | L | M | disable floats, decimal type, fork if needed (ASM-008) | spike findings | kernel engineer |
 | RSK-005 | Vector format too implementation-specific | M | M | review by an external implementer; adapter protocol through UBTP messages | reviewer findings | standards steward |
 
 ## 11. Execution and team
