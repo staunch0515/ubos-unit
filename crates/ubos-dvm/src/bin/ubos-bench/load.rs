@@ -150,7 +150,7 @@ pub fn load(url: &str, spec: Spec, threads: u64) -> Result<Value, BpaError> {
     let t0 = Instant::now();
     let classes = workload::classes(spec.seed);
     let reg = {
-        let mut e = Engine::new(Box::new(PgStore::connect(url)?))?;
+        let mut e = Engine::new(Box::new(PgStore::connect(url)?.with_fixed_scope()))?;
         e.load_genesis(&classes)?;
         e.registry.clone()
     };

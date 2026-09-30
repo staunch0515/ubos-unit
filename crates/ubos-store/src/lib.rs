@@ -24,6 +24,7 @@ use ubos_types::BpaError;
 
 pub mod kernel;
 mod pg;
+pub mod physical;
 
 pub use pg::{BulkRows, DEFAULT_SCOPE, PgBackend, PgStore, PgTx, key_hash};
 

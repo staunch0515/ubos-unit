@@ -28,7 +28,7 @@ depends_on: [UBS-SYS-DVM-02, UBS-ARC-04, UBS-STD-08]
 - **Origin:** DEC-020, CTR-005, NR-PORT-003
 
 ### DSN-DVM-002 — Logical identity versus physical form
-- **Statement:** Content IDs MUST be computed over the logical canonical bytes (STD-FND-010), which include field ciphertexts (STD-OBJ-010). The physical form applied by the store (zstd compression, then AEAD encryption with the tenant data key) MUST NOT affect content IDs. The store MUST verify on read that decrypting and decompressing reproduces bytes whose hash equals the ID.
+- **Statement:** Content IDs MUST be computed over the logical canonical bytes (STD-FND-010), which include field ciphertexts (STD-OBJ-010). The physical form applied by the store (zstd compression, then AEAD encryption with the tenant data key) MUST NOT affect content IDs. The store MUST verify on read that decrypting and decompressing reproduces bytes whose hash equals the ID. The stored form is `0x01 | key id | 24-byte nonce | XChaCha20-Poly1305 ciphertext` with the tenant and content ID as associated data (DEC-048).
 - **Rationale:** Cross-implementation equality of roots with per-tenant physical protection.
 - **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
 - **Personas:** PER-KernelEngineer
@@ -128,6 +128,8 @@ depends_on: [UBS-SYS-DVM-02, UBS-ARC-04, UBS-STD-08]
   - use GiST or range indexes for valid periods;
   - use synchronous commit;
   - avoid long-held row locks outside the sequencer.
+
+  The adapter works as an application role that does not own the tables, so that the policies apply; migrations and bulk loads run as the owner (DEC-048).
 - **Rationale:** Isolation and scale (AR-017).
 - **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
 - **Personas:** PER-PlatformOperator

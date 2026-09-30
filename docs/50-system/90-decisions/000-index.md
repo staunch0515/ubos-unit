@@ -60,6 +60,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-045 | Release of BPA 1.0-rc1: notes in the manifest, signed tag `bpa-v1.0.0-rc1`, frozen once tagged | Accepted |
 | DEC-046 | Group commit and ledger sequence model (VER-FORM-0004): two-phase flush, bounds, mutation checks, design clarifications | Accepted |
 | DEC-047 | Storage kernel (PH-1 step 3): parts 3a–3c, asynchronous storage traits on sqlx, migrations, transition layout, local blob and key providers, storage suite environment | Accepted |
+| DEC-048 | Tenancy and physical form of the storage kernel (step 3b): partitions, row-level security with an application role, stored-byte format, chunk placement, adapter reset | Accepted |
 
 ---
 
@@ -591,3 +592,20 @@ Decisions are never deleted. A replaced decision is marked
 - **Consequences:** The `postgres` crate and the `bpa_*` tables are gone. Existing prototype databases must be recreated. The 453 prototype vectors pass on the new adapter. The benchmark driver loads and commits through it. Step 4 replaces the transition columns and `object_state`.
 - **Alternatives considered:** A synchronous trait was rejected: it would block the Tokio reactor of the node host (DSN-NOD-001, DSN-DVM-617). Keeping the `bpa_*` layout until step 4 was rejected: the kernel indexes, counter rows and verifier of this step need the DVM-04 tables. Fixing the layout before W-1 was rejected (DEC-038).
 - **Affects:** DSN-DVM-001, DSN-DVM-005, DSN-DVM-006, DSN-DVM-402, VER-CONF-8402, EXIT-1-03, UBS-SYS-DVM-04, DEC-033, DEC-038
+
+### DEC-048 — Tenancy and physical form of the storage kernel (step 3b)
+- **Status:** Accepted · **Date:** 2026-09-30
+- **Context:** Part 3b of PH-1 step 3 (DEC-047) implements DSN-DVM-002, -003 and -010 on the kernel schema of 3a. Four questions were open. First, row-level security does not apply to a table's owner or to superusers. Second, PostgreSQL rejects `COPY FROM` on tables with row-level security. Third, emptying 15 tables with hundreds of partitions for every conformance vector is slow. Fourth, valid times are still text in the transition layout.
+- **Decision:**
+  1. **Partitions.** `chunk`, `object_version`, `ledger_entry`, `temporal_index` and `merkle_node` are hash-partitioned by `tenant_id` into 64 partitions (migration `0002_tenancy.sql`).
+  2. **Row-level security.** Every table has the policy `tenant_id = nullif(current_setting('ubos.tenant', true), '')::uuid` for reads and writes. A session without `ubos.tenant` therefore sees and writes no rows.
+  3. **Roles.** Migrations run as the connecting owner role. The adapter's pool then works as the role `ubos_app`, which is never the owner, so the policies apply. Each connection sets `ubos.tenant`, `synchronous_commit = on` and `plan_cache_mode = force_custom_plan`. The last setting lets the planner prune partitions for every statement. Generic plans scanned all 64 partitions in updates.
+  4. **Ledger immutability.** `ubos_app` has no UPDATE or DELETE privilege on `ledger_entry`. A trigger raises `LEDG.IMMUTABLE_ENTRY` for any role (STD-KIND-020).
+  5. **Range index.** `temporal_index` has a GiST index over `int8range(cseq_from, cseq_to)` (extension `btree_gist`). The valid-period range of UBS-SYS-DVM-04 follows when valid times become `timestamptz` in step 4.
+  6. **Stored-byte format.** Stored bytes have the form `0x01 | key id (u32) | nonce (24 bytes) | XChaCha20-Poly1305 ciphertext with tag` over the zstd-compressed logical bytes (STD-CONF-011). The associated data is `"ubos.physical.v1" 0x00 tenant 0x00 content-id`. Version envelopes and chunks use this form. A failed authentication or decompression, or a chunk whose content ID differs, raises `NOD.BLOB_UNAVAILABLE` with `{"integrity": true}` (DSN-DVM-002). Version IDs are computed over the envelope, not over the stored engine record, so for versions the authentication tag is the integrity check until step 4.
+  7. **Keys.** `ubos-crypto` provides the key-service trait. It also provides `LocalKeys`, which derives tenant data keys from `UBOS_LOCAL_MASTER_KEY` or a fixed development secret and is never used for production (DEC-047).
+  8. **Chunk placement.** A chunk whose stored form is at most 8 KiB is inline. Larger chunks go to the blob store under `t/<tenant-hash>/c/<content-id>` before the flush transaction (DSN-DVM-003). The blob store is a local directory (`UBOS_BLOB_DIR`) until step 7. The engine starts to chunk bodies (STD-OBJ-008) in step 4.
+  9. **Adapter reset.** The conformance adapter's `reset` moves to a fresh VAE of the same tenant instead of truncating (STD-CONF-002). Benchmark datasets keep a fixed scope and purge all tables. Bulk loads with `COPY` run as the owner role.
+- **Consequences:** The 453 prototype vectors pass on PostgreSQL in about 6 s. The benchmark tools run unchanged. On the development workstation, custom planning over 64 partitions adds about 2 ms per statement to the commit path. W-1 decides whether the partition count or statement shape must change before the layout is fixed (DEC-038, RSK-016). The storage suite of 3c checks these properties.
+- **Alternatives considered:** Connecting as the owner with `FORCE ROW LEVEL SECURITY` was rejected: superusers still bypass it. Truncating on every reset was rejected: a conformance run took 7.5 minutes instead of 6 s. AES-256-GCM was rejected for stored bytes: random 12-byte nonces limit the number of writes per key, while 24-byte nonces do not.
+- **Affects:** DSN-DVM-002, DSN-DVM-003, DSN-DVM-010, UBS-SYS-DVM-04, DEC-047, RSK-016
