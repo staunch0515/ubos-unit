@@ -1,4 +1,4 @@
-"""Read the clause catalogue of the standard from docs/50-system/30-standard."""
+"""Read the clause catalogue of the standard from docs/50-system/30-standard (with subfolders)."""
 import os
 import re
 
@@ -12,9 +12,10 @@ RANGE = re.compile(r'VER-CONF-(\d{4})…(\d{4})')
 def clauses():
     """Return {clause_id: {file, title, profile, must, range: (lo, hi) or None, text}}."""
     out = {}
-    for f in sorted(os.listdir(STD_DIR)):
-        if not f.endswith('.md'):
-            continue
+    files = []
+    for dirpath, _, names in os.walk(STD_DIR):
+        files += [os.path.relpath(os.path.join(dirpath, n), STD_DIR) for n in names if n.endswith('.md')]
+    for f in sorted(files):
         text = open(os.path.join(STD_DIR, f), encoding='utf-8').read()
         title_line = next((l for l in text.splitlines() if l.startswith('# ')), '')
         h1 = MARK.search(title_line)

@@ -79,3 +79,25 @@ def cases(g):
     V('STD-OBJ-008', 'the body_ref does not depend on the envelope', steps=[
         {'op': 'version_hash', 'input': {'envelope': dict(ENV, slug='other'), 'body': BODY}, 'label': 'v'},
         {'op': 'content_id', 'input': {'domain': 'ubos.chunk.v1', 'value': BODY}, 'same_as': 'v/body_ref'}])
+
+    # STD-OBJ-009 size limits (body size = bytes of the canonical body; limit set by set_limits)
+    def sized(n):
+        return {'name': 'x' * (n - len('{"name":""}'))}
+
+    lim = [{'op': 'set_limits', 'input': {'max_body_bytes': 100}}]
+    V('STD-OBJ-009', 'a body at the configured limit is accepted', setup=setup() + lim, prototype=False, steps=[
+        commit([create(uid(1), body=sized(100))]),
+        {'op': 'read', 'input': {'branch': 'main', 'object_id': uid(1)}}])
+    V('STD-OBJ-009', 'a body one byte over the configured limit is rejected', setup=setup() + lim, prototype=False, steps=[
+        commit([create(uid(1), body=sized(101))], error='MODEL.OBJECT_TOO_LARGE')])
+    V('STD-OBJ-009', 'an update that grows the body over the limit is rejected', setup=setup() + lim, prototype=False, steps=[
+        commit([create(uid(1), body=sized(60))], label='c1'),
+        commit([{'op': 'update', 'object_id': uid(1), 'base': base('c1', uid(1)), 'body': sized(120)}],
+               error='MODEL.OBJECT_TOO_LARGE')])
+    V('STD-OBJ-009', 'the limit also applies to raw documents', setup=setup() + lim, prototype=False, steps=[
+        commit([create(uid(1), klass='ImportedDocument', body={'source': 'y' * 120})], error='MODEL.OBJECT_TOO_LARGE')])
+    V('STD-OBJ-009', 'the size is measured on the canonical body, not on the input text', setup=setup() + lim,
+      prototype=False, steps=[
+        {'op': 'commit', 'input_text': '{"branch": "main", "changes": [{"op": "create", "object_id": "%s", '
+         '"class": "Customer", "slug": "c-1", "body": {   "name":   "%s"   }}]}' % (uid(1), 'x' * 89)},
+        {'op': 'read', 'input': {'branch': 'main', 'object_id': uid(1)}}])

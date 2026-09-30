@@ -51,7 +51,7 @@ depends_on: [UBS-IDX-00]
 | STD-CONF-002 | Adapter protocol | `30-standard/18-conformance.md` |
 | STD-CONF-003 | Runner report | `30-standard/18-conformance.md` |
 | STD-CONF-004 | Profile conformance | `30-standard/18-conformance.md` |
-| STD-CONF-005 | Adapter operations of release 0.1 | `30-standard/18-conformance.md` |
+| STD-CONF-005 | Adapter operations | `30-standard/18-conformance.md` |
 | STD-CONF-010 | Extensions | `30-standard/18-conformance.md` |
 | STD-CONF-011 | Algorithm registry | `30-standard/18-conformance.md` |
 | STD-CONF-020 | Certification procedure | `30-standard/18-conformance.md` |

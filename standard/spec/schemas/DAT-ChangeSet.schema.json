@@ -1,0 +1,48 @@
+{
+  "$id": "DAT-ChangeSet",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "approvals": {
+      "description": "DAT-Approval references",
+      "type": "array"
+    },
+    "description": {
+      "description": "details"
+    },
+    "merged_commit": {
+      "description": "commit id after merge",
+      "type": "string"
+    },
+    "preview": {
+      "description": "content-id of the latest DAT-MergePreview",
+      "type": "string"
+    },
+    "selection": {
+      "description": "accepted object ids for partial acceptance",
+      "type": "array"
+    },
+    "simulations": {
+      "description": "simulation run URIs",
+      "type": "array"
+    },
+    "source": {
+      "description": "branch name",
+      "type": "string"
+    },
+    "target": {
+      "description": "branch name",
+      "type": "string"
+    },
+    "title": {
+      "description": "short title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "target",
+    "title"
+  ],
+  "title": "DAT-ChangeSet",
+  "type": "object"
+}

@@ -60,7 +60,7 @@ DAT-ConformanceReport:
 - **Satisfies:** FR-STD-014, FR-STD-051
 - **Notes:** —
 
-### STD-CONF-005 — Adapter operations of release 0.1
+### STD-CONF-005 — Adapter operations
 - **Clause:** Until the Protocol profile defines UBTP messages, vectors MUST use only the adapter operations below; an adapter MUST implement each operation of the profiles it claims. Inputs and results are canonical JSON. An operation fails with a registered error code (STD-ERR-002). `match: exact` compares the whole result, `subset` compares only the members present in the expected result (recursively for objects, element-wise for arrays of equal length).
 
   | Operation | Input | Result |
@@ -81,6 +81,7 @@ DAT-ConformanceReport:
   | `linearize` | `{classes, class}` | `L(class)` as a list of class names (STD-CLS-011) |
   | `effective_class` | `{classes, class}` | the effective definition (STD-CLS-001…014) |
   | `reset`, `set_now`, `load_genesis` | `{}`, `{now}`, `{classes}` | `true` (STD-CONF-002) |
+  | `set_limits` | `{max_body_bytes}` | `true`; the configured body limit for the following operations (STD-OBJ-009); `reset` restores the default of 16 MiB. Since BPA 1.0-rc1. |
   | `create_branch` | `{name, from}` | `{head}`, the cseq of the fork commit |
   | `commit` | `{branch, changes, process}` | `{cseq, versions, entries, retroactive}` (`DAT-AdapterChange`); `process` is `{serializable, reads}` with `reads` mapping objects to the version hashes read; `retroactive` lists `{object_id, from, to}` per retroactive change (STD-TIME-030); a supplied `tx_time` fails with `TIME.RESERVED_FIELD` |
   | `read` | `{branch, object_id, asof, time}` | `{version_hash, body, valid, tombstone}` |
@@ -99,7 +100,7 @@ DAT-ConformanceReport:
 - **Grammar / Schema:** `DAT-AdapterChange`
 - **Conformance vectors:** —
 - **Satisfies:** FR-STD-021, FR-STD-022
-- **Notes:** The operations are test interfaces; STD-CONF-002 applies (disabled in production builds).
+- **Notes:** The operations are test interfaces; STD-CONF-002 applies (disabled in production builds). Release 0.1 defined the operations up to `export_state`; rows marked with a release were added in that release (DEC-039).
 
 ```yaml
 DAT-AdapterChange:

@@ -1,0 +1,37 @@
+{
+  "$id": "DAT-Derivation",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "inputs": {
+      "description": "{object, version, asof} triples",
+      "type": "array"
+    },
+    "inputs_commitment": {
+      "description": "content-id of the full input list",
+      "type": "string"
+    },
+    "inputs_summary": {
+      "description": "{class, version_range, count} when truncated",
+      "type": "array"
+    },
+    "logic": {
+      "description": "content-ids of logic assets, tables and sheets used",
+      "type": "array"
+    },
+    "mode": {
+      "description": "as_originally | as_effective | current (STD-TIME-041)",
+      "type": "string"
+    },
+    "process_id": {
+      "description": "producing process",
+      "type": "string"
+    }
+  },
+  "required": [
+    "process_id",
+    "logic",
+    "mode"
+  ],
+  "title": "DAT-Derivation",
+  "type": "object"
+}

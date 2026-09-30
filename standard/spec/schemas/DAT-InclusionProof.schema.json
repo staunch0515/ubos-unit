@@ -1,0 +1,30 @@
+{
+  "$id": "DAT-InclusionProof",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "commit": {
+      "description": "the commit record with signatures (DAT-Commit)",
+      "type": "object"
+    },
+    "key": {
+      "description": "tree key",
+      "type": "string"
+    },
+    "nodes": {
+      "description": "canonical nodes from leaf to root",
+      "type": "array"
+    },
+    "value": {
+      "description": "version or entry hash",
+      "type": "string"
+    }
+  },
+  "required": [
+    "key",
+    "value",
+    "nodes",
+    "commit"
+  ],
+  "title": "DAT-InclusionProof",
+  "type": "object"
+}

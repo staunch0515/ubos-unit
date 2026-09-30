@@ -1,0 +1,45 @@
+{
+  "$id": "DAT-MergePreview",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "base": {
+      "description": "base commit id or virtual base id",
+      "type": "string"
+    },
+    "changes": {
+      "description": "DAT-DiffEntry items relative to target",
+      "type": "array"
+    },
+    "conflicts": {
+      "description": "DAT-MergeConflict items",
+      "type": "array"
+    },
+    "source_head": {
+      "description": "commit id",
+      "type": "string"
+    },
+    "summary": {
+      "description": "counts by class and op; risk flags",
+      "type": "object"
+    },
+    "target_head": {
+      "description": "commit id",
+      "type": "string"
+    },
+    "validation": {
+      "description": "violations with explanations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "base",
+    "source_head",
+    "target_head",
+    "changes",
+    "conflicts",
+    "validation",
+    "summary"
+  ],
+  "title": "DAT-MergePreview",
+  "type": "object"
+}

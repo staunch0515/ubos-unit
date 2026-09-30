@@ -17,6 +17,7 @@ from .tree import tree_root
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS
 
 DEFAULT_NOW = '2026-01-01T00:00:00.000000Z'
+MAX_BODY = 16 * 1024 * 1024      # STD-OBJ-009: bodies up to 16 MiB
 
 
 def _lt(a, b):
@@ -94,6 +95,7 @@ class Store:
 
     def reset(self):
         self.now = DEFAULT_NOW
+        self.max_body = MAX_BODY
         self.decls = {}
         self.classes = {}
         self.versions = {}                     # version hash -> {object_id, class, body, valid, tombstone}
@@ -104,6 +106,13 @@ class Store:
 
     def set_now(self, now):
         self.now = now
+        return True
+
+    def set_limits(self, max_body_bytes=None):
+        if max_body_bytes is not None:
+            if not isinstance(max_body_bytes, int) or isinstance(max_body_bytes, bool) or max_body_bytes < 1:
+                raise BpaError('MODEL.INVALID_VALUE', 'max_body_bytes is a positive integer')
+            self.max_body = max_body_bytes
         return True
 
     def load_genesis(self, classes):
@@ -176,6 +185,8 @@ class Store:
             for name, f in eff['fields'].items():
                 if f.get('required') and out.get(name) is None:
                     raise BpaError('MODEL.CONSTRAINT_VIOLATED', 'required field %s' % name)
+            if len(canonical(out).encode('utf-8')) > self.max_body:
+                raise BpaError('MODEL.OBJECT_TOO_LARGE', 'body larger than the configured limit')
         return out
 
     def _version(self, oid, cls, slug, body, valid, predecessor=None, tombstone=False):

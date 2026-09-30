@@ -52,6 +52,7 @@ PURE = {
 STATEFUL = {
     'reset': lambda s, i: s.reset(),
     'set_now': lambda s, i: s.set_now(i['now']),
+    'set_limits': lambda s, i: s.set_limits(i.get('max_body_bytes')),
     'load_genesis': lambda s, i: s.load_genesis(i['classes']),
     'create_branch': lambda s, i: s.create_branch(i['name'], i.get('from', 'main'), i.get('time')),
     'commit': lambda s, i: s.commit(i['branch'], i['changes'], i.get('process'), i.get('tx_time')),
