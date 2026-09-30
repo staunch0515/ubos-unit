@@ -32,7 +32,7 @@ Measurable outcomes:
 |---|---|---|
 | BPA | `bpa-standard` component (folder `standard/`, DEC-028), release pipeline, clauses for FND, OBJ, CLS (core), KIND, VER (commit, branch, merge), TIME, TXN (commit, CAS), PROOF (tree, roots) | new |
 | DVM | prototype crates (folder `crates/`) `ubos-types`, `ubos-store` (PostgreSQL; SQLite follows in PH-4, DEC-024), `ubos-tree`, minimal `ubos-version` and `ubos-time` sufficient for vectors | prototype |
-| FRG | conformance runner and adapter protocol (DSN-FRG-401, DSN-FRG-402) | prototype |
+| FRG | conformance runner and adapter protocol (DSN-FRG-401, DSN-FRG-402), crate `ubos-forge`; adapter crate `ubos-dvm` and minimal `ubos-model` (DEC-033) | prototype |
 | NOD | in-process host services (clock, entropy, blobs) for the prototype | prototype |
 | `ubos-verify` | folder `verify/`: TLA+ models for commit/CAS, merge, timelines; environment definitions | new |
 

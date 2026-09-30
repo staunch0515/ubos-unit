@@ -33,6 +33,10 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: dependency graph (AR-031, DEC-028)
         run: python3 docs/tools/check_deps.py
+      - name: BPA 0.1 vectors tagged prototype (EXIT-0-03, DEC-033)
+        run: |
+          cargo build --release --locked -p ubos-forge
+          ./target/release/forge conform --vectors standard/vectors --tag prototype --verbose
 
   models:
     name: formal models (reduced bounds)
