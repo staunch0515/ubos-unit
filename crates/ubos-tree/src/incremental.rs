@@ -60,8 +60,8 @@ impl Node {
 
 /// Where stored nodes are read from.
 pub trait NodeSource {
-    /// The node with this hash.
-    fn node(&mut self, hash: &str) -> Result<Node, BpaError>;
+    /// The node with this hash (shared: nodes are immutable).
+    fn node(&mut self, hash: &str) -> Result<Rc<Node>, BpaError>;
 }
 
 /// Nodes held in memory, for tests and for building before a store write.
@@ -79,10 +79,10 @@ impl MemNodes {
 }
 
 impl NodeSource for MemNodes {
-    fn node(&mut self, hash: &str) -> Result<Node, BpaError> {
+    fn node(&mut self, hash: &str) -> Result<Rc<Node>, BpaError> {
         self.nodes
             .get(hash)
-            .cloned()
+            .map(|n| Rc::new(n.clone()))
             .ok_or_else(|| BpaError::new("NOD.STORAGE_UNAVAILABLE", "missing tree node"))
     }
 }
@@ -198,7 +198,7 @@ impl Reader<'_> {
         if let Some(n) = self.cache.get(hash) {
             return Ok(n.clone());
         }
-        let n = Rc::new(self.src.node(hash)?);
+        let n = self.src.node(hash)?;
         self.cache.insert(hash.to_string(), n.clone());
         Ok(n)
     }

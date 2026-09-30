@@ -1,5 +1,3 @@
-//! Benchmarks of the PH-0 prototype (SUITE-DVM-BENCH, PH-0 step 5).
-//!
 //! `ubos-bench tree [--keys N] [--changes C] [--rounds R] [--seed S]` builds a tree of `N`
 //! keys in memory, then applies `R` batches of `C` changes (updates, inserts and removals)
 //! with stored-node updates (DSN-DVM-007) and reports nodes written per batch, update time
@@ -44,7 +42,8 @@ fn percentile(v: &mut [f64], p: f64) -> f64 {
     v[i]
 }
 
-fn tree(args: &[String]) -> Result<(), String> {
+/// Run the tree benchmark.
+pub fn tree(args: &[String]) -> Result<(), String> {
     let opt = |k: &str, d: u64| {
         args.iter()
             .position(|a| a == k)
@@ -124,16 +123,4 @@ fn tree(args: &[String]) -> Result<(), String> {
         serde_json::to_string_pretty(&report).unwrap_or_default()
     );
     Ok(())
-}
-
-fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let r = match args.first().map(String::as_str) {
-        Some("tree") => tree(&args[1..]),
-        _ => Err("usage: ubos-bench tree [--keys N] [--changes C] [--rounds R] [--seed S]".into()),
-    };
-    if let Err(e) = r {
-        eprintln!("{e}");
-        std::process::exit(1);
-    }
 }

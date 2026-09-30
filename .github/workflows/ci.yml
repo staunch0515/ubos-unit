@@ -52,6 +52,15 @@ jobs:
         run: |
           cargo build --release --locked -p ubos-dvm --bin ubos-props
           ./target/release/ubos-props --cases 10000
+      - name: benchmark tools, small dataset (VER-BENCH-0001 driver, PH-0 step 5c)
+        run: |
+          cargo build --release --locked -p ubos-dvm --bin ubos-bench
+          DB="host=127.0.0.1 user=postgres dbname=bpa"
+          ./target/release/ubos-bench check --objects 300 --months 4 --database "$DB" > /dev/null
+          for w in read commit diff; do
+            ./target/release/ubos-bench run --what $w --objects 300 --months 4 --seconds 3 \
+              --rate 50 --workers 2 --database "$DB" > /dev/null
+          done
       - name: L2 escape suite, 100 of 100 blocked (VER-SEC-0001, DEC-034)
         run: |
           cargo build --release --locked -p ubos-runtime

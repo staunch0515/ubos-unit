@@ -3,7 +3,7 @@
 use serde_json::{Map, Value, json};
 use std::collections::BTreeSet;
 use ubos_model::Registry;
-use ubos_store::Store;
+use ubos_store::{Group, MemStore, Store};
 use ubos_types::{BpaError, canonical, names};
 use ubos_version::{ObjectState, Repo, Tx, at};
 
@@ -40,6 +40,19 @@ impl Engine {
             instances: BTreeSet::new(),
         };
         e.reset()?;
+        Ok(e)
+    }
+
+    /// An engine over a store that already holds data (for example a loaded benchmark
+    /// dataset), with the given class declarations; nothing is reset.
+    pub fn attach(store: Box<dyn Store>, classes: &Value) -> Result<Engine, BpaError> {
+        let mut e = Engine {
+            store,
+            registry: Registry::new(),
+            now: DEFAULT_NOW.into(),
+            instances: BTreeSet::new(),
+        };
+        e.load_genesis(classes)?;
         Ok(e)
     }
 
@@ -86,95 +99,38 @@ impl Engine {
 
     /// `commit` (STD-TXN-001…024, STD-KIND-020…025, STD-TIME-011, -030).
     pub fn commit(&mut self, input: &Value) -> Result<Value, BpaError> {
-        let changes = input
-            .get("changes")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
-        if input.get("tx_time").is_some() || changes.iter().any(|c| c.get("tx_time").is_some()) {
-            return Err(BpaError::new(
-                "TIME.RESERVED_FIELD",
-                "tx_time is assigned by the implementation",
-            ));
-        }
-        let branch = s(input, "branch").unwrap_or("main").to_string();
-        let today = self.today();
-        let defaults: Vec<(String, String)> = self
-            .registry
-            .declarations()
-            .iter()
-            .filter_map(|d| s(d, "name"))
-            .map(|n| (n.to_string(), self.default_valid(n)))
-            .collect();
-        let default_valid = move |c: &str| {
-            defaults
-                .iter()
-                .find(|(n, _)| n == c)
-                .map(|x| x.1.clone())
-                .unwrap_or_default()
-        };
-        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
-        let mut tx = repo.begin(&branch)?;
-        let mut result = json!({"cseq": tx.cseq, "versions": {}, "entries": {}, "retroactive": []});
-        if let Some(p) = input.get("process")
-            && p.get("serializable") == Some(&Value::Bool(true))
-        {
-            for (oid, vh) in p
-                .get("reads")
-                .and_then(Value::as_object)
-                .cloned()
-                .unwrap_or_default()
-            {
-                if repo
-                    .obj(&mut tx, &oid)?
-                    .map(|o| Value::String(o.head.clone()))
-                    != Some(vh)
-                {
-                    return Err(BpaError::new("TXN.READ_SET_CHANGED", oid));
-                }
-            }
-        }
-        let mut stale = Vec::new();
-        for ch in &changes {
-            if matches!(s(ch, "op"), Some("update" | "end"))
-                && let (Some(oid), Some(b)) = (s(ch, "object_id"), s(ch, "base"))
-                && repo.obj(&mut tx, oid)?.is_some_and(|o| o.head != b)
-            {
-                stale.push(oid.to_string());
-            }
-        }
-        if !stale.is_empty() {
-            stale.sort();
-            return Err(BpaError::with_details(
-                "TXN.HEAD_MOVED",
-                json!({"objects": stale}),
-            ));
-        }
-        for ch in &changes {
-            match s(ch, "op").unwrap_or_default() {
-                "create" => create(&mut repo, &mut tx, ch, &default_valid, &mut result)?,
-                op @ ("update" | "end") => {
-                    update(&mut repo, &mut tx, ch, op, &default_valid, &mut result)?
-                }
-                op @ ("append" | "reverse" | "adjust") => {
-                    let (id, seq) = repo.append(&mut tx, ch, op, &today, &default_valid)?;
-                    result["entries"][id] = json!({"seq": seq});
-                }
-                _ => return Err(BpaError::new("MODEL.INVALID_VALUE", "unknown change")),
-            }
-        }
-        repo.check_double_entry(&tx)?;
-        let classes: Vec<String> = tx
-            .state
-            .objects
-            .values()
-            .map(|o| o.class.clone())
-            .chain(tx.appended.iter().map(|e| e.class.clone()))
-            .collect();
-        let head = tx.head;
-        repo.write(tx, vec![head])?;
+        let (r, classes) = commit_on(self.store.as_mut(), &self.registry, &self.now, input)?;
         self.instances.extend(classes);
-        Ok(result)
+        Ok(r)
+    }
+
+    /// Several commits as one group (DSN-DVM-006): each commit reads the results of the
+    /// earlier ones, and all successful commits are flushed in one storage transaction. A
+    /// commit that fails validation is left out without affecting the others; the outer
+    /// error reports a failed group flush, in which case nothing is written.
+    pub fn commit_group(
+        &mut self,
+        inputs: &[Value],
+    ) -> Result<Vec<Result<Value, BpaError>>, BpaError> {
+        let inner = std::mem::replace(&mut self.store, Box::new(MemStore::default()));
+        let mut group = Group::new(inner);
+        let (mut out, mut classes) = (Vec::new(), Vec::new());
+        for input in inputs {
+            match commit_on(&mut group, &self.registry, &self.now, input) {
+                Ok((r, c)) => {
+                    out.push(Ok(r));
+                    classes.extend(c);
+                }
+                Err(e) => out.push(Err(e)),
+            }
+        }
+        let (inner, written) = group.finish();
+        self.store = inner;
+        if !written? {
+            return Err(BpaError::new("TXN.HEAD_MOVED", "the branch head moved"));
+        }
+        self.instances.extend(classes);
+        Ok(out)
     }
 
     /// `read` (STD-TIME-012).
@@ -417,4 +373,94 @@ fn update(
 /// Helper for inputs given as maps.
 pub fn object(v: &Value) -> Map<String, Value> {
     v.as_object().cloned().unwrap_or_default()
+}
+
+/// The commit operation over any store; returns the result and the classes touched.
+fn commit_on(
+    store: &mut dyn Store,
+    registry: &Registry,
+    now_: &str,
+    input: &Value,
+) -> Result<(Value, Vec<String>), BpaError> {
+    let changes = input
+        .get("changes")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    if input.get("tx_time").is_some() || changes.iter().any(|c| c.get("tx_time").is_some()) {
+        return Err(BpaError::new(
+            "TIME.RESERVED_FIELD",
+            "tx_time is assigned by the implementation",
+        ));
+    }
+    let branch = s(input, "branch").unwrap_or("main").to_string();
+    let today = now_[..10].to_string();
+    let reg = registry;
+    let (now, day) = (now_.to_string(), today.clone());
+    let default_valid = move |c: &str| match reg.class(c).map(|c| c.valid_time.as_str()) {
+        Ok("instant") => now.clone(),
+        Ok(_) => day.clone(),
+        Err(_) => String::new(),
+    };
+    let mut repo = Repo::new(store, registry);
+    let mut tx = repo.begin(&branch)?;
+    let mut result = json!({"cseq": tx.cseq, "versions": {}, "entries": {}, "retroactive": []});
+    if let Some(p) = input.get("process")
+        && p.get("serializable") == Some(&Value::Bool(true))
+    {
+        for (oid, vh) in p
+            .get("reads")
+            .and_then(Value::as_object)
+            .cloned()
+            .unwrap_or_default()
+        {
+            if repo
+                .obj(&mut tx, &oid)?
+                .map(|o| Value::String(o.head.clone()))
+                != Some(vh)
+            {
+                return Err(BpaError::new("TXN.READ_SET_CHANGED", oid));
+            }
+        }
+    }
+    let mut stale = Vec::new();
+    for ch in &changes {
+        if matches!(s(ch, "op"), Some("update" | "end"))
+            && let (Some(oid), Some(b)) = (s(ch, "object_id"), s(ch, "base"))
+            && repo.obj(&mut tx, oid)?.is_some_and(|o| o.head != b)
+        {
+            stale.push(oid.to_string());
+        }
+    }
+    if !stale.is_empty() {
+        stale.sort();
+        return Err(BpaError::with_details(
+            "TXN.HEAD_MOVED",
+            json!({"objects": stale}),
+        ));
+    }
+    for ch in &changes {
+        match s(ch, "op").unwrap_or_default() {
+            "create" => create(&mut repo, &mut tx, ch, &default_valid, &mut result)?,
+            op @ ("update" | "end") => {
+                update(&mut repo, &mut tx, ch, op, &default_valid, &mut result)?
+            }
+            op @ ("append" | "reverse" | "adjust") => {
+                let (id, seq) = repo.append(&mut tx, ch, op, &today, &default_valid)?;
+                result["entries"][id] = json!({"seq": seq});
+            }
+            _ => return Err(BpaError::new("MODEL.INVALID_VALUE", "unknown change")),
+        }
+    }
+    repo.check_double_entry(&tx)?;
+    let classes: Vec<String> = tx
+        .state
+        .objects
+        .values()
+        .map(|o| o.class.clone())
+        .chain(tx.appended.iter().map(|e| e.class.clone()))
+        .collect();
+    let head = tx.head;
+    repo.write(tx, vec![head])?;
+    Ok((result, classes))
 }

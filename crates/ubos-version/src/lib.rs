@@ -14,4 +14,6 @@
 pub mod merge;
 pub mod state;
 
-pub use state::{Entry, ObjectState, Repo, Segment, State, Tx, at, lt};
+pub use state::{
+    CommitRecord, Entry, ObjectState, Repo, Segment, State, Tx, at, lt, version_record,
+};

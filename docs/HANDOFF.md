@@ -98,8 +98,10 @@ Step 3b done: 551 vectors, MUST coverage 94% (68/72), manifest in
    (`verify/reports/exit-0-05/`): 5a done (stored tree nodes with batch update and diff,
    VER-PROP-0004); 5b done (commits as deltas with ordinals, object index with `cseq`
    intervals, ledger rows, tree nodes and root per commit in the flush; all prototype vectors
-   pass on both backends); 5c open (WL-GENERIC-10M generator and benchmark driver). Then the
-   owner rents the database host and an application node (DEC-030).
+   pass on both backends); 5c done (WL-GENERIC generator and bulk loader, load check, benchmark
+   driver, group commit; local trial: commit capacity is CPU-bound, finding C-1). Next: the
+   owner rents the database host and an application node and follows
+   `docs/reports/ph0-step5-runbook-zh.md`; the reports come back for the EXIT-0-05 DEC.
 4. Step 6 done (DEC-034): 100 of 100 L2 escape cases blocked (EXIT-0-06, report in
    `verify/reports/exit-0-06/`); ASM-008 confirmed for L2 with conditions; OQ-007 (L2 sizes)
    and OQ-008 (L2 decimal range) open for step 7.

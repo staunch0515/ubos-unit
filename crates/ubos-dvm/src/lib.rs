@@ -10,4 +10,5 @@ pub mod adapter;
 pub mod stateful;
 
 pub use adapter::{Adapter, STATEFUL_OPERATIONS};
+pub use stateful::Engine;
 pub use ubos_types::{BpaError, canonical, content_id};
