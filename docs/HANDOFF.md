@@ -45,6 +45,7 @@ the work without the earlier conversations. Read `CLAUDE.md` first for the worki
 | DEC-042 | BPA 1.0-rc1 proofs clarified: signature format and key histories, signed commit records, inclusion and consistency proofs, tenant root, archive format `ubos.archive.v1`, AEAD inputs; error code `PROOF.VERIFICATION_FAILED`; plain-Python crypto in the oracle. |
 | DEC-043 | BPA 1.0-rc1 L1 expressions, queries, addressing and custom value types clarified; L1 interpreter in the oracle; adapter DIDs in registered form; step 1e split into 1e-1 and 1e-2 (logic in 1e-2 as host programs). |
 | DEC-044 | BPA 1.0-rc1 execution clarified: host programs as the conformance binding (genesis `Logic`), context, gateway, profiles, metering, entropy, journal and replay, asset verification and static analysis, instructions, BPU views, automatic retry; rc1 MUST coverage 100%. |
+| DEC-045 | BPA 1.0-rc1 released: hand-written notes listed in the manifest, owner-signed tag `bpa-v1.0.0-rc1`, frozen once tagged; PH-1 step 1 complete. |
 
 The full log with context and alternatives is `docs/50-system/90-decisions/000-index.md`.
 
@@ -109,7 +110,9 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    STD-OBJ-009); 1b done (object and class model, DEC-040); 1c done (versioning, time and
    transactions, DEC-041); 1d done (proofs, DEC-042); 1e split into 1e-1 and 1e-2 (DEC-043);
    1e-1 done (L1 expressions, queries, addressing, value types); 1e-2 done (execution,
-   DEC-044; rc1 MUST coverage 146/146); next 1f release (owner signs `bpa-v1.0.0-rc1`).
+   DEC-044; rc1 MUST coverage 146/146); 1f done (release, DEC-045). Owner: sign the tag
+   `bpa-v1.0.0-rc1` (`docs/reports/ph1-plan-zh.md`). Next AI step: PH-1 step 2 (extended
+   formal models: group commit, ledger sequences, EXIT-1-07, W-8).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
    occasion.

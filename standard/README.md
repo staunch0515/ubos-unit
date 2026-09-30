@@ -14,8 +14,9 @@ The public standard of the UBOS Business Processing Architecture (DEC-028: compo
 
 Releases are tagged `bpa-vX.Y.Z`, signed by the owner, and published with a manifest of file
 hashes (DSN-BPA-001, DEC-030). BPA 0.1 is PH-0 step 3 (EXIT-0-01) and is frozen as tagged
-(`bpa-v0.1.0`); `spec/` and `vectors/` now hold the release in development, BPA 1.0-rc1
-(PH-1 step 1, EXIT-1-01, DEC-039). Its scope follows a rule stated in its `scope.json`: the
+(`bpa-v0.1.0`). BPA 1.0-rc1 (PH-1 step 1, EXIT-1-01, DEC-039) is released as `bpa-v1.0.0-rc1`
+(DEC-045) and frozen once tagged; `spec/` and `vectors/` hold it until a decision opens
+BPA 1.0-rc2. Its scope follows a rule stated in its `scope.json`: the
 scope of 0.1 plus the Core, Bitemporal, Ledger and Proof clauses that serve PH-1 gate 1a; the
 builder rejects a scope that differs from the rule. Vectors are only added; the 0.1 vectors
 keep their identifiers and content.
@@ -35,6 +36,7 @@ Both run from `bash docs/tools/regen_all.sh`. Python 3.9 or later, standard libr
 | Path | Content |
 |---|---|
 | `release/<version>/scope.json` | clauses and profiles of the release (edited by hand; for 1.0-rc1 with its scope rule) |
+| `release/<version>/notes.md` | release notes: content, changes, known limits (edited by hand, listed in the manifest) |
 | `release/<version>/coverage.md` | MUST-clause coverage by vectors (MET-QUAL-003) |
 | `release/<version>/manifest.json` | SHA-256 of every released file and the manifest content identifier |
 | `tools/bpa/` | reference oracle: canonical JSON, values, classes, store, tree, adapter operations (STD-CONF-005) |

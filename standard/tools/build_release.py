@@ -222,8 +222,10 @@ def main():
                 p = os.path.join(dirpath, n)
                 files.append({'path': os.path.relpath(p, STD).replace(os.sep, '/'),
                               'sha256': hashlib.sha256(open(p, 'rb').read()).hexdigest()})
-    for n in ('scope.json', 'coverage.md'):
+    for n in ('scope.json', 'coverage.md', 'notes.md'):
         p = os.path.join(rel, n)
+        if not os.path.exists(p):
+            continue
         files.append({'path': os.path.relpath(p, STD).replace(os.sep, '/'),
                       'sha256': hashlib.sha256(open(p, 'rb').read()).hexdigest()})
     files.sort(key=lambda x: x['path'])
