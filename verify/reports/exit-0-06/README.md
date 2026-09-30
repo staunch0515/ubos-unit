@@ -73,7 +73,7 @@ infinite-loop case after finding F-3 below.
 ## 4. Scope and limits of the spike
 
 The spike covers the L2 host only. The WASM half of ASM-008 (L3 components, STD-CTX-021) is
-not exercised here; it is verified with the L3 host in PH-1. CPU time is enforced through
+not exercised here; it is verified with the L3 host in PH-3 (DEC-036). CPU time is enforced through
 elapsed time, which is conservative (a script is stopped when elapsed time, not CPU time,
 reaches the smaller of the CPU and wall budgets). The instruction set, `ctx` beyond `now` and
 `tenant`, journal persistence, replay and the AST cache keyed by asset version hash are

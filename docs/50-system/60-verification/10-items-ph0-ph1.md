@@ -128,6 +128,7 @@ Numbers follow UBS-VER-00 §3.
 - **Pass criterion:** MET-PERF-001, MET-PERF-002 and MET-PERF-003 met in the median run, or a DEC entry records the fallback.
 - **Evidence:** benchmark report with histograms and environment hash.
 - **Supports:** EXIT-0-05
+- **Phase note:** carried over to PH-1 (DEC-035); due before the PH-1 storage layout is fixed, at the latest at gate 1a. Tools: `ubos-bench`; set-up `verify/envs/ENV-REF-SERVER-ph0.md`.
 
 ### VER-SEC-0001 — Rhai sandbox spike
 - **Verifies:** ASM-008, NR-SEC-002 (initial), DSN-DVM-612

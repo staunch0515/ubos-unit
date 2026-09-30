@@ -35,6 +35,9 @@ the work without the earlier conversations. Read `CLAUDE.md` first for the worki
 | DEC-030 | PH-0 is executed by the owner with AI sessions in eight steps (one pull request each), with PH-0 verification work requested, external review at acceptance, benchmark hardware rented for step 5 and owner-signed releases. |
 | DEC-029 | Finance requirements are self-contained, **frozen at version 1.0** (tag `fin-req-v1.0`), copied unchanged into other repositories; work items recorded per `40-comparison-protocol.md` §2 (system codes U and J). |
 | DEC-034 | The Rhai sandbox spike blocks 100 of 100 initial escape cases; ASM-008 is confirmed for L2 with conditions (empty engine with pure packages, per-execution memory accounting, uncatchable host errors, fine-grained time checks), recorded in DSN-DVM-612. |
+| DEC-035 | EXIT-0-05 (storage benchmark) is carried over into PH-1 because hosts cannot be rented now; it is due before the PH-1 storage layout is fixed, at the latest at gate 1a. |
+| DEC-036 | PH-1 re-baselined after PH-0: every finding dispositioned (UBS-PHR-0), work items W-1…W-12, OQ-007 and OQ-008 resolved, RSK-004 closed, RSK-016 and RSK-017 added. |
+| DEC-037 | Proposed: PH-0 accepted with EXIT-0-05 carried over; external review together with the carried benchmark. |
 
 The full log with context and alternatives is `docs/50-system/90-decisions/000-index.md`.
 
@@ -86,29 +89,23 @@ vectors for FND, OBJ, CLS and KIND, STD-CONF-005 adapter operations; OQ-006 open
 Step 3b done: 551 vectors, MUST coverage 94% (68/72), manifest in
 `standard/release/0.1/manifest.json`.
 
-1. **Owner:** sign the tag `bpa-v0.1.0` on the merge commit of step 3b (EXIT-0-01; see
-   `docs/reports/ph0-plan-zh.md` §5).
-2. PH-0 step 4 (DEC-033) in three parts. 4a done: pure operations and runner; 275 of the
-   453 vectors tagged `prototype` pass.
-   - 4b done: stores (memory, PostgreSQL), model, versioning, time; all 453 prototype vectors
-     pass on PostgreSQL (EXIT-0-03, report in `verify/reports/exit-0-03/`).
-   - 4c done: VER-PROP-0001…0003 with 1,000,000 cases each, 0 failures (EXIT-0-04, report in
-     `verify/reports/exit-0-04/`).
-3. **PH-0 step 5** — benchmarks on ENV-REF-SERVER (EXIT-0-05). Preparation in three parts
-   (`verify/reports/exit-0-05/`): 5a done (stored tree nodes with batch update and diff,
-   VER-PROP-0004); 5b done (commits as deltas with ordinals, object index with `cseq`
-   intervals, ledger rows, tree nodes and root per commit in the flush; all prototype vectors
-   pass on both backends); 5c done (WL-GENERIC generator and bulk loader, load check, benchmark
-   driver, group commit; local trial: commit capacity is CPU-bound, finding C-1). Next: the
-   owner rents the database host and an application node and follows
-   `docs/reports/ph0-step5-runbook-zh.md`; the reports come back for the EXIT-0-05 DEC.
-4. Step 6 done (DEC-034): 100 of 100 L2 escape cases blocked (EXIT-0-06, report in
-   `verify/reports/exit-0-06/`); ASM-008 confirmed for L2 with conditions; OQ-007 (L2 sizes)
-   and OQ-008 (L2 decimal range) open for step 7.
-5. Then step 7 of DEC-030 (PH-1 re-baseline, external review, acceptance DEC), after step 5.
-3. **Java side** (owner): copy `fin-req-v1.0` into the Java repository
+PH-0 status (details in UBS-PHR-0, `docs/50-system/50-phases/PH-0/02-findings.md`):
+EXIT-0-01…04 and EXIT-0-06 met (steps 3, 4 and 6); step 5 prepared (5a–5c: tree
+maintenance, storage layout, generator, benchmark driver, group commit), but EXIT-0-05 is
+carried over into PH-1 because hosts cannot be rented now (DEC-035); step 7 done: PH-1
+re-baselined (DEC-036, EXIT-0-07) with work items W-1…W-12, OQ-007 and OQ-008 resolved.
+
+1. **Owner:** confirm the PH-0 acceptance proposed in DEC-037 (conditional: EXIT-0-05
+   carried over; external review together with the carried benchmark). Acceptance package:
+   `docs/reports/ph0-acceptance-zh.md`.
+2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
+   (W-1); name the external reviewer for that occasion.
+3. Next AI step after DEC-037 is accepted: a PH-1 execution plan in steps (as DEC-030 did for
+   PH-0), starting with BPA 1.0-rc1 work (W-6, W-11) and kernel work that does not depend on
+   the storage decision.
+4. **Java side** (owner): copy `fin-req-v1.0` into the Java repository
    (`docs/reports/finance-requirements-copy-guide-zh.md`) and start work-item records.
-4. **Accounting review** (external): chart of accounts and expected results of the sample
+5. **Accounting review** (external): chart of accounts and expected results of the sample
    company (EXIT-2-16); findings become finance version 1.1.
 
 ## 5. Open items
@@ -117,8 +114,8 @@ Step 3b done: 551 vectors, MUST coverage 94% (68/72), manifest in
 |---|---|
 | Legal review of licences | DEC-019 accepted; legal review before any public release. |
 | Accounting reviewer | to be named (ASM-002, PH-3 CPA). |
-| PH-0 external reviewer | database and formal-methods expert for PH-0 acceptance (DEC-030), to be named by the owner. |
-| ENV-REF-SERVER | rented by the owner for PH-0 step 5 (DEC-030). |
+| PH-0 external reviewer | database and formal-methods expert (DEC-030), to be named by the owner for the review at the carried benchmark (DEC-037). |
+| ENV-REF-SERVER | rented by the owner for the carried benchmark (DEC-035), CPU with SHA extensions. |
 
 ## 6. Repositories
 

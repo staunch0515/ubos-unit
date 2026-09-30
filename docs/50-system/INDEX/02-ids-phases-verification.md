@@ -18,7 +18,7 @@ depends_on: [UBS-IDX-00]
 | EXIT-0-02 | The three formal models are checked with no violation at the stated state-space bounds, as defined b | `50-phases/PH-0/00-plan.md` |
 | EXIT-0-03 | The prototype passes 100% of `prototype` vectors on PostgreSQL through the runner | `50-phases/PH-0/00-plan.md` |
 | EXIT-0-04 | Root history independence holds in ≥ 1,000,000 generated cases | `50-phases/PH-0/00-plan.md` |
-| EXIT-0-05 | Benchmarks meet MET-PERF-001…003, or a decision records the storage fallback of DEC-020 | `50-phases/PH-0/00-plan.md` |
+| EXIT-0-05 | Benchmarks meet MET-PERF-001…003, or a decision records the storage fallback of DEC-020. **Carried o | `50-phases/PH-0/00-plan.md` |
 | EXIT-0-06 | The Rhai sandbox spike blocks all 100 initial escape cases, or a decision revises ASM-008 | `50-phases/PH-0/00-plan.md` |
 | EXIT-0-07 | The PH-1 plan is re-baselined with the PH-0 findings (durations, risks) | `50-phases/PH-0/00-plan.md` |
 | EXIT-1-01 | 1a | `50-phases/PH-1/00-plan.md` |
@@ -170,14 +170,14 @@ depends_on: [UBS-IDX-00]
 | MET-USE-004 | 50-line journal entered in the Smart Grid by keyboard only, median | `50-phases/PH-2/00-plan.md` |
 | MET-USE-010 | median review time for ≤ 50-item change sets (NR-USE-003) | `50-phases/PH-3/00-plan.md` |
 
-## RSK (38)
+## RSK (40)
 
 | ID | Title | Defined in |
 |---|---|---|
-| RSK-001 | PostgreSQL cannot meet commit latency with in-flush index and tree maintenance | `50-phases/PH-0/00-plan.md` |
+| RSK-001 | PostgreSQL cannot meet commit latency with in-flush index and tree maintenance (raised to H and cont | `50-phases/PH-0/00-plan.md` |
 | RSK-002 | Prolly-tree write amplification too high on hot keys | `50-phases/PH-0/00-plan.md` |
 | RSK-003 | Formal models find a semantic defect late | `50-phases/PH-0/00-plan.md` |
-| RSK-004 | Rhai cannot be made deterministic without float support | `50-phases/PH-0/00-plan.md` |
+| RSK-004 | Rhai cannot be made deterministic without float support (**closed** by DEC-036: did not occur) | `50-phases/PH-0/00-plan.md` |
 | RSK-005 | Vector format too implementation-specific | `50-phases/PH-0/00-plan.md` |
 | RSK-010 | PH-1 scope (341 requirements) exceeds capacity | `50-phases/PH-1/00-plan.md` |
 | RSK-011 | Determinism breaks across platforms (decimal, time zones, hashing) | `50-phases/PH-1/00-plan.md` |
@@ -185,6 +185,8 @@ depends_on: [UBS-IDX-00]
 | RSK-013 | Policy engine partial evaluation too slow for list queries | `50-phases/PH-1/00-plan.md` |
 | RSK-014 | Standard and code drift | `50-phases/PH-1/00-plan.md` |
 | RSK-015 | Fault-injection harness gives false confidence | `50-phases/PH-1/00-plan.md` |
+| RSK-016 | PostgreSQL commit path misses NR-PERF-002 at 500 commits/s: the PH-0 trial is bound by sequencer CPU | `50-phases/PH-1/00-plan.md` |
+| RSK-017 | Tree maintenance is bound by SHA-256 throughput; hosts without SHA extensions fall far short | `50-phases/PH-1/00-plan.md` |
 | RSK-020 | Finance package needs a kernel feature not in the standard | `50-phases/PH-2/00-plan.md` |
 | RSK-021 | Accountants find branching concepts confusing (ASM-007) | `50-phases/PH-2/00-plan.md` |
 | RSK-022 | **Withdrawn** (DEC-023): no design partner in PH-2 | `50-phases/PH-2/00-plan.md` |

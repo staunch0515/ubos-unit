@@ -3,7 +3,7 @@ id: UBS-PH-1
 title: PH-1 — Kernel and Single-Node Server (gates PH-1a and PH-1b)
 status: draft
 phase: PH-1
-depends_on: [UBS-PH-00, UBS-PH-0, UBS-SYS-DVM-00, UBS-SYS-NOD-00]
+depends_on: [UBS-PH-00, UBS-PH-0, UBS-SYS-DVM-00, UBS-SYS-NOD-00, UBS-PHR-0, DEC-035, DEC-036]
 ---
 
 # PH-1 — Kernel and Single-Node Server
@@ -67,9 +67,11 @@ DSN-SDK items with **Phase** PH-1; DSN-BPA-003, DSN-BPA-004, DSN-BPA-010.
 
 | Dependency | Kind | Needed by |
 |---|---|---|
-| all PH-0 exit criteria (EXIT-0-01…07) | prior exit | start |
-| DEC entries from PH-0 on storage (DEC-020) and sandbox (ASM-008) | decision | start |
-| ENV-REF-SERVER, ENV-REF-SMALL, ENV-REF-BOX reference environments provisioned and scripted | external | month 2 |
+| PH-0 exit criteria EXIT-0-01…04, EXIT-0-06 and EXIT-0-07; EXIT-0-05 carried over (DEC-035) | prior exit | start |
+| DEC entries from PH-0 on sandbox (DEC-034) and re-baseline (DEC-036) | decision | start |
+| carried VER-BENCH-0001 on ENV-REF-SERVER and its decision on storage (DEC-020, ASM-003) | prior exit | before the storage layout is fixed; at the latest gate 1a |
+| ENV-REF-SERVER provisioned (PH-0 set-up `verify/envs/ENV-REF-SERVER-ph0.md`, CPU with SHA extensions) | external | start (DEC-036) |
+| ENV-REF-SMALL, ENV-REF-BOX reference environments provisioned and scripted | external | month 2 |
 | fault-injection harness (process kill, power-loss simulation via dm-flakey or equivalent) | internal | month 3 |
 | Cedar-compatible policy engine library selected (DEC-021) | external | gate 1b start |
 | PostgreSQL 16+ | external | start |
@@ -259,8 +261,15 @@ regression over 10% or any simulation failure blocks the next release candidate.
 | RSK-013 | Policy engine partial evaluation too slow for list queries | M | M | pre-compiled residuals cached by policy hash; index-friendly policy patterns | NR-PERF-008 miss in 1b benchmarks | kernel engineer |
 | RSK-014 | Standard and code drift | M | H | standard-before-code rule (DSN-BPA-010) enforced in CI | kernel PR without accepted standard change | standards steward |
 | RSK-015 | Fault-injection harness gives false confidence | L | H | use two independent crash methods (SIGKILL and dm-flakey power loss); external review | none found in 10,000 crashes too early | quality lead |
+| RSK-016 | PostgreSQL commit path misses NR-PERF-002 at 500 commits/s: the PH-0 trial is bound by sequencer CPU (continues RSK-001, DEC-036) | H | H | group commit (built in PH-0); parallel preparation of the commits of a group with only the tree update serialised (W-8); deferred tree maintenance; fallback of DEC-020 | carried VER-BENCH-0001 (DEC-035) below 500 commits/s | kernel lead |
+| RSK-017 | Tree maintenance is bound by SHA-256 throughput; hosts without SHA extensions fall far short | M | M | require SHA extensions in ENV-REF-SERVER; canonical node hashing without intermediate values (PH-0); cache upper levels | commit CPU share of hashing above 50% on the reference host | kernel engineer |
 
 ## 11. Reference duration and team assumption
+
+**Re-baseline (DEC-036):** PH-0 findings and their dispositions are in UBS-PHR-0; its work
+items W-1…W-12 belong to this phase. W-1 (the carried storage benchmark) comes first. As in
+PH-0, the phase is executed by the product owner with AI sessions and reported per step;
+the figures below remain a reference only.
 
 Non-normative. 9 months: gate 1a after 5 months, gate 1b after 4 more. Team of 10–12
 engineers: 5 kernel (Rust), 1 formal methods, 2 node/host, 1 SDK/TypeScript, 1 quality and
