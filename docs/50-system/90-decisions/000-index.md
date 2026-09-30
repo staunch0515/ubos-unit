@@ -52,6 +52,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-037 | PH-0 acceptance with EXIT-0-05 carried over and external review at the benchmark | Accepted |
 | DEC-038 | PH-1 execution: owner with AI sessions, gate-1a steps, verification requested, environments and CI | Accepted |
 | DEC-039 | Scope of BPA 1.0-rc1 by rule; releases in development; step 1 in six parts | Accepted |
+| DEC-040 | BPA 1.0-rc1 object and class model: clarifications of ports, selectors, extensions, relationships, reference integrity and blind indexes | Accepted |
 
 ---
 
@@ -450,4 +451,20 @@ Decisions are never deleted. A replaced decision is marked
 - **Consequences:** The coverage report of 1.0-rc1 shows the remaining clauses; it reaches 100% at part 1f, when the owner signs `bpa-v1.0.0-rc1`. New vectors are not tagged `prototype` until the kernel implements them (steps 4–7).
 - **Alternatives considered:** Taking every Core, Bitemporal, Ledger and Proof clause was rejected: it would pull PH-2 to PH-5 features into gate 1a. Listing the scope by hand was rejected: the rule keeps it consistent with the requirement phases and is checked by the builder.
 - **Affects:** UBS-PH-1, STD-CONF-005, STD-OBJ-009, EXIT-1-01, DEC-032
+
+### DEC-040 — BPA 1.0-rc1 object and class model (step 1b)
+- **Status:** Accepted · **Date:** 2026-09-30
+- **Context:** Part 1b of PH-1 step 1 (DEC-039) writes the oracle and vectors for STD-OBJ-012 and STD-CLS-020, -021, -022, -030, -040 and -041. Several clauses left details open that an implementation needs and that vectors must fix.
+- **Decision:** The clauses are clarified as follows (text in the clauses):
+  1. STD-OBJ-012: the blind index is `hmac-sha256:<hex>` of HMAC-SHA-256 under the 32-byte tenant lookup key over the canonical JSON of the validated value.
+  2. STD-CLS-020: an implementation is a port declaration with `impl`; a port without any implementation or without any declaration is not implemented; extension ports are named `<namespace>.<port>` and belong to the extension target.
+  3. STD-CLS-021: parameters are matched by name, "more general" is the reverse of STD-CLS-013, and the port kind must be equal.
+  4. STD-CLS-022: depth counts parent steps from `Object` (0), traits have depth 1; `only` matches the named class itself; class filters return live objects.
+  5. STD-CLS-030 and STD-CLS-010: `ClassExtension` is a genesis class below `ConfigAsset`; extensions apply to their target and its subclasses, after the fold, ordered by target generality, `order` and namespace; refinements use full member keys; visibility follows the extension object's current version, from the commit after the one that writes it; invalid extensions fail the commit.
+  6. STD-CLS-040: relationship members and values (`one_to_one`, `many_to_one`, `one_to_many`, `many_to_many`; `association`, `composition`; `restrict`, `cascade`, `detach`), their rules over live objects within the commit, and link objects with `source` and `target` fields for `attributes_class`.
+  7. STD-CLS-041: references resolve by class and current slug in the state after the commit (objects of the same commit included); the target's segments must cover the period without a gap; `target_class` is checked against the linearization.
+  8. STD-CONF-005 (1.0-rc1): operations `dispatch`, `type_selector`, `blind_index`, `list_objects`, `traverse`, `class_at`, and `effective_class` with `extensions` and `ports`; reference values in adapter inputs are `ubos://acme/<Class>/<slug>`. Changes made by relationship rules are reported in `versions` and, when retroactive, in `retroactive`.
+- **Consequences:** 84 vectors (VER-CONF-0405…0409, 0720…0730, 0740…0749, 0755…0766, 0780…0794, 0810…0827, 0840…0852), not tagged `prototype`; MUST coverage of 1.0-rc1 76/145. The kernel implements them in step 4.
+- **Alternatives considered:** Plain object identifiers as reference values in adapter inputs were rejected: STD-FND-020 defines references as canonical URIs. Applying extensions per class during the fold was rejected in favour of the clause text of STD-CLS-012 (extensions after the fold).
+- **Affects:** STD-OBJ-012, STD-CLS-010, STD-CLS-020, STD-CLS-021, STD-CLS-022, STD-CLS-030, STD-CLS-040, STD-CLS-041, STD-CONF-005
 

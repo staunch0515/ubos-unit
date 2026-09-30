@@ -42,7 +42,7 @@ Processing Unit (BPU)** on a **Data Virtual Machine (DVM)**.
 | `40-systems/` | 13 system chapters: 695 design items (DSN), 118 interfaces, data, state machines, configuration, operations, verification | complete |
 | `50-phases/` | PH-0 … PH-5: goals, scope, generated feature lists, verification plans, 65 metrics, 85 exit criteria (7 withdrawn), 38 risks (5 withdrawn) | complete |
 | `60-verification/` | principles, VER numbering, 12 methods, environments, datasets, 77 suites, 90 verification items, generated traceability | complete |
-| `90-decisions/` | DEC-001 … DEC-039 | active |
+| `90-decisions/` | DEC-001 … DEC-040 | active |
 | `INDEX/` | generated catalogues of documents and IDs, statistics | generated |
 
 ## The six phases at a glance
