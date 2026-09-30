@@ -1,0 +1,1 @@
+{"clauses":["STD-VER-013"],"description":"branch name 'draft/a/b' is valid","id":"VER-CONF-1293","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":true},"input":{"grammar":"branch-name","text":"draft/a/b"},"op":"check_name"}],"tags":["prototype"]}

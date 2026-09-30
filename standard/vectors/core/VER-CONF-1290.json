@@ -1,0 +1,1 @@
+{"clauses":["STD-VER-013"],"description":"branch name 'main' is valid","id":"VER-CONF-1290","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":true},"input":{"grammar":"branch-name","text":"main"},"op":"check_name"}],"tags":["prototype"]}

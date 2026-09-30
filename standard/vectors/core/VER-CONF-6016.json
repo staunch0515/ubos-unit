@@ -1,0 +1,1 @@
+{"clauses":["STD-ERR-002"],"description":"the registered code LOGIC.DIVISION_BY_ZERO is used for its condition","id":"VER-CONF-6016","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"LOGIC.DIVISION_BY_ZERO"},"input":{"a":"1","b":"0","op":"div","rounding":"half_even","scale":0},"op":"decimal"}],"tags":["prototype"]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-ERR-002"],"description":"the registered code MODEL.INVALID_VALUE is used for its condition","id":"VER-CONF-6015","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"type":"boolean","value":0},"op":"validate_value"}],"tags":["prototype"]}

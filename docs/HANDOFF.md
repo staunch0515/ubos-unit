@@ -82,10 +82,15 @@ Step 2 done: TLA+ models in `verify/models/` checked per DEC-031, no violation; 
 Step 3a done (DEC-032): release build in `standard/` (oracle, generator, builder), 390
 vectors for FND, OBJ, CLS and KIND, STD-CONF-005 adapter operations; OQ-006 open.
 
-1. **PH-0 step 3b** — vectors for VER, TIME, TXN and PROOF (merge, diff, timelines, CAS, state
-   tree, with the tree clarifications of STD-PROOF-001), coverage ≥ 80% of MUST clauses
-   (MET-QUAL-003), final manifest; then the owner signs the tag `bpa-v0.1.0` (EXIT-0-01).
-2. Then steps 4…7 of DEC-030 in order, one pull request each, merged by the owner.
+Step 3b done: 551 vectors, MUST coverage 94% (68/72), manifest in
+`standard/release/0.1/manifest.json`.
+
+1. **Owner:** sign the tag `bpa-v0.1.0` on the merge commit of step 3b (EXIT-0-01; see
+   `docs/reports/ph0-plan-zh.md` §5).
+2. **PH-0 step 4** — prototype crates, adapter (STD-CONF-005) and `forge conform` runner;
+   100% of the vectors tagged `prototype` on PostgreSQL (EXIT-0-03); property tests with
+   ≥ 1,000,000 cases (EXIT-0-04).
+3. Then steps 5…7 of DEC-030 in order, one pull request each, merged by the owner.
 3. **Java side** (owner): copy `fin-req-v1.0` into the Java repository
    (`docs/reports/finance-requirements-copy-guide-zh.md`) and start work-item records.
 4. **Accounting review** (external): chart of accounts and expected results of the sample

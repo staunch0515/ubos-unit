@@ -1,0 +1,1 @@
+{"clauses":["STD-VER-013"],"description":"branch name 'sandbox/try' is valid","id":"VER-CONF-1294","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":true},"input":{"grammar":"branch-name","text":"sandbox/try"},"op":"check_name"}],"tags":["prototype"]}

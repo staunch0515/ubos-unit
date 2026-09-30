@@ -27,7 +27,7 @@
 | 0 | 规格对齐：DEC-030；PH-0 计划去掉 ENV-REF-BOX（DEC-024），路径改为单仓文件夹（DEC-028）；ASM-001 加 phase note | — | 已完成（PR #2） |
 | 1 | 单仓骨架：`standard/`、`verify/`、`crates/`（Cargo 工作区，含五个原型 crate），各目录许可证，CI（`regen_all.sh`、fmt/clippy、依赖图检查 AR-031） | 基础 | 已完成（PR #3） |
 | 2 | TLA+ 模型 `verify/models/{commit_cas,merge,timeline}.tla`，按 DEC-031 检查（能穷举的穷举，否则最大可完成规模穷举加完整规模 100 万条随机模拟），报告见 `verify/models/reports/README.md` | EXIT-0-02 | 已完成（本 PR）：无违规；发现并修正 1 个设计问题（DSN-DVM-208），提出 OQ-004、OQ-005 |
-| 3 | BPA 0.1：Core、Bitemporal、Ledger 条款，JSON Schema，向量格式，至少 300 个向量；覆盖率报告（MUST 条款覆盖至少 80%） | EXIT-0-01 | 3a 已完成（本 PR）：发布构建工具、参考实现、FND/OBJ/CLS/KIND 390 个向量；3b（VER/TIME/TXN/PROOF 向量、覆盖率达标、清单）待做 |
+| 3 | BPA 0.1：Core、Bitemporal、Ledger 条款，JSON Schema，向量格式，至少 300 个向量；覆盖率报告（MUST 条款覆盖至少 80%） | EXIT-0-01 | 已完成（PR #5 与本 PR）：551 个向量（453 个标 `prototype`），MUST 条款覆盖率 94%（68/72），发布清单已生成；待业主签名标签 `bpa-v0.1.0` |
 | 4 | 原型 crate、适配器协议、`forge conform` 运行器；`prototype` 向量 100% 通过；属性测试每条至少 100 万例 | EXIT-0-03、EXIT-0-04 | 未开始 |
 | 5 | ENV-REF-SERVER 基准测试（读 p95 ≤ 6.25 ms，提交 p50 ≤ 19 ms，diff p95 ≤ 62.5 ms），给出 ASM-003 结论 | EXIT-0-05 | 未开始 |
 | 6 | Rhai 沙箱初步验证：100 个逃逸用例，给出 ASM-008 结论 | EXIT-0-06 | 未开始 |
@@ -42,3 +42,17 @@
 | 第 3 步完成后 | 用自己的密钥创建带签名的标签 `bpa-v0.1.0` |
 | 第 5 步开始前 | 租用云主机：数据库主机 32 vCPU、128 GB 内存、本地 NVMe（至少 20 万 IOPS），应用节点 16 vCPU、64 GB 内存，约 2 周 |
 | 第 7 步 | 指定外部评审人 |
+
+## 5. 签名 BPA 0.1 标签的操作（业主）
+
+第 3b 步的 PR 合并后，在本机执行（需要已配置的 GPG 或 SSH 签名密钥）：
+
+```sh
+git fetch origin main
+git tag -s bpa-v0.1.0 origin/main -m "BPA 0.1.0 (manifest: standard/release/0.1/manifest.json)"
+git push origin bpa-v0.1.0
+```
+
+- 使用 SSH 密钥签名时，先执行一次 `git config gpg.format ssh` 和 `git config user.signingkey <公钥文件>`。
+- 发布清单中的 `content_id` 就是这个版本内容的标识，可以写进标签说明，便于日后核对。
+

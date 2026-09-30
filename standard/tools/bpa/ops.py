@@ -54,7 +54,7 @@ STATEFUL = {
     'set_now': lambda s, i: s.set_now(i['now']),
     'load_genesis': lambda s, i: s.load_genesis(i['classes']),
     'create_branch': lambda s, i: s.create_branch(i['name'], i.get('from', 'main'), i.get('time')),
-    'commit': lambda s, i: s.commit(i['branch'], i['changes'], i.get('process')),
+    'commit': lambda s, i: s.commit(i['branch'], i['changes'], i.get('process'), i.get('tx_time')),
     'read': lambda s, i: s.read(i['branch'], i['object_id'], i.get('asof'), i.get('time')),
     'read_ledger': lambda s, i: s.read_ledger(i['branch'], i['class'], i['ledger_key'], i.get('asof'), i.get('time')),
     'merge': lambda s, i: s.merge(i['source'], i['target']),
@@ -67,7 +67,7 @@ IMPLEMENTATION_DEPENDENT = ('version_hash', 'entry_hash', 'root', 'head', 'versi
 
 
 def strip(value):
-    """Remove implementation-dependent members of a stateful result (STD-CONF-005, rule 5)."""
+    """Remove implementation-dependent members of a stateful result (STD-CONF-005, rule 6)."""
     if isinstance(value, dict):
         return {k: strip(v) for k, v in value.items() if k not in IMPLEMENTATION_DEPENDENT}
     if isinstance(value, list):
@@ -161,6 +161,8 @@ def run_vector(vec):
             if 'error_code' in exp:
                 if out[0] != 'error' or out[1] != exp['error_code']:
                     failures.append((label, 'expected %s, got %r' % (exp['error_code'], out[:2])))
+                elif 'details' in exp and not subset(exp['details'], out[2]):
+                    failures.append((label, 'error details mismatch'))
             elif out[0] == 'error':
                 failures.append((label, 'unexpected error %s %s' % (out[1], out[2])))
             elif 'same_as' in exp:

@@ -76,11 +76,11 @@ DAT-ConformanceReport:
   | `effective_class` | `{classes, class}` | the effective definition (STD-CLS-001…014) |
   | `reset`, `set_now`, `load_genesis` | `{}`, `{now}`, `{classes}` | `true` (STD-CONF-002) |
   | `create_branch` | `{name, from}` | `{head}`, the cseq of the fork commit |
-  | `commit` | `{branch, changes, process}` | `{cseq, versions, entries}` (`DAT-AdapterChange`) |
+  | `commit` | `{branch, changes, process}` | `{cseq, versions, entries, retroactive}` (`DAT-AdapterChange`); `process` is `{serializable, reads}` with `reads` mapping objects to the version hashes read; `retroactive` lists `{object_id, from, to}` per retroactive change (STD-TIME-030); a supplied `tx_time` fails with `TIME.RESERVED_FIELD` |
   | `read` | `{branch, object_id, asof, time}` | `{version_hash, body, valid, tombstone}` |
   | `read_ledger` | `{branch, class, ledger_key, asof, time}` | `{entries}`, each `{entry_id, seq, entry_hash, valid_at, body}` |
-  | `merge` | `{source, target}` | `{cseq}`; on conflict `VER.MERGE_CONFLICT` with the conflict list |
-  | `diff` | `{from, to}` | the diff of STD-VER-030 |
+  | `merge` | `{source, target}` | `{cseq, merged, appended}`; `merged` is false when the source is already contained in the target (no commit); `appended` maps appended entries to `{seq, source_seq}`; on conflict `VER.MERGE_CONFLICT` |
+  | `diff` | `{from, to}`, each `{branch, time}` | list of `DAT-DiffEntry` by object, top-level field paths, ledger entries as `appended` (STD-VER-030) |
   | `export_state` | `{branch, time}` | `{root, entries}` of the state tree (STD-PROOF-001) |
 
   Conventions of the adapter operations:
@@ -88,7 +88,8 @@ DAT-ConformanceReport:
   2. A step MAY give its input as `input_text`, a JSON text that the adapter parses (duplicate member names are an error, `MODEL.INVALID_VALUE`); vectors carry non-canonical inputs, such as numbers with a fraction, this way. A step MAY carry a `label`. An input value `{"$ref": "<label>/<pointer>"}` is replaced by the member of that step's result at the JSON pointer (RFC 6901). An expectation `{"same_as": "<label>/<pointer>"}` requires the result to equal that value.
   3. In adapter inputs a class is referenced by its name. A trait is a declaration with `trait: true` and `applies_to`, a list of kinds. A ledger class declares `ledger: {key, amounts, double_entry, period_scope}`; `period_scope` names a class whose objects have the fields `start` and `end` (dates, half-open) and `state` (`open`, `closing`, `closed`).
   4. The business time zone of the adapter is UTC; the posting date of an append is the date of `now` (`set_now`).
-  5. Version hashes, entry hashes, roots, commit identifiers, transaction times and signatures of stateful operations are compared only through `same_as` or through the pure operations, because they depend on the implementation's clock, keys and class identifiers. Before an `exact` comparison of a stateful result, the members `version_hash`, `entry_hash`, `root`, `head` and `versions` are removed from it.
+  5. An expectation `{error_code, details}` also compares the `details` of the error (`DAT-Error`) with `subset` matching: `TXN.HEAD_MOVED` lists the stale objects in `details.objects`, and `VER.MERGE_CONFLICT` lists `DAT-MergeConflict` items `{object_id, kind, path}` in `details.conflicts`, ordered by object and path.
+  6. Version hashes, entry hashes, roots, commit identifiers, transaction times and signatures of stateful operations are compared only through `same_as` or through the pure operations, because they depend on the implementation's clock, keys and class identifiers. Before an `exact` comparison of a stateful result, the members `version_hash`, `entry_hash`, `root`, `head` and `versions` are removed from it.
 - **Grammar / Schema:** `DAT-AdapterChange`
 - **Conformance vectors:** —
 - **Satisfies:** FR-STD-021, FR-STD-022

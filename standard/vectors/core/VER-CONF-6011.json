@@ -1,0 +1,1 @@
+{"clauses":["STD-ERR-002"],"description":"the registered code MODEL.UNKNOWN_TYPE is used for its condition","id":"VER-CONF-6011","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.UNKNOWN_TYPE"},"input":{"type":"uuid","value":"x"},"op":"validate_value"}],"tags":["prototype"]}

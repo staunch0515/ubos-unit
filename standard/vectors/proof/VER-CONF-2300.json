@@ -1,0 +1,1 @@
+{"clauses":["STD-PROOF-001"],"description":"the root of the empty state is the hash of the empty leaf node","id":"VER-CONF-2300","polarity":"positive","profile":"Proof","setup":[],"steps":[{"expect":{"match":"exact","result":"sha256:c6ef035a6deaf94f21940c7147b0b423ea3abb18598abd038285c8daed170715"},"input":{"entries":[]},"op":"tree_root"}],"tags":["prototype"]}

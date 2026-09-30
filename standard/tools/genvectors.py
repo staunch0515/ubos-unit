@@ -22,7 +22,7 @@ from bpa.spec import clauses, REPO                       # noqa: E402
 from bpa.store import Store                              # noqa: E402
 
 OUT = os.path.join(REPO, 'standard', 'vectors')
-AREAS = ['fnd', 'obj', 'cls', 'kind', 'ver', 'time', 'txn', 'proof']
+AREAS = ['fnd', 'obj', 'cls', 'kind', 'ver', 'time', 'txn', 'proof', 'err']
 
 
 # The time-zone vectors use only transitions that are stable in every tz database release
@@ -63,6 +63,8 @@ class Gen:
                     if out[0] != 'error' or out[1] != s['error']:
                         raise SystemExit('%s %s: expected %s, oracle gave %r' % (vec['id'], label, s['error'], out))
                     step['expect'] = {'error_code': s['error']}
+                    if s.get('details'):
+                        step['expect']['details'] = out[2]
                 elif out[0] == 'error':
                     raise SystemExit('%s %s: oracle error %s %s' % (vec['id'], label, out[1], out[2]))
                 elif 'same_as' in s:
@@ -70,11 +72,7 @@ class Gen:
                     if out[1] != pointer(results[l], p):
                         raise SystemExit('%s %s: not the same as %s' % (vec['id'], label, s['same_as']))
                     step['expect'] = {'same_as': s['same_as']}
-                elif 'differs_from' in s:
-                    l, _, p = s['differs_from'].partition('/')
-                    if out[1] == pointer(results[l], p):
-                        raise SystemExit('%s %s: unexpectedly equal to %s' % (vec['id'], label, s['differs_from']))
-                elif phase == 'steps' and not s.get('silent'):
+                elif phase == 'steps':
                     stateful = s['op'] in ('commit', 'read', 'read_ledger', 'merge', 'diff', 'export_state',
                                            'create_branch')
                     res = strip(out[1]) if stateful else out[1]

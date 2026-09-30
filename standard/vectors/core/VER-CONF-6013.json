@@ -1,0 +1,1 @@
+{"clauses":["STD-ERR-002"],"description":"the registered code VER.INVALID_BRANCH_NAME is used for its condition","id":"VER-CONF-6013","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"VER.INVALID_BRANCH_NAME"},"input":{"grammar":"branch-name","text":"main/x"},"op":"check_name"}],"tags":["prototype"]}
