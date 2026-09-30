@@ -269,8 +269,10 @@ pub trait StoreRead {
     async fn commit_at(&self, branch_id: i64, cseq: u64) -> Result<Option<u64>, BpaError>;
     /// Fresh commit identifiers (not dense).
     async fn commit_numbers(&self, n: u32) -> Result<Vec<u64>, BpaError>;
-    /// A version envelope.
+    /// A version envelope (stored form).
     async fn version(&self, id: &Hash) -> Result<Option<Vec<u8>>, BpaError>;
+    /// A chunk row (stored form, or its descriptor when placed in the object store).
+    async fn chunk(&self, id: &Hash) -> Result<Option<ChunkRow>, BpaError>;
     /// A tree node.
     async fn node(&self, id: &Hash) -> Result<Option<Vec<u8>>, BpaError>;
     /// The object row of the branch visible at `cseq`: `Some(state or None)` when present.

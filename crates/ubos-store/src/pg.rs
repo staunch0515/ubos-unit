@@ -10,6 +10,7 @@ use crate::kernel::{
     LedgerRow, NodeRow, OPEN, OutboxRow, Placement, Scope, SequenceRequest, StoreRead, StoreTx,
     VersionRow, hash_of,
 };
+use crate::physical::{Chunks, LocalBlobs, Physical};
 use crate::{BranchRef, Flush, Store};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -17,6 +18,8 @@ use sqlx::postgres::{PgConnectOptions, PgPool, PgPoolOptions, PgRow};
 use sqlx::{Executor, Postgres, Row, Transaction};
 use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
+use std::sync::Arc;
+use ubos_crypto::{KeyService, LocalKeys};
 use ubos_types::{BpaError, canonical};
 
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
@@ -82,6 +85,8 @@ fn options(url: &str) -> Result<PgConnectOptions, BpaError> {
 pub struct PgBackend {
     pool: PgPool,
     scope: Scope,
+    /// Connection options of the owner role (migrations, bulk loads).
+    owner: PgConnectOptions,
 }
 
 /// One PostgreSQL transaction ([`StoreTx`]).
@@ -94,11 +99,34 @@ impl PgBackend {
     /// Connect, apply the migrations and fix the scope. Every connection sets
     /// `ubos.tenant` for row-level security (DSN-DVM-010).
     pub async fn connect(url: &str, scope: Scope) -> Result<PgBackend, BpaError> {
-        let tenant = scope.tenant.clone();
+        for id in [&scope.tenant, &scope.vae] {
+            let ok = id.len() == 36
+                && id.chars().enumerate().all(|(i, c)| {
+                    matches!(i, 8 | 13 | 18 | 23) == (c == '-')
+                        && (c == '-' || c.is_ascii_hexdigit())
+                });
+            if !ok {
+                return Err(db(format!("scope identifier {id} is not a UUID")));
+            }
+        }
+        // Migrations run as the connecting (owner) role; the pool then works as `ubos_app`,
+        // so that row-level security applies (DSN-DVM-010, DEC-048).
+        {
+            use sqlx::Connection;
+            let mut owner = sqlx::PgConnection::connect_with(&options(url)?)
+                .await
+                .map_err(db)?;
+            MIGRATOR.run(&mut owner).await.map_err(db)?;
+            owner.close().await.map_err(db)?;
+        }
+        let setup = format!(
+            "SET ROLE ubos_app; SET ubos.tenant = '{}'; SET synchronous_commit = on; SET plan_cache_mode = force_custom_plan;",
+            scope.tenant
+        );
         let pool = PgPoolOptions::new()
             .max_connections(4)
             .after_connect(move |conn, _| {
-                let sql = format!("SET ubos.tenant = '{tenant}'");
+                let sql = setup.clone();
                 Box::pin(async move {
                     conn.execute(sql.as_str()).await?;
                     Ok(())
@@ -107,8 +135,11 @@ impl PgBackend {
             .connect_with(options(url)?)
             .await
             .map_err(db)?;
-        MIGRATOR.run(&pool).await.map_err(db)?;
-        Ok(PgBackend { pool, scope })
+        Ok(PgBackend {
+            pool,
+            scope,
+            owner: options(url)?,
+        })
     }
 
     /// The connection pool (for tools such as the benchmark driver).
@@ -129,10 +160,10 @@ impl PgBackend {
         })
     }
 
-    /// Empty every table and restart the commit identifiers.
-    pub async fn reset(&self) -> Result<(), BpaError> {
-        let sql =
-            format!("TRUNCATE {TABLES} RESTART IDENTITY; ALTER SEQUENCE commit_no_seq RESTART;");
+    /// Empty every table of every tenant and restart the commit identifiers (tools only;
+    /// the adapter's `reset` moves to a fresh VAE instead).
+    pub async fn purge_all(&self) -> Result<(), BpaError> {
+        let sql = format!("TRUNCATE {TABLES}; SELECT setval('commit_no_seq', 1, false);");
         self.pool.execute(sql.as_str()).await.map_err(db)?;
         Ok(())
     }
@@ -225,6 +256,30 @@ impl StoreRead for PgBackend {
             )
             .await?;
         r.map(|r| r.try_get(0).map_err(db)).transpose()
+    }
+    async fn chunk(&self, id: &Hash) -> Result<Option<ChunkRow>, BpaError> {
+        let r = self
+            .opt(
+                sqlx::query("SELECT placement, size_logical, body FROM chunk WHERE tenant_id = $1::uuid AND content_id = $2")
+                    .bind(&self.scope.tenant)
+                    .bind(&id[..]),
+            )
+            .await?;
+        r.map(|r| -> Result<ChunkRow, BpaError> {
+            let placement = match r.try_get::<i16, _>(0).map_err(db)? {
+                0 => Placement::Inline,
+                1 => Placement::ObjectStore,
+                p => return Err(db(format!("unsupported chunk placement {p}"))),
+            };
+            Ok(ChunkRow {
+                content_id: *id,
+                size_logical: u32::try_from(r.try_get::<i32, _>(1).map_err(db)?)
+                    .unwrap_or_default(),
+                placement,
+                body: r.try_get(2).map_err(db)?,
+            })
+        })
+        .transpose()
     }
     async fn node(&self, id: &Hash) -> Result<Option<Vec<u8>>, BpaError> {
         let r = self
@@ -836,7 +891,11 @@ fn remember<K: std::hash::Hash + Eq>(cache: &mut HashMap<K, Value>, k: K, v: &Va
 /// The engine view of a PostgreSQL store ([`Store`]), synchronous over [`PgBackend`].
 pub struct PgStore {
     rt: tokio::runtime::Runtime,
+    /// `reset` moves to a fresh VAE (conformance runs) instead of purging all tables.
+    fresh_on_reset: bool,
     backend: PgBackend,
+    physical: Physical,
+    chunks: Chunks,
     ids: Vec<u64>,
     branches: HashMap<String, i64>,
     names: HashMap<i64, String>,
@@ -863,10 +922,19 @@ impl PgStore {
             .enable_all()
             .build()
             .map_err(db)?;
+        let keys: Arc<dyn KeyService> = Arc::new(LocalKeys::from_env()?);
+        let physical = Physical::new(keys, &scope.tenant);
+        let dir = std::env::var_os("UBOS_BLOB_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::env::temp_dir().join("ubos-blobs"));
+        let chunks = Chunks::new(physical.clone(), Arc::new(LocalBlobs::new(dir)?));
         let backend = rt.block_on(PgBackend::connect(url, scope))?;
         Ok(PgStore {
             rt,
+            fresh_on_reset: true,
             backend,
+            physical,
+            chunks,
             ids: Vec::new(),
             branches: HashMap::new(),
             names: HashMap::new(),
@@ -876,9 +944,26 @@ impl PgStore {
         })
     }
 
+    /// Keep the scope on `reset` and purge every table instead (benchmark datasets, which
+    /// later runs open in the same scope).
+    pub fn with_fixed_scope(mut self) -> PgStore {
+        self.fresh_on_reset = false;
+        self
+    }
+
     /// The backend (for tools and the storage suite).
     pub fn backend_ref(&self) -> &PgBackend {
         &self.backend
+    }
+
+    /// The physical form of this store's tenant (DSN-DVM-002).
+    pub fn physical(&self) -> &Physical {
+        &self.physical
+    }
+
+    /// The chunk store of this store's tenant (DSN-DVM-003).
+    pub fn chunks(&self) -> &Chunks {
+        &self.chunks
     }
 
     /// Run a future of the backend on this store's runtime.
@@ -930,6 +1015,7 @@ impl PgStore {
         );
         let mut ver = String::new();
         for (h, r) in &rows.versions {
+            let vid = hash_of(h)?;
             let oid = r
                 .get("object_id")
                 .and_then(Value::as_str)
@@ -937,7 +1023,13 @@ impl PgStore {
             let class = r.get("class").and_then(Value::as_str).unwrap_or_default();
             copy_line(
                 &mut ver,
-                &[&t, &hex(&hash_of(h)?), oid, class, &hex(&bytes(r)?)],
+                &[
+                    &t,
+                    &hex(&vid),
+                    oid,
+                    class,
+                    &hex(&self.physical.seal(&vid, &bytes(r)?)?),
+                ],
             );
         }
         let (mut st, mut hi, mut ti) = (String::new(), String::new(), String::new());
@@ -987,9 +1079,12 @@ impl PgStore {
                 &[&t, &hex(&hash_of(h)?), &level, &hex(&bytes(n)?)],
             );
         }
-        let pool = self.backend.pool.clone();
+        // COPY is not allowed under row-level security; bulk loads of benchmark datasets
+        // are an operator task and run as the owner role (DEC-048).
+        let owner = self.backend.owner.clone();
         self.rt.block_on(async move {
-            let mut conn = pool.acquire().await.map_err(db)?;
+            use sqlx::Connection;
+            let mut conn = sqlx::PgConnection::connect_with(&owner).await.map_err(db)?;
             for (sql, data) in [
                 ("COPY object_version (tenant_id, version_id, object_id, class_name, envelope) FROM STDIN", ver),
                 ("COPY object_state (tenant_id, vae_id, branch_id, object_id, cseq_from, cseq_to, class_name, state) FROM STDIN", st),
@@ -1089,7 +1184,7 @@ impl PgStore {
         }
         let mut plans = Vec::with_capacity(fs.len());
         for f in fs {
-            plans.push(Plan::of(f, ids[&f.branch])?);
+            plans.push(Plan::of(f, ids[&f.branch], &self.physical)?);
         }
         let backend = self.backend.clone();
         let ok = self.rt.block_on(async move {
@@ -1214,13 +1309,14 @@ struct Plan {
 }
 
 impl Plan {
-    fn of(f: &Flush, branch_id: i64) -> Result<Plan, BpaError> {
+    fn of(f: &Flush, branch_id: i64, physical: &Physical) -> Result<Plan, BpaError> {
         let versions = f
             .versions
             .iter()
             .map(|(h, r)| {
+                let version_id = hash_of(h)?;
                 Ok(VersionRow {
-                    version_id: hash_of(h)?,
+                    version_id,
                     object_id: r
                         .get("object_id")
                         .and_then(Value::as_str)
@@ -1231,7 +1327,7 @@ impl Plan {
                         .and_then(Value::as_str)
                         .unwrap_or_default()
                         .into(),
-                    envelope: bytes(r)?,
+                    envelope: physical.seal(&version_id, &bytes(r)?)?,
                 })
             })
             .collect::<Result<Vec<_>, BpaError>>()?;
@@ -1344,17 +1440,39 @@ impl Store for PgStore {
         self.nodes.clear();
         self.versions.clear();
         self.commits.clear();
-        self.rt.block_on(self.backend.reset())
+        if !self.fresh_on_reset {
+            return self.rt.block_on(self.backend.purge_all());
+        }
+        // A fresh, empty VAE of the same tenant: the adapter's state is empty without
+        // truncating the partitioned tables (STD-CONF-002 `reset`, DEC-048). Commit
+        // identifiers restart so that runs are reproducible.
+        let r: [u8; 16] = ubos_crypto::random_bytes()?;
+        let h: String = r.iter().map(|b| format!("{b:02x}")).collect();
+        self.backend.scope.vae = format!(
+            "{}-{}-4{}-8{}-{}",
+            &h[0..8],
+            &h[8..12],
+            &h[13..16],
+            &h[17..20],
+            &h[20..32]
+        );
+        self.rt
+            .block_on(
+                sqlx::query("SELECT setval('commit_no_seq', 1, false)").execute(&self.backend.pool),
+            )
+            .map_err(db)?;
+        Ok(())
     }
     fn version(&mut self, hash: &str) -> Result<Value, BpaError> {
         if let Some(v) = self.versions.get(hash) {
             return Ok(v.clone());
         }
+        let id = hash_of(hash)?;
         let b = self
             .rt
-            .block_on(self.backend.version(&hash_of(hash)?))?
+            .block_on(self.backend.version(&id))?
             .ok_or_else(|| db("missing version"))?;
-        let v = json(&b)?;
+        let v = json(&self.physical.open(&id, &b)?)?;
         remember(&mut self.versions, hash.to_string(), &v);
         Ok(v)
     }

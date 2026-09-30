@@ -4,6 +4,7 @@
 resolver = "2"
 members = [
     "crates/ubos-types",
+    "crates/ubos-crypto",
     "crates/ubos-store",
     "crates/ubos-tree",
     "crates/ubos-version",
@@ -24,6 +25,7 @@ publish = false
 
 [workspace.dependencies]
 ubos-types = { path = "crates/ubos-types" }
+ubos-crypto = { path = "crates/ubos-crypto" }
 ubos-store = { path = "crates/ubos-store" }
 ubos-tree = { path = "crates/ubos-tree" }
 ubos-version = { path = "crates/ubos-version" }
@@ -50,6 +52,10 @@ cap = "0.1"
 # kernel storage on PostgreSQL (DEC-007, DEC-047)
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "macros", "migrate"] }
 tokio = { version = "1", features = ["rt"] }
+# physical form of stored bytes: zstd, then XChaCha20-Poly1305 (DSN-DVM-002, DEC-048)
+zstd = { version = "0.13", default-features = false }
+chacha20poly1305 = { version = "0.10", default-features = false, features = ["alloc"] }
+getrandom = "0.2"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
