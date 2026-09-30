@@ -1,0 +1,1 @@
+{"clauses":["STD-VER-013"],"description":"branch name 'Feature/x' is invalid","id":"VER-CONF-1297","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"VER.INVALID_BRANCH_NAME"},"input":{"grammar":"branch-name","text":"Feature/x"},"op":"check_name"}],"tags":["prototype"]}

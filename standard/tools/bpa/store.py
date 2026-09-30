@@ -203,12 +203,14 @@ class Store:
 
     # ---- commit (STD-TXN-001…024, STD-KIND-020…025) ----
 
-    def commit(self, branch, changes, process=None):
+    def commit(self, branch, changes, process=None, tx_time=None):
+        if tx_time is not None or any('tx_time' in ch for ch in changes):
+            raise BpaError('TIME.RESERVED_FIELD')
         br = self._branch(branch)
         head = self.commits[br['head']]
         st = copy.deepcopy(head['state'])
         cseq = head['cseq'] + 1
-        result = {'cseq': cseq, 'versions': {}, 'entries': {}}
+        result = {'cseq': cseq, 'versions': {}, 'entries': {}, 'retroactive': []}
         if process and process.get('serializable'):
             for oid, vh in process.get('reads', {}).items():
                 if st['objects'].get(oid, {}).get('head') != vh:
@@ -222,7 +224,7 @@ class Store:
                 if o is not None and o['head'] != ch['base']:
                     stale.append(ch['object_id'])
         if stale:
-            raise BpaError('TXN.HEAD_MOVED', sorted(stale))
+            raise BpaError('TXN.HEAD_MOVED', {'objects': sorted(stale)})
         for ch in changes:
             op = ch.get('op')
             if op == 'create':
@@ -284,6 +286,8 @@ class Store:
             vh = self._version(oid, o['class'], o['slug'], base['body'], {'from': d, 'to': None},
                                predecessor=o['head'], tombstone=True)
             o['timeline'] = tl_apply(o['timeline'], 'end', vh, d)
+            if d < self._default_valid(o['class']):
+                result['retroactive'].append({'object_id': oid, 'from': d, 'to': None})
         else:
             body = dict(base['body'])
             body.update(self._check_body(o['class'], ch.get('body', {}), partial=True))
@@ -295,8 +299,11 @@ class Store:
             b = valid.get('to')
             to = b if kind == 'set_period' else (None if kind == 'replace_future' else tl_range(o['timeline'], kind, a)[1])
             vh = self._version(oid, o['class'], slug, body, {'from': a, 'to': to}, predecessor=o['head'])
+            rng = tl_range(o['timeline'], kind, a, b)
             o['timeline'] = tl_apply(o['timeline'], kind, vh, a, b)
             o['slug'] = slug
+            if rng[0] < self._default_valid(o['class']):
+                result['retroactive'].append({'object_id': oid, 'from': rng[0], 'to': rng[1]})
         o['head'] = vh
         result['versions'][oid] = vh
 
@@ -442,3 +449,193 @@ class Store:
         st = self.commits[self._commit_at(branch, time)]['state']
         ent = self.state_entries(st)
         return {'root': tree_root(ent), 'entries': ent}
+
+    # ---- merge (STD-VER-040…056, DEC-032) ----
+
+    def _anc(self, cid):
+        seen, stack = set(), [cid]
+        while stack:
+            c = stack.pop()
+            if c not in seen:
+                seen.add(c)
+                stack.extend(self.commits[c]['parents'])
+        return seen
+
+    def _base_state(self, xs, ys):
+        """Merge base of two sets of commits; a virtual base for several best ancestors."""
+        ax = set().union(*(self._anc(x) for x in xs))
+        ay = set().union(*(self._anc(y) for y in ys))
+        common = ax & ay
+        best = sorted(c for c in common if not any(c != d and c in self._anc(d) for d in common))
+        acc, tips = self.commits[best[0]]['state'], {best[0]}
+        for c in best[1:]:
+            b = self._base_state(tips, {c})
+            acc, _ = self._merge_states(b, acc, self.commits[c]['state'], virtual=True)
+            tips.add(c)
+        return acc
+
+    def _merge_states(self, B, S, T, virtual=False, cseq=None, branch=None):
+        conflicts, objects = [], {}
+        for oid in sorted(set(B['objects']) | set(S['objects']) | set(T['objects'])):
+            o, c = self._merge_object(oid, B['objects'].get(oid), S['objects'].get(oid), T['objects'].get(oid), virtual)
+            conflicts += c
+            if o is not None:
+                objects[oid] = o
+        ledger = copy.deepcopy(T['ledger'])
+        for key, q in S['ledger'].items():
+            tq = ledger.setdefault(key, [])
+            for e in q:
+                if any(x['entry_id'] == e['entry_id'] for x in tq):
+                    continue
+                for tgt in e.get('corrects', []):
+                    if not any(x['entry_id'] == tgt for x in tq) and not virtual:
+                        raise BpaError('LEDG.CORRECTION_TARGET_MISSING')
+                ne = dict(e, seq=len(tq) + 1, source_seq={'branch': branch, 'seq': e['seq']})
+                if cseq is not None:
+                    ne['cseq'] = cseq
+                tq.append(ne)
+        return {'objects': objects, 'ledger': ledger}, conflicts
+
+    @staticmethod
+    def _same(a, b):
+        return (a is None and b is None) or (a is not None and b is not None and
+                                             a['timeline'] == b['timeline'] and a['head'] == b['head'])
+
+    def _merge_object(self, oid, bo, so, to_, virtual):
+        if self._same(so, to_) or self._same(so, bo):
+            return copy.deepcopy(to_), []
+        if self._same(to_, bo):
+            return copy.deepcopy(so), []
+        meta = to_ or so
+        if meta['kind'] == 'system':
+            return copy.deepcopy(to_), []
+        tls = [x['timeline'] if x else [] for x in (bo, so, to_)]
+        cuts = sorted({s[0] for tl in tls for s in tl} | {s[1] for tl in tls for s in tl if s[1] is not None})
+        bounds = cuts + [None]
+        pieces, conflicts = [], []
+        for i in range(len(cuts)):
+            a, b = bounds[i], bounds[i + 1]
+            vb, vs, vt = (tl_at(tl, a) for tl in tls)
+            vb, vs, vt = (x[2] if x else None for x in (vb, vs, vt))
+            if vs == vt or vs == vb:
+                r = vt
+            elif vt == vb:
+                r = vs
+            elif vs is None or vt is None:
+                conflicts.append({'object_id': oid, 'kind': 'ended_vs_changed'})
+                r = vb
+            elif meta['kind'] == 'raw_document':
+                conflicts.append({'object_id': oid, 'kind': 'raw_document'})
+                r = vb
+            else:
+                r, fc = self._merge_body(oid, vb, vs, vt, virtual)
+                conflicts += fc
+            pieces.append([a, b, r])
+        if conflicts and not virtual:
+            return None, conflicts
+        timeline, created, head = [], [], None
+        for a, b, r in pieces:
+            if r is None:
+                continue
+            if timeline and timeline[-1][1] == a and timeline[-1][2] == r:
+                timeline[-1][1] = b
+            else:
+                timeline.append([a, b, r])
+        final = []
+        for a, b, r in timeline:
+            if isinstance(r, tuple):                      # a merged body: a new version
+                body = dict(r)
+                pred = tl_at(to_['timeline'], a) if to_ else None
+                slug = self.versions[pred[2]]['slug'] if pred else meta['slug']
+                vh = self._version(oid, meta['class'], slug, body, {'from': a, 'to': b},
+                                   predecessor=pred[2] if pred else None)
+                created.append(vh)
+                final.append([a, b, vh])
+            else:
+                final.append([a, b, r])
+        if created:
+            head = created[-1]
+        elif so and final == so['timeline']:
+            head = so['head']
+        else:
+            head = to_['head'] if to_ else so['head']
+        out = copy.deepcopy(meta)
+        out['timeline'], out['head'] = final, head
+        out['slug'] = self.versions[head]['slug']
+        return out, conflicts
+
+    def _merge_body(self, oid, vb, vs, vt, virtual):
+        B = self.versions[vb]['body'] if vb else {}
+        S, T = self.versions[vs]['body'], self.versions[vt]['body']
+        absent = object()
+        out, conflicts = {}, []
+        for k in sorted(set(B) | set(S) | set(T)):
+            b, s, t = B.get(k, absent), S.get(k, absent), T.get(k, absent)
+            if s == t or s == b:
+                r = t
+            elif t == b:
+                r = s
+            else:
+                conflicts.append({'object_id': oid, 'kind': 'field', 'path': '/' + k})
+                r = b
+            if r is not absent:
+                out[k] = r
+        return tuple(sorted(out.items(), key=lambda kv: kv[0])), conflicts
+
+    def merge(self, source, target):
+        s, t = self._branch(source)['head'], self._branch(target)['head']
+        if s in self._anc(t):
+            return {'cseq': self.commits[t]['cseq'], 'merged': False}
+        B = self._base_state({t}, {s})
+        cseq = self.commits[t]['cseq'] + 1
+        st, conflicts = self._merge_states(B, self.commits[s]['state'], self.commits[t]['state'],
+                                           cseq=cseq, branch=source)
+        if conflicts:
+            uniq = []
+            for c in conflicts:
+                if c not in uniq:
+                    uniq.append(c)
+            raise BpaError('VER.MERGE_CONFLICT', {'conflicts': uniq})
+        cid = next(self.ids)
+        self.commits[cid] = {'parents': [t, s], 'state': st, 'cseq': cseq}
+        self.branches[target]['head'] = cid
+        appended = {}
+        for q in st['ledger'].values():
+            for e in q:
+                if e.get('cseq') == cseq and 'source_seq' in e:
+                    appended[e['entry_id']] = {'seq': e['seq'], 'source_seq': e['source_seq']['seq']}
+        return {'cseq': cseq, 'merged': True, 'appended': appended}
+
+    # ---- diff (STD-VER-030) ----
+
+    def _coord(self, c):
+        return self.commits[self._commit_at(c['branch'], c.get('time'))]['state']
+
+    def diff(self, a, b):
+        A, B = self._coord(a), self._coord(b)
+        out = []
+        for oid in sorted(set(A['objects']) | set(B['objects'])):
+            x, y = A['objects'].get(oid), B['objects'].get(oid)
+            if x and y and x['head'] == y['head'] and x['timeline'] == y['timeline']:
+                continue
+            ent = {'object_id': oid, 'class': (y or x)['class'],
+                   'versions': {'a': x['head'] if x else None, 'b': y['head'] if y else None}}
+            if x is None:
+                ent['op'] = 'added'
+            elif self.versions[y['head']]['tombstone'] and not self.versions[x['head']]['tombstone']:
+                ent['op'] = 'ended'
+            else:
+                vx, vy = self.versions[x['head']], self.versions[y['head']]
+                fields = [{'path': '/' + k, 'old': vx['body'].get(k), 'new': vy['body'].get(k)}
+                          for k in sorted(set(vx['body']) | set(vy['body'])) if vx['body'].get(k, ()) != vy['body'].get(k, ())]
+                ent['op'] = 'moved' if vx['slug'] != vy['slug'] and not fields else 'changed'
+                if fields:
+                    ent['fields'] = fields
+            out.append(ent)
+        seen = {e['entry_id'] for q in A['ledger'].values() for e in q}
+        for q in B['ledger'].values():
+            for e in q:
+                if e['entry_id'] not in seen:
+                    out.append({'object_id': e['entry_id'], 'class': e['class'], 'op': 'appended',
+                                'versions': {'a': None, 'b': e['entry_hash']}})
+        return out

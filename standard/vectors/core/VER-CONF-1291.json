@@ -1,0 +1,1 @@
+{"clauses":["STD-VER-013"],"description":"branch name 'feature/new-invoice' is valid","id":"VER-CONF-1291","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":true},"input":{"grammar":"branch-name","text":"feature/new-invoice"},"op":"check_name"}],"tags":["prototype"]}

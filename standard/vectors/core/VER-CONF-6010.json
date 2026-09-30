@@ -1,0 +1,1 @@
+{"clauses":["STD-ERR-002"],"description":"the registered code MODEL.CURRENCY_MISMATCH is used for its condition","id":"VER-CONF-6010","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.CURRENCY_MISMATCH"},"input":{"a":{"amount":"1","currency":"USD"},"b":{"amount":"1","currency":"GBP"},"op":"add"},"op":"money"}],"tags":["prototype"]}

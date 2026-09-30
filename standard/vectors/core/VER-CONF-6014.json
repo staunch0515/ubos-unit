@@ -1,0 +1,1 @@
+{"clauses":["STD-ERR-002"],"description":"the registered code MODEL.CONSTRAINT_VIOLATED is used for its condition","id":"VER-CONF-6014","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.CONSTRAINT_VIOLATED"},"input":{"constraints":{"max":1},"type":"integer","value":2},"op":"validate_value"}],"tags":["prototype"]}

@@ -385,8 +385,8 @@ AI implementer:
 - **Origin:** AR-019, NR-PERF-001, FR-VER-081
 
 ### DSN-DVM-206 — Branch kinds and policies
-- **Statement:** Branch kinds (main, work, release, correction, simulation, agent, device, import) MUST map to a policy record (STD-VER-011) that decides: whether direct commits are allowed, whether a change set is required (`VER.CHANGE_SET_REQUIRED`), which merge targets are allowed, TTL and archival, and which write policy per class applies (STD-VER-012).
-- **Rationale:** Governance by branch kind (FR-VER-022, FR-VER-024).
+- **Statement:** Branch kinds (main, release, draft, feature, agent, overlay, loader, evolution, correction, sandbox, device; STD-VER-011, STD-VER-013) MUST map to a policy record (STD-VER-011) that decides: whether direct commits are allowed, whether a change set is required (`VER.CHANGE_SET_REQUIRED`), which merge targets are allowed, TTL and archival, and which write policy per class applies (STD-VER-012).
+- **Rationale:** Governance by branch kind (FR-VER-022, FR-VER-024). Informal terms elsewhere in this volume map to these kinds: a work branch is a `draft` or `feature` branch, a simulation branch a `sandbox` branch, an import branch a `loader` branch (DEC-032, OQ-006).
 - **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
 - **Personas:** PER-TenantAdministrator
 - **Acceptance:**
