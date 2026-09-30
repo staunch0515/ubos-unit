@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-002"],"description":"a selector is given once","id":"VER-CONF-5242","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"ADDR.CONFLICTING_SELECTORS"},"input":{"uri":"ubos://acme/Customer/c-1?branch=main&branch=main"},"op":"parse_uri"}]}

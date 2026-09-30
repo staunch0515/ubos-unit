@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-001"],"description":"reject a class that is not a class name","id":"VER-CONF-5205","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"uri":"ubos://acme/customer/c-1"},"op":"parse_uri"}]}

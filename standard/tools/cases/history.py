@@ -124,7 +124,7 @@ def ver(S, c1, c2, t1):
     S('STD-VER-011', 'an agent branch reaches main through an approved change set', [
         br('agent/run-1'), commit([c1], branch='agent/run-1'),
         cs('open', uid(40), source='agent/run-1', target='main', title='agent result'),
-        cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:alice'),
+        cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a'),
         cs('merge', uid(40)), read(uid(1))])
     S('STD-VER-011', 'branch kinds and default lifetimes are reported', [
         br('sandbox/try'), br('agent/run-1'), br('evolution/e1'), br('feature/a'), br('overlay/acme'),
@@ -157,7 +157,7 @@ def ver(S, c1, c2, t1):
     S('STD-VER-012', 'the merge commit of an approved change set writes a change_set class', [
         br('feature/tax'), commit([t1], branch='feature/tax'),
         cs('open', uid(40), source='feature/tax', target='main', title='VAT'),
-        cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:alice'),
+        cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a'),
         cs('merge', uid(40)), read(uid(3))])
     S('STD-VER-012', 'overlay branches are protected', [
         br('overlay/acme'), commit([t1], branch='overlay/acme', error='VER.CHANGE_SET_REQUIRED')])
@@ -173,7 +173,7 @@ def ver(S, c1, c2, t1):
     S('STD-VER-012', 'an update of a change_set object on main needs a change set', [
         br('feature/tax'), commit([t1], branch='feature/tax'),
         cs('open', uid(40), source='feature/tax', target='main', title='VAT'),
-        cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:alice'),
+        cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a'),
         cs('merge', uid(40)), read(uid(3), label='h'),
         commit([{'op': 'update', 'object_id': uid(3), 'base': ref_('h', 'version_hash'), 'body': {'rate': '0.3'}}],
                error='VER.CHANGE_SET_REQUIRED')])
@@ -206,39 +206,39 @@ def ver(S, c1, c2, t1):
         cs('submit', uid(40), error='MODEL.REFERENCE_INVALID')],
       classes=ALL + [cls('Invoice', [ref('customer', 'Customer')])])
     S('STD-VER-020', 'approve before submit is not a transition', fa + [
-        open_, cs('approve', uid(40), error='FLOW.TRANSITION_NOT_ALLOWED', approver='did:ubos:acme:alice')])
+        open_, cs('approve', uid(40), error='FLOW.TRANSITION_NOT_ALLOWED', approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a')])
     S('STD-VER-020', 'merge before approval is not a transition', fa + [
         open_, cs('submit', uid(40)), cs('merge', uid(40), error='FLOW.TRANSITION_NOT_ALLOWED')])
     S('STD-VER-020', 'the final approval makes the change set approved', fa + [
-        open_, cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:alice')])
+        open_, cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a')])
     S('STD-VER-020', 'a merged change set records its merge commit', fa + [
-        open_, cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:alice'),
+        open_, cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a'),
         cs('merge', uid(40), 'mg'), op('commit_info', 'ci', branch='main', time=ref_('mg', 'cseq')),
         cs('get', uid(40)), read(uid(1))])
     S('STD-VER-020', 'a rejected change set cannot be merged', fa + [
-        open_, cs('submit', uid(40)), cs('reject', uid(40), approver='did:ubos:acme:alice'),
+        open_, cs('submit', uid(40)), cs('reject', uid(40), approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a'),
         cs('merge', uid(40), error='FLOW.TRANSITION_NOT_ALLOWED')])
     S('STD-VER-020', 'a submitted change set can be abandoned', fa + [
         open_, cs('submit', uid(40)), cs('abandon', uid(40)),
-        cs('approve', uid(40), error='FLOW.TRANSITION_NOT_ALLOWED', approver='did:ubos:acme:alice')])
+        cs('approve', uid(40), error='FLOW.TRANSITION_NOT_ALLOWED', approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a')])
     S('STD-VER-020', 'an approved change set cannot be abandoned', fa + [
-        open_, cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:alice'),
+        open_, cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a'),
         cs('abandon', uid(40), error='FLOW.TRANSITION_NOT_ALLOWED')])
     S('STD-VER-020', 'a merged change set is final', fa + [
-        open_, cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:alice'),
+        open_, cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a'),
         cs('merge', uid(40)), cs('merge', uid(40), error='FLOW.TRANSITION_NOT_ALLOWED')])
     S('STD-VER-020', 'a sandbox branch cannot be the source of a change set', [
         br('sandbox/try'), cs('open', uid(40), error='VER.MERGE_NOT_ALLOWED', source='sandbox/try', target='main',
                               title='x')])
 
     # ---- STD-VER-021 approval invalidation ----
-    approved = fa + [open_, cs('submit', uid(40), 'sub'), cs('approve', uid(40), 'ap', approver='did:ubos:acme:alice')]
+    approved = fa + [open_, cs('submit', uid(40), 'sub'), cs('approve', uid(40), 'ap', approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a')]
     S('STD-VER-021', 'an approval records the preview it approved', approved + [
         op('merge_preview', 'mp', source='feature/a', target='main'), cs('get', uid(40), 'g'),
         {'op': 'normalize_text', 'input': {'text': ref_('g', 'approvals/0/preview')}, 'same_as': 'mp/preview'}])
     S('STD-VER-021', 'a change of the source head invalidates the approvals', [
         br('feature/a'), commit([c1], branch='feature/a', label='f'), open_, cs('submit', uid(40)),
-        cs('approve', uid(40), approver='did:ubos:acme:alice'),
+        cs('approve', uid(40), approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a'),
         commit([upd(uid(1), 'f', {'email': 'a@x.com'})], branch='feature/a'), cs('get', uid(40))])
     S('STD-VER-021', 'an unrelated change of the target keeps the approvals', approved + [
         commit([c2]), cs('get', uid(40)), cs('merge', uid(40)), read(uid(2))])
@@ -246,14 +246,14 @@ def ver(S, c1, c2, t1):
         commit([c1], label='m'), br('feature/a'),
         commit([upd(uid(1), 'm', {'email': 'a@x.com'})], branch='feature/a'),
         cs('open', uid(40), source='feature/a', target='main', title='email'), cs('submit', uid(40)),
-        cs('approve', uid(40), approver='did:ubos:acme:alice'),
+        cs('approve', uid(40), approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a'),
         commit([upd(uid(1), 'm', {'country': 'CA'})]), cs('get', uid(40))])
     S('STD-VER-021', 'an invalidated change set is approved again before it merges', [
         br('feature/a'), commit([c1], branch='feature/a', label='f'), open_, cs('submit', uid(40)),
-        cs('approve', uid(40), approver='did:ubos:acme:alice'),
+        cs('approve', uid(40), approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a'),
         commit([upd(uid(1), 'f', {'email': 'a@x.com'})], branch='feature/a'),
         cs('merge', uid(40), error='FLOW.TRANSITION_NOT_ALLOWED'),
-        cs('approve', uid(40), approver='did:ubos:acme:bob'), cs('merge', uid(40)), read(uid(1))])
+        cs('approve', uid(40), approver='did:ubos:acme:01900000-0000-7000-8000-00000000000b'), cs('merge', uid(40)), read(uid(1))])
 
     # ---- STD-VER-031 diff over the state tree ----
     S('STD-VER-031', 'the tree difference lists exactly the keys of changed objects', [
@@ -335,33 +335,33 @@ def ver(S, c1, c2, t1):
                 commit([upd(uid(1), 'm', {'email': 'b@x.com', 'country': 'MX'})])]
     S('STD-VER-058', 'resolutions choose values and are recorded with the merge commit', conflict + [
         op('merge', 'mg', source='feature/a', target='main', resolutions=[
-            {'object_id': uid(1), 'path': '/email', 'choice': 'source', 'resolver': 'did:ubos:acme:alice'},
-            {'object_id': uid(1), 'path': '/country', 'choice': 'target', 'resolver': 'did:ubos:acme:alice',
+            {'object_id': uid(1), 'path': '/email', 'choice': 'source', 'resolver': 'did:ubos:acme:01900000-0000-7000-8000-00000000000a'},
+            {'object_id': uid(1), 'path': '/country', 'choice': 'target', 'resolver': 'did:ubos:acme:01900000-0000-7000-8000-00000000000a',
              'reason': 'billing country'}]),
         read(uid(1)), op('commit_info', branch='main', time=ref_('mg', 'cseq'))])
     S('STD-VER-058', 'a custom value is recorded by its hash', conflict + [
         op('merge', 'mg', source='feature/a', target='main', resolutions=[
             {'object_id': uid(1), 'path': '/email', 'choice': 'custom', 'value': 'ops@x.com',
-             'resolver': 'did:ubos:acme:alice'},
-            {'object_id': uid(1), 'path': '/country', 'choice': 'base', 'resolver': 'did:ubos:acme:alice'}]),
+             'resolver': 'did:ubos:acme:01900000-0000-7000-8000-00000000000a'},
+            {'object_id': uid(1), 'path': '/country', 'choice': 'base', 'resolver': 'did:ubos:acme:01900000-0000-7000-8000-00000000000a'}]),
         read(uid(1)),
         {'op': 'content_id', 'input': {'domain': 'ubos.chunk.v1', 'value': 'ops@x.com'},
          'same_as': 'mg/resolutions/1/value_hash'}])
     S('STD-VER-058', 'unresolved conflicts still fail the merge', conflict + [
         op('merge', error='VER.MERGE_CONFLICT', source='feature/a', target='main', resolutions=[
-            {'object_id': uid(1), 'path': '/email', 'choice': 'source', 'resolver': 'did:ubos:acme:alice'}])])
+            {'object_id': uid(1), 'path': '/email', 'choice': 'source', 'resolver': 'did:ubos:acme:01900000-0000-7000-8000-00000000000a'}])])
     S('STD-VER-058', 'a resolution that matches no conflict is rejected', conflict + [
         op('merge', error='MODEL.INVALID_VALUE', source='feature/a', target='main', resolutions=[
-            {'object_id': uid(1), 'path': '/email', 'choice': 'source', 'resolver': 'did:ubos:acme:alice'},
-            {'object_id': uid(1), 'path': '/country', 'choice': 'source', 'resolver': 'did:ubos:acme:alice'},
-            {'object_id': uid(1), 'path': '/name', 'choice': 'source', 'resolver': 'did:ubos:acme:alice'}])])
+            {'object_id': uid(1), 'path': '/email', 'choice': 'source', 'resolver': 'did:ubos:acme:01900000-0000-7000-8000-00000000000a'},
+            {'object_id': uid(1), 'path': '/country', 'choice': 'source', 'resolver': 'did:ubos:acme:01900000-0000-7000-8000-00000000000a'},
+            {'object_id': uid(1), 'path': '/name', 'choice': 'source', 'resolver': 'did:ubos:acme:01900000-0000-7000-8000-00000000000a'}])])
     S('STD-VER-058', 'a resolution names its resolver', conflict + [
         op('merge', error='MODEL.DECLARATION_INCOMPLETE', source='feature/a', target='main', resolutions=[
             {'object_id': uid(1), 'path': '/email', 'choice': 'source'}])])
 
     # ---- STD-VER-060 tags ----
     S('STD-VER-060', 'a tag binds a name to a commit and records its signer', [
-        commit([c1]), op('tag', name='q1-close', branch='main', signer='did:ubos:acme:alice'),
+        commit([c1]), op('tag', name='q1-close', branch='main', signer='did:ubos:acme:01900000-0000-7000-8000-00000000000a'),
         op('tag_info', name='q1-close')])
     S('STD-VER-060', 'a tag name is not reused', [
         commit([c1]), op('tag', name='q1-close', branch='main'), commit([c2]),
@@ -451,7 +451,7 @@ def ver(S, c1, c2, t1):
                process=P(3, trigger={'type': 'job', 'ref': 'restock'}, parent_process=uid(502))),
         op('revert', process_id=uid(501), dry_run=True), read(uid(1))])
     S('STD-VER-071', 'reverting a merged change set reverts its merge commit', fa + [
-        open_, cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:alice'), cs('merge', uid(40)),
+        open_, cs('submit', uid(40)), cs('approve', uid(40), approver='did:ubos:acme:01900000-0000-7000-8000-00000000000a'), cs('merge', uid(40)),
         op('revert', change_set=uid(40)), read(uid(1), error='QRY.NOT_FOUND_AT_TIME'), read(uid(1), 'feature/a')])
     S('STD-VER-071', 'a change set that is not merged cannot be reverted', fa + [
         open_, op('revert', error='FLOW.TRANSITION_NOT_ALLOWED', change_set=uid(40))])
@@ -768,7 +768,7 @@ def txn(S, c1, c2):
         commit([c1], process=P(1, trigger={'type': 'webhook'}), error='MODEL.INVALID_VALUE')])
 
     # ---- STD-TXN-040 idempotency keys ----
-    k1 = P(1, idempotency_key='order-7', initiator='did:ubos:acme:alice')
+    k1 = P(1, idempotency_key='order-7', initiator='did:ubos:acme:01900000-0000-7000-8000-00000000000a')
     S('STD-TXN-040', 'a known key with an equal payload returns the stored result without effect', [
         commit([c1], process=k1, label='a'), commit([c1], process=dict(k1, process_id=uid(502)), same_as='a'),
         commit([c2]), op('commit_info', branch='main')])
@@ -776,7 +776,7 @@ def txn(S, c1, c2):
         commit([c1], process=k1), commit([c2], process=k1, error='TXN.IDEMPOTENCY_MISMATCH')])
     S('STD-TXN-040', 'keys are scoped by the initiator', [
         commit([c1], process=k1), commit([c2], process=P(2, idempotency_key='order-7',
-                                                         initiator='did:ubos:acme:bob'))])
+                                                         initiator='did:ubos:acme:01900000-0000-7000-8000-00000000000b'))])
     S('STD-TXN-040', 'records are kept for at least seven days', [
         commit([c1], process=k1, label='a'), now('2026-03-22T09:59:59.000000Z'),
         commit([c1], process=k1, same_as='a')])

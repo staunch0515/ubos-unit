@@ -10,7 +10,7 @@ from . import crypto
 from .canon import canonical, content_id
 from .tree import is_boundary, node_hash, tree_root
 
-NODE_DID = 'did:ubos:acme:node'
+NODE_DID = 'did:ubos:acme:01900000-0000-7000-8000-000000000001'
 NODE_SEED = '01' * 32          # the adapter's initial node key (STD-CONF-005, convention 10)
 ARCHIVE_FORMAT = 'ubos.archive.v1'
 

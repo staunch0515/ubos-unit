@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-001"],"description":"reject a missing scheme","id":"VER-CONF-5204","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"uri":"acme/Customer/c-1"},"op":"parse_uri"}]}

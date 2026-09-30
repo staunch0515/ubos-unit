@@ -1,0 +1,1 @@
+{"clauses":["STD-FND-026"],"description":"the base is a scalar type of STD-FND-020","id":"VER-CONF-0264","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.UNKNOWN_TYPE"},"input":{"type":"Blobby","value":{},"value_types":[{"base":"json","description":"x","name":"Blobby"}]},"op":"validate_value"}]}

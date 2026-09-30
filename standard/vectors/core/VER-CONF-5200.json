@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-001"],"description":"parse a canonical URI","id":"VER-CONF-5200","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"canonical":"ubos://acme/Customer/c-1","class":"Customer","selectors":{},"slug":"c-1","tenant":"acme"}},"input":{"uri":"ubos://acme/Customer/c-1"},"op":"parse_uri"}]}

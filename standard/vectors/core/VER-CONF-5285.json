@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-010"],"description":"reject a registered form without a UUID","id":"VER-CONF-5285","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"did":"did:ubos:acme:alice"},"op":"parse_did"}]}

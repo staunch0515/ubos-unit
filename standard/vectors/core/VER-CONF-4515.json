@@ -1,0 +1,1 @@
+{"clauses":["STD-EXPR-003"],"description":"a validation that is null is not violated","id":"VER-CONF-4515","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"abc"},"input":{"type":"Code","value":"abc","value_types":[{"base":"text","description":"code","name":"Code","validate":"value == null"}]},"op":"validate_value"}]}

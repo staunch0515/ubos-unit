@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-002"],"description":"commit and tag together conflict","id":"VER-CONF-5240","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"ADDR.CONFLICTING_SELECTORS"},"input":{"uri":"ubos://acme/Customer/c-1?tag=q1&commit=sha256:0000000000000000000000000000000000000000000000000000000000000000"},"op":"parse_uri"}]}

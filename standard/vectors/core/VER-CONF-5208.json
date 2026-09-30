@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-001"],"description":"reject a version zero","id":"VER-CONF-5208","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"uri":"ubos://acme/Customer/c-1@v0"},"op":"parse_uri"}]}

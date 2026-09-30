@@ -152,7 +152,7 @@ DAT-DocumentNode:
 ```
 
 ### STD-FND-026 — Custom value types
-- **Clause:** A custom value type MUST declare a base type from STD-FND-020, constraints, an optional L1 validation expression, an optional normaliser (an L1 expression from base to base) and a display format. Stored values MUST be normalised before validation and hashing.
+- **Clause:** A custom value type MUST declare a base type from STD-FND-020, constraints, an optional L1 validation expression, an optional normaliser (an L1 expression from base to base) and a display format. Stored values MUST be normalised before validation and hashing. The normaliser and the validation expression see the value as the variable `value`. A value is first put in the canonical form of the base type, then normalised, then checked against the constraints and the validation expression (`MODEL.CONSTRAINT_VIOLATED`); a validation that is `null` is not violated (STD-EXPR-003). The base is a scalar type (not `composite`, `list`, `map`, `document`, `blob` or `json`), and the name is a class name not used by another value type (DEC-043).
 - **Grammar / Schema:** `DAT-ValueTypeDecl`
 - **Conformance vectors:** VER-CONF-0260…0269
 - **Satisfies:** FR-MODEL-046

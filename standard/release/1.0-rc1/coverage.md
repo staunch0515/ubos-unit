@@ -6,11 +6,11 @@
 
 | Profile | MUST clauses with a range | Covered | Coverage | Vectors | Prototype vectors |
 |---|---|---|---|---|---|
-| Core | 118 | 81 | 69% | 707 | 355 |
+| Core | 118 | 91 | 77% | 881 | 355 |
 | Bitemporal | 10 | 10 | 100% | 61 | 30 |
 | Ledger | 9 | 9 | 100% | 52 | 52 |
 | Proof | 9 | 9 | 100% | 73 | 16 |
-| **All** | **146** | **109** | **75%** | **893** | **453** |
+| **All** | **146** | **119** | **82%** | **1067** | **453** |
 
 ## Clauses
 
@@ -29,7 +29,7 @@
 | STD-FND-023 | Core | yes | 8 (VER-CONF-0200…VER-CONF-0207) |
 | STD-FND-024 | Core | yes | 14 (VER-CONF-0215…VER-CONF-0228) |
 | STD-FND-025 | Core | yes | 8 (VER-CONF-0240…VER-CONF-0247) |
-| STD-FND-026 | Core | yes | **none** |
+| STD-FND-026 | Core | yes | 10 (VER-CONF-0260…VER-CONF-0269) |
 | STD-FND-027 | Core | yes | 8 (VER-CONF-0270…VER-CONF-0277) |
 | STD-OBJ-001 | Core | no | 4 (VER-CONF-0300…VER-CONF-0303) |
 | STD-OBJ-002 | Core | yes | 15 (VER-CONF-0305…VER-CONF-0319) |
@@ -168,15 +168,15 @@
 | STD-CTX-023 | Core | yes | **none** |
 | STD-CTX-024 | Core | yes | **none** |
 | STD-CTX-030 | Core | yes | **none** |
-| STD-EXPR-001 | Core | yes | **none** |
-| STD-EXPR-002 | Core | yes | **none** |
-| STD-EXPR-003 | Core | yes | **none** |
-| STD-EXPR-004 | Core | yes | **none** |
-| STD-EXPR-005 | Core | yes | **none** |
-| STD-EXPR-011 | Core | yes | **none** |
-| STD-ADDR-001 | Core | yes | **none** |
-| STD-ADDR-002 | Core | yes | **none** |
-| STD-ADDR-010 | Core | yes | **none** |
+| STD-EXPR-001 | Core | yes | 23 (VER-CONF-4400…VER-CONF-4422) |
+| STD-EXPR-002 | Core | yes | 21 (VER-CONF-4460…VER-CONF-4480) |
+| STD-EXPR-003 | Core | yes | 16 (VER-CONF-4500…VER-CONF-4515) |
+| STD-EXPR-004 | Core | yes | 11 (VER-CONF-4520…VER-CONF-4530) |
+| STD-EXPR-005 | Core | yes | 48 (VER-CONF-4540…VER-CONF-4587) |
+| STD-EXPR-011 | Core | yes | 11 (VER-CONF-4750…VER-CONF-4760) |
+| STD-ADDR-001 | Core | yes | 16 (VER-CONF-5200…VER-CONF-5215) |
+| STD-ADDR-002 | Core | yes | 7 (VER-CONF-5240…VER-CONF-5246) |
+| STD-ADDR-010 | Core | yes | 11 (VER-CONF-5280…VER-CONF-5290) |
 | STD-ERR-001 | Core | yes | 2 (VER-CONF-6000…VER-CONF-6001) |
 | STD-ERR-002 | Core | yes | 8 (VER-CONF-6010…VER-CONF-6017) |
 | STD-CONF-001 | Core | yes | no range |

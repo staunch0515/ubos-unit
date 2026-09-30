@@ -14,7 +14,7 @@ from .common import CLASSES, NOW, uid, commit, create, base, stock
 S1 = '9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60'   # RFC 8032, test 1
 S2 = '4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb'   # RFC 8032, test 2
 S3 = '03' * 32
-ALICE = 'did:ubos:acme:alice'
+ALICE = 'did:ubos:acme:01900000-0000-7000-8000-00000000000a'
 CID = 'sha256:' + hashlib.sha256(b'invoice 42').hexdigest()
 H = lambda s: 'sha256:' + hashlib.sha256(s.encode()).hexdigest()
 ENT = lambda n: [['o/' + uid(i), H('v%d' % i)] for i in range(n)]
@@ -105,7 +105,7 @@ def cases(g):
       {'seed': S1, 'content_id': CID, 'signer': ALICE, 'key_id': ALICE + '#k1', 'role': 'witness'},
       error='MODEL.INVALID_VALUE')
     P('STD-PROOF-010', 'the signer must be the subject of the DID document', 'verify_signature',
-      {'signature': dict(sig1, signer='did:ubos:acme:bob'), 'content_id': CID, 'did': ALICE_DOC},
+      {'signature': dict(sig1, signer='did:ubos:acme:01900000-0000-7000-8000-00000000000b'), 'content_id': CID, 'did': ALICE_DOC},
       error='PROOF.SIGNATURE_INVALID')
     S('STD-PROOF-010', 'commit records are signed by the node key', [
         commit([create(uid(1))]), op('commit_record', 'r', branch='main'), op('node_did', 'n'),

@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-001"],"description":"reject an authority with three parts","id":"VER-CONF-5209","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"uri":"ubos://a.b.c/Customer/c-1"},"op":"parse_uri"}]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-010"],"description":"reject another method","id":"VER-CONF-5283","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"did":"did:web:acme.example"},"op":"parse_did"}]}

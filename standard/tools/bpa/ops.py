@@ -7,7 +7,8 @@ import hmac
 
 from .classes import linearize, effective_class, public, dispatch, type_selector
 from .store import Store
-from . import crypto, proofs
+from . import crypto, proofs, expr, addr
+from .lang import custom_value, check_value_type
 from .tree import tree_root
 
 ENVELOPE_REQUIRED = ('object_id', 'class', 'class_version', 'schema_version', 'kind', 'slug', 'valid')
@@ -45,12 +46,27 @@ def blind_index(key, type_, constraints, value):
     return 'hmac-sha256:' + mac
 
 
+def _validate(i):
+    """validate_value; since 1.0-rc1 with custom value types given in `value_types` (STD-FND-026)."""
+    decls = i.get('value_types')
+    if decls is None:
+        return values.validate_value(i['type'], i.get('constraints'), i['value'])
+    known = set()
+    for d in decls:
+        check_value_type(d, known)
+        known.add(d['name'])
+    by_name = {d['name']: d for d in decls}
+    if i['type'] in by_name:
+        return custom_value(by_name[i['type']], i['value'], i.get('constraints'))
+    return values.validate_value(i['type'], i.get('constraints'), i['value'])
+
+
 PURE = {
     'canonical_json': lambda i: canonical(i['value']),
     'content_id': lambda i: content_id(i['domain'], i['value']),
     'normalize_text': lambda i: nfc(i['text']),
     'check_name': lambda i: values.check_name(i['grammar'], i['text']),
-    'validate_value': lambda i: values.validate_value(i['type'], i.get('constraints'), i['value']),
+    'validate_value': lambda i: _validate(i),
     'decimal': lambda i: values.decimal_op(i['op'], i['a'], i.get('b'), i.get('scale'), i.get('rounding')),
     'money': lambda i: values.money_op(i['op'], i['a'], i['b']),
     'local_to_instant': lambda i: values.local_to_instant(i['date'], i['time'], i['tz'], i.get('disambiguation')),
@@ -71,6 +87,12 @@ PURE = {
     'aead_decrypt': lambda i: crypto.aead_decrypt(i['alg'], i['key'], i['nonce'], i['ciphertext'], i.get('aad', '')),
     'inclusion_proof': lambda i: proofs.inclusion_proof(i['entries'], i['key']),
     'verify_inclusion': lambda i: proofs.verify_inclusion(i['proof'], i.get('root'), i.get('dids')),
+    # BPA 1.0-rc1, PH-1 step 1e-1 (DEC-043)
+    'check_expr': lambda i: expr.check_expr(i),
+    'eval_expr': lambda i: expr.eval_expr(i),
+    'parse_uri': lambda i: addr.parse_uri(i['uri']),
+    'parse_did': lambda i: addr.parse_did(i['did']),
+    'key_did': lambda i: addr.key_did(i['public_key']),
     'verify_consistency': lambda i: proofs.verify_consistency(i['commits'], i.get('from'), i.get('to'), i.get('dids')),
 }
 
@@ -78,7 +100,7 @@ STATEFUL = {
     'reset': lambda s, i: s.reset(),
     'set_now': lambda s, i: s.set_now(i['now']),
     'set_limits': lambda s, i: s.set_limits(i.get('max_body_bytes'), i.get('max_derivation_inputs')),
-    'load_genesis': lambda s, i: s.load_genesis(i['classes']),
+    'load_genesis': lambda s, i: s.load_genesis(i['classes'], i.get('value_types')),
     'create_branch': lambda s, i: s.create_branch(i['name'], i.get('from', 'main'), i.get('time'), i.get('parent_line')),
     'commit': lambda s, i: s.commit(i['branch'], i['changes'], i.get('process'), i.get('tx_time')),
     'read': lambda s, i: s.read(i['branch'], i['object_id'], i.get('asof'), i),
@@ -119,6 +141,10 @@ STATEFUL = {
     'tenant_root': lambda s, i: s.tenant_root(),
     'export_archive': lambda s, i: s.export_archive(),
     'import_archive': lambda s, i: s.import_archive(i['archive']),
+    # BPA 1.0-rc1, PH-1 step 1e-1 (DEC-043)
+    'resolve': lambda s, i: s.resolve(i['uri']),
+    'query': lambda s, i: s.query(i),
+    'did_document': lambda s, i: s.did_document(i['did']),
 }
 
 OPERATIONS = set(PURE) | set(STATEFUL)
@@ -129,7 +155,9 @@ IMPLEMENTATION_DEPENDENT = ('version_hash', 'entry_hash', 'root', 'head', 'versi
                             'base', 'source_head', 'target_head', 'merged_commit', 'signature',
                             'provenance_ref', 'inputs_commitment', 'class_version',
                             # since 1.0-rc1 (DEC-042): signed records, proofs and archives
-                            'signatures', 'proof', 'records', 'heads', 'archive', 'from_commit', 'to_commit')
+                            'signatures', 'proof', 'records', 'heads', 'archive', 'from_commit', 'to_commit',
+                            # since 1.0-rc1 (DEC-043): query cursors bind a commit
+                            'cursor')
 
 
 def strip(value):

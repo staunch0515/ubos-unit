@@ -256,7 +256,7 @@ class Workflow:
         cid, _ = self._select(branch, sel or {})
         if name in self.tags:
             raise BpaError('VER.TAG_IMMUTABLE', 'tag names are never reused')
-        signer = signer or 'did:ubos:acme:adapter'
+        signer = signer or 'did:ubos:acme:01900000-0000-7000-8000-000000000002'
         rec = {'name': name, 'commit': self.commits[cid]['commit_id'], 'signer': signer}
         self.tags[name] = {'commit': cid, 'branch': branch, 'signer': signer, 'deleted': False,
                            'signature': content_id('ubos.chunk.v1', rec)}
@@ -297,7 +297,7 @@ class Workflow:
                 body[k] = i[k]
         res = self.commit(branch, [{'op': 'create', 'object_id': oid, 'class': 'Release', 'slug': i['tag'],
                                     'body': body}])
-        self.tags[i['tag']] = {'commit': cid, 'branch': branch, 'signer': i.get('signer') or 'did:ubos:acme:adapter',
+        self.tags[i['tag']] = {'commit': cid, 'branch': branch, 'signer': i.get('signer') or 'did:ubos:acme:01900000-0000-7000-8000-000000000002',
                                'deleted': False,
                                'signature': content_id('ubos.chunk.v1', {'name': i['tag'],
                                                                          'commit': self.commits[cid]['commit_id']})}

@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-001"],"description":"reject a slug with capitals","id":"VER-CONF-5206","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"MODEL.INVALID_VALUE"},"input":{"uri":"ubos://acme/Customer/C-1"},"op":"parse_uri"}]}

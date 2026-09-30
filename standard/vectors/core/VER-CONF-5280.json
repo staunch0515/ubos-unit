@@ -1,0 +1,1 @@
+{"clauses":["STD-ADDR-010"],"description":"the key form of an Ed25519 key","id":"VER-CONF-5280","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":"did:ubos:k:z6MktwupdmLXVVqTzCw4i46r4uGyosGXRnR3XjN4Zq7oMMsw"},"input":{"public_key":"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"},"op":"key_did"}]}

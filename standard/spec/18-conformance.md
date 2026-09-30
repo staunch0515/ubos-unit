@@ -63,7 +63,7 @@ DAT-ConformanceReport:
   | `content_id` | `{domain, value}` | content identifier of `domain 0x00 canonical(value)` (STD-FND-010, STD-FND-011) |
   | `normalize_text` | `{text}` | text in NFC (STD-FND-003) |
   | `check_name` | `{grammar, text}` | `true`; grammars `slug`, `class-name`, `member-name`, `namespace`, `branch-name`, `uuid`, `uuid-v7` |
-  | `validate_value` | `{type, constraints, value}` | the canonical value (STD-FND-020…027) |
+  | `validate_value` | `{type, constraints, value}` | the canonical value (STD-FND-020…027); since 1.0-rc1 `value_types` (list of `DAT-ValueTypeDecl`) declares custom types (STD-FND-026) |
   | `decimal` | `{op, a, b, scale, rounding}` | decimal string; `op` is `canonical`, `add`, `sub`, `mul`, `div` or `round` (STD-FND-022) |
   | `money` | `{op, a, b}` | money value; `op` is `add` or `sub` (STD-FND-023) |
   | `local_to_instant` | `{date, time, tz, disambiguation}` | instant (STD-FND-024) |
@@ -77,7 +77,7 @@ DAT-ConformanceReport:
   | `dispatch` | `{classes, class, port, after, extensions}` | `{class, impl}` of the implementation that runs; `after` continues the search as `run.super` does (STD-CLS-020). Since 1.0-rc1. |
   | `type_selector` | `{classes, class, selector, only}` | `{matches, specificity}` (STD-CLS-022). Since 1.0-rc1. |
   | `blind_index` | `{key, type, constraints, value}` | the blind index of the value under the 32-byte hexadecimal key (STD-OBJ-012). Since 1.0-rc1. |
-  | `reset`, `set_now`, `load_genesis` | `{}`, `{now}`, `{classes}` | `true` (STD-CONF-002) |
+  | `reset`, `set_now`, `load_genesis` | `{}`, `{now}`, `{classes}` | `true` (STD-CONF-002); since 1.0-rc1 `load_genesis` also takes `value_types` for fields of custom types (STD-FND-026) |
   | `set_limits` | `{max_body_bytes, max_derivation_inputs}` | `true`; the configured body limit (STD-OBJ-009) and maximum of derivation inputs (STD-TXN-030) for the following operations; `reset` restores the defaults of 16 MiB and 10,000. Since BPA 1.0-rc1. |
   | `create_branch` | `{name, from, parent_line}` | `{head}`, the cseq of the fork commit; since 1.0-rc1 `parent_line` `{branch, mode, pin}` (`pin` a cseq of the parent) creates an inheriting branch that starts empty at cseq 0 (STD-VER-080) |
   | `commit` | `{branch, changes, process}` | `{cseq, versions, entries, retroactive}` (`DAT-AdapterChange`); `process` is `{serializable, reads}` with `reads` mapping objects to the version hashes read; `retroactive` lists `{object_id, from, to}` per retroactive change (STD-TIME-030); a supplied `tx_time` fails with `TIME.RESERVED_FIELD`. Since 1.0-rc1 the result also has `commit_id` and `tx_time`, and `process` may give `process_id`, `kind`, `initiator`, `trigger`, `parent_process`, `idempotency_key`, `effects` (list of `{type, object_id, payload}`) and `abort` (the result is then `{state: aborted}`) (STD-TXN-030…050) |
@@ -89,6 +89,10 @@ DAT-ConformanceReport:
   | `list_objects` | `{branch, class, only, time}` | `{objects}`, the sorted identifiers of live objects matching the class filter (STD-CLS-022). Since 1.0-rc1. |
   | `traverse` | `{branch, object_id, relation, time}` | `{objects}`, the sorted identifiers of live objects reached through a relationship field or an inverse name (STD-CLS-040). Since 1.0-rc1. |
   | `class_at` | `{branch, class, time}` | the effective definition with the extensions visible at that coordinate (STD-CLS-030). Since 1.0-rc1. |
+  | `check_expr` | `{expr, classes, class, params_types, target}` | `{type}`, the static type of an L1 expression with `this` of the class and `params` of the given field declarations (STD-EXPR-001, -002). Since 1.0-rc1. |
+  | `eval_expr` | `{expr, classes, class, this, old, params_types, params, ctx, target, objects, calendars, rates, business_tz, max_units, max_items}` | `{value, type}`; the value is canonical JSON, assigned to `target` (a field declaration) when given; `objects` maps URIs to bodies for `ref` and `exists`; `calendars` and `rates` provide the business calendars and rate objects of the function library (STD-EXPR-001…005). Since 1.0-rc1. |
+  | `parse_uri` | `{uri}` | `{tenant, vae, class, slug, selectors, version, canonical}` (STD-ADDR-001, -002). Since 1.0-rc1. |
+  | `parse_did`, `key_did` | `{did}`; `{public_key}` | `{form, tenant, vae, uuid}` or `{form, public_key}`; the key-form DID of a public key (STD-ADDR-010). Since 1.0-rc1. |
   | `public_key`, `sign` | `{seed}`; `{seed, content_id, signer, key_id, role}` | the Ed25519 public key of a 32-byte hexadecimal seed in base64url; a `DAT-Signature` (STD-PROOF-010). Since 1.0-rc1. |
   | `verify_signature` | `{signature, content_id, did, at}` | `true`; `did` is a DID document `{id, keys}`, `at` the signed time (STD-PROOF-010, -011). Since 1.0-rc1. |
   | `aead_decrypt` | `{alg, key, nonce, aad, ciphertext}` | the plaintext; hexadecimal inputs and output (STD-CONF-011). Since 1.0-rc1. |
@@ -100,6 +104,9 @@ DAT-ConformanceReport:
   | `consistency_proof` | `{branch, from, to}` (cseqs) | `{length, records, from_commit, to_commit}` (STD-PROOF-021). Since 1.0-rc1. |
   | `tenant_root` | `{}` | `{branches, heads, root, signature}` (STD-PROOF-030). Since 1.0-rc1. |
   | `export_archive`, `import_archive` | `{}`; `{archive}` | `{counts, archive}` with counts of version records, entries, commits, refs and tags; `{branches}` mapping each imported branch to its head cseq (STD-PROOF-070). Since 1.0-rc1. |
+  | `resolve` | `{uri}` | the version the URI addresses, as `read`, with `object_id`, `branch`, `redirected` and the current `canonical` URI (STD-ADDR-001, -002). Since 1.0-rc1. |
+  | `query` | `DAT-Query` members `from`, `only`, `where`, `order_by`, `limit`, `cursor`, with `branch`, `asof` and a selector | `{objects, cursor, evaluated_at}`; `cursor` is present when more rows follow (STD-EXPR-011). Since 1.0-rc1. |
+  | `did_document` | `{did}` | the DID document: derived for the key form, the node's own for its registered DID (STD-ADDR-010). Since 1.0-rc1. |
   | `branch_info` | `{branch}` | `{name, kind, state, expires_at, cseq, head, created_from, parent_line}` (STD-VER-010, -011). Since 1.0-rc1. |
   | `set_parent_line` | `{branch, parent_line}` | `true`; replaces the parent line (STD-VER-080). Since 1.0-rc1. |
   | `commit_info` | `{branch}` and a selector | `{branch, cseq, commit_id, tx_time, parents, rule_binding, process_id, change_set, resolutions, reverts}` of the selected commit; `rule_binding.classes` items are `{class, class_version}` or `{class: ClassExtension, object_id, class_version}` (STD-TIME-040). Since 1.0-rc1. |
@@ -123,11 +130,11 @@ DAT-ConformanceReport:
   3. In adapter inputs a class is referenced by its name. A trait is a declaration with `trait: true` and `applies_to`, a list of kinds. A ledger class declares `ledger: {key, amounts, double_entry, period_scope}`; `period_scope` names a class whose objects have the fields `start` and `end` (dates, half-open) and `state` (`open`, `closing`, `closed`).
   4. The business time zone of the adapter is UTC; the posting date of an append is the date of `now` (`set_now`).
   5. An expectation `{error_code, details}` also compares the `details` of the error (`DAT-Error`) with `subset` matching: `TXN.HEAD_MOVED` lists the stale objects in `details.objects`, and `VER.MERGE_CONFLICT` lists `DAT-MergeConflict` items `{object_id, kind, path}` in `details.conflicts`, ordered by object and path.
-  6. Version hashes, entry hashes, roots, commit identifiers, transaction times and signatures of stateful operations are compared only through `same_as` or through the pure operations, because they depend on the implementation's clock, keys and class identifiers. Before an `exact` comparison of a stateful result, the members `version_hash`, `entry_hash`, `root`, `head` and `versions` are removed from it; since 1.0-rc1 also `commit_id`, `tx_time`, `parents`, `created_from`, `evaluated_at`, `preview`, `base`, `source_head`, `target_head`, `merged_commit`, `signature`, `provenance_ref`, `inputs_commitment` and `class_version`, and `signatures`, `proof`, `records`, `heads`, `archive`, `from_commit` and `to_commit`.
+  6. Version hashes, entry hashes, roots, commit identifiers, transaction times and signatures of stateful operations are compared only through `same_as` or through the pure operations, because they depend on the implementation's clock, keys and class identifiers. Before an `exact` comparison of a stateful result, the members `version_hash`, `entry_hash`, `root`, `head` and `versions` are removed from it; since 1.0-rc1 also `commit_id`, `tx_time`, `parents`, `created_from`, `evaluated_at`, `preview`, `base`, `source_head`, `target_head`, `merged_commit`, `signature`, `provenance_ref`, `inputs_commitment` and `class_version`, and `signatures`, `proof`, `records`, `heads`, `archive`, `from_commit`, `to_commit` and `cursor`.
   7. Reference values are canonical URIs `ubos://acme/<Class>/<slug>`: the adapter's tenant is `acme` (since 1.0-rc1).
-  8. The adapter's physical clock reads `now`: a commit's `tx_time` is `now`, or one microsecond after the `tx_time` of the head it extends when that is not earlier (STD-TIME-001). The initial commit of a branch has no `tx_time`. The default initiator is `did:ubos:acme:adapter` (since 1.0-rc1).
+  8. The adapter's physical clock reads `now`: a commit's `tx_time` is `now`, or one microsecond after the `tx_time` of the head it extends when that is not earlier (STD-TIME-001). The initial commit of a branch has no `tx_time`. The default initiator is `did:ubos:acme:01900000-0000-7000-8000-000000000002` (since 1.0-rc1).
   9. A snapshot of a branch is selected by at most one of `time` (cseq), `commit` (commit identifier), `tag` and `tx_time` (instant), or by `evaluated_at` (a map from branch to commit identifier, STD-TIME-015); none selects the head (STD-VER-090) (since 1.0-rc1).
-  10. The adapter's node is `did:ubos:acme:node` with key `did:ubos:acme:node#k1` from the seed of 32 bytes `0x01`; `rotate_node_key` adds `#k2`, `#k3` … Every commit record `{vae, branch, parents, cseq, tx_time, root, signatures}`, the subset of `DAT-Commit` that the adapter keeps, is signed by the current node key (since 1.0-rc1).
+  10. The adapter's node is `did:ubos:acme:01900000-0000-7000-8000-000000000001` with key `did:ubos:acme:01900000-0000-7000-8000-000000000001#k1` from the seed of 32 bytes `0x01`; `rotate_node_key` adds `#k2`, `#k3` … Every commit record `{vae, branch, parents, cseq, tx_time, root, signatures}`, the subset of `DAT-Commit` that the adapter keeps, is signed by the current node key (since 1.0-rc1).
 - **Grammar / Schema:** `DAT-AdapterChange`
 - **Conformance vectors:** —
 - **Satisfies:** FR-STD-021, FR-STD-022
