@@ -29,7 +29,7 @@
 | 2 | TLA+ 模型 `verify/models/{commit_cas,merge,timeline}.tla`，按 DEC-031 检查（能穷举的穷举，否则最大可完成规模穷举加完整规模 100 万条随机模拟），报告见 `verify/models/reports/README.md` | EXIT-0-02 | 已完成（本 PR）：无违规；发现并修正 1 个设计问题（DSN-DVM-208），提出 OQ-004、OQ-005 |
 | 3 | BPA 0.1：Core、Bitemporal、Ledger 条款，JSON Schema，向量格式，至少 300 个向量；覆盖率报告（MUST 条款覆盖至少 80%） | EXIT-0-01 | 已完成（PR #5 与本 PR）：551 个向量（453 个标 `prototype`），MUST 条款覆盖率 94%（68/72），发布清单已生成；待业主签名标签 `bpa-v0.1.0` |
 | 4 | 原型 crate、适配器协议、`forge conform` 运行器；`prototype` 向量 100% 通过；属性测试每条至少 100 万例 | EXIT-0-03、EXIT-0-04 | 已完成：453 个 prototype 向量在内存与 PostgreSQL 上全部通过（EXIT-0-03，见 `verify/reports/exit-0-03/`）；三条性质各 100 万例 0 失败（EXIT-0-04，见 `verify/reports/exit-0-04/`） |
-| 5 | ENV-REF-SERVER 基准测试（读 p95 ≤ 6.25 ms，提交 p50 ≤ 19 ms，diff p95 ≤ 62.5 ms），给出 ASM-003 结论 | EXIT-0-05 | 准备中：5a 已完成（树节点存储、批量增量更新与 diff，VER-PROP-0004）；5b 存储布局、5c 数据生成与基准驱动待做；正式测试需租用主机 |
+| 5 | ENV-REF-SERVER 基准测试（读 p95 ≤ 6.25 ms，提交 p50 ≤ 19 ms，diff p95 ≤ 62.5 ms），给出 ASM-003 结论 | EXIT-0-05 | 准备中：5a 已完成（树节点存储、批量增量更新与 diff，VER-PROP-0004）；5b 已完成（提交改为增量存储，对象索引带 cseq 区间，账本行、树节点与每次提交的根在 flush 中写入）；5c 数据生成与基准驱动待做；正式测试需租用主机 |
 | 6 | Rhai 沙箱初步验证：100 个逃逸用例，给出 ASM-008 结论 | EXIT-0-06 | 已完成：100 个用例全部拦截且重放一致（见 `verify/reports/exit-0-06/`）；ASM-008 对 L2 成立（附条件，DEC-034），提出 OQ-007、OQ-008 |
 | 7 | 根据 PH-0 结果重新制定 PH-1 计划；外部评审；用一条 DEC 记录验收结论 | EXIT-0-07 | 未开始 |
 
