@@ -58,6 +58,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-043 | BPA 1.0-rc1 L1 expressions, queries, addressing and custom value types; part 1e of step 1 split into 1e-1 and 1e-2 | Accepted |
 | DEC-044 | BPA 1.0-rc1 execution: host programs, context, gateway, profiles, metering, entropy, journal and replay, logic assets and verification, instructions, BPU views and automatic retry | Accepted |
 | DEC-045 | Release of BPA 1.0-rc1: notes in the manifest, signed tag `bpa-v1.0.0-rc1`, frozen once tagged | Accepted |
+| DEC-046 | Group commit and ledger sequence model (VER-FORM-0004): two-phase flush, bounds, mutation checks, design clarifications | Accepted |
 
 ---
 
@@ -560,3 +561,16 @@ Decisions are never deleted. A replaced decision is marked
 - **Consequences:** EXIT-1-01 is met when the tag exists. PH-1 step 1 is complete; step 2 (extended formal models, EXIT-1-07) is next.
 - **Alternatives considered:** Keeping the notes outside the manifest was rejected: the known limits belong to what the signature covers. Changing a tagged release in place was rejected: a signed manifest must stay verifiable.
 - **Affects:** DSN-BPA-001, EXIT-1-01, DEC-039
+
+### DEC-046 — Group commit and ledger sequence model (step 2)
+- **Status:** Accepted · **Date:** 2026-09-30
+- **Context:** PH-1 step 2 (DEC-038) checks the extended formal model of VER-FORM-0004 (EXIT-1-07). W-8 asks for the commits of a batch to be prepared in parallel with only the sequencing and tree update serialised, to relieve the sequencer CPU bound found in PH-0 (RSK-016). VER-FORM-0004 states no bound.
+- **Decision:**
+  1. **Model.** `verify/models/group_commit.tla` models one branch with a two-phase flush: parallel preparation without the lock (snapshot, object writes with bases, ledger appends without sequences), then serial sequencing under the branch lock (validation against storage plus the commits accepted earlier in the batch, sequence allocation from the counter row, balance invariant `balance >= 0` after the earlier deltas, abort of the offending process only), then one storage transaction for commits, counter rows and tree update, which may fail; a failed transaction leaves storage unchanged and the batch is sequenced again. Retries follow STD-TXN-023. The tree root is a function of the committed state, so serial equivalence of the history covers the tree update.
+  2. **Properties.** `DenseCseq`, `GapFree`, `PerKeyOrder`, `ProcessAtomic`, `SerialEquivalent`, `BalanceSafe`, `NoFalseConflict`, `FailuresJustified` (`verify/models/README.md`).
+  3. **Bound.** VER-FORM-0004 is checked at 3 processes × 2 nodes × 2 objects × 2 ledger keys × batch 3 × 4 commits with one failed storage transaction, under the rule of DEC-031; CI runs 1 object, 1 ledger key and 3 commits.
+  4. **Sensitivity.** A constant `Mutation` selects seven wrong variants; each must violate its target property (`verify/models/reports/README.md` §5.3).
+  5. **Design clarifications.** DSN-DVM-006 states the two-phase flush; DSN-DVM-402 excludes non-transactional counters such as a PostgreSQL `SEQUENCE` and counts earlier appends of the batch; DSN-DVM-424 is added to VER-FORM-0004; DSN-DVM-006, -402, -404 and -424 list FORM among their verification methods.
+- **Consequences:** EXIT-1-07 is met by the runs recorded in `verify/models/reports/README.md` §5. The kernel of PH-1 steps 3 and 4 implements the two-phase flush; its fault and simulation suites (EXIT-1-05, EXIT-1-06) exercise the same properties on PostgreSQL.
+- **Alternatives considered:** Extending `commit_cas.tla` was rejected: it would change the PH-0 evidence of VER-FORM-0001. Modelling the lock-free head compare-and-set again was rejected: `commit_cas.tla` already checks it (DSN-DVM-208); the new model holds the branch lock as DSN-DVM-006 requires.
+- **Affects:** VER-FORM-0004, EXIT-1-07, DSN-DVM-006, DSN-DVM-402, DSN-DVM-404, DSN-DVM-424, RSK-016

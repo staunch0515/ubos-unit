@@ -218,13 +218,13 @@ This file designs the crates `ubos-time` and `ubos-ledger`; `ubos-txn` is in `03
 - **Origin:** FR-LEDG-011, FR-LEDG-012, STD-KIND-020, STD-KIND-021
 
 ### DSN-DVM-402 — Gap-free sequence allocation
-- **Statement:** Sequence numbers per ledger key MUST be allocated under the branch sequencer lock from a `ledger_sequence` counter row updated in the flush transaction. Because the flush is atomic, an aborted flush MUST leave no gap. Sequences on child branches MUST be local to the branch and reassigned on merge (DSN-DVM-244).
+- **Statement:** Sequence numbers per ledger key MUST be allocated under the branch sequencer lock from a `ledger_sequence` counter row updated in the flush transaction. Because the flush is atomic, an aborted flush MUST leave no gap; a non-transactional counter (for example a PostgreSQL `SEQUENCE`) does not qualify, since it is not rolled back (VER-FORM-0004, DEC-046). Within a batch, the next sequence of a key counts the appends accepted earlier in the same batch. Sequences on child branches MUST be local to the branch and reassigned on merge (DSN-DVM-244).
 - **Rationale:** FR-LEDG-041, STD-KIND-022.
 - **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
 - **Personas:** PER-FundAccountant
 - **Acceptance:**
   1. Given 10,000 appends with 5% injected flush failures, when sequences are verified, then they are gap-free.
-- **Verification:** FAULT, PROP
+- **Verification:** FAULT, PROP, FORM
 - **Origin:** FR-LEDG-041, FR-LEDG-042, STD-KIND-022
 
 ### DSN-DVM-403 — Append cost independent of history
@@ -244,7 +244,7 @@ This file designs the crates `ubos-time` and `ubos-ledger`; `ubos-txn` is in `03
 - **Personas:** PER-FundAccountant
 - **Acceptance:**
   1. Given 200 concurrent appends to one cash account, when flushed, then all succeed with consecutive sequences.
-- **Verification:** SIM, BENCH
+- **Verification:** SIM, BENCH, FORM
 - **Origin:** STD-TXN-024, FR-LEDG-042
 
 ### DSN-DVM-405 — Reversal and adjustment
@@ -357,7 +357,7 @@ This file designs the crates `ubos-time` and `ubos-ledger`; `ubos-txn` is in `03
 - **Personas:** PER-FundAccountant
 - **Acceptance:**
   1. Given a balance of 100 and two concurrent withdrawals of 60, when flushed, then exactly one succeeds.
-- **Verification:** SIM, CONF
+- **Verification:** SIM, CONF, FORM
 - **Origin:** FR-LEDG-034, STD-LGS-030
 
 ### DSN-DVM-425 — Typed projection tables

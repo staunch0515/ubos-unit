@@ -1,0 +1,6 @@
+# group_commit: simulation, 1,000,000 behaviours at the bounds of group_commit.cfg (DEC-031, DEC-046)
+# command: tlc2.TLC -workers 4 -simulate num=1000000 -depth 60 -config group_commit.cfg group_commit.tla
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Computed 1 initial states...
+Finished in 01h 21min at (2026-09-30 13:00:08)
+Progress: 737314895 states checked.

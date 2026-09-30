@@ -73,14 +73,14 @@ depends_on: [UBS-SYS-DVM-02, UBS-ARC-04, UBS-STD-08]
 - **Origin:** AR-016, UBS-ARC-04
 
 ### DSN-DVM-006 — Branch sequencer with group commit
-- **Statement:** Commits to a branch MUST be serialised by a sequencer that holds the branch's head row lock (`SELECT … FOR UPDATE` on `branch_ref`) for the duration of the flush. A node MUST batch concurrently ready processes targeting the same branch into one database transaction, producing consecutive commits (group commit, default batch ≤ 64 or 2 ms). Hot branches MAY be assigned a sequencer leader node by lease, and other nodes forward flushes to it.
+- **Statement:** Commits to a branch MUST be serialised by a sequencer that holds the branch's head row lock (`SELECT … FOR UPDATE` on `branch_ref`) for the duration of the flush. A node MUST batch concurrently ready processes targeting the same branch into one database transaction, producing consecutive commits (group commit, default batch ≤ 64 or 2 ms). Hot branches MAY be assigned a sequencer leader node by lease, and other nodes forward flushes to it. A flush has two phases (W-8, DEC-046): the processes of a batch are prepared in parallel without the lock (snapshot, object writes with their bases, ledger appends without sequences); the sequencer then, under the lock and in batch order, validates each process against its view (DSN-DVM-208), allocates ledger sequences (DSN-DVM-402), evaluates balance invariants (DSN-DVM-424), aborts only an offending process, and writes the accepted commits, counter rows and tree update in one storage transaction. If that transaction fails, the accepted processes are sequenced again; nothing of the batch remains (checked by VER-FORM-0004).
 - **Rationale:** NR-PERF-003 throughput with strict per-branch order.
 - **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM, NOD
 - **Personas:** PER-KernelEngineer
 - **Acceptance:**
   1. Given 500 concurrent single-object processes on `main`, when benchmarked, then the throughput meets NR-PERF-003, and `cseq` is dense.
   2. Given a failed process inside a batch, when flushing, then only that process aborts, and the other commits succeed.
-- **Verification:** BENCH, SIM, FAULT
+- **Verification:** BENCH, SIM, FAULT, FORM
 - **Origin:** DEC-020, NR-PERF-002, NR-PERF-003, STD-TXN-021
 
 ### DSN-DVM-007 — Prolly tree maintenance

@@ -68,3 +68,64 @@ must fail.
 - DSN-BPA-004 (model traces converted into vectors) is part of PH-0 steps 3 and 4.
 
 These limits and the bounds reached are for the external reviewer (DEC-030, DEC-031).
+
+## 5. PH-1 step 2 — group commit and ledger sequences (EXIT-1-07, DEC-046)
+
+| Item | Value |
+|---|---|
+| Date | 2026-09-30 |
+| Tool | TLC 2.19 (`tla2tools.jar` release 1.7.4), as in §1 |
+| Workstation | 4 vCPU, 15 GB RAM, Java 21, `-XX:+UseParallelGC`, 4 workers |
+| Model | `group_commit.tla`, VER-FORM-0004 |
+| Verdict | **no property violated** in any run below |
+
+### 5.1 Runs
+
+| Stated bound (DEC-046) | Exhaustive run | Distinct states | Depth | Time | Simulation at the stated bound | Evidence |
+|---|---|---|---|---|---|---|
+| 3 processes × 2 nodes × 2 objects × 2 ledger keys × batch 3 × 4 commits, 5 transactions, 1 failed storage transaction | 3 × 2 × 2 × 2 × 3 × **2 commits**, 3 transactions | 551,470 | 21 | 27 s | 1,000,000 behaviours, depth ≤ 60, 737,314,895 states checked, 1 h 22 min | `group_commit.exhaustive.txt`, `group_commit.simulation.txt` |
+
+The CI configuration (1 object, 1 ledger key, 3 commits, 4 transactions) completes
+exhaustively: 398,687 distinct states, depth 29, 14 s.
+
+Bound that did not complete: 3 commits with 4 transactions, stopped after 34 min with
+43,338,581 distinct states and 17,618,872 states still on the queue, no violation found
+before stopping.
+
+### 5.2 Findings
+
+None. The model confirms the two-phase flush of W-8 as now stated in DSN-DVM-006. Writing it
+made two points of the design explicit (DEC-046): the ledger counter must be transactional
+(DSN-DVM-402; a PostgreSQL `SEQUENCE` is not rolled back, see mutation `no_rollback`), and
+sequences and balances inside a batch must count the appends accepted earlier in the same
+batch (DSN-DVM-402, DSN-DVM-424; mutations `seq_from_storage`, `pre_batch_balance`).
+
+### 5.3 Sensitivity of the properties (mutation checks)
+
+Each mutation is selected by the constant `Mutation` and checked at the CI bounds against
+its target property alone; the property must fail.
+
+| Mutation | Meaning | Property that failed |
+|---|---|---|
+| `no_rollback` | the counter row advances although the storage transaction failed | `GapFree` |
+| `seq_from_storage` | sequences allocated from storage only, ignoring earlier appends of the batch | `GapFree`, `PerKeyOrder` |
+| `pre_batch_balance` | balance invariant evaluated on the stored balance, ignoring earlier deltas of the batch | `BalanceSafe`, `SerialEquivalent` |
+| `no_batch_view` | bases validated against storage only, ignoring earlier writes of the batch | `SerialEquivalent` |
+| `appends_cas` | appends take part in compare-and-set on the counter | `NoFalseConflict` |
+| `whole_batch_abort` | one failing process aborts every process of its batch | `FailuresJustified` |
+| `partial_install` | the last commit of a batch is stored without its object writes | `ProcessAtomic` |
+
+Command (per mutation `M` and property `P`): copy `group_commit.ci.cfg`, set
+`Mutation = "M"` and `INVARIANTS P`, and run TLC on it.
+
+### 5.4 Scope limits
+
+- One branch; the branch lock is held from sequencing to the end of the storage transaction,
+  as DSN-DVM-006 requires. The lock-free head compare-and-set between nodes is checked by
+  `commit_cas` (§1, DSN-DVM-208); leader leases and forwarding are not modelled.
+- One balance invariant per key (`balance >= 0`) with deposits and withdrawals of one amount;
+  at most one append per key and transaction.
+- Child-branch sequences and their reassignment on merge are checked by `merge` (§1,
+  DSN-DVM-244).
+- The tree is abstracted as a function of the committed state; its incremental update is
+  covered by property VER-PROP-0004.
