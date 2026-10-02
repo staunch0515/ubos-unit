@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (52)
+## DEC (53)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -146,4 +146,5 @@ depends_on: [UBS-IDX-00]
 | DEC-050 | Engine at production quality (step 4) | `90-decisions/000-index.md` |
 | DEC-051 | Versioning in the kernel (step 4b) | `90-decisions/000-index.md` |
 | DEC-052 | Time, ledger and transactions in the kernel (step 4c) | `90-decisions/000-index.md` |
+| DEC-053 | Production identities of the kernel schema (step 4d-1) | `90-decisions/000-index.md` |
 

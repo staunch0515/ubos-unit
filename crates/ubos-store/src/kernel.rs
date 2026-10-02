@@ -1,4 +1,4 @@
-//! Backend-neutral storage traits of the kernel (DSN-DVM-001, DEC-047).
+//! Backend-neutral storage traits of the kernel (DSN-DVM-001, DEC-047, DEC-053).
 //!
 //! [`StoreTx`] is one storage transaction with the write operations the DVM needs;
 //! [`StoreRead`] holds the snapshot reads by commit ordinal. Both use only the row types of
@@ -30,8 +30,10 @@ pub struct BranchRow {
     pub branch_id: i64,
     /// Branch name.
     pub name: String,
-    /// Head commit (engine identifier, transition column of DEC-047).
+    /// Head commit (the engine's internal handle, DEC-053).
     pub head_no: u64,
+    /// Content ID of the head commit; `None` before the first commit.
+    pub head_commit: Option<Hash>,
     /// Ordinal of the head commit.
     pub head_cseq: u64,
     /// Read-through parent and the ordinal it was forked at.
@@ -43,17 +45,24 @@ pub struct BranchRow {
 /// A commit row (`commit`, `commit_parent`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommitRow {
-    /// Engine identifier (transition key, DEC-047).
+    /// The engine's internal handle (a surrogate, not an ordinal; DEC-053).
     pub commit_no: u64,
-    /// Content ID of `body`.
+    /// Commit identifier: content ID of the canonical commit record (STD-VER-001).
     pub commit_id: Hash,
     /// Ordinal on the branch.
     pub cseq: u64,
+    /// Transaction time (canonical instant text); `None` for a genesis commit.
+    pub tx_time: Option<String>,
     /// State root after the commit (STD-PROOF-001).
     pub state_root: Hash,
-    /// Parent commits in order; the first is the previous head.
+    /// Explicit process of the commit (UUID text), if any (DEC-051).
+    pub process_id: Option<String>,
+    /// Initiator of the commit (`did:ubos`), if recorded.
+    pub author: Option<String>,
+    /// Parent commits in order by handle; the first is the previous head. The store
+    /// records them by content ID.
     pub parents: Vec<u64>,
-    /// Canonical commit record.
+    /// The engine's commit record (a superset of the canonical record).
     pub body: Vec<u8>,
 }
 
@@ -84,12 +93,44 @@ pub struct ChunkRow {
 pub struct VersionRow {
     /// Content ID of the version.
     pub version_id: Hash,
-    /// Object identifier.
+    /// Object identifier (UUID text).
     pub object_id: String,
-    /// Class name (transition column, DEC-047).
+    /// Class name (classes are identified by name within a VAE, DEC-053).
     pub class: String,
-    /// Canonical stored record.
+    /// Content ID of the class declaration the version was written under.
+    pub class_version: Hash,
+    /// Kind code ([`kind_code`]).
+    pub kind: u16,
+    /// Valid-time start (canonical date or instant text).
+    pub valid_from: String,
+    /// Valid-time end, `None` when open.
+    pub valid_to: Option<String>,
+    /// Canonical stored record (physical form).
     pub envelope: Vec<u8>,
+}
+
+/// Kind code of a class kind (`object_version.kind`, `head_index.kind`).
+pub fn kind_code(kind: &str) -> u16 {
+    match kind {
+        "definition" => 1,
+        "ledger" => 2,
+        "system" => 3,
+        "raw_document" => 4,
+        "inherit" => 5,
+        _ => 0,
+    }
+}
+
+/// Class kind of a kind code.
+pub fn kind_name(code: u16) -> &'static str {
+    match code {
+        1 => "definition",
+        2 => "ledger",
+        3 => "system",
+        4 => "raw_document",
+        5 => "inherit",
+        _ => "",
+    }
 }
 
 /// A ledger entry to append (`ledger_entry`); its sequence comes from
@@ -102,8 +143,10 @@ pub struct LedgerRow {
     pub ledger_key: Hash,
     /// Sequence within the key on the branch.
     pub seq: u64,
-    /// Entry identifier.
+    /// Entry identifier (UUID text).
     pub entry_id: String,
+    /// Business effect date or instant (canonical text).
+    pub valid_at: String,
     /// Commit ordinal that made the entry visible.
     pub cseq: u64,
     /// Position in the commit (append order).
@@ -136,19 +179,41 @@ pub struct Allocated {
     pub prev_hash: Hash,
 }
 
-/// The engine's state of one object after a commit (transition table `object_state`,
-/// DEC-047) and the kernel index rows derived from it.
+/// The kernel index rows of one object after a commit: its head row (`head_index`) and
+/// its valid-time segments (`temporal_index`), from which the engine's object state is
+/// rebuilt (DEC-053).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IndexRow {
-    /// Object identifier.
+    /// Object identifier (UUID text).
     pub object_id: String,
     /// Class name.
     pub class: String,
-    /// Canonical state, or `None` when the object no longer exists on the branch.
-    pub state: Option<Vec<u8>>,
+    /// False when the object no longer exists on the branch (`hidden`).
+    pub present: bool,
     /// Head version (`head_index`).
     pub head: Option<Hash>,
+    /// Class kind.
+    pub kind: String,
+    /// Current slug.
+    pub slug: String,
+    /// Valid-time granularity of the class: true for `instant`, false for `date`.
+    pub instant: bool,
     /// Valid-time segments `(from, to, version)` (`temporal_index`); `to` `None` is open.
+    pub segments: Vec<(String, Option<String>, Hash)>,
+}
+
+/// The facts of one object at a commit ordinal, as read from the kernel indexes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjectFacts {
+    /// Class name.
+    pub class: String,
+    /// Class kind.
+    pub kind: String,
+    /// Current slug.
+    pub slug: String,
+    /// Head version, `None` when the branch holds no version.
+    pub head: Option<Hash>,
+    /// Valid-time segments `(from, to, version)` in valid-time order.
     pub segments: Vec<(String, Option<String>, Hash)>,
 }
 
@@ -190,22 +255,7 @@ pub struct IdempotencyRow {
     /// Stored outcome.
     pub outcome: Option<Vec<u8>>,
     /// Commit of the outcome.
-    pub commit_no: Option<u64>,
-}
-
-/// An `object_state` row (transition table, DEC-047) as read by the verifiers.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StateRow {
-    /// Object identifier.
-    pub object_id: String,
-    /// First ordinal of the row.
-    pub cseq_from: u64,
-    /// End ordinal (exclusive), [`OPEN`] for the current row.
-    pub cseq_to: u64,
-    /// Class name.
-    pub class: String,
-    /// Canonical state, `None` when removed.
-    pub state: Option<Vec<u8>>,
+    pub commit_id: Option<Hash>,
 }
 
 /// A `head_index` row.
@@ -213,10 +263,20 @@ pub struct StateRow {
 pub struct HeadRow {
     /// Object identifier.
     pub object_id: String,
+    /// First ordinal of the row.
+    pub cseq_from: u64,
+    /// End ordinal (exclusive), [`OPEN`] for the current row.
+    pub cseq_to: u64,
     /// Head version.
     pub version: Option<Hash>,
     /// Class name.
     pub class: String,
+    /// Class kind.
+    pub kind: String,
+    /// Slug.
+    pub slug: String,
+    /// Valid-time granularity: true for `instant`.
+    pub instant: bool,
     /// Removed on the branch.
     pub hidden: bool,
 }
@@ -303,10 +363,11 @@ pub trait StoreTx {
         branch_id: i64,
         expected: u64,
         head_no: u64,
+        head_commit: &Hash,
         head_cseq: u64,
     ) -> Result<bool, BpaError>;
     /// Close the open rows of the objects and write their new rows at `cseq`
-    /// (`object_state`, `head_index`, `temporal_index`; DSN-DVM-005).
+    /// (`head_index`, `temporal_index`; DSN-DVM-005).
     async fn upsert_index_rows(
         &mut self,
         branch_id: i64,
@@ -322,7 +383,7 @@ pub trait StoreTx {
         branch_id: i64,
         requests: &[SequenceRequest],
     ) -> Result<Vec<Allocated>, BpaError>;
-    /// Append outbox rows of a commit (STD-TXN-070).
+    /// Append outbox rows of a commit (STD-TXN-050).
     async fn outbox_append(&mut self, branch_id: i64, rows: &[OutboxRow]) -> Result<(), BpaError>;
     /// Store an idempotency record; false when the key exists.
     async fn idempotency_put(&mut self, row: &IdempotencyRow) -> Result<bool, BpaError>;
@@ -352,20 +413,21 @@ pub trait StoreRead {
     async fn chunk(&self, id: &Hash) -> Result<Option<ChunkRow>, BpaError>;
     /// A tree node.
     async fn node(&self, id: &Hash) -> Result<Option<Vec<u8>>, BpaError>;
-    /// The object row of the branch visible at `cseq`: `Some(state or None)` when present.
+    /// The object of the branch visible at `cseq`: `Some(facts, or None when removed)`
+    /// when the branch has a row for it.
     async fn object(
         &self,
         branch_id: i64,
         cseq: u64,
         object_id: &str,
-    ) -> Result<Option<Option<Vec<u8>>>, BpaError>;
-    /// All object rows of the branch visible at `cseq`, optionally of one class.
+    ) -> Result<Option<Option<ObjectFacts>>, BpaError>;
+    /// All objects of the branch visible at `cseq`, optionally of one class.
     async fn objects(
         &self,
         branch_id: i64,
         cseq: u64,
         class: Option<&str>,
-    ) -> Result<Vec<(String, Option<Vec<u8>>)>, BpaError>;
+    ) -> Result<Vec<(String, Option<ObjectFacts>)>, BpaError>;
     /// Ledger entries of the branch up to `cseq` in append order.
     async fn entries(
         &self,
@@ -377,15 +439,11 @@ pub trait StoreRead {
     async fn meta(&self, key: &str) -> Result<Option<Vec<u8>>, BpaError>;
     /// The commits of a branch as `(commit_no, cseq)`, by ordinal.
     async fn branch_commits(&self, branch_id: i64) -> Result<Vec<(u64, u64)>, BpaError>;
-    /// The `object_state` rows of a branch whose `cseq_from` lies in `[from, to]`.
-    async fn state_rows(
-        &self,
-        branch_id: i64,
-        from: u64,
-        to: u64,
-    ) -> Result<Vec<StateRow>, BpaError>;
-    /// The `head_index` rows of a branch.
-    async fn head_rows(&self, branch_id: i64) -> Result<Vec<HeadRow>, BpaError>;
+    /// The commit records of a branch as `(cseq, body)`, by ordinal (verifiers).
+    async fn commit_bodies(&self, branch_id: i64) -> Result<Vec<(u64, Vec<u8>)>, BpaError>;
+    /// The `head_index` rows of a branch whose `cseq_from` lies in `[from, to]`.
+    async fn head_rows(&self, branch_id: i64, from: u64, to: u64)
+    -> Result<Vec<HeadRow>, BpaError>;
     /// The `temporal_index` rows of a branch whose `cseq_from` lies in `[from, to]`.
     async fn temporal_rows(
         &self,

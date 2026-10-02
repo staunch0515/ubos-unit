@@ -1060,6 +1060,9 @@ fn commit_on(
     if process.explicit {
         tx.extra.insert("process_id".into(), json!(process.id));
     }
+    if let Some(a) = process.p.get("initiator").filter(|v| v.is_string()) {
+        tx.extra.insert("author".into(), a.clone());
+    }
     tx.extra
         .insert("retroactive".into(), result["retroactive"].clone());
     tx.extra.insert(

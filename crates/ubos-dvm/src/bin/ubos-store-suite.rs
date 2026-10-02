@@ -121,6 +121,7 @@ impl Suite {
             branch_id: 0,
             name: name.into(),
             head_no: 0,
+            head_commit: None,
             head_cseq: 0,
             parent: None,
             depth: 0,
@@ -189,8 +190,12 @@ fn tx_rollback(s: &mut Suite) -> Outcome {
         let mut tx = b.begin().await?;
         tx.put_versions(&[VersionRow {
             version_id: id,
-            object_id: "rollback".into(),
+            object_id: oid(9000),
             class: "Customer".into(),
+            class_version: id,
+            kind: 1,
+            valid_from: "2026-01-01".into(),
+            valid_to: None,
             envelope: vec![1, 2, 3],
         }])
         .await?;
@@ -212,10 +217,14 @@ fn tx_head_cas(s: &mut Suite) -> Outcome {
     let b = s.backend.clone();
     let (first, second) = s.rt.block_on(async move {
         let mut tx = b.begin().await?;
-        let first = tx.cas_branch_head(bid, 0, 10, 1).await?;
+        let first = tx
+            .cas_branch_head(bid, 0, 10, &sha("suite/cas/10"), 1)
+            .await?;
         tx.commit().await?;
         let mut tx = b.begin().await?;
-        let second = tx.cas_branch_head(bid, 0, 11, 1).await?;
+        let second = tx
+            .cas_branch_head(bid, 0, 11, &sha("suite/cas/11"), 1)
+            .await?;
         tx.rollback().await?;
         Ok::<_, BpaError>((first, second))
     })?;
@@ -307,7 +316,7 @@ fn index_corruption(s: &mut Suite) -> Outcome {
     let row = s
         .rt
         .block_on(
-            sqlx::query("SELECT valid_from, cseq_from, version_id FROM temporal_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND object_id = $4 AND cseq_to = 9223372036854775807 LIMIT 1")
+            sqlx::query("SELECT valid_from::text, cseq_from, version_id FROM temporal_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND object_id = $4::uuid AND cseq_to = 9223372036854775807 LIMIT 1")
                 .bind(&t)
                 .bind(&v)
                 .bind(bid)
@@ -318,7 +327,7 @@ fn index_corruption(s: &mut Suite) -> Outcome {
     let (from, cseq, saved): (String, i64, Vec<u8>) = (row.get(0), row.get(1), row.get(2));
     let set = |c: &mut PgConnection, ver: Vec<u8>| {
         s.rt.block_on(
-            sqlx::query("UPDATE temporal_index SET version_id = $6 WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND object_id = $4 AND valid_from = $5 AND cseq_from = $7")
+            sqlx::query("UPDATE temporal_index SET version_id = $6 WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND object_id = $4::uuid AND valid_from = $5::timestamptz AND cseq_from = $7")
                 .bind(&t)
                 .bind(&v)
                 .bind(bid)
@@ -376,7 +385,8 @@ fn sequences_gap_free(s: &mut Suite) -> Outcome {
                     class: "StockMove".into(),
                     ledger_key: key_hash("{\"item\":\"seq\"}"),
                     seq: a[0].first_seq,
-                    entry_id: format!("seq-{i}"),
+                    entry_id: oid(20_000 + i),
+                    valid_at: "2026-01-01".into(),
                     cseq: u64::from(i) + 1,
                     idx: 0,
                     prev_hash: a[0].prev_hash,
@@ -433,7 +443,8 @@ fn sequences_concurrent(s: &mut Suite) -> Outcome {
                         class: "GlEntry".into(),
                         ledger_key: key,
                         seq: a[0].first_seq,
-                        entry_id: format!("cash-{i}"),
+                        entry_id: oid(30_000 + i),
+                        valid_at: "2026-01-01".into(),
                         cseq: 1,
                         idx: i,
                         prev_hash: a[0].prev_hash,
@@ -575,7 +586,7 @@ fn version_sealed(s: &mut Suite) -> Outcome {
     let rows =
         s.rt.block_on(
             sqlx::query(
-                "SELECT envelope FROM object_version WHERE tenant_id = $1::uuid AND object_id = $2",
+                "SELECT envelope FROM object_version WHERE tenant_id = $1::uuid AND object_id = $2::uuid",
             )
             .bind(&t)
             .bind(&target)
@@ -596,7 +607,7 @@ fn version_sealed(s: &mut Suite) -> Outcome {
     ))
 }
 
-const TABLES: [&str; 15] = [
+const TABLES: [&str; 14] = [
     "kernel_meta",
     "branch_ref",
     "commit",
@@ -606,7 +617,6 @@ const TABLES: [&str; 15] = [
     "ledger_entry",
     "ledger_sequence",
     "merkle_node",
-    "object_state",
     "head_index",
     "temporal_index",
     "derivation_edge",
