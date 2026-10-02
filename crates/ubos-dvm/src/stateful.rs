@@ -1,8 +1,11 @@
 //! Stateful adapter operations (STD-CONF-005): branches, commits, reads, merge, diff, state.
 
 use crate::relations::{Checks, extensions_of, needs_full_state};
+use crate::transactions::{
+    derivation_of, derived_entry, effects, pending_starts, schedule, segment,
+};
 use serde_json::{Map, Value, json};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use ubos_model::Registry;
 use ubos_store::{Group, MemStore, Store};
 use ubos_types::{BpaError, canonical, names};
@@ -143,6 +146,13 @@ impl Engine {
             &mut next,
         )?;
         self.next_process = next;
+        // STD-TXN-040: a known key returns the stored result without effect.
+        let idem = Engine::idempotency(&p, input)?;
+        if let Some((key, hash)) = &idem
+            && let Some(result) = self.replay(key, hash)?
+        {
+            return Ok(result);
+        }
         let now = self.now.clone();
         let meta = self.branch_meta(&branch)?;
         if ubos_version::expires_of(&meta)?.is_some_and(|exp| now >= exp) {
@@ -160,6 +170,7 @@ impl Engine {
             &p,
             false,
             &meta,
+            self.max_inputs,
         );
         let (r, classes) = match r {
             Ok(x) => x,
@@ -175,6 +186,9 @@ impl Engine {
             "committed",
             Some((&branch, r["cseq"].as_u64().unwrap_or_default())),
         )?;
+        if let Some((key, hash)) = &idem {
+            self.remember(key, hash, &r)?;
+        }
         self.instances.extend(classes);
         Ok(r)
     }
@@ -223,6 +237,7 @@ impl Engine {
                 &p,
                 false,
                 &meta,
+                self.max_inputs,
             ) {
                 Ok((r, c)) => {
                     out.push(Ok(r));
@@ -245,14 +260,20 @@ impl Engine {
     /// True when a read needs the resolved view (selectors beyond `time`, provenance, or a
     /// branch with a parent line); otherwise the object index answers directly.
     fn needs_view(&mut self, branch: &str, input: &Value) -> Result<bool, BpaError> {
-        if ["commit", "tag", "tx_time", "evaluated_at", "provenance"]
-            .iter()
-            .any(|k| {
-                input
-                    .get(k)
-                    .is_some_and(|v| !v.is_null() && v != &json!(false))
-            })
-        {
+        if [
+            "commit",
+            "tag",
+            "tx_time",
+            "evaluated_at",
+            "provenance",
+            "follow",
+        ]
+        .iter()
+        .any(|k| {
+            input
+                .get(k)
+                .is_some_and(|v| !v.is_null() && v != &json!(false))
+        }) {
             return Ok(true);
         }
         Ok(Repo::new(self.store.as_mut(), &self.registry)
@@ -261,14 +282,27 @@ impl Engine {
             .is_some())
     }
 
-    /// `read` (STD-TIME-012, STD-VER-080, -081, -090).
-    pub fn read(&mut self, input: &Value) -> Result<Value, BpaError> {
-        let branch = s(input, "branch").unwrap_or("main");
-        let oid = s(input, "object_id").unwrap_or_default();
+    /// An object of a bitemporal read with its provenance, the evaluation evidence
+    /// (STD-TIME-015) and, on the view path, the resolved state.
+    #[allow(clippy::type_complexity)]
+    pub fn object_view(
+        &mut self,
+        branch: &str,
+        input: &Value,
+        oid: &str,
+    ) -> Result<
+        (
+            ObjectState,
+            Option<(String, u64)>,
+            BTreeMap<String, String>,
+            Option<ubos_version::State>,
+        ),
+        BpaError,
+    > {
         let time = input.get("time").and_then(Value::as_u64);
         let view = self.needs_view(branch, input)?;
         let mut repo = Repo::new(self.store.as_mut(), &self.registry);
-        let (o, prov, ev) = if view {
+        if view {
             let (v, _) = repo.view(branch, input)?;
             let o = v
                 .state
@@ -276,30 +310,56 @@ impl Engine {
                 .get(oid)
                 .cloned()
                 .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown object"))?;
-            (o, v.provenance.get(oid).cloned(), Some(v.evaluated_at))
+            let prov = v.provenance.get(oid).cloned();
+            Ok((o, prov, v.evaluated_at, Some(v.state)))
         } else {
-            repo.select(branch, input)?;
+            let snap = repo.select(branch, input)?;
             let o = repo
                 .object_at(branch, time, oid)?
                 .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown object"))?;
-            (o, None, None)
-        };
+            let ev = BTreeMap::from([(branch.to_string(), repo.commit(snap.commit)?.commit_id)]);
+            Ok((o, None, ev, None))
+        }
+    }
+
+    /// Evaluation evidence of a ledger read on the index path.
+    fn evidence(
+        &mut self,
+        branch: &str,
+        input: &Value,
+    ) -> Result<BTreeMap<String, String>, BpaError> {
+        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+        let snap = repo.select(branch, input)?;
+        Ok(BTreeMap::from([(
+            branch.to_string(),
+            repo.commit(snap.commit)?.commit_id,
+        )]))
+    }
+
+    /// `read` (STD-TIME-012, -013, -015, STD-VER-080, -081, -090).
+    pub fn read(&mut self, input: &Value) -> Result<Value, BpaError> {
+        let branch = s(input, "branch").unwrap_or("main");
+        let oid = s(input, "object_id").unwrap_or_default();
+        let (o, prov, ev, st) = self.object_view(branch, input, oid)?;
         let a = s(input, "asof")
             .map(str::to_string)
             .unwrap_or_else(|| self.default_valid(&o.class));
         let mut repo = Repo::new(self.store.as_mut(), &self.registry);
         let seg = at(&o.timeline, &a)
             .ok_or_else(|| BpaError::new("QRY.NOT_FOUND_AT_TIME", "no segment at asof"))?;
-        let v = repo.version(&seg.version)?;
-        let mut out = json!({"version_hash": seg.version, "body": v["body"], "slug": v["slug"], "valid": {"from": seg.from, "to": seg.to}});
-        if let Some(ev) = ev {
-            out["evaluated_at"] = json!(ev);
-        }
+        let mut out = segment(&mut repo, &seg.from, seg.to.as_deref(), &seg.version)?;
+        out["evaluated_at"] = json!(ev);
         if input.get("provenance") == Some(&json!(true))
             && let Some((b, cid)) = prov
         {
             let c = repo.commit(cid)?;
             out["provenance"] = json!({"branch": b, "cseq": c.cseq, "commit_id": c.commit_id});
+        }
+        if let Some(field) = s(input, "follow")
+            && let Some(st) = &st
+        {
+            let body = out["body"].clone();
+            out["targets"] = json!(self.follow(st, &o, &body, field, &a)?);
         }
         Ok(out)
     }
@@ -310,17 +370,21 @@ impl Engine {
         let time = input.get("time").and_then(Value::as_u64);
         let key = canonical(input.get("ledger_key").unwrap_or(&Value::Null))?;
         let class = s(input, "class").unwrap_or_default();
-        let entries = if self.needs_view(branch, input)? {
+        let (entries, ev) = if self.needs_view(branch, input)? {
             let (v, _) = Repo::new(self.store.as_mut(), &self.registry).view(branch, input)?;
-            v.state
+            let q = v
+                .state
                 .ledger
                 .iter()
                 .find(|(c, k, _)| c == class && *k == key)
                 .map(|x| x.2.clone())
-                .unwrap_or_default()
+                .unwrap_or_default();
+            (q, v.evaluated_at)
         } else {
-            Repo::new(self.store.as_mut(), &self.registry).select(branch, input)?;
-            Repo::new(self.store.as_mut(), &self.registry).ledger_at(branch, time, class, &key)?
+            let ev = self.evidence(branch, input)?;
+            let q = Repo::new(self.store.as_mut(), &self.registry)
+                .ledger_at(branch, time, class, &key)?;
+            (q, ev)
         };
         let asof = s(input, "asof");
         let mut out = Vec::new();
@@ -335,9 +399,12 @@ impl Engine {
             if let Some(c) = &e.correction_type {
                 r["correction_type"] = json!(c);
             }
+            if let Some(p) = &e.provenance_ref {
+                r["provenance_ref"] = json!(p);
+            }
             out.push(r);
         }
-        Ok(json!({"entries": out}))
+        Ok(json!({"entries": out, "evaluated_at": ev}))
     }
 
     /// `create_branch`, `merge`, `diff` and `export_state`.
@@ -425,6 +492,37 @@ impl Engine {
                     s(input, "process_id").unwrap_or_default(),
                     s(input, "direction").unwrap_or("ancestors"),
                 )
+            }
+            "read_range" => {
+                drop(repo);
+                self.read_range(input)
+            }
+            "history" => {
+                drop(repo);
+                self.history(input)
+            }
+            "derivation" => {
+                drop(repo);
+                self.derivation(input)
+            }
+            "impact" => {
+                drop(repo);
+                self.impact(
+                    s(input, "branch").unwrap_or("main"),
+                    input.get("time").and_then(Value::as_u64),
+                )
+            }
+            "outbox" => {
+                drop(repo);
+                self.outbox()
+            }
+            "ack" => {
+                drop(repo);
+                self.ack(input.get("effect_ids").unwrap_or(&Value::Null))
+            }
+            "bulk" => {
+                drop(repo);
+                self.bulk(input)
             }
             "diff" => repo.diff(
                 input.get("from").unwrap_or(&Value::Null),
@@ -520,6 +618,7 @@ fn create(
     ch: &Value,
     default_valid: &dyn Fn(&str) -> String,
     result: &mut Value,
+    provenance: Option<&str>,
 ) -> Result<(), BpaError> {
     let oid = s(ch, "object_id").unwrap_or_default().to_string();
     let class = s(ch, "class").unwrap_or_default().to_string();
@@ -547,7 +646,9 @@ fn create(
         .and_then(|v| s(v, "from"))
         .map(str::to_string)
         .unwrap_or_else(|| default_valid(&class));
-    let vh = repo.new_version(tx, &oid, &class, &slug, &body, &a, None, None, false)?;
+    let vh = repo.new_version(
+        tx, &oid, &class, &slug, &body, &a, None, None, false, provenance,
+    )?;
     let timeline = ubos_time::apply(&[], "create", &vh, &a, None).map_err(tl_err)?;
     tx.state.objects.insert(
         oid.clone(),
@@ -570,6 +671,7 @@ fn update(
     op: &str,
     default_valid: &dyn Fn(&str) -> String,
     result: &mut Value,
+    provenance: Option<&str>,
 ) -> Result<(), BpaError> {
     let oid = s(ch, "object_id").unwrap_or_default().to_string();
     let Some(o) = repo.obj(tx, &oid)? else {
@@ -607,6 +709,7 @@ fn update(
             None,
             Some(&o.head),
             true,
+            None,
         )?;
         obj.timeline = ubos_time::apply(&o.timeline, "end", &vh, &d, None).map_err(tl_err)?;
         obj.head = vh;
@@ -641,6 +744,7 @@ fn update(
             to.as_deref(),
             Some(&o.head),
             false,
+            provenance,
         )?;
         obj.timeline =
             ubos_time::apply(&o.timeline, kind, &vh, &a, b.as_deref()).map_err(tl_err)?;
@@ -664,6 +768,7 @@ pub fn object(v: &Value) -> Map<String, Value> {
 }
 
 /// The commit operation over any store; returns the result and the classes touched.
+#[allow(clippy::too_many_arguments)]
 fn commit_on(
     store: &mut dyn Store,
     registry: &Registry,
@@ -672,6 +777,7 @@ fn commit_on(
     process: &crate::versioning::Process,
     via_change_set: bool,
     meta: &ubos_version::BranchMeta,
+    max_inputs: u64,
 ) -> Result<(Value, Vec<String>), BpaError> {
     let changes = input
         .get("changes")
@@ -733,6 +839,9 @@ fn commit_on(
     }
     let full = full || has_parent_line;
     let mut ended: Vec<(String, String)> = Vec::new();
+    // Derived outputs of this commit and the logic that produced them (STD-TXN-030).
+    let mut derived: Vec<Value> = Vec::new();
+    let mut logic: BTreeSet<String> = BTreeSet::new();
     let mut result = json!({"cseq": tx.cseq, "versions": {}, "entries": {}, "retroactive": []});
     if let Some(p) = input.get("process")
         && p.get("serializable") == Some(&Value::Bool(true))
@@ -769,10 +878,19 @@ fn commit_on(
         ));
     }
     for ch in &changes {
+        let deriv = derivation_of(&mut repo, &tx, ch, &process.id, max_inputs)?;
+        let rid = deriv.as_ref().map(|d| d.0.as_str());
+        if let Some((_, l)) = &deriv {
+            logic.extend(l.iter().cloned());
+        }
         match s(ch, "op").unwrap_or_default() {
             "create" => {
-                create(&mut repo, &mut tx, ch, &default_valid, &mut result)?;
+                create(&mut repo, &mut tx, ch, &default_valid, &mut result, rid)?;
                 let oid = s(ch, "object_id").unwrap_or_default();
+                if let Some(r) = rid {
+                    let vh = result["versions"][oid].as_str().unwrap_or_default();
+                    derived.push(derived_entry("object", oid, vh, r));
+                }
                 let a = result["versions"][oid].as_str().map(|_| ());
                 let from = tx
                     .state
@@ -835,7 +953,11 @@ fn commit_on(
                 }
                 let oid = s(ch, "object_id").unwrap_or_default().to_string();
                 let before = tx.state.objects.get(&oid).map(|o| o.timeline.clone());
-                update(&mut repo, &mut tx, ch, op, &default_valid, &mut result)?;
+                update(&mut repo, &mut tx, ch, op, &default_valid, &mut result, rid)?;
+                if let (Some(r), "update") = (rid, op) {
+                    let vh = result["versions"][&oid].as_str().unwrap_or_default();
+                    derived.push(derived_entry("object", &oid, vh, r));
+                }
                 if op == "end" {
                     let d = ended.last().map(|x| x.1.clone()).unwrap_or_default();
                     Repo::op(&mut tx, &oid, "end", Some(&d), None);
@@ -863,7 +985,12 @@ fn commit_on(
                 }
             }
             op @ ("append" | "reverse" | "adjust") => {
-                let (id, seq) = repo.append(&mut tx, ch, op, &today, &default_valid)?;
+                let (id, seq) = repo.append(&mut tx, ch, op, &today, &default_valid, rid)?;
+                if let Some(r) = rid
+                    && let Some(e) = tx.appended.last()
+                {
+                    derived.push(derived_entry("entry", &id, &e.entry_hash, r));
+                }
                 result["entries"][id] = json!({"seq": seq});
             }
             _ => return Err(BpaError::new("MODEL.INVALID_VALUE", "unknown change")),
@@ -918,8 +1045,18 @@ fn commit_on(
         }
     }
     // Commit record members (STD-TIME-040, DEC-041).
-    let binding = rule_binding_of(&mut repo, &tx, reg, &result["versions"], &result["entries"])?;
+    let binding = rule_binding_of(
+        &mut repo,
+        &tx,
+        reg,
+        &result["versions"],
+        &result["entries"],
+        &logic,
+    )?;
     tx.extra.insert("rule_binding".into(), binding);
+    if !derived.is_empty() {
+        tx.extra.insert("derived".into(), Value::Array(derived));
+    }
     if process.explicit {
         tx.extra.insert("process_id".into(), json!(process.id));
     }
@@ -935,10 +1072,14 @@ fn commit_on(
         ),
     );
     let head = tx.head;
+    let pending = pending_starts(reg, now_, &branch, &tx.state, &result["versions"]);
     let id = repo.write(tx, vec![head])?;
     let c = repo.commit(id)?;
     result["commit_id"] = json!(c.commit_id);
     result["tx_time"] = json!(c.tx_time);
+    // STD-TXN-050, STD-TIME-050: effects and future segment starts after the write.
+    effects(repo.store, process, &branch, c.cseq)?;
+    schedule(repo.store, &pending)?;
     Ok((result, classes))
 }
 
@@ -949,6 +1090,7 @@ fn rule_binding_of(
     reg: &Registry,
     versions: &Value,
     entries: &Value,
+    logic: &BTreeSet<String>,
 ) -> Result<Value, BpaError> {
     let mut names: BTreeSet<String> = BTreeSet::new();
     for oid in versions.as_object().map(|m| m.keys()).into_iter().flatten() {
@@ -983,5 +1125,9 @@ fn rule_binding_of(
             }
         }
     }
-    Ok(json!({"classes": items}))
+    let mut out = json!({"classes": items});
+    if !logic.is_empty() {
+        out["logic"] = json!(logic);
+    }
+    Ok(out)
 }

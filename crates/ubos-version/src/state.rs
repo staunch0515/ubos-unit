@@ -84,6 +84,12 @@ pub struct Entry {
     /// `{branch, seq}` where the entry was first appended, after merges.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub source_seq: Option<Value>,
+    /// Derivation record that produced the entry (STD-TXN-030).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub provenance_ref: Option<String>,
+    /// Canonical URIs of the objects the entry was posted from.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub source_refs: Option<Vec<String>>,
 }
 
 /// Adapter clock when a transaction names none (STD-CONF-002 `set_now`).
@@ -210,6 +216,7 @@ pub fn version_record(
     to: Option<&str>,
     predecessor: Option<&str>,
     tombstone: bool,
+    provenance: Option<&str>,
 ) -> Result<(String, Value), BpaError> {
     let c = reg.class(class)?;
     let valid = json!({"from": from, "to": to});
@@ -223,8 +230,14 @@ pub fn version_record(
     if tombstone {
         env["tombstone"] = json!(true);
     }
+    if let Some(p) = provenance {
+        env["provenance_ref"] = json!(p);
+    }
     let vh = content_id("ubos.version.v1", &env)?;
-    let rec = json!({"object_id": oid, "class": class, "slug": slug, "body": body, "valid": valid, "tombstone": tombstone});
+    let mut rec = json!({"object_id": oid, "class": class, "slug": slug, "body": body, "valid": valid, "tombstone": tombstone});
+    if let Some(p) = provenance {
+        rec["provenance_ref"] = json!(p);
+    }
     Ok((vh, rec))
 }
 
@@ -786,6 +799,7 @@ impl<'a> Repo<'a> {
         to: Option<&str>,
         predecessor: Option<&str>,
         tombstone: bool,
+        provenance: Option<&str>,
     ) -> Result<String, BpaError> {
         let (vh, rec) = version_record(
             self.reg,
@@ -797,6 +811,7 @@ impl<'a> Repo<'a> {
             to,
             predecessor,
             tombstone,
+            provenance,
         )?;
         tx.versions.push((vh.clone(), rec));
         Ok(vh)
@@ -822,6 +837,12 @@ impl<'a> Repo<'a> {
         }
         if let Some(g) = &e.posting_group {
             rec["posting_group"] = json!(g);
+        }
+        if let Some(p) = &e.provenance_ref {
+            rec["provenance_ref"] = json!(p);
+        }
+        if let Some(r) = &e.source_refs {
+            rec["source_refs"] = json!(r);
         }
         rec["class_version"] = json!(self.reg.class(&e.class)?.class_version);
         rec["body_ref"] = json!(content_id("ubos.chunk.v1", &e.body)?);
@@ -892,6 +913,7 @@ impl<'a> Repo<'a> {
         op: &str,
         today: &str,
         default_valid: &dyn Fn(&str) -> String,
+        provenance: Option<&str>,
     ) -> Result<(String, u64), BpaError> {
         let s = |k: &str| ch.get(k).and_then(Value::as_str).map(str::to_string);
         let mut entry = if op == "append" {
@@ -938,6 +960,27 @@ impl<'a> Repo<'a> {
             let body = self
                 .reg
                 .check_body(&class, ch.get("body").unwrap_or(&json!({})), false)?;
+            let source_refs = match ch.get("source_refs") {
+                None | Some(Value::Null) => None,
+                Some(Value::Array(refs))
+                    if refs.iter().all(|r| {
+                        r.as_str()
+                            .is_some_and(ubos_model::types::values::is_reference)
+                    }) =>
+                {
+                    Some(
+                        refs.iter()
+                            .map(|r| r.as_str().unwrap_or_default().to_string())
+                            .collect(),
+                    )
+                }
+                _ => {
+                    return Err(BpaError::new(
+                        "MODEL.INVALID_VALUE",
+                        "source_refs are canonical URIs",
+                    ));
+                }
+            };
             Entry {
                 entry_id: s("entry_id").unwrap_or_default(),
                 class: class.clone(),
@@ -951,6 +994,8 @@ impl<'a> Repo<'a> {
                 cseq: 0,
                 entry_hash: String::new(),
                 source_seq: None,
+                provenance_ref: None,
+                source_refs,
             }
         } else {
             let target = self
@@ -1015,6 +1060,8 @@ impl<'a> Repo<'a> {
                 cseq: 0,
                 entry_hash: String::new(),
                 source_seq: None,
+                provenance_ref: None,
+                source_refs: None,
             }
         };
         if !names::matches("uuid", &entry.entry_id) {
@@ -1028,6 +1075,7 @@ impl<'a> Repo<'a> {
         self.check_period(tx, &entry.class.clone(), today)?;
         let key = canonical(&entry.ledger_key)?;
         entry.cseq = tx.cseq;
+        entry.provenance_ref = provenance.map(str::to_string);
         entry.entry_hash = self.entry_hash(&entry)?;
         self.load_queue(tx, &entry.class, &key)?;
         let q = tx.state.queue(&entry.class, &key);

@@ -55,6 +55,7 @@ tokio = { version = "1", features = ["rt"] }
 # physical form of stored bytes: zstd, then XChaCha20-Poly1305 (DSN-DVM-002, DEC-048)
 zstd = { version = "0.13", default-features = false }
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["alloc"] }
+aes-gcm = { version = "0.10", default-features = false, features = ["aes", "alloc"] }
 getrandom = "0.2"
 
 [workspace.lints.rust]

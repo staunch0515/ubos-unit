@@ -221,10 +221,9 @@ impl Engine {
             .map(|c| json!({"branch": c[0], "cseq": c[1]}))
             .collect();
         out.insert("commits".into(), Value::Array(commits));
-        let kids = all_processes(self.store.as_mut())?
-            .iter()
-            .filter(|r| s(r, "bulk") == Some(process_id))
-            .count();
+        // Child processes of a bulk job are counted by its attempts (STD-TXN-070); the
+        // children themselves are implicit processes and not recorded (DEC-051).
+        let kids = self.bulk_children(process_id)?;
         if kids > 0 {
             out.insert("children".into(), json!(kids));
         }
@@ -1212,6 +1211,7 @@ impl Engine {
                         "reverse",
                         &today,
                         &default_valid,
+                        None,
                     )?;
                     result["entries"][id] = json!({"seq": seq});
                 }

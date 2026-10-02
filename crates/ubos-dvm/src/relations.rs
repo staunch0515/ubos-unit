@@ -235,6 +235,7 @@ impl Checks<'_, '_> {
             None,
             Some(&o.head),
             true,
+            None,
         )?;
         let tl = ubos_time::apply(&o.timeline, "end", &vh, d, None)
             .map_err(|e| BpaError::new(e.0, "timeline operation rejected"))?;
@@ -349,6 +350,7 @@ impl Checks<'_, '_> {
             to.as_deref(),
             Some(&o.head),
             false,
+            None,
         )?;
         let tl = ubos_time::apply(&o.timeline, "supersede_from", &vh, d, None)
             .map_err(|e| BpaError::new(e.0, "timeline operation rejected"))?;

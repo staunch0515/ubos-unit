@@ -5,8 +5,47 @@ use serde_json::{Map, Value, json};
 use std::collections::HashMap;
 use ubos_dvm::{Adapter, BpaError, STATEFUL_OPERATIONS, canonical};
 
-const IMPLEMENTATION_DEPENDENT: &[&str] =
-    &["version_hash", "entry_hash", "root", "head", "versions"];
+/// Members removed before an exact comparison of a stateful result (STD-CONF-005, rule 6,
+/// as of 1.0-rc1).
+const IMPLEMENTATION_DEPENDENT: &[&str] = &[
+    "version_hash",
+    "entry_hash",
+    "root",
+    "head",
+    "versions",
+    "commit_id",
+    "tx_time",
+    "parents",
+    "created_from",
+    "evaluated_at",
+    "preview",
+    "base",
+    "source_head",
+    "target_head",
+    "merged_commit",
+    "signature",
+    "provenance_ref",
+    "inputs_commitment",
+    "class_version",
+    "signatures",
+    "proof",
+    "records",
+    "heads",
+    "archive",
+    "from_commit",
+    "to_commit",
+    "cursor",
+    "snapshots",
+    "logic_versions",
+    "commit_ids",
+    "changes_hash",
+    "cpu_us",
+    "peak_memory",
+    "wall_us",
+    "asset",
+    "record_id",
+    "json_schema",
+];
 const UNSUPPORTED: &str = "ADAPTER.UNSUPPORTED";
 
 /// Outcome of one vector.
