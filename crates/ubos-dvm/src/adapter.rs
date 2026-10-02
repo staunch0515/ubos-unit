@@ -21,6 +21,7 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "export_state",
     "set_limits",
     "list_objects",
+    "query",
     "traverse",
     "class_at",
     "merge_preview",
@@ -229,15 +230,10 @@ impl Adapter {
                 names::check_name(text(i, "grammar")?, t)?;
                 Value::Bool(true)
             }
-            "validate_value" => {
-                if i.get("value_types").is_some_and(|v| !v.is_null()) {
-                    return Err(BpaError::new(
-                        UNSUPPORTED,
-                        "custom value types need the L1 evaluator (PH-1 step 5)",
-                    ));
-                }
-                values::validate_value(text(i, "type")?, i.get("constraints"), field(i, "value")?)?
-            }
+            "validate_value" => crate::expressions::validate(i)?,
+            "check_expr" => ubos_expr::check_expr(i)?,
+            "eval_expr" => ubos_expr::eval_expr(i, None)?,
+            "query" => self.engine.query(i)?,
             "linearize" => json!(ubos_model::linearize_raw(
                 &list(i, "classes")?,
                 text(i, "class")?

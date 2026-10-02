@@ -7,6 +7,7 @@
 //! operations of STD-CONF-005 for the runner (`ubos-forge`).
 
 pub mod adapter;
+pub mod expressions;
 pub mod relations;
 pub mod stateful;
 pub mod transactions;
