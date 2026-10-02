@@ -61,7 +61,9 @@ fn object(spec: &Spec, reg: &Registry, fields: &Fields, i: u64) -> Result<Object
         &Value::Object(workload::body(seed, i, 0, f, None)),
         false,
     )?;
-    let (vh, rec) = version_record(reg, &oid, &class, &slug, &body, &d0, None, None, false)?;
+    let (vh, rec) = version_record(
+        reg, &oid, &class, &slug, &body, &d0, None, None, false, None,
+    )?;
     let timeline = ubos_time::apply(&[], "create", &vh, &d0, None)
         .map_err(|e| BpaError::new(e.0, "timeline"))?;
     let mut state = ObjectState {
@@ -99,6 +101,7 @@ fn object(spec: &Spec, reg: &Registry, fields: &Fields, i: u64) -> Result<Object
             to.as_deref(),
             Some(&state.head),
             false,
+            None,
         )?;
         let cseq = 1 + m;
         out.rows.push((
@@ -323,7 +326,13 @@ pub fn check(url: &str, spec: Spec) -> Result<Value, BpaError> {
     }
     for i in (0..spec.objects).step_by(7) {
         let q = json!({"object_id": workload::object_id(spec.seed, i)});
-        if mem.read(&q)? != pg.read(&q)? {
+        // The evaluation evidence names the commit, whose identity differs between the
+        // bulk load and the commit path (transaction times); the answer must not.
+        let strip = |mut v: Value| {
+            v.as_object_mut().map(|m| m.remove("evaluated_at"));
+            v
+        };
+        if strip(mem.read(&q)?) != strip(pg.read(&q)?) {
             return Err(BpaError::new(
                 "NOD.STORAGE_UNAVAILABLE",
                 format!("read of object {i} differs"),

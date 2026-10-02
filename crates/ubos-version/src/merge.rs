@@ -449,6 +449,7 @@ impl Repo<'_> {
                         b.as_deref(),
                         pred.as_deref(),
                         false,
+                        None,
                     )?;
                     created.push(vh.clone());
                     vh

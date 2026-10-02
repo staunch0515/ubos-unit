@@ -1,6 +1,6 @@
 # Handoff — status of the UBOS specification work
 
-Last updated: 2026-09-29. This file lets a new Claude session (or a new engineer) continue
+Last updated: 2026-10-02. This file lets a new Claude session (or a new engineer) continue
 the work without the earlier conversations. Read `CLAUDE.md` first for the working rules.
 
 ## 1. Background in brief
@@ -129,10 +129,13 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    kernel; CLS, OBJ and ERR vectors pass; 1,170 of 1,227 vectors pass in memory and on
    PostgreSQL); 4b done (versioning in the kernel: commit identity and transaction time,
    branch metadata, parent-line views, merges with resolutions and validation, previews,
-   change sets, tags, releases, revert, processes; VER 122/122, DEC-051). Next 4c (time,
-   ledger, transactions), 4d (production identities replacing the transition layout of
-   DEC-047, tenancy, signed runner report). W-1 should run
-   before the storage layout is fixed.
+   change sets, tags, releases, revert, processes; VER 122/122, DEC-051); 4c done (time,
+   ledger and transactions in the kernel: evaluation evidence and `follow`, range queries
+   and history, derivation records and impact sets, idempotent requests, outbox and
+   became-effective events, bulk processes, AEAD registry; 841 of 1,227 vectors pass in
+   memory and on PostgreSQL, DEC-052). Next 4d (production identities replacing the
+   transition layout of DEC-047, tenancy, outbox and idempotency rows in the flush, signed
+   runner report). W-1 should run before the storage layout is fixed.
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
    occasion.

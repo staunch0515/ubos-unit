@@ -157,3 +157,71 @@ pub fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
     outer.update(inner.finalize());
     outer.finalize().into()
 }
+
+/// Bytes of a lowercase hexadecimal text, optionally of a fixed length (STD-CONF-011).
+fn unhex(v: &str, n: Option<usize>, what: &str) -> Result<Vec<u8>, BpaError> {
+    let ok = v.len().is_multiple_of(2)
+        && v.bytes()
+            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+        && n.is_none_or(|n| v.len() == 2 * n);
+    if !ok {
+        let len = n.map(|n| format!("{n} bytes of ")).unwrap_or_default();
+        return Err(BpaError::new(
+            "MODEL.INVALID_VALUE",
+            format!("{what} is {len}lowercase hexadecimal"),
+        ));
+    }
+    Ok((0..v.len() / 2)
+        .map(|i| u8::from_str_radix(&v[2 * i..2 * i + 2], 16).unwrap_or_default())
+        .collect())
+}
+
+fn hex(b: &[u8]) -> String {
+    b.iter().map(|x| format!("{x:02x}")).collect()
+}
+
+/// `aead_decrypt` (STD-CONF-011): the plaintext of an AES-256-GCM or XChaCha20-Poly1305
+/// ciphertext, all values in lowercase hexadecimal; `PROOF.VERIFICATION_FAILED` when the
+/// authentication tag does not verify.
+pub fn aead_decrypt(
+    alg: &str,
+    key: &str,
+    nonce: &str,
+    ciphertext: &str,
+    aad: &str,
+) -> Result<String, BpaError> {
+    let failed = || {
+        BpaError::new(
+            "PROOF.VERIFICATION_FAILED",
+            "the authentication tag does not verify",
+        )
+    };
+    let out = match alg {
+        "aes-256-gcm" => {
+            use aes_gcm::{Aes256Gcm, Nonce};
+            let k = unhex(key, Some(32), "key")?;
+            let n = unhex(nonce, Some(12), "nonce")?;
+            let ct = unhex(ciphertext, None, "ciphertext")?;
+            let a = unhex(aad, None, "aad")?;
+            Aes256Gcm::new_from_slice(&k)
+                .map_err(|_| failed())?
+                .decrypt(Nonce::from_slice(&n), Payload { msg: &ct, aad: &a })
+        }
+        "xchacha20-poly1305" => {
+            let k = unhex(key, Some(32), "key")?;
+            let n = unhex(nonce, Some(NONCE_LEN), "nonce")?;
+            let ct = unhex(ciphertext, None, "ciphertext")?;
+            let a = unhex(aad, None, "aad")?;
+            XChaCha20Poly1305::new_from_slice(&k)
+                .map_err(|_| failed())?
+                .decrypt(XNonce::from_slice(&n), Payload { msg: &ct, aad: &a })
+        }
+        _ => {
+            return Err(BpaError::new(
+                "MODEL.INVALID_VALUE",
+                "unregistered AEAD algorithm",
+            ));
+        }
+    };
+    out.map(|p| hex(&p)).map_err(|_| failed())
+}

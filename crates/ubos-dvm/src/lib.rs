@@ -9,6 +9,7 @@
 pub mod adapter;
 pub mod relations;
 pub mod stateful;
+pub mod transactions;
 pub mod verify;
 pub mod versioning;
 

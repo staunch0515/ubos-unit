@@ -36,6 +36,13 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "tree_diff",
     "process_info",
     "lineage",
+    "read_range",
+    "history",
+    "derivation",
+    "impact",
+    "outbox",
+    "ack",
+    "bulk",
 ];
 
 const ENVELOPE_REQUIRED: &[&str] = &[
@@ -187,6 +194,7 @@ impl Adapter {
             "set_now" => {
                 ubos_types::time::parse_instant(text(i, "now")?)?;
                 self.engine.now = text(i, "now")?.to_string();
+                self.engine.tick()?;
                 Value::Bool(true)
             }
             "load_genesis" => self
@@ -198,7 +206,15 @@ impl Adapter {
             "create_branch" | "merge" | "diff" | "export_state" | "merge_preview"
             | "change_set" | "tag" | "delete_tag" | "tag_info" | "release" | "revert"
             | "branch_info" | "set_parent_line" | "commit_info" | "tree_diff" | "process_info"
-            | "lineage" => self.engine.other(op, i)?,
+            | "lineage" | "read_range" | "history" | "derivation" | "impact" | "outbox" | "ack"
+            | "bulk" => self.engine.other(op, i)?,
+            "aead_decrypt" => Value::String(ubos_crypto::aead_decrypt(
+                text(i, "alg")?,
+                text(i, "key")?,
+                text(i, "nonce")?,
+                text(i, "ciphertext")?,
+                opt_text(i, "aad").unwrap_or_default(),
+            )?),
             "canonical_json" => Value::String(ubos_types::canonical(field(i, "value")?)?),
             "content_id" => Value::String(content_id(text(i, "domain")?, field(i, "value")?)?),
             "normalize_text" => Value::String(nfc(text(i, "text")?)),
