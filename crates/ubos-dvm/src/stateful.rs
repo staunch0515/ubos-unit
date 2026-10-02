@@ -1,5 +1,6 @@
 //! Stateful adapter operations (STD-CONF-005): branches, commits, reads, merge, diff, state.
 
+use crate::relations::{Checks, extensions_of, needs_full_state};
 use serde_json::{Map, Value, json};
 use std::collections::BTreeSet;
 use ubos_model::Registry;
@@ -20,6 +21,8 @@ pub struct Engine {
     pub now: String,
     /// Classes that have instances on some branch (STD-KIND-080).
     pub instances: BTreeSet<String>,
+    /// Largest number of derivation inputs (STD-TXN-030, adapter `set_limits`).
+    pub max_inputs: u64,
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
@@ -38,6 +41,7 @@ impl Engine {
             registry: Registry::new(),
             now: DEFAULT_NOW.into(),
             instances: BTreeSet::new(),
+            max_inputs: 10_000,
         };
         e.reset()?;
         Ok(e)
@@ -51,8 +55,9 @@ impl Engine {
             registry: Registry::new(),
             now: DEFAULT_NOW.into(),
             instances: BTreeSet::new(),
+            max_inputs: 10_000,
         };
-        e.load_genesis(classes)?;
+        e.load_genesis(classes, None)?;
         Ok(e)
     }
 
@@ -77,9 +82,14 @@ impl Engine {
     }
 
     /// `load_genesis` (STD-KIND-080: a kind does not change while instances exist).
-    pub fn load_genesis(&mut self, classes: &Value) -> Result<Value, BpaError> {
+    pub fn load_genesis(
+        &mut self,
+        classes: &Value,
+        value_types: Option<&Value>,
+    ) -> Result<Value, BpaError> {
         let list = classes.as_array().cloned().unwrap_or_default();
-        let next = self.registry.load(&list)?;
+        let vts = value_types.and_then(Value::as_array).cloned();
+        let next = self.registry.load(&list, vts.as_deref())?;
         for d in &list {
             let name = s(d, "name").unwrap_or_default();
             if let (Ok(old), Ok(new)) = (self.registry.class(name), next.class(name)) {
@@ -219,6 +229,67 @@ impl Engine {
                 }
                 Ok(
                     json!({"root": root, "entries": entries.iter().map(|(k, h)| json!([k, h])).collect::<Vec<_>>()}),
+                )
+            }
+            "list_objects" => {
+                let class = s(input, "class").unwrap_or_default();
+                self.registry.decl(class)?;
+                let only = input.get("only").and_then(Value::as_bool).unwrap_or(false);
+                let branch = s(input, "branch").unwrap_or("main");
+                let time = input.get("time").and_then(Value::as_u64);
+                let st = repo.state_at(branch, time)?;
+                let mut out = Vec::new();
+                for (oid, o) in &st.objects {
+                    if repo.version(&o.head)?["tombstone"] == json!(true) {
+                        continue;
+                    }
+                    let lin = &self.registry.class(&o.class)?.linearization;
+                    let hit = if only {
+                        o.class == class
+                    } else {
+                        lin.iter().any(|c| c == class)
+                    };
+                    if hit {
+                        out.push(oid.clone());
+                    }
+                }
+                Ok(json!({"objects": out}))
+            }
+            "class_at" => {
+                let class = s(input, "class").unwrap_or_default();
+                self.registry.decl(class)?;
+                let branch = s(input, "branch").unwrap_or("main");
+                let time = input.get("time").and_then(Value::as_u64);
+                let st = repo.state_at(branch, time)?;
+                let exts = extensions_of(&mut repo, &st)?;
+                let reg = self.registry.with_extensions(&exts)?;
+                Ok(reg.class(class)?.to_json())
+            }
+            "traverse" => {
+                let branch = s(input, "branch").unwrap_or("main");
+                let time = input.get("time").and_then(Value::as_u64);
+                let st = repo.state_at(branch, time)?;
+                let exts = extensions_of(&mut repo, &st)?;
+                drop(repo);
+                let reg = self.registry.with_extensions(&exts)?;
+                let mut repo = Repo::new(self.store.as_mut(), &reg);
+                let mut tx = repo.begin(branch)?;
+                tx.state = st;
+                let now = self.now.clone();
+                let regr = &reg;
+                let default_valid =
+                    move |c: &str| match regr.class(c).map(|c| c.valid_time.as_str()) {
+                        Ok("instant") => now.clone(),
+                        _ => now[..10].to_string(),
+                    };
+                let mut checks = Checks {
+                    repo: &mut repo,
+                    tx: &mut tx,
+                    default_valid: &default_valid,
+                };
+                checks.traverse(
+                    s(input, "object_id").unwrap_or_default(),
+                    s(input, "relation").unwrap_or_default(),
                 )
             }
             _ => Err(BpaError::new("ADAPTER.UNSUPPORTED", op.to_string())),
@@ -402,8 +473,39 @@ fn commit_on(
         Ok(_) => day.clone(),
         Err(_) => String::new(),
     };
-    let mut repo = Repo::new(store, registry);
+    // Extensions in force on the branch, and whether the checks of STD-CLS-030, -040 and
+    // -041 need the full state (DEC-050).
+    let exts = {
+        let mut r = Repo::new(&mut *store, registry);
+        let head = r.head(&branch)?;
+        let cseq = r.commit(head)?.cseq;
+        let objs = r.objects_in(&branch, cseq, Some("ClassExtension"))?;
+        let mut exts = Vec::new();
+        for o in objs.values() {
+            let v = r.version(&o.head)?;
+            if v["tombstone"] != json!(true) {
+                exts.push(v["body"].clone());
+            }
+        }
+        exts
+    };
+    let writes_extension = changes
+        .iter()
+        .any(|c| s(c, "class") == Some("ClassExtension"));
+    let full = needs_full_state(registry) || !exts.is_empty() || writes_extension;
+    let reg_ext;
+    let reg: &Registry = if exts.is_empty() {
+        registry
+    } else {
+        reg_ext = registry.with_extensions(&exts)?;
+        &reg_ext
+    };
+    let mut repo = Repo::new(store, reg);
     let mut tx = repo.begin(&branch)?;
+    if full {
+        repo.load_all(&mut tx)?;
+    }
+    let mut ended: Vec<(String, String)> = Vec::new();
     let mut result = json!({"cseq": tx.cseq, "versions": {}, "entries": {}, "retroactive": []});
     if let Some(p) = input.get("process")
         && p.get("serializable") == Some(&Value::Bool(true))
@@ -443,6 +545,17 @@ fn commit_on(
         match s(ch, "op").unwrap_or_default() {
             "create" => create(&mut repo, &mut tx, ch, &default_valid, &mut result)?,
             op @ ("update" | "end") => {
+                if op == "end" {
+                    let oid = s(ch, "object_id").unwrap_or_default().to_string();
+                    let d = match ch.get("valid").and_then(|v| s(v, "from")) {
+                        Some(d) => d.to_string(),
+                        None => repo
+                            .obj(&mut tx, &oid)?
+                            .map(|o| default_valid(&o.class))
+                            .unwrap_or_default(),
+                    };
+                    ended.push((oid, d));
+                }
                 update(&mut repo, &mut tx, ch, op, &default_valid, &mut result)?
             }
             op @ ("append" | "reverse" | "adjust") => {
@@ -453,6 +566,24 @@ fn commit_on(
         }
     }
     repo.check_double_entry(&tx)?;
+    if full {
+        let written: Vec<(String, String)> = result["versions"]
+            .as_object()
+            .map(|m| {
+                m.iter()
+                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or_default().to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let mut checks = Checks {
+            repo: &mut repo,
+            tx: &mut tx,
+            default_valid: &default_valid,
+        };
+        checks.relationships(&mut ended, &mut result)?;
+        checks.integrity(&written)?;
+        checks.extensions_apply(registry, &written)?;
+    }
     let classes: Vec<String> = tx
         .state
         .objects

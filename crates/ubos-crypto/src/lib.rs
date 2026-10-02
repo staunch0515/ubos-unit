@@ -138,3 +138,22 @@ pub fn integrity(reason: &str) -> BpaError {
     e.message = reason.to_string();
     e
 }
+
+/// HMAC-SHA-256 (RFC 2104) of `data` under `key`, for blind indexes (STD-OBJ-012).
+pub fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+    let mut k = [0u8; 64];
+    if key.len() > 64 {
+        k[..32].copy_from_slice(&Sha256::digest(key));
+    } else {
+        k[..key.len()].copy_from_slice(key);
+    }
+    let ipad: Vec<u8> = k.iter().map(|b| b ^ 0x36).collect();
+    let opad: Vec<u8> = k.iter().map(|b| b ^ 0x5c).collect();
+    let mut inner = Sha256::new();
+    inner.update(&ipad);
+    inner.update(data);
+    let mut outer = Sha256::new();
+    outer.update(&opad);
+    outer.update(inner.finalize());
+    outer.finalize().into()
+}

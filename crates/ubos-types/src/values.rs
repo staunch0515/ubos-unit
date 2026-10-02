@@ -295,6 +295,19 @@ fn count_ok(n: usize, c: &Map<String, Value>, min: &str, max: &str) -> bool {
         && as_u32(c.get(max)).is_none_or(|m| n <= m as usize)
 }
 
+/// A canonical object URI without selectors or version suffix (STD-ADDR-001, STD-FND-020).
+pub fn is_reference(uri: &str) -> bool {
+    static R: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    let r = R.get_or_init(|| {
+        let slug = "[a-z0-9][a-z0-9_-]{0,62}";
+        regex::Regex::new(&format!(
+            "^ubos://{slug}(\\.{slug})?/[A-Z][A-Za-z0-9]{{0,63}}/{slug}$"
+        ))
+        .expect("grammar")
+    });
+    r.is_match(uri)
+}
+
 /// Return the canonical value, or fail with `MODEL.INVALID_VALUE` (representation),
 /// `MODEL.CONSTRAINT_VIOLATED` (constraint) or `MODEL.UNKNOWN_TYPE` (STD-FND-020).
 pub fn validate_value(
@@ -417,10 +430,13 @@ pub fn validate_value(
             }
             Ok(value.clone())
         }
-        "reference" => Err(BpaError::new(
-            "MODEL.UNKNOWN_TYPE",
-            "reference values are not in release 0.1 vectors",
-        )),
+        "reference" => {
+            let u = value.as_str().ok_or_else(|| invalid("not a reference"))?;
+            if !is_reference(u) {
+                return Err(invalid("a reference is a canonical URI without selectors"));
+            }
+            Ok(value.clone())
+        }
         "composite" => {
             let members = c
                 .get("members")

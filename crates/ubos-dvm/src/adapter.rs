@@ -19,6 +19,10 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "merge",
     "diff",
     "export_state",
+    "set_limits",
+    "list_objects",
+    "traverse",
+    "class_at",
 ];
 
 const ENVELOPE_REQUIRED: &[&str] = &[
@@ -115,6 +119,20 @@ fn tree_entries(v: &Value) -> Result<Vec<(String, String)>, BpaError> {
         .collect()
 }
 
+fn list(i: &Value, k: &str) -> Result<Vec<Value>, BpaError> {
+    field(i, k)?
+        .as_array()
+        .cloned()
+        .ok_or_else(|| invalid(format!("{k} is a list")))
+}
+
+fn opt_list(i: &Value, k: &str) -> Vec<Value> {
+    i.get(k)
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+}
+
 /// The conformance adapter (STD-CONF-002, STD-CONF-005).
 pub struct Adapter {
     engine: Engine,
@@ -158,7 +176,9 @@ impl Adapter {
                 self.engine.now = text(i, "now")?.to_string();
                 Value::Bool(true)
             }
-            "load_genesis" => self.engine.load_genesis(field(i, "classes")?)?,
+            "load_genesis" => self
+                .engine
+                .load_genesis(field(i, "classes")?, i.get("value_types"))?,
             "commit" => self.engine.commit(i)?,
             "read" => self.engine.read(i)?,
             "read_ledger" => self.engine.read_ledger(i)?,
@@ -174,8 +194,75 @@ impl Adapter {
                 Value::Bool(true)
             }
             "validate_value" => {
+                if i.get("value_types").is_some_and(|v| !v.is_null()) {
+                    return Err(BpaError::new(
+                        UNSUPPORTED,
+                        "custom value types need the L1 evaluator (PH-1 step 5)",
+                    ));
+                }
                 values::validate_value(text(i, "type")?, i.get("constraints"), field(i, "value")?)?
             }
+            "linearize" => json!(ubos_model::linearize_raw(
+                &list(i, "classes")?,
+                text(i, "class")?
+            )?),
+            "effective_class" => {
+                let r = ubos_model::registry_of(&list(i, "classes")?, &opt_list(i, "extensions"))?;
+                r.class(text(i, "class")?)?.to_json()
+            }
+            "dispatch" => {
+                let r = ubos_model::registry_of(&list(i, "classes")?, &opt_list(i, "extensions"))?;
+                r.dispatch(text(i, "class")?, text(i, "port")?, opt_text(i, "after"))?
+            }
+            "type_selector" => {
+                let r = ubos_model::registry_of(&list(i, "classes")?, &[])?;
+                r.type_selector(
+                    text(i, "class")?,
+                    text(i, "selector")?,
+                    i.get("only").and_then(Value::as_bool).unwrap_or(false),
+                )?
+            }
+            "blind_index" => {
+                let key = text(i, "key")?;
+                let hex_ok = key.len() == 64
+                    && key
+                        .bytes()
+                        .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase());
+                if !hex_ok {
+                    return Err(invalid("a lookup key is 32 bytes in lowercase hexadecimal"));
+                }
+                let k: Vec<u8> = (0..32)
+                    .map(|j| u8::from_str_radix(&key[2 * j..2 * j + 2], 16).unwrap_or_default())
+                    .collect();
+                let norm = values::validate_value(
+                    text(i, "type")?,
+                    i.get("constraints"),
+                    field(i, "value")?,
+                )?;
+                let mac = ubos_crypto::hmac_sha256(&k, ubos_types::canonical(&norm)?.as_bytes());
+                Value::String(format!(
+                    "hmac-sha256:{}",
+                    mac.iter().map(|b| format!("{b:02x}")).collect::<String>()
+                ))
+            }
+            "set_limits" => {
+                for k in ["max_body_bytes", "max_derivation_inputs"] {
+                    if let Some(v) = i.get(k)
+                        && !v.is_null()
+                        && !v.as_u64().is_some_and(|n| n >= 1 && !v.is_boolean())
+                    {
+                        return Err(invalid("a limit is a positive integer"));
+                    }
+                }
+                if let Some(n) = i.get("max_body_bytes").and_then(Value::as_u64) {
+                    self.engine.registry.max_body = n as usize;
+                }
+                if let Some(n) = i.get("max_derivation_inputs").and_then(Value::as_u64) {
+                    self.engine.max_inputs = n;
+                }
+                Value::Bool(true)
+            }
+            "list_objects" | "traverse" | "class_at" => self.engine.other(op, i)?,
             "decimal" => Value::String(values::decimal_op(
                 text(i, "op")?,
                 text(i, "a")?,

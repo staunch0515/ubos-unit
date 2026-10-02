@@ -354,7 +354,7 @@ impl<'a> Repo<'a> {
     }
 
     /// Objects of a branch at an ordinal, optionally of one class.
-    pub(crate) fn objects_in(
+    pub fn objects_in(
         &mut self,
         branch: &str,
         cseq: u64,
