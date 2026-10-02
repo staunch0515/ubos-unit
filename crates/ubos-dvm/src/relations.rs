@@ -365,6 +365,22 @@ impl Checks<'_, '_> {
         Ok(())
     }
 
+    /// Cardinality of the relations of the state (STD-CLS-040).
+    pub fn cardinality_check(&mut self) -> Result<(), BpaError> {
+        self.cardinality()
+    }
+
+    /// End an object at `d` (reverts end the objects a reverted commit created).
+    pub fn end_object_pub(
+        &mut self,
+        oid: &str,
+        d: &str,
+        result: &mut Value,
+        ended: &mut Vec<(String, String)>,
+    ) -> Result<(), BpaError> {
+        self.end_object(oid, d, result, ended)
+    }
+
     fn cardinality(&mut self) -> Result<(), BpaError> {
         let mut counts: BTreeMap<(String, String), BTreeSet<String>> = BTreeMap::new();
         for (src, field, rel, tid) in self.relations()? {

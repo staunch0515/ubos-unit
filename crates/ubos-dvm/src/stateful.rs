@@ -23,6 +23,10 @@ pub struct Engine {
     pub instances: BTreeSet<String>,
     /// Largest number of derivation inputs (STD-TXN-030, adapter `set_limits`).
     pub max_inputs: u64,
+    /// Counter for generated process identifiers.
+    pub next_process: u64,
+    /// Branch metadata read in this adapter (invalidated when it changes).
+    pub branch_cache: std::collections::HashMap<String, ubos_version::BranchMeta>,
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
@@ -42,6 +46,8 @@ impl Engine {
             now: DEFAULT_NOW.into(),
             instances: BTreeSet::new(),
             max_inputs: 10_000,
+            next_process: 0,
+            branch_cache: Default::default(),
         };
         e.reset()?;
         Ok(e)
@@ -56,6 +62,8 @@ impl Engine {
             now: DEFAULT_NOW.into(),
             instances: BTreeSet::new(),
             max_inputs: 10_000,
+            next_process: 0,
+            branch_cache: Default::default(),
         };
         e.load_genesis(classes, None)?;
         Ok(e)
@@ -67,7 +75,14 @@ impl Engine {
         self.registry = Registry::new();
         self.now = DEFAULT_NOW.into();
         self.instances.clear();
-        Repo::new(self.store.as_mut(), &self.registry).init()
+        self.next_process = 0;
+        self.branch_cache.clear();
+        Repo::new(self.store.as_mut(), &self.registry).init()?;
+        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+        let mut m = repo.branch_meta("main")?;
+        m.created_at = Some(self.now.clone());
+        m.active_at = Some(self.now.clone());
+        repo.put_branch_meta("main", &m)
     }
 
     fn today(&self) -> String {
@@ -107,9 +122,59 @@ impl Engine {
         Ok(Value::Bool(true))
     }
 
+    /// Metadata of a branch, cached per adapter (DEC-051).
+    pub fn branch_meta(&mut self, name: &str) -> Result<ubos_version::BranchMeta, BpaError> {
+        if let Some(m) = self.branch_cache.get(name) {
+            return Ok(m.clone());
+        }
+        let m = Repo::new(self.store.as_mut(), &self.registry).branch_meta(name)?;
+        self.branch_cache.insert(name.to_string(), m.clone());
+        Ok(m)
+    }
+
     /// `commit` (STD-TXN-001…024, STD-KIND-020…025, STD-TIME-011, -030).
     pub fn commit(&mut self, input: &Value) -> Result<Value, BpaError> {
-        let (r, classes) = commit_on(self.store.as_mut(), &self.registry, &self.now, input)?;
+        let branch = s(input, "branch").unwrap_or("main").to_string();
+        let mut next = self.next_process;
+        let p = crate::versioning::process(
+            self.store.as_mut(),
+            input.get("process"),
+            "action",
+            &mut next,
+        )?;
+        self.next_process = next;
+        let now = self.now.clone();
+        let meta = self.branch_meta(&branch)?;
+        if ubos_version::expires_of(&meta)?.is_some_and(|exp| now >= exp) {
+            return Err(BpaError::new("VER.BRANCH_ARCHIVED", branch));
+        }
+        if p.p.get("abort") == Some(&json!(true)) {
+            crate::versioning::record(self.store.as_mut(), &p, "aborted", None)?;
+            return Ok(json!({"state": "aborted"}));
+        }
+        let r = commit_on(
+            self.store.as_mut(),
+            &self.registry,
+            &self.now,
+            input,
+            &p,
+            false,
+            &meta,
+        );
+        let (r, classes) = match r {
+            Ok(x) => x,
+            Err(e) => {
+                crate::versioning::record(self.store.as_mut(), &p, "failed", None)?;
+                return Err(e);
+            }
+        };
+        self.touch_branch(&branch)?;
+        crate::versioning::record(
+            self.store.as_mut(),
+            &p,
+            "committed",
+            Some((&branch, r["cseq"].as_u64().unwrap_or_default())),
+        )?;
         self.instances.extend(classes);
         Ok(r)
     }
@@ -125,8 +190,40 @@ impl Engine {
         let inner = std::mem::replace(&mut self.store, Box::new(MemStore::default()));
         let mut group = Group::new(inner);
         let (mut out, mut classes) = (Vec::new(), Vec::new());
+        let mut next = self.next_process;
         for input in inputs {
-            match commit_on(&mut group, &self.registry, &self.now, input) {
+            let p = match crate::versioning::process(
+                &mut group,
+                input.get("process"),
+                "action",
+                &mut next,
+            ) {
+                Ok(p) => p,
+                Err(e) => {
+                    out.push(Err(e));
+                    continue;
+                }
+            };
+            let bname = s(input, "branch").unwrap_or("main").to_string();
+            let meta = match self.branch_cache.get(&bname) {
+                Some(m) => m.clone(),
+                None => match Repo::new(&mut group, &self.registry).branch_meta(&bname) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        out.push(Err(e));
+                        continue;
+                    }
+                },
+            };
+            match commit_on(
+                &mut group,
+                &self.registry,
+                &self.now,
+                input,
+                &p,
+                false,
+                &meta,
+            ) {
                 Ok((r, c)) => {
                     out.push(Ok(r));
                     classes.extend(c);
@@ -136,6 +233,7 @@ impl Engine {
         }
         let (inner, written) = group.finish();
         self.store = inner;
+        self.next_process = next;
         if !written? {
             return Err(BpaError::new("TXN.HEAD_MOVED", "the branch head moved"));
         }
@@ -144,14 +242,48 @@ impl Engine {
     }
 
     /// `read` (STD-TIME-012).
+    /// True when a read needs the resolved view (selectors beyond `time`, provenance, or a
+    /// branch with a parent line); otherwise the object index answers directly.
+    fn needs_view(&mut self, branch: &str, input: &Value) -> Result<bool, BpaError> {
+        if ["commit", "tag", "tx_time", "evaluated_at", "provenance"]
+            .iter()
+            .any(|k| {
+                input
+                    .get(k)
+                    .is_some_and(|v| !v.is_null() && v != &json!(false))
+            })
+        {
+            return Ok(true);
+        }
+        Ok(Repo::new(self.store.as_mut(), &self.registry)
+            .branch_meta(branch)?
+            .parent_line
+            .is_some())
+    }
+
+    /// `read` (STD-TIME-012, STD-VER-080, -081, -090).
     pub fn read(&mut self, input: &Value) -> Result<Value, BpaError> {
         let branch = s(input, "branch").unwrap_or("main");
         let oid = s(input, "object_id").unwrap_or_default();
         let time = input.get("time").and_then(Value::as_u64);
+        let view = self.needs_view(branch, input)?;
         let mut repo = Repo::new(self.store.as_mut(), &self.registry);
-        let o = repo
-            .object_at(branch, time, oid)?
-            .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown object"))?;
+        let (o, prov, ev) = if view {
+            let (v, _) = repo.view(branch, input)?;
+            let o = v
+                .state
+                .objects
+                .get(oid)
+                .cloned()
+                .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown object"))?;
+            (o, v.provenance.get(oid).cloned(), Some(v.evaluated_at))
+        } else {
+            repo.select(branch, input)?;
+            let o = repo
+                .object_at(branch, time, oid)?
+                .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown object"))?;
+            (o, None, None)
+        };
         let a = s(input, "asof")
             .map(str::to_string)
             .unwrap_or_else(|| self.default_valid(&o.class));
@@ -159,9 +291,17 @@ impl Engine {
         let seg = at(&o.timeline, &a)
             .ok_or_else(|| BpaError::new("QRY.NOT_FOUND_AT_TIME", "no segment at asof"))?;
         let v = repo.version(&seg.version)?;
-        Ok(
-            json!({"version_hash": seg.version, "body": v["body"], "slug": v["slug"], "valid": {"from": seg.from, "to": seg.to}}),
-        )
+        let mut out = json!({"version_hash": seg.version, "body": v["body"], "slug": v["slug"], "valid": {"from": seg.from, "to": seg.to}});
+        if let Some(ev) = ev {
+            out["evaluated_at"] = json!(ev);
+        }
+        if input.get("provenance") == Some(&json!(true))
+            && let Some((b, cid)) = prov
+        {
+            let c = repo.commit(cid)?;
+            out["provenance"] = json!({"branch": b, "cseq": c.cseq, "commit_id": c.commit_id});
+        }
+        Ok(out)
     }
 
     /// `read_ledger` (STD-TIME-020).
@@ -170,8 +310,18 @@ impl Engine {
         let time = input.get("time").and_then(Value::as_u64);
         let key = canonical(input.get("ledger_key").unwrap_or(&Value::Null))?;
         let class = s(input, "class").unwrap_or_default();
-        let entries =
-            Repo::new(self.store.as_mut(), &self.registry).ledger_at(branch, time, class, &key)?;
+        let entries = if self.needs_view(branch, input)? {
+            let (v, _) = Repo::new(self.store.as_mut(), &self.registry).view(branch, input)?;
+            v.state
+                .ledger
+                .iter()
+                .find(|(c, k, _)| c == class && *k == key)
+                .map(|x| x.2.clone())
+                .unwrap_or_default()
+        } else {
+            Repo::new(self.store.as_mut(), &self.registry).select(branch, input)?;
+            Repo::new(self.store.as_mut(), &self.registry).ledger_at(branch, time, class, &key)?
+        };
         let asof = s(input, "asof");
         let mut out = Vec::new();
         for e in &entries {
@@ -194,17 +344,87 @@ impl Engine {
     pub fn other(&mut self, op: &str, input: &Value) -> Result<Value, BpaError> {
         let mut repo = Repo::new(self.store.as_mut(), &self.registry);
         match op {
-            "create_branch" => repo.create_branch(
-                s(input, "name").unwrap_or_default(),
-                s(input, "from").unwrap_or("main"),
-                input.get("time").and_then(Value::as_u64),
-            ),
+            "create_branch" => {
+                let now = self.now.clone();
+                self.branch_cache
+                    .remove(s(input, "name").unwrap_or_default());
+                repo.create_branch_meta(
+                    s(input, "name").unwrap_or_default(),
+                    s(input, "from").unwrap_or("main"),
+                    input.get("time").and_then(Value::as_u64),
+                    input.get("parent_line").filter(|p| !p.is_null()),
+                    Some(&now),
+                )
+            }
             "merge" => {
-                let r = repo.merge(
+                drop(repo);
+                self.merge(input)
+            }
+            "merge_preview" => {
+                drop(repo);
+                self.merge_preview(
                     s(input, "source").unwrap_or_default(),
                     s(input, "target").unwrap_or("main"),
-                )?;
-                Ok(r)
+                )
+            }
+            "change_set" => {
+                drop(repo);
+                self.change_set(input)
+            }
+            "tag" => {
+                drop(repo);
+                self.tag(input)
+            }
+            "delete_tag" => {
+                drop(repo);
+                self.delete_tag(s(input, "name").unwrap_or_default())
+            }
+            "tag_info" => {
+                drop(repo);
+                self.tag_info(s(input, "name").unwrap_or_default())
+            }
+            "release" => {
+                drop(repo);
+                self.release(input)
+            }
+            "revert" => {
+                drop(repo);
+                self.revert(input)
+            }
+            "branch_info" => {
+                drop(repo);
+                self.branch_info(s(input, "branch").unwrap_or("main"))
+            }
+            "set_parent_line" => {
+                drop(repo);
+                self.branch_cache
+                    .remove(s(input, "branch").unwrap_or_default());
+                self.set_parent_line(
+                    s(input, "branch").unwrap_or_default(),
+                    input.get("parent_line"),
+                )
+            }
+            "commit_info" => {
+                drop(repo);
+                self.commit_info(input)
+            }
+            "tree_diff" => {
+                drop(repo);
+                self.tree_diff(
+                    input.get("from").unwrap_or(&Value::Null),
+                    input.get("to").unwrap_or(&Value::Null),
+                )
+            }
+            "process_info" => {
+                drop(repo);
+                self.process_info(s(input, "process_id").unwrap_or_default())
+            }
+            "lineage" => {
+                drop(repo);
+                self.lineage(
+                    s(input, "process_id").unwrap_or_default(),
+                    s(input, "direction").unwrap_or("ancestors"),
+                )
             }
             "diff" => repo.diff(
                 input.get("from").unwrap_or(&Value::Null),
@@ -236,8 +456,7 @@ impl Engine {
                 self.registry.decl(class)?;
                 let only = input.get("only").and_then(Value::as_bool).unwrap_or(false);
                 let branch = s(input, "branch").unwrap_or("main");
-                let time = input.get("time").and_then(Value::as_u64);
-                let st = repo.state_at(branch, time)?;
+                let st = repo.view(branch, input)?.0.state;
                 let mut out = Vec::new();
                 for (oid, o) in &st.objects {
                     if repo.version(&o.head)?["tombstone"] == json!(true) {
@@ -259,16 +478,14 @@ impl Engine {
                 let class = s(input, "class").unwrap_or_default();
                 self.registry.decl(class)?;
                 let branch = s(input, "branch").unwrap_or("main");
-                let time = input.get("time").and_then(Value::as_u64);
-                let st = repo.state_at(branch, time)?;
+                let st = repo.view(branch, input)?.0.state;
                 let exts = extensions_of(&mut repo, &st)?;
                 let reg = self.registry.with_extensions(&exts)?;
                 Ok(reg.class(class)?.to_json())
             }
             "traverse" => {
                 let branch = s(input, "branch").unwrap_or("main");
-                let time = input.get("time").and_then(Value::as_u64);
-                let st = repo.state_at(branch, time)?;
+                let st = repo.view(branch, input)?.0.state;
                 let exts = extensions_of(&mut repo, &st)?;
                 drop(repo);
                 let reg = self.registry.with_extensions(&exts)?;
@@ -452,6 +669,9 @@ fn commit_on(
     registry: &Registry,
     now_: &str,
     input: &Value,
+    process: &crate::versioning::Process,
+    via_change_set: bool,
+    meta: &ubos_version::BranchMeta,
 ) -> Result<(Value, Vec<String>), BpaError> {
     let changes = input
         .get("changes")
@@ -501,10 +721,17 @@ fn commit_on(
         &reg_ext
     };
     let mut repo = Repo::new(store, reg);
-    let mut tx = repo.begin(&branch)?;
-    if full {
+    let has_parent_line = meta.parent_line.is_some();
+    let mut tx = if has_parent_line {
+        repo.begin_view(&branch)?
+    } else {
+        repo.begin(&branch)?
+    };
+    tx.now = Some(now_.to_string());
+    if full && !has_parent_line {
         repo.load_all(&mut tx)?;
     }
+    let full = full || has_parent_line;
     let mut ended: Vec<(String, String)> = Vec::new();
     let mut result = json!({"cseq": tx.cseq, "versions": {}, "entries": {}, "retroactive": []});
     if let Some(p) = input.get("process")
@@ -527,7 +754,7 @@ fn commit_on(
     }
     let mut stale = Vec::new();
     for ch in &changes {
-        if matches!(s(ch, "op"), Some("update" | "end"))
+        if matches!(s(ch, "op"), Some("update" | "end" | "hide"))
             && let (Some(oid), Some(b)) = (s(ch, "object_id"), s(ch, "base"))
             && repo.obj(&mut tx, oid)?.is_some_and(|o| o.head != b)
         {
@@ -543,7 +770,57 @@ fn commit_on(
     }
     for ch in &changes {
         match s(ch, "op").unwrap_or_default() {
-            "create" => create(&mut repo, &mut tx, ch, &default_valid, &mut result)?,
+            "create" => {
+                create(&mut repo, &mut tx, ch, &default_valid, &mut result)?;
+                let oid = s(ch, "object_id").unwrap_or_default();
+                let a = result["versions"][oid].as_str().map(|_| ());
+                let from = tx
+                    .state
+                    .objects
+                    .get(oid)
+                    .and_then(|o| o.timeline.first())
+                    .map(|x| x.from.clone());
+                if a.is_some() {
+                    Repo::op(&mut tx, oid, "create", from.as_deref(), None);
+                }
+            }
+            op @ ("hide" | "unhide") => {
+                let oid = s(ch, "object_id").unwrap_or_default().to_string();
+                if !has_parent_line {
+                    return Err(BpaError::new(
+                        "MODEL.INVALID_VALUE",
+                        "hide and unhide need a parent line",
+                    ));
+                }
+                if op == "hide" {
+                    if !tx.state.objects.contains_key(&oid) {
+                        return Err(BpaError::new("IAM.NOT_FOUND", "unknown object"));
+                    }
+                    if !tx.inherited.contains_key(&oid) {
+                        return Err(BpaError::new(
+                            "MODEL.INVALID_VALUE",
+                            "only objects of the parent line can be hidden",
+                        ));
+                    }
+                    if s(ch, "base").is_none() {
+                        return Err(BpaError::new(
+                            "MODEL.DECLARATION_INCOMPLETE",
+                            "hide names its base (STD-TXN-020)",
+                        ));
+                    }
+                    tx.state.objects.remove(&oid);
+                    tx.hidden.insert(oid.clone());
+                } else {
+                    if !tx.hidden.contains(&oid) {
+                        return Err(BpaError::new("IAM.NOT_FOUND", "object is not hidden"));
+                    }
+                    tx.hidden.remove(&oid);
+                    if let Some(o) = tx.inherited.get(&oid).cloned() {
+                        tx.state.objects.insert(oid.clone(), o);
+                    }
+                }
+                Repo::op(&mut tx, &oid, op, None, None);
+            }
             op @ ("update" | "end") => {
                 if op == "end" {
                     let oid = s(ch, "object_id").unwrap_or_default().to_string();
@@ -556,7 +833,34 @@ fn commit_on(
                     };
                     ended.push((oid, d));
                 }
-                update(&mut repo, &mut tx, ch, op, &default_valid, &mut result)?
+                let oid = s(ch, "object_id").unwrap_or_default().to_string();
+                let before = tx.state.objects.get(&oid).map(|o| o.timeline.clone());
+                update(&mut repo, &mut tx, ch, op, &default_valid, &mut result)?;
+                if op == "end" {
+                    let d = ended.last().map(|x| x.1.clone()).unwrap_or_default();
+                    Repo::op(&mut tx, &oid, "end", Some(&d), None);
+                } else {
+                    let kind = ch
+                        .get("valid")
+                        .and_then(|v| s(v, "kind"))
+                        .unwrap_or("supersede_from")
+                        .to_string();
+                    let a = ch
+                        .get("valid")
+                        .and_then(|v| s(v, "from"))
+                        .map(str::to_string);
+                    let b = ch.get("valid").and_then(|v| s(v, "to")).map(str::to_string);
+                    let from = a.or_else(|| {
+                        let tl = before.unwrap_or_default();
+                        let _ = tl;
+                        tx.state
+                            .objects
+                            .get(&oid)
+                            .and_then(|o| o.timeline.iter().find(|x| x.version == o.head))
+                            .map(|x| x.from.clone())
+                    });
+                    Repo::op(&mut tx, &oid, &kind, from.as_deref(), b.as_deref());
+                }
             }
             op @ ("append" | "reverse" | "adjust") => {
                 let (id, seq) = repo.append(&mut tx, ch, op, &today, &default_valid)?;
@@ -566,6 +870,14 @@ fn commit_on(
         }
     }
     repo.check_double_entry(&tx)?;
+    let appended_ops: Vec<(String, String)> = tx
+        .appended
+        .iter()
+        .map(|e| (e.entry_id.clone(), e.valid_at.clone()))
+        .collect();
+    for (id, at_) in appended_ops {
+        Repo::op(&mut tx, &id, "append", Some(&at_), None);
+    }
     if full {
         let written: Vec<(String, String)> = result["versions"]
             .as_object()
@@ -584,14 +896,92 @@ fn commit_on(
         checks.integrity(&written)?;
         checks.extensions_apply(registry, &written)?;
     }
-    let classes: Vec<String> = tx
-        .state
-        .objects
-        .values()
-        .map(|o| o.class.clone())
+    let written_classes: Vec<String> = result["versions"]
+        .as_object()
+        .map(|m| {
+            m.keys()
+                .filter_map(|k| tx.state.objects.get(k).map(|o| o.class.clone()))
+                .collect()
+        })
+        .unwrap_or_default();
+    let classes: Vec<String> = written_classes
+        .iter()
+        .cloned()
         .chain(tx.appended.iter().map(|e| e.class.clone()))
         .collect();
+    // STD-VER-012: write policy on protected branches.
+    if !via_change_set && ubos_version::PROTECTED.contains(&meta.kind.as_str()) {
+        for c in &classes {
+            if reg.class(c)?.write_policy == "change_set" {
+                return Err(BpaError::new("VER.CHANGE_SET_REQUIRED", c.to_string()));
+            }
+        }
+    }
+    // Commit record members (STD-TIME-040, DEC-041).
+    let binding = rule_binding_of(&mut repo, &tx, reg, &result["versions"], &result["entries"])?;
+    tx.extra.insert("rule_binding".into(), binding);
+    if process.explicit {
+        tx.extra.insert("process_id".into(), json!(process.id));
+    }
+    tx.extra
+        .insert("retroactive".into(), result["retroactive"].clone());
+    tx.extra.insert(
+        "appended".into(),
+        json!(
+            tx.appended
+                .iter()
+                .map(|e| e.entry_id.clone())
+                .collect::<Vec<_>>()
+        ),
+    );
     let head = tx.head;
-    repo.write(tx, vec![head])?;
+    let id = repo.write(tx, vec![head])?;
+    let c = repo.commit(id)?;
+    result["commit_id"] = json!(c.commit_id);
+    result["tx_time"] = json!(c.tx_time);
     Ok((result, classes))
+}
+
+/// The rule binding of a commit over the transaction's state (STD-TIME-040).
+fn rule_binding_of(
+    repo: &mut Repo<'_>,
+    tx: &Tx,
+    reg: &Registry,
+    versions: &Value,
+    entries: &Value,
+) -> Result<Value, BpaError> {
+    let mut names: BTreeSet<String> = BTreeSet::new();
+    for oid in versions.as_object().map(|m| m.keys()).into_iter().flatten() {
+        if let Some(o) = tx.state.objects.get(oid) {
+            names.insert(o.class.clone());
+        }
+    }
+    for (_, _, q) in &tx.state.ledger {
+        for e in q {
+            if entries.get(&e.entry_id).is_some() {
+                names.insert(e.class.clone());
+            }
+        }
+    }
+    let mut lin: BTreeSet<String> = BTreeSet::new();
+    for n in &names {
+        lin.extend(reg.class(n)?.linearization.iter().cloned());
+    }
+    let mut items: Vec<Value> = Vec::new();
+    for c in &lin {
+        items.push(json!({"class": c, "class_version": ubos_types::content_id("ubos.chunk.v1", reg.decl(c)?)?}));
+    }
+    for (oid, o) in &tx.state.objects {
+        if o.class == "ClassExtension" {
+            let v = repo.version_in(tx, &o.head)?;
+            if v["tombstone"] != json!(true)
+                && s(&v["body"], "target").is_some_and(|t| lin.contains(t))
+            {
+                items.push(
+                    json!({"class": "ClassExtension", "object_id": oid, "class_version": o.head}),
+                );
+            }
+        }
+    }
+    Ok(json!({"classes": items}))
 }

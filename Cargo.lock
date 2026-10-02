@@ -1893,6 +1893,7 @@ dependencies = [
 name = "ubos-dvm"
 version = "0.0.0"
 dependencies = [
+ "regex",
  "serde_json",
  "sha2",
  "sqlx",
@@ -1982,6 +1983,7 @@ dependencies = [
 name = "ubos-version"
 version = "0.0.0"
 dependencies = [
+ "chrono",
  "serde",
  "serde_json",
  "ubos-model",

@@ -10,6 +10,7 @@ pub mod adapter;
 pub mod relations;
 pub mod stateful;
 pub mod verify;
+pub mod versioning;
 
 pub use adapter::{Adapter, STATEFUL_OPERATIONS};
 pub use stateful::Engine;

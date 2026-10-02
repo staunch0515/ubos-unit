@@ -86,6 +86,34 @@ pub struct Entry {
     pub source_seq: Option<Value>,
 }
 
+/// Adapter clock when a transaction names none (STD-CONF-002 `set_now`).
+pub const DEFAULT_NOW: &str = "2026-01-01T00:00:00.000000Z";
+
+/// Authority of the conformance adapter's VAE (STD-CONF-005).
+pub const TENANT: &str = "acme";
+
+/// Hybrid logical clock (STD-TIME-001, DEC-041): the physical clock, or one microsecond
+/// after the previous commit when the clock did not advance.
+pub fn hlc(now: &str, prev: Option<&str>) -> Result<String, BpaError> {
+    match prev {
+        Some(p) if now <= p => {
+            let t = ubos_model::types::time::parse_instant(p)? + chrono::Duration::microseconds(1);
+            Ok(ubos_model::types::time::format_instant(&t))
+        }
+        _ => Ok(now.to_string()),
+    }
+}
+
+/// Content ID of a commit record (STD-VER-001): over VAE, branch, parent commit IDs, cseq,
+/// transaction time and root.
+pub fn commit_identity(rec: &CommitRecord, parent_ids: &[String]) -> Result<String, BpaError> {
+    content_id(
+        "ubos.commit.v1",
+        &json!({"vae": TENANT, "branch": rec.branch, "parents": parent_ids, "cseq": rec.cseq,
+                "tx_time": rec.tx_time, "root": rec.root}),
+    )
+}
+
 /// The state of a branch at a commit.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct State {
@@ -143,6 +171,22 @@ pub struct CommitRecord {
     pub branch: String,
     /// Root of the state tree after the commit (STD-PROOF-001).
     pub root: String,
+    /// Content ID of the canonical commit record (STD-VER-001).
+    #[serde(default)]
+    pub commit_id: String,
+    /// Transaction time (hybrid logical clock, STD-TIME-001); `None` for a genesis commit.
+    #[serde(default)]
+    pub tx_time: Option<String>,
+    /// Operations per object (STD-TIME-040 history).
+    #[serde(default)]
+    pub ops: BTreeMap<String, Vec<Value>>,
+    /// Hide markers in force over the parent line (STD-VER-080).
+    #[serde(default)]
+    pub hidden: Vec<String>,
+    /// Further members of the record: `rule_binding`, `process_id`, `resolutions`,
+    /// `change_set`, `reverts`, `retroactive`, `appended`, `derived` (DEC-041).
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
 }
 
 fn storage(e: impl std::fmt::Display) -> BpaError {
@@ -247,24 +291,42 @@ impl<'a> Repo<'a> {
 
     /// Initialise `main` with the empty genesis commit (cseq 0).
     pub fn init(&mut self) -> Result<(), BpaError> {
+        let id = self.init_branch("main")?;
+        self.store.put_meta(
+            "branch:main",
+            &json!({"kind": "main", "created_at": null, "active_at": null, "parent_line": null, "created_from": id}),
+        )
+    }
+
+    /// Create a branch with its own empty genesis commit (cseq 0): `main`, and branches
+    /// with a parent line (STD-VER-080).
+    pub fn init_branch(&mut self, name: &str) -> Result<u64, BpaError> {
         let id = self.store.next_commit_id()?;
         let empty = ubos_tree::build(&[])?;
-        let rec = CommitRecord {
+        let mut rec = CommitRecord {
             parents: vec![],
             cseq: 0,
-            branch: "main".into(),
+            branch: name.into(),
             root: empty.root,
+            commit_id: String::new(),
+            tx_time: None,
+            ops: BTreeMap::new(),
+            hidden: vec![],
+            extra: Map::new(),
         };
+        rec.commit_id = commit_identity(&rec, &[])?;
         let r = BranchRef {
             head: 0,
             head_cseq: 0,
             parent: None,
         };
-        self.store.create_branch("main", &r)?;
+        if !self.store.create_branch(name, &r)? {
+            return Err(BpaError::new("TXN.ALREADY_EXISTS", "branch exists"));
+        }
         let f = Flush {
             commit_id: id,
             commit: serde_json::to_value(&rec).map_err(storage)?,
-            branch: "main".into(),
+            branch: name.into(),
             cseq: 0,
             expected_head: 0,
             nodes: empty
@@ -275,9 +337,10 @@ impl<'a> Repo<'a> {
             ..Flush::default()
         };
         if !self.store.flush(&f)? {
-            return Err(storage("cannot initialise main"));
+            return Err(storage(format!("cannot initialise {name}")));
         }
-        Ok(())
+        self.branches.remove(name);
+        Ok(id)
     }
 
     fn branch_ref(&mut self, branch: &str) -> Result<BranchRef, BpaError> {
@@ -466,18 +529,56 @@ impl<'a> Repo<'a> {
         source: &str,
         time: Option<u64>,
     ) -> Result<Value, BpaError> {
+        self.create_branch_meta(name, source, time, None, None)
+    }
+
+    /// Create a branch from a commit of `source`, or with a parent line (STD-VER-080) and
+    /// an empty state of its own; `now` is recorded as its creation time (STD-VER-011).
+    pub fn create_branch_meta(
+        &mut self,
+        name: &str,
+        source: &str,
+        time: Option<u64>,
+        parent_line: Option<&Value>,
+        now: Option<&str>,
+    ) -> Result<Value, BpaError> {
         names::check_name("branch-name", name)?;
-        let id = self.commit_at(source, time)?;
-        let c = self.commit(id)?;
-        let r = BranchRef {
-            head: id,
-            head_cseq: c.cseq,
-            parent: Some((c.branch.clone(), c.cseq)),
-        };
-        if !self.store.create_branch(name, &r)? {
+        if self.store.branch(name)?.is_some() {
             return Err(BpaError::new("TXN.ALREADY_EXISTS", "branch exists"));
         }
-        Ok(json!({"head": c.cseq}))
+        let (head_cseq, created_from, pl) = match parent_line {
+            Some(pl) => {
+                let pl = self.parent_line(name, pl)?;
+                let from = match pl.pin {
+                    Some(p) => p,
+                    None => self.head(&pl.branch)?,
+                };
+                self.init_branch(name)?;
+                (0, from, Some(pl))
+            }
+            None => {
+                let id = self.commit_at(source, time)?;
+                let c = self.commit(id)?;
+                let r = BranchRef {
+                    head: id,
+                    head_cseq: c.cseq,
+                    parent: Some((c.branch.clone(), c.cseq)),
+                };
+                if !self.store.create_branch(name, &r)? {
+                    return Err(BpaError::new("TXN.ALREADY_EXISTS", "branch exists"));
+                }
+                (c.cseq, id, None)
+            }
+        };
+        let meta = crate::history::BranchMeta {
+            kind: crate::history::branch_kind(name).to_string(),
+            created_at: now.map(str::to_string),
+            active_at: now.map(str::to_string),
+            parent_line: pl,
+            created_from,
+        };
+        self.put_branch_meta(name, &meta)?;
+        Ok(json!({"head": head_cseq}))
     }
 
     /// Begin a commit on a branch. The state of the transaction starts empty and is filled
@@ -495,6 +596,11 @@ impl<'a> Repo<'a> {
             loaded_queues: HashSet::new(),
             versions: Vec::new(),
             appended: Vec::new(),
+            now: None,
+            inherited: HashMap::new(),
+            hidden: BTreeSet::new(),
+            ops: BTreeMap::new(),
+            extra: Map::new(),
         })
     }
 
@@ -585,6 +691,13 @@ impl<'a> Repo<'a> {
             if old.as_ref() == new {
                 continue;
             }
+            // An inherited object that is unchanged, or hidden, is not written on this
+            // branch (STD-VER-080): the hide marker goes into the commit record.
+            if let Some(inh) = tx.inherited.get(id)
+                && (new == Some(inh) || (new.is_none() && tx.hidden.contains(id)))
+            {
+                continue;
+            }
             let any = new.or(old.as_ref()).expect("changed object");
             if any.kind != "system" {
                 tree.insert(format!("o/{id}"), new.map(|o| o.head.clone()));
@@ -613,12 +726,29 @@ impl<'a> Repo<'a> {
         let prev = self.commit(tx.head)?.root;
         let w = ubos_tree::update(&mut StoreNodes(&mut *self.store), &prev, &tree)?;
         let id = self.store.next_commit_id()?;
-        let rec = CommitRecord {
+        let prev_tx = match parents.first() {
+            Some(p) => self.commit(*p)?.tx_time,
+            None => None,
+        };
+        let parent_ids: Vec<String> = parents
+            .iter()
+            .map(|p| self.commit(*p).map(|c| c.commit_id))
+            .collect::<Result<_, _>>()?;
+        let mut rec = CommitRecord {
             parents,
             cseq: tx.cseq,
             branch: tx.branch.clone(),
             root: w.root,
+            commit_id: String::new(),
+            tx_time: Some(hlc(
+                tx.now.as_deref().unwrap_or(DEFAULT_NOW),
+                prev_tx.as_deref(),
+            )?),
+            ops: tx.ops,
+            hidden: tx.hidden.iter().cloned().collect(),
+            extra: tx.extra,
         };
+        rec.commit_id = commit_identity(&rec, &parent_ids)?;
         let f = Flush {
             versions: tx.versions,
             commit_id: id,
@@ -698,7 +828,9 @@ impl<'a> Repo<'a> {
         content_id("ubos.entry.v1", &rec)
     }
 
-    fn check_period(&mut self, tx: &mut Tx, class: &str, today: &str) -> Result<(), BpaError> {
+    /// The period rule of a ledger class at `today` (STD-KIND-025): `LEDG.PERIOD_CLOSED`
+    /// when the period object covering the day is closed.
+    pub fn check_period(&mut self, tx: &mut Tx, class: &str, today: &str) -> Result<(), BpaError> {
         let Some(scope) = self
             .reg
             .class(class)?
@@ -1007,4 +1139,15 @@ pub struct Tx {
     pub versions: Vec<(String, Value)>,
     /// Entries appended in this commit.
     pub appended: Vec<Entry>,
+    /// The adapter clock, for the transaction time of the commit.
+    pub now: Option<String>,
+    /// Objects resolved through the parent line (STD-VER-080); unchanged ones are not
+    /// written, hidden ones are recorded as markers.
+    pub inherited: HashMap<String, ObjectState>,
+    /// Hide markers after this commit.
+    pub hidden: BTreeSet<String>,
+    /// Operations per object recorded in the commit (STD-TIME-040).
+    pub ops: BTreeMap<String, Vec<Value>>,
+    /// Further members of the commit record.
+    pub extra: Map<String, Value>,
 }

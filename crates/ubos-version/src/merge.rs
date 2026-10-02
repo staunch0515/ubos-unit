@@ -2,14 +2,113 @@
 
 use crate::state::{Entry, ObjectState, Repo, Segment, State, Tx, at};
 use serde_json::{Map, Value, json};
-use std::collections::BTreeSet;
-use ubos_model::types::BpaError;
+use std::collections::{BTreeMap, BTreeSet};
+use ubos_model::types::{BpaError, content_id};
+
+/// Recorded resolutions supplied with a merge (STD-VER-058), keyed by object and path.
+#[derive(Debug, Default, Clone)]
+pub struct Resolver {
+    given: BTreeMap<(String, Option<String>), Value>,
+    /// Resolutions applied, as recorded in the merge commit.
+    pub used: BTreeMap<(String, Option<String>), Value>,
+}
+
+impl Resolver {
+    /// Parse the resolutions of a merge input.
+    pub fn new(items: &[Value]) -> Result<Resolver, BpaError> {
+        let mut given = BTreeMap::new();
+        for r in items {
+            let ok = r.is_object()
+                && r.get("object_id")
+                    .and_then(Value::as_str)
+                    .is_some_and(|o| !o.is_empty())
+                && r.get("resolver")
+                    .and_then(Value::as_str)
+                    .is_some_and(|o| !o.is_empty())
+                && r.get("choice").is_some();
+            if !ok {
+                return Err(BpaError::new(
+                    "MODEL.DECLARATION_INCOMPLETE",
+                    "a resolution names object_id, choice and resolver",
+                ));
+            }
+            let choice = r["choice"].as_str().unwrap_or_default();
+            if !matches!(choice, "source" | "target" | "base" | "custom")
+                || (choice == "custom") != r.get("value").is_some()
+            {
+                return Err(BpaError::new(
+                    "MODEL.INVALID_VALUE",
+                    "choice is source, target, base, or custom with a value",
+                ));
+            }
+            let key = (
+                r["object_id"].as_str().unwrap_or_default().to_string(),
+                r.get("path").and_then(Value::as_str).map(str::to_string),
+            );
+            given.insert(key, r.clone());
+        }
+        Ok(Resolver {
+            given,
+            used: BTreeMap::new(),
+        })
+    }
+
+    /// Resolutions that matched no conflict.
+    pub fn unused(&self) -> bool {
+        self.given.keys().any(|k| !self.used.contains_key(k))
+    }
+
+    /// The resolutions applied, in object and path order.
+    pub fn records(&self) -> Vec<Value> {
+        self.used.values().cloned().collect()
+    }
+}
+
+/// A chosen value of a resolution: a version hash, a field value, or absence.
+enum Chosen {
+    Version(Option<String>),
+    Field(Option<Value>),
+}
 
 #[derive(Debug, Clone, PartialEq)]
 enum Piece {
     Absent,
     Version(String),
     Merged(Map<String, Value>),
+}
+
+/// The merge base of two commit sets as a preview reports it (STD-VER-057): one commit
+/// ID, or the content ID of the sorted best ancestors' commit IDs.
+pub fn base_id(ids: &[String]) -> Result<String, BpaError> {
+    if ids.len() == 1 {
+        return Ok(ids[0].clone());
+    }
+    content_id("ubos.chunk.v1", &json!(ids))
+}
+
+/// Conflicts without repetition, in order of first occurrence.
+pub fn unique(items: Vec<Value>) -> Vec<Value> {
+    let mut out: Vec<Value> = Vec::new();
+    for c in items {
+        if !out.contains(&c) {
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// A prepared merge (STD-VER-050…058).
+pub struct MergePlan {
+    /// The transaction on the target holding the merged state.
+    pub tx: Tx,
+    /// The target state before the merge.
+    pub target_state: State,
+    /// Merge parents `[target, source]`.
+    pub parents: Vec<u64>,
+    /// Resolutions applied (`DAT-Resolution`).
+    pub resolutions: Vec<Value>,
+    /// Entries appended by the merge: `entry_id → {seq, source_seq}`.
+    pub appended: Map<String, Value>,
 }
 
 fn same(a: Option<&ObjectState>, b: Option<&ObjectState>) -> bool {
@@ -32,6 +131,11 @@ impl Repo<'_> {
         Ok(seen)
     }
 
+    /// True when `anc` is an ancestor of (or equal to) `id`.
+    pub fn ancestors_contains(&mut self, id: u64, anc: u64) -> Result<bool, BpaError> {
+        Ok(self.ancestors(id)?.contains(&anc))
+    }
+
     fn ancestors_of(&mut self, ids: &BTreeSet<u64>) -> Result<BTreeSet<u64>, BpaError> {
         let mut out = BTreeSet::new();
         for id in ids {
@@ -40,13 +144,12 @@ impl Repo<'_> {
         Ok(out)
     }
 
-    /// Merge base of two sets of commits; a virtual base for several best ancestors (STD-VER-040).
-    fn base_state(
+    /// Best common ancestors of two commit sets, sorted by commit ID (STD-VER-040).
+    pub fn best_ancestors(
         &mut self,
         xs: &BTreeSet<u64>,
         ys: &BTreeSet<u64>,
-        tx: &mut Tx,
-    ) -> Result<State, BpaError> {
+    ) -> Result<Vec<u64>, BpaError> {
         let common: BTreeSet<u64> = self
             .ancestors_of(xs)?
             .intersection(&self.ancestors_of(ys)?)
@@ -62,22 +165,38 @@ impl Repo<'_> {
                 }
             }
             if !dominated {
-                best.push(*c);
+                best.push((self.commit(*c)?.commit_id, *c));
             }
         }
+        best.sort();
+        Ok(best.into_iter().map(|(_, c)| c).collect())
+    }
+
+    /// Merge base of two sets of commits; a virtual base for several best ancestors (STD-VER-040).
+    pub fn base_state(
+        &mut self,
+        xs: &BTreeSet<u64>,
+        ys: &BTreeSet<u64>,
+        tx: &mut Tx,
+    ) -> Result<State, BpaError> {
+        let best = self.best_ancestors(xs, ys)?;
         let mut acc = self.commit_state(best[0])?;
         let mut tips: BTreeSet<u64> = [best[0]].into();
         for c in best.iter().skip(1) {
             let b = self.base_state(&tips, &[*c].into(), tx)?;
             let other = self.commit_state(*c)?;
-            acc = self.merge_states(&b, &other, &acc, true, None, None, tx)?.0;
+            acc = self
+                .merge_states(&b, &other, &acc, true, None, None, false, &mut None, tx)?
+                .0;
             tips.insert(*c);
         }
         Ok(acc)
     }
 
+    /// Three-way merge of states (STD-VER-050…054). `keep` leaves conflicting objects as
+    /// on the target (previews); `res` supplies recorded resolutions (STD-VER-058).
     #[allow(clippy::too_many_arguments)]
-    fn merge_states(
+    pub fn merge_states(
         &mut self,
         b: &State,
         s: &State,
@@ -85,6 +204,8 @@ impl Repo<'_> {
         virtual_: bool,
         cseq: Option<u64>,
         branch: Option<&str>,
+        keep: bool,
+        res: &mut Option<Resolver>,
         tx: &mut Tx,
     ) -> Result<(State, Vec<Value>), BpaError> {
         let mut conflicts = Vec::new();
@@ -105,8 +226,14 @@ impl Repo<'_> {
                 s.objects.get(oid),
                 t.objects.get(oid),
                 virtual_,
+                res,
                 tx,
             )?;
+            let o = if !c.is_empty() && keep && !virtual_ {
+                t.objects.get(oid).cloned()
+            } else {
+                o
+            };
             conflicts.extend(c);
             if let Some(o) = o {
                 out.objects.insert(oid.clone(), o);
@@ -138,6 +265,66 @@ impl Repo<'_> {
         Ok((out, conflicts))
     }
 
+    /// The resolved value of a conflict, recording the resolution (STD-VER-058).
+    #[allow(clippy::too_many_arguments)]
+    fn resolution(
+        &mut self,
+        res: &mut Option<Resolver>,
+        oid: &str,
+        path: Option<&str>,
+        b: Option<&Value>,
+        s: Option<&Value>,
+        t: Option<&Value>,
+        tx: &mut Tx,
+    ) -> Result<Option<Chosen>, BpaError> {
+        let Some(r) = res.as_ref() else {
+            return Ok(None);
+        };
+        let key = (oid.to_string(), path.map(str::to_string));
+        let Some(rule) = r.given.get(&key).cloned() else {
+            return Ok(None);
+        };
+        let choice = rule["choice"].as_str().unwrap_or_default();
+        let picked: Option<Value> = match choice {
+            "custom" => {
+                if path.is_none() {
+                    return Err(BpaError::new(
+                        "MODEL.INVALID_VALUE",
+                        "an object-level conflict has no custom value",
+                    ));
+                }
+                Some(rule["value"].clone())
+            }
+            "source" => s.cloned(),
+            "target" => t.cloned(),
+            _ => b.cloned(),
+        };
+        let (chosen, out) = match path {
+            None => {
+                let h = picked.as_ref().and_then(Value::as_str).map(str::to_string);
+                let body = match &h {
+                    Some(h) => self.version_in(tx, h)?["body"].clone(),
+                    None => Value::Null,
+                };
+                (body, Chosen::Version(h))
+            }
+            Some(_) => (picked.clone().unwrap_or(Value::Null), Chosen::Field(picked)),
+        };
+        let mut rec = json!({"object_id": oid, "choice": choice,
+            "value_hash": content_id("ubos.chunk.v1", &chosen)?, "resolver": rule["resolver"]});
+        if let Some(p) = path {
+            rec["path"] = json!(p);
+        }
+        if let Some(reason) = rule.get("reason")
+            && !reason.is_null()
+        {
+            rec["reason"] = reason.clone();
+        }
+        res.as_mut().expect("resolver").used.insert(key, rec);
+        Ok(Some(out))
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn merge_object(
         &mut self,
         oid: &str,
@@ -145,6 +332,7 @@ impl Repo<'_> {
         so: Option<&ObjectState>,
         to: Option<&ObjectState>,
         virtual_: bool,
+        res: &mut Option<Resolver>,
         tx: &mut Tx,
     ) -> Result<(Option<ObjectState>, Vec<Value>), BpaError> {
         if same(so, to) || same(so, bo) {
@@ -185,18 +373,37 @@ impl Repo<'_> {
                 piece(vt)
             } else if vt == vb {
                 piece(vs)
-            } else if vs.is_none() || vt.is_none() {
-                conflicts.push(json!({"object_id": oid, "kind": "ended_vs_changed"}));
-                piece(vb)
-            } else if meta.kind == "raw_document" {
-                conflicts.push(json!({"object_id": oid, "kind": "raw_document"}));
-                piece(vb)
+            } else if vs.is_none() || vt.is_none() || meta.kind == "raw_document" {
+                let kind = if vs.is_some() && vt.is_some() {
+                    "raw_document"
+                } else {
+                    "ended_vs_changed"
+                };
+                let chosen = if virtual_ {
+                    None
+                } else {
+                    let (jb, js, jt) = (
+                        vb.clone().map(Value::from),
+                        vs.clone().map(Value::from),
+                        vt.clone().map(Value::from),
+                    );
+                    self.resolution(res, oid, None, jb.as_ref(), js.as_ref(), jt.as_ref(), tx)?
+                };
+                match chosen {
+                    Some(Chosen::Version(h)) => piece(&h),
+                    _ => {
+                        conflicts.push(json!({"object_id": oid, "kind": kind}));
+                        piece(vb)
+                    }
+                }
             } else {
+                let mut none = None;
                 let (r, c) = self.merge_body(
                     oid,
                     vb.as_deref(),
                     vs.as_deref().unwrap_or_default(),
                     vt.as_deref().unwrap_or_default(),
+                    if virtual_ { &mut none } else { res },
                     tx,
                 )?;
                 conflicts.extend(c);
@@ -284,6 +491,7 @@ impl Repo<'_> {
         vb: Option<&str>,
         vs: &str,
         vt: &str,
+        res: &mut Option<Resolver>,
         tx: &mut Tx,
     ) -> Result<(Piece, Vec<Value>), BpaError> {
         let body = |v: Value| v["body"].as_object().cloned().unwrap_or_default();
@@ -298,26 +506,39 @@ impl Repo<'_> {
         let mut conflicts = Vec::new();
         for k in keys {
             let (b, s, t) = (bb.get(k), sb.get(k), tb.get(k));
-            let r = if s == t || s == b {
-                t
+            let r: Option<Value> = if s == t || s == b {
+                t.cloned()
             } else if t == b {
-                s
+                s.cloned()
             } else {
-                conflicts.push(json!({"object_id": oid, "kind": "field", "path": format!("/{k}")}));
-                b
+                let path = format!("/{k}");
+                match self.resolution(res, oid, Some(&path), b, s, t, tx)? {
+                    Some(Chosen::Field(v)) => v,
+                    _ => {
+                        conflicts.push(json!({"object_id": oid, "kind": "field", "path": path}));
+                        b.cloned()
+                    }
+                }
             };
             if let Some(v) = r {
-                out.insert(k.clone(), v.clone());
+                out.insert(k.clone(), v);
             }
         }
         Ok((Piece::Merged(out), conflicts))
     }
 
-    /// Merge the head of `source` into `target` (STD-VER-050…056).
-    pub fn merge(&mut self, source: &str, target: &str) -> Result<Value, BpaError> {
+    /// Prepare the merge of `source` into `target` (STD-VER-050…056, -058): the transaction
+    /// holding the merged state, the merge parents and the resolutions applied. `None`
+    /// when the source is already merged.
+    pub fn merge_prepare(
+        &mut self,
+        source: &str,
+        target: &str,
+        resolutions: &[Value],
+    ) -> Result<Option<MergePlan>, BpaError> {
         let (s, t) = (self.head(source)?, self.head(target)?);
         if self.ancestors(t)?.contains(&s) {
-            return Ok(json!({"cseq": self.commit(t)?.cseq, "merged": false}));
+            return Ok(None);
         }
         let mut tx = self.begin(target)?;
         self.load_all(&mut tx)?;
@@ -325,6 +546,7 @@ impl Repo<'_> {
         let sstate = self.commit_state(s)?;
         let tstate = tx.state.clone();
         let cseq = tx.cseq;
+        let mut res = Some(Resolver::new(resolutions)?);
         let (st, conflicts) = self.merge_states(
             &base,
             &sstate,
@@ -332,18 +554,21 @@ impl Repo<'_> {
             false,
             Some(cseq),
             Some(source),
+            false,
+            &mut res,
             &mut tx,
         )?;
         if !conflicts.is_empty() {
-            let mut uniq: Vec<Value> = Vec::new();
-            for c in conflicts {
-                if !uniq.contains(&c) {
-                    uniq.push(c);
-                }
-            }
             return Err(BpaError::with_details(
                 "VER.MERGE_CONFLICT",
-                json!({"conflicts": uniq}),
+                json!({"conflicts": unique(conflicts)}),
+            ));
+        }
+        let res = res.expect("resolver");
+        if res.unused() {
+            return Err(BpaError::new(
+                "MODEL.INVALID_VALUE",
+                "a resolution matches no conflict",
             ));
         }
         let mut appended = Map::new();
@@ -355,8 +580,85 @@ impl Repo<'_> {
             }
         }
         tx.state = st;
-        self.write(tx, vec![t, s])?;
+        Ok(Some(MergePlan {
+            tx,
+            target_state: tstate,
+            parents: vec![t, s],
+            resolutions: res.records(),
+            appended,
+        }))
+    }
+
+    /// The merged state of `source` into `target` for a preview (STD-VER-057): conflicting
+    /// objects stay as on the target, and the conflicts are listed.
+    pub fn merge_result(
+        &mut self,
+        source: &str,
+        target: &str,
+        tx: &mut Tx,
+    ) -> Result<(State, Vec<Value>), BpaError> {
+        let (s, t) = (self.head(source)?, self.head(target)?);
+        let base = self.base_state(&[t].into(), &[s].into(), tx)?;
+        let sstate = self.commit_state(s)?;
+        let tstate = self.commit_state(t)?;
+        let cseq = tx.cseq;
+        let (st, conflicts) = self.merge_states(
+            &base,
+            &sstate,
+            &tstate,
+            false,
+            Some(cseq),
+            Some(source),
+            true,
+            &mut None,
+            tx,
+        )?;
+        Ok((st, unique(conflicts)))
+    }
+
+    /// Merge the head of `source` into `target` without the checks of the engine (tools).
+    pub fn merge(&mut self, source: &str, target: &str) -> Result<Value, BpaError> {
+        let Some(plan) = self.merge_prepare(source, target, &[])? else {
+            let t = self.head(target)?;
+            return Ok(json!({"cseq": self.commit(t)?.cseq, "merged": false}));
+        };
+        let cseq = plan.tx.cseq;
+        let appended = plan.appended.clone();
+        self.write(plan.tx, plan.parents)?;
         Ok(json!({"cseq": cseq, "merged": true, "appended": appended}))
+    }
+
+    /// Changes between two states as `DAT-DiffEntry` items (STD-VER-030).
+    pub fn diff_states(&mut self, sa: &State, sb: &State) -> Result<Vec<Value>, BpaError> {
+        self.diff_states_in(sa, sb, None)
+    }
+
+    /// `diff_states` with versions that a transaction created but did not write (previews).
+    pub fn diff_states_in(
+        &mut self,
+        sa: &State,
+        sb: &State,
+        tx: Option<&Tx>,
+    ) -> Result<Vec<Value>, BpaError> {
+        let mut out = Vec::new();
+        let ids: BTreeSet<&String> = sa.objects.keys().chain(sb.objects.keys()).collect();
+        for oid in ids {
+            out.extend(self.diff_object(oid, sa.objects.get(oid), sb.objects.get(oid), tx)?);
+        }
+        let seen: BTreeSet<&String> = sa
+            .ledger
+            .iter()
+            .flat_map(|x| x.2.iter())
+            .map(|e| &e.entry_id)
+            .collect();
+        for (_, _, q) in &sb.ledger {
+            for e in q {
+                if !seen.contains(&e.entry_id) {
+                    out.push(json!({"object_id": e.entry_id, "class": e.class, "op": "appended", "versions": {"a": null, "b": e.entry_hash}}));
+                }
+            }
+        }
+        Ok(out)
     }
 
     /// One object entry of a diff, or `None` when the object is unchanged.
@@ -365,6 +667,7 @@ impl Repo<'_> {
         oid: &str,
         x: Option<&ObjectState>,
         y: Option<&ObjectState>,
+        tx: Option<&Tx>,
     ) -> Result<Option<Value>, BpaError> {
         if let (Some(x), Some(y)) = (x, y)
             && x.head == y.head
@@ -381,8 +684,10 @@ impl Repo<'_> {
         match (x, y) {
             (None, _) => ent["op"] = json!("added"),
             (Some(x), Some(y)) => {
-                let vx = self.version(&x.head)?;
-                let vy = self.version(&y.head)?;
+                let (vx, vy) = match tx {
+                    Some(tx) => (self.version_in(tx, &x.head)?, self.version_in(tx, &y.head)?),
+                    None => (self.version(&x.head)?, self.version(&y.head)?),
+                };
                 if vy["tombstone"] == true && vx["tombstone"] != true {
                     ent["op"] = json!("ended");
                 } else {
@@ -449,30 +754,12 @@ impl Repo<'_> {
             for oid in ids {
                 let x = self.object_at(&ab, at_, &oid)?;
                 let y = self.object_at(&bb, bt, &oid)?;
-                out.extend(self.diff_object(&oid, x.as_ref(), y.as_ref())?);
+                out.extend(self.diff_object(&oid, x.as_ref(), y.as_ref(), None)?);
             }
             return Ok(Value::Array(out));
         }
         let sa = self.state_at(&ab, at_)?;
         let sb = self.state_at(&bb, bt)?;
-        let mut out = Vec::new();
-        let ids: BTreeSet<&String> = sa.objects.keys().chain(sb.objects.keys()).collect();
-        for oid in ids {
-            out.extend(self.diff_object(oid, sa.objects.get(oid), sb.objects.get(oid))?);
-        }
-        let seen: BTreeSet<&String> = sa
-            .ledger
-            .iter()
-            .flat_map(|x| x.2.iter())
-            .map(|e| &e.entry_id)
-            .collect();
-        for (_, _, q) in &sb.ledger {
-            for e in q {
-                if !seen.contains(&e.entry_id) {
-                    out.push(json!({"object_id": e.entry_id, "class": e.class, "op": "appended", "versions": {"a": null, "b": e.entry_hash}}));
-                }
-            }
-        }
-        Ok(Value::Array(out))
+        Ok(Value::Array(self.diff_states(&sa, &sb)?))
     }
 }

@@ -252,8 +252,22 @@ fn commits(url: &str, spec: &Spec, o: &Opts) -> Result<Value, BpaError> {
         prep_s += began.elapsed().as_secs_f64();
         let g0 = Instant::now();
         match e.commit_group(&inputs) {
-            Ok(rs) => errors += rs.iter().filter(|r| r.is_err()).count() as u64,
-            Err(_) => errors += inputs.len() as u64,
+            Ok(rs) => {
+                for r in &rs {
+                    if let Err(err) = r {
+                        if errors == 0 {
+                            eprintln!("first failed commit: {err}");
+                        }
+                        errors += 1;
+                    }
+                }
+            }
+            Err(err) => {
+                if errors == 0 {
+                    eprintln!("first failed group: {err}");
+                }
+                errors += inputs.len() as u64;
+            }
         }
         group_s += g0.elapsed().as_secs_f64();
         sizes.push(inputs.len() as u64);

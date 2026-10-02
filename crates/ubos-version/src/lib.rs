@@ -11,9 +11,13 @@
 //! Commits are written as deltas to the store's indexes with the new state-tree root; reads
 //! resolve a branch through its parents at their fork points (PH-0 step 5, DSN-DVM-004…008).
 
+pub mod history;
 pub mod merge;
 pub mod state;
 
+pub use history::{BranchMeta, PROTECTED, ParentLine, Snapshot, View, branch_kind, expires_of};
+pub use merge::{MergePlan, Resolver, base_id, unique};
 pub use state::{
-    CommitRecord, Entry, ObjectState, Repo, Segment, State, Tx, at, lt, version_record,
+    CommitRecord, DEFAULT_NOW, Entry, ObjectState, Repo, Segment, State, TENANT, Tx, at, hlc, lt,
+    version_record,
 };

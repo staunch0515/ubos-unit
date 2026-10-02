@@ -23,6 +23,19 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "list_objects",
     "traverse",
     "class_at",
+    "merge_preview",
+    "change_set",
+    "tag",
+    "delete_tag",
+    "tag_info",
+    "release",
+    "revert",
+    "branch_info",
+    "set_parent_line",
+    "commit_info",
+    "tree_diff",
+    "process_info",
+    "lineage",
 ];
 
 const ENVELOPE_REQUIRED: &[&str] = &[
@@ -182,7 +195,10 @@ impl Adapter {
             "commit" => self.engine.commit(i)?,
             "read" => self.engine.read(i)?,
             "read_ledger" => self.engine.read_ledger(i)?,
-            "create_branch" | "merge" | "diff" | "export_state" => self.engine.other(op, i)?,
+            "create_branch" | "merge" | "diff" | "export_state" | "merge_preview"
+            | "change_set" | "tag" | "delete_tag" | "tag_info" | "release" | "revert"
+            | "branch_info" | "set_parent_line" | "commit_info" | "tree_diff" | "process_info"
+            | "lineage" => self.engine.other(op, i)?,
             "canonical_json" => Value::String(ubos_types::canonical(field(i, "value")?)?),
             "content_id" => Value::String(content_id(text(i, "domain")?, field(i, "value")?)?),
             "normalize_text" => Value::String(nfc(text(i, "text")?)),
