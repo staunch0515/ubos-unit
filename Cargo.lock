@@ -1956,12 +1956,24 @@ dependencies = [
  "sqlx",
  "tokio",
  "ubos-crypto",
+ "ubos-expr",
  "ubos-model",
  "ubos-store",
  "ubos-time",
  "ubos-tree",
  "ubos-types",
  "ubos-version",
+]
+
+[[package]]
+name = "ubos-expr"
+version = "0.0.0"
+dependencies = [
+ "chrono",
+ "chrono-tz",
+ "regex",
+ "serde_json",
+ "ubos-model",
 ]
 
 [[package]]

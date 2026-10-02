@@ -140,9 +140,14 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    idempotency and derivation records and timers written in the flush, VAE authority and
    principal as engine scope, `parse_uri`, `resolve`, `parse_did`, `key_did`, interim signed
    runner report `verify/reports/exit-1-02/`; 869 of 1,227 vectors pass in memory and on
-   PostgreSQL; DEC-054). Step 4 is complete. Next step 5 (runtime: L1 expressions, L2
-   execution, instruction set, journal, replay; EXIT-1-10). W-1 may still change partition
-   counts and commit-path costs by a further migration (DEC-047).
+   PostgreSQL; DEC-054). Step 4 is complete. Step 5 (runtime, EXIT-1-10) in parts 5a–5d
+   (DEC-055): 5a done (crate `ubos-expr`: L1 lexer, parser, type checker, evaluator and
+   ABI 1.0 function library; custom value types through a registry hook; `check_expr`,
+   `eval_expr`, `validate_value` with value types, `query`; 1,009 of 1,227 vectors pass in
+   memory and on PostgreSQL). Next 5b (instruction set and executor, evaluation context and
+   profiles, STD-CTX, STD-ISA, STD-TXN-023), then 5c (journal, replay, verification gate,
+   static analysis, BPU) and 5d (Rhai host W-2…W-5, escape suite, EXIT-1-10 report). W-1
+   may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
    occasion.

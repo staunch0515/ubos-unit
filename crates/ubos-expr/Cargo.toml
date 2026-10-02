@@ -1,0 +1,19 @@
+[package]
+name = "ubos-expr"
+description = "L1 expression language: parser, type checker, evaluator and the ABI 1.0 function library"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+ubos-model.workspace = true
+serde_json.workspace = true
+regex.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+
+[lints]
+workspace = true

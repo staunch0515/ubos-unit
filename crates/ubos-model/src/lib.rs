@@ -659,12 +659,40 @@ impl Class {
     }
 }
 
+/// The evaluator of custom value types (STD-FND-026), installed by the engine layer:
+/// `ubos-model` cannot depend on the expression language (UBS-ARC-07 §2).
+pub trait CustomTypes: Send + Sync {
+    /// Type-check the `normalize` and `validate` members of a declaration.
+    fn check(&self, decl: &Value) -> Result<(), BpaError>;
+    /// Normalise, then validate, a value of the type; returns the canonical value.
+    fn value(
+        &self,
+        decl: &Value,
+        value: &Value,
+        constraints: Option<&Value>,
+    ) -> Result<Value, BpaError>;
+}
+
+#[derive(Clone)]
+struct Hook(Option<std::sync::Arc<dyn CustomTypes>>);
+
+impl std::fmt::Debug for Hook {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(if self.0.is_some() {
+            "CustomTypes(installed)"
+        } else {
+            "CustomTypes(none)"
+        })
+    }
+}
+
 /// A registry of class declarations with their effective definitions.
 #[derive(Debug, Clone)]
 pub struct Registry {
     decls: BTreeMap<String, Value>,
     classes: BTreeMap<String, Class>,
     value_types: BTreeMap<String, Value>,
+    custom: Hook,
     /// Largest canonical body in bytes (STD-OBJ-009, adapter `set_limits`).
     pub max_body: usize,
 }
@@ -720,10 +748,17 @@ impl Registry {
             decls: genesis(),
             classes: BTreeMap::new(),
             value_types: BTreeMap::new(),
+            custom: Hook(None),
             max_body: MAX_BODY,
         };
         r.recompute(&[]).expect("genesis model");
         r
+    }
+
+    /// The registry with an evaluator of custom value types installed.
+    pub fn with_custom(mut self, hook: std::sync::Arc<dyn CustomTypes>) -> Registry {
+        self.custom = Hook(Some(hook));
+        self
     }
 
     /// Add or replace declarations (and custom value types) and recompute every
@@ -738,6 +773,9 @@ impl Registry {
             let mut known = BTreeSet::new();
             for d in vts {
                 check_value_type(d, &known)?;
+                if let Some(h) = &out.custom.0 {
+                    h.check(d)?;
+                }
                 known.insert(s(d, "name").unwrap_or_default().to_string());
             }
             out.value_types = vts
@@ -1104,16 +1142,20 @@ impl Registry {
             match c.fields.get(k) {
                 Some(f) => {
                     let t = s(f, "type").unwrap_or_default();
-                    if self.value_types.contains_key(t) {
-                        return Err(err(
-                            "ADAPTER.UNSUPPORTED",
-                            "custom value types need the L1 evaluator (PH-1 step 5)",
-                        ));
-                    }
-                    out.insert(
-                        k.clone(),
-                        values::validate_value(t, f.get("constraints"), v)?,
-                    );
+                    let value = match self.value_types.get(t) {
+                        Some(d) => match &self.custom.0 {
+                            Some(h) if !v.is_null() => h.value(d, v, f.get("constraints"))?,
+                            Some(_) => Value::Null,
+                            None => {
+                                return Err(err(
+                                    "ADAPTER.UNSUPPORTED",
+                                    "custom value types need an evaluator (STD-FND-026)",
+                                ));
+                            }
+                        },
+                        None => values::validate_value(t, f.get("constraints"), v)?,
+                    };
+                    out.insert(k.clone(), value);
                 }
                 None if c.kind.as_deref() == Some("raw_document") => {
                     canonical(v)?;

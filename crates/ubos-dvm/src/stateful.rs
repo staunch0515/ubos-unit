@@ -47,7 +47,7 @@ impl Engine {
     pub fn new(store: Box<dyn Store>) -> Result<Engine, BpaError> {
         let mut e = Engine {
             store,
-            registry: Registry::new(),
+            registry: crate::expressions::registry(),
             now: DEFAULT_NOW.into(),
             instances: BTreeSet::new(),
             max_inputs: 10_000,
@@ -64,7 +64,7 @@ impl Engine {
     pub fn attach(store: Box<dyn Store>, classes: &Value) -> Result<Engine, BpaError> {
         let mut e = Engine {
             store,
-            registry: Registry::new(),
+            registry: crate::expressions::registry(),
             now: DEFAULT_NOW.into(),
             instances: BTreeSet::new(),
             max_inputs: 10_000,
@@ -79,7 +79,7 @@ impl Engine {
     /// `reset`: empty store, genesis `main` at cseq 0.
     pub fn reset(&mut self) -> Result<(), BpaError> {
         self.store.reset()?;
-        self.registry = Registry::new();
+        self.registry = crate::expressions::registry();
         self.now = DEFAULT_NOW.into();
         self.instances.clear();
         self.next_process = 0;
