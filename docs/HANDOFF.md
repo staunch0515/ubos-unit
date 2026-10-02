@@ -50,6 +50,7 @@ the work without the earlier conversations. Read `CLAUDE.md` first for the worki
 | DEC-047 | Storage kernel in parts 3a–3c: asynchronous `StoreTx`/`StoreRead` on sqlx, DVM-04 schema as migrations with transition columns until step 4, local blob and key providers until step 7, storage suite on PostgreSQL 16 locally and in CI (ENV-REF-SERVER run at step 9). |
 | DEC-048 | Storage tenancy and physical form: 64 hash partitions, row-level security through role `ubos_app`, immutable ledger entries, stored form zstd + XChaCha20-Poly1305 with integrity check, chunk placement at 8 KiB, adapter reset to a fresh VAE. |
 | DEC-049 | Index, sequence and root verifiers; storage suite SUITE-DVM-STORE with 20 cases passing on PostgreSQL 16; inspection record of the backend-neutral traits; EXIT-1-03 met. |
+| DEC-050 | Engine at production quality in parts 4a–4d; 4a: full class registry (C3, traits, narrowing, ports, extensions), commit-time reference, relationship and extension checks; custom value types wait for the L1 evaluator (step 5). |
 
 The full log with context and alternatives is `docs/50-system/90-decisions/000-index.md`.
 
@@ -122,9 +123,11 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    3b done (partitions, row-level security with role `ubos_app`, physical form, chunk
    placement, `ubos-crypto`, DEC-048); 3c done (verifiers, storage suite 20/20,
    inspection record, `verify/reports/exit-1-03/`, DEC-049; EXIT-1-03 met, the ENV-REF-SERVER
-   run follows at step 9). Next AI step: PH-1 step 4 (model, versioning, time, ledger and
-   transactions at production quality, EXIT-1-02, W-10), which also replaces the
-   transition layout of DEC-047. W-1 should run
+   run follows at step 9). Step 4 (engine at production quality, EXIT-1-02, W-10) in parts
+   4a–4d (DEC-050): 4a done (full class registry, relationships and extensions in the
+   kernel; CLS, OBJ and ERR vectors pass; 1,170 of 1,227 vectors pass in memory and on
+   PostgreSQL). Next 4b (versioning), 4c (time, ledger, transactions), 4d (production
+   identities replacing the transition layout of DEC-047, tenancy, signed runner report). W-1 should run
    before the storage layout is fixed.
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that

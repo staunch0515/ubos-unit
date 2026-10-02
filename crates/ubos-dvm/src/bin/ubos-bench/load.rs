@@ -151,7 +151,7 @@ pub fn load(url: &str, spec: Spec, threads: u64) -> Result<Value, BpaError> {
     let classes = workload::classes(spec.seed);
     let reg = {
         let mut e = Engine::new(Box::new(PgStore::connect(url)?.with_fixed_scope()))?;
-        e.load_genesis(&classes)?;
+        e.load_genesis(&classes, None)?;
         e.registry.clone()
     };
     let fields = fields(&reg)?;
@@ -263,7 +263,7 @@ pub fn check(url: &str, spec: Spec) -> Result<Value, BpaError> {
     let classes = workload::classes(spec.seed);
     let mut pg = Engine::attach(Box::new(PgStore::connect(url)?), &classes)?;
     let mut mem = Engine::new(Box::new(MemStore::default()))?;
-    mem.load_genesis(&classes)?;
+    mem.load_genesis(&classes, None)?;
     let fields = fields(&mem.registry)?;
     let mut bodies: Vec<Map<String, Value>> = Vec::new();
     let mut heads: Vec<String> = Vec::new();
