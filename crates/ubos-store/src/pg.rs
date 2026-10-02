@@ -1579,7 +1579,8 @@ impl Store for PgStore {
         }
         // A fresh, empty VAE of the same tenant: the adapter's state is empty without
         // truncating the partitioned tables (STD-CONF-002 `reset`, DEC-048). Commit
-        // identifiers restart so that runs are reproducible.
+        // identifiers are not restarted: they are internal, and other VAEs of the database
+        // keep theirs (DEC-051).
         let r: [u8; 16] = ubos_crypto::random_bytes()?;
         let h: String = r.iter().map(|b| format!("{b:02x}")).collect();
         self.backend.scope.vae = format!(
@@ -1590,11 +1591,6 @@ impl Store for PgStore {
             &h[17..20],
             &h[20..32]
         );
-        self.rt
-            .block_on(
-                sqlx::query("SELECT setval('commit_no_seq', 1, false)").execute(&self.backend.pool),
-            )
-            .map_err(db)?;
         Ok(())
     }
     fn version(&mut self, hash: &str) -> Result<Value, BpaError> {

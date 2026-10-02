@@ -26,6 +26,7 @@ ubos-time.workspace = true
 serde_json.workspace = true
 ubos-crypto.workspace = true
 sha2.workspace = true
+regex.workspace = true
 sqlx.workspace = true
 tokio.workspace = true
 
