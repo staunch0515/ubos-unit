@@ -1,9 +1,8 @@
 //! Verifiers of the kernel indexes and ledger sequences (DSN-DVM-092, DSN-DVM-402).
 //!
-//! `verify_indexes` rebuilds `head_index` and `temporal_index` rows from the committed
-//! object rows (the transition table `object_state`, DEC-047), compares order-independent
-//! checksums per bucket of object identifiers, and reports the keys of every mismatching
-//! row. `verify_sequences` checks that each ledger key's own entries on a branch carry dense
+//! `verify_indexes` rebuilds `head_index` and `temporal_index` rows from the write sets the
+//! commit records carry (`objects`, DEC-053), compares order-independent checksums per
+//! bucket of object identifiers, and reports the keys of every mismatching row. `verify_sequences` checks that each ledger key's own entries on a branch carry dense
 //! sequences after the inherited ones, that the hash chain links them, and that the counter
 //! row agrees. Both use only [`StoreRead`], so they run unchanged on every backend.
 
@@ -102,9 +101,9 @@ fn compare<T: Ord + Clone + std::fmt::Debug>(
     }
 }
 
-/// Rebuild the kernel indexes of a branch for the object rows written with `cseq` in
-/// `[from, to]` and compare them with the stored ones (DSN-DVM-092). `head_index` is
-/// compared as a whole.
+/// Rebuild the kernel indexes of a branch from the write sets of its commit records
+/// (`objects`, DEC-053) for the rows whose `cseq_from` lies in `[from, to]`, and compare
+/// them with the stored `temporal_index` and `head_index` rows (DSN-DVM-092).
 pub async fn verify_indexes<R: StoreRead>(
     store: &R,
     branch_id: i64,
@@ -113,35 +112,56 @@ pub async fn verify_indexes<R: StoreRead>(
 ) -> Result<Report, BpaError> {
     let mut report = Report::default();
     let bad = |e: serde_json::Error| BpaError::new("NOD.STORAGE_UNAVAILABLE", e.to_string());
-    let derive = |r: &crate::kernel::StateRow| -> Result<crate::kernel::IndexRow, BpaError> {
-        let state = r
-            .state
-            .as_deref()
-            .map(serde_json::from_slice::<Value>)
-            .transpose()
-            .map_err(bad)?;
-        index_row(&ObjectRow {
-            object_id: r.object_id.clone(),
-            class: r.class.clone(),
-            state,
-        })
-    };
-    // temporal_index
-    let mut expected = Vec::new();
-    for r in store.state_rows(branch_id, from, to).await? {
-        let ix = derive(&r)?;
-        for (f, t, v) in ix.segments {
-            expected.push(TemporalRow {
-                object_id: r.object_id.clone(),
-                valid_from: f,
-                valid_to: t,
-                cseq_from: r.cseq_from,
-                cseq_to: r.cseq_to,
-                version: v,
-                class: r.class.clone(),
+    // Replay the branch's commits in order: each write of an object closes its open rows.
+    let mut heads: Vec<HeadRow> = Vec::new();
+    let mut temporal: Vec<TemporalRow> = Vec::new();
+    let mut open: BTreeMap<String, (usize, Vec<usize>)> = BTreeMap::new();
+    for (cseq, body) in store.commit_bodies(branch_id).await? {
+        let rec: Value = serde_json::from_slice(&body).map_err(bad)?;
+        let rows: Vec<ObjectRow> = match rec.get("objects") {
+            Some(v) => serde_json::from_value(v.clone()).map_err(bad)?,
+            None => Vec::new(),
+        };
+        for o in &rows {
+            if let Some((h, ts)) = open.remove(&o.object_id) {
+                heads[h].cseq_to = cseq;
+                for t in ts {
+                    temporal[t].cseq_to = cseq;
+                }
+            }
+            let ix = index_row(o)?;
+            heads.push(HeadRow {
+                object_id: o.object_id.clone(),
+                cseq_from: cseq,
+                cseq_to: OPEN,
+                version: ix.head,
+                class: o.class.clone(),
+                kind: ix.kind,
+                slug: ix.slug,
+                instant: ix.instant,
+                hidden: !ix.present,
             });
+            let mut ts = Vec::new();
+            for (f, t, v) in ix.segments {
+                ts.push(temporal.len());
+                temporal.push(TemporalRow {
+                    object_id: o.object_id.clone(),
+                    valid_from: f,
+                    valid_to: t,
+                    cseq_from: cseq,
+                    cseq_to: OPEN,
+                    version: v,
+                    class: o.class.clone(),
+                });
+            }
+            open.insert(o.object_id.clone(), (heads.len() - 1, ts));
         }
     }
+    let in_range = |c: u64| c >= from && c <= to;
+    let expected: Vec<TemporalRow> = temporal
+        .into_iter()
+        .filter(|r| in_range(r.cseq_from))
+        .collect();
     let stored = store.temporal_rows(branch_id, from, to).await?;
     compare(
         "temporal_index",
@@ -150,21 +170,11 @@ pub async fn verify_indexes<R: StoreRead>(
         |r| &r.object_id,
         &mut report,
     );
-    // head_index
-    let mut expected = Vec::new();
-    for r in store.state_rows(branch_id, 0, OPEN).await? {
-        if r.cseq_to != OPEN {
-            continue;
-        }
-        let ix = derive(&r)?;
-        expected.push(HeadRow {
-            object_id: r.object_id.clone(),
-            version: ix.head,
-            class: r.class.clone(),
-            hidden: r.state.is_none(),
-        });
-    }
-    let stored = store.head_rows(branch_id).await?;
+    let expected: Vec<HeadRow> = heads
+        .into_iter()
+        .filter(|r| in_range(r.cseq_from))
+        .collect();
+    let stored = store.head_rows(branch_id, from, to).await?;
     compare(
         "head_index",
         &expected,

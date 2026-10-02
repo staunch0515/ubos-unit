@@ -234,7 +234,10 @@ pub fn version_record(
         env["provenance_ref"] = json!(p);
     }
     let vh = content_id("ubos.version.v1", &env)?;
-    let mut rec = json!({"object_id": oid, "class": class, "slug": slug, "body": body, "valid": valid, "tombstone": tombstone});
+    // The stored record is the envelope with its body (the body reference is implied).
+    let mut rec = json!({"object_id": oid, "class": class, "class_version": c.class_version,
+        "schema_version": c.schema_version, "kind": c.kind, "slug": slug, "body": body,
+        "valid": valid, "tombstone": tombstone});
     if let Some(p) = provenance {
         rec["provenance_ref"] = json!(p);
     }
@@ -718,6 +721,11 @@ impl<'a> Repo<'a> {
             objects.push(ObjectRow {
                 object_id: id.clone(),
                 class: any.class.clone(),
+                instant: self
+                    .reg
+                    .class(&any.class)
+                    .map(|c| c.valid_time == "instant")
+                    .unwrap_or(false),
                 state: new.map(serde_json::to_value).transpose().map_err(storage)?,
             });
         }
@@ -747,6 +755,12 @@ impl<'a> Repo<'a> {
             .iter()
             .map(|p| self.commit(*p).map(|c| c.commit_id))
             .collect::<Result<_, _>>()?;
+        // The write set of the commit (DEC-053): the kernel indexes are rebuilt from it.
+        let mut extra = tx.extra;
+        extra.insert(
+            "objects".into(),
+            serde_json::to_value(&objects).map_err(storage)?,
+        );
         let mut rec = CommitRecord {
             parents,
             cseq: tx.cseq,
@@ -759,7 +773,7 @@ impl<'a> Repo<'a> {
             )?),
             ops: tx.ops,
             hidden: tx.hidden.iter().cloned().collect(),
-            extra: tx.extra,
+            extra,
         };
         rec.commit_id = commit_identity(&rec, &parent_ids)?;
         let f = Flush {

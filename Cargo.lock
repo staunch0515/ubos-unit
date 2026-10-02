@@ -1996,6 +1996,7 @@ dependencies = [
 name = "ubos-store"
 version = "0.0.0"
 dependencies = [
+ "serde",
  "serde_json",
  "sha2",
  "sqlx",

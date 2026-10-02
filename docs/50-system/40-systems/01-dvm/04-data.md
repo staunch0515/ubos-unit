@@ -33,11 +33,16 @@ The logical columns `tx_from` and `tx_to` of `temporal_index` (UBS-ARC-04) are s
 commit ordinals `cseq_from` and `cseq_to`. Transaction time is read from `commit` when
 needed.
 
-**Transition layout (DEC-047).** Until PH-1 step 4 gives the engine production identities,
-the migrations of `ubos-store` key commits by the engine's integer `commit_no` (with
-`commit_id` as the content ID of the body), store class and object identifiers and valid
-times as text, and keep the engine's per-object state in a table `object_state` with `cseq`
-intervals, from which `head_index` and `temporal_index` are maintained in the same flush.
+**Layout as implemented (DEC-053).** The migrations of `ubos-store` follow the tables below
+with these settled points: classes are identified by name within a VAE and by the content
+ID of their declaration (`class_name`, `class_version`), not by a UUID; the engine keeps an
+integer handle `commit_no` beside `commit_id` (a surrogate like `branch_id`); ledger entries
+are identified by their UUID `entry_id`, their content ID being `entry_hash`; `head_index`
+rows carry `cseq` intervals, kind, slug and granularity, so that the engine's state of an
+object at any ordinal is its head row and its `temporal_index` segments; every index row
+records the valid-time granularity of its class (0 date, 1 instant) so that the canonical
+text of the standard is reproduced on read; and every commit record carries the object rows
+it wrote (`objects`), from which the verifier rebuilds the indexes.
 
 ## 2. Authoritative tables (categories A–C)
 
@@ -56,13 +61,13 @@ CREATE TABLE object_version (
   tenant_id     uuid   NOT NULL,
   version_id    bytea  NOT NULL,           -- content ID of the envelope
   object_id     uuid   NOT NULL,
-  vae_id        uuid   NOT NULL,
-  class_id      uuid   NOT NULL,
-  schema_ver    bytea  NOT NULL,           -- version ID of the class at write time
-  kind          smallint NOT NULL,
+  vae_id        uuid   NOT NULL,           -- VAE of the first writer
+  class_name    text   NOT NULL,           -- classes are named within a VAE (DEC-053)
+  class_version bytea  NOT NULL,           -- content ID of the declaration at write time
+  kind          smallint NOT NULL,         -- 1 definition, 2 ledger, 3 system, 4 raw_document, 5 inherit
   valid_from    timestamptz NOT NULL,
-  valid_to      timestamptz NOT NULL,
-  envelope      bytea  NOT NULL,           -- canonical envelope, zstd + AEAD
+  valid_to      timestamptz NOT NULL,      -- 'infinity' when open
+  envelope      bytea  NOT NULL,           -- canonical envelope with body, zstd + AEAD
   chunk_ids     bytea[] ,                  -- for chunked bodies
   flags         integer NOT NULL,          -- ai-generated, retroactive, lens-migrated …
   PRIMARY KEY (tenant_id, version_id)
@@ -72,19 +77,16 @@ CREATE TABLE ledger_entry (
   tenant_id     uuid    NOT NULL,
   vae_id        uuid    NOT NULL,
   branch_id     bigint  NOT NULL,
-  ledger_class  uuid    NOT NULL,
+  ledger_class  text    NOT NULL,          -- class name (DEC-053)
   ledger_key    bytea   NOT NULL,          -- canonical key tuple hash
   seq           bigint  NOT NULL,
-  entry_id      bytea   NOT NULL,          -- content ID
+  entry_id      uuid    NOT NULL,          -- the entry's identifier (STD-KIND-020)
+  entry_hash    bytea   NOT NULL,          -- content ID of the entry
   valid_at      timestamptz NOT NULL,
   cseq          bigint  NOT NULL,
-  posting_group uuid,
-  correlation   uuid,
-  reverses      bytea,                     -- entry_id of the reversed entry
-  adjusts       bytea,
-  source_entry  bytea,                     -- original entry_id after merge or sync
+  idx           integer NOT NULL,          -- position in the commit (append order)
   prev_hash     bytea   NOT NULL,          -- hash chain per key
-  body          bytea   NOT NULL,
+  body          bytea   NOT NULL,          -- canonical entry record (corrections, posting group, sources)
   PRIMARY KEY (tenant_id, vae_id, branch_id, ledger_class, ledger_key, seq)
 ) PARTITION BY HASH (tenant_id);
 -- UPDATE and DELETE revoked from the application role; trigger raises LEDG.IMMUTABLE_ENTRY.
@@ -102,25 +104,24 @@ CREATE TABLE ledger_reversal (
 
 CREATE TABLE commit (
   tenant_id   uuid   NOT NULL,
-  commit_id   bytea  NOT NULL,
+  commit_id   bytea  NOT NULL,             -- content ID of the canonical commit record
   vae_id      uuid   NOT NULL,
   branch_id   bigint NOT NULL,
   cseq        bigint NOT NULL,
-  generation  bigint NOT NULL,             -- for merge-base search
-  tx_time     timestamptz NOT NULL,
+  commit_no   bigint NOT NULL,             -- the engine's internal handle (DEC-053)
+  tx_time     timestamptz,                 -- NULL for a genesis commit
   state_root  bytea  NOT NULL,
-  model_hash  bytea  NOT NULL,
-  process_id  uuid   NOT NULL,
-  author      text   NOT NULL,             -- did:ubos
-  reason_code text,
-  body        bytea  NOT NULL,             -- canonical commit record
-  PRIMARY KEY (tenant_id, commit_id),
-  UNIQUE (tenant_id, vae_id, branch_id, cseq)
+  process_id  uuid,                        -- explicit processes only (DEC-051)
+  author      text,                        -- did:ubos of the initiator
+  body        bytea  NOT NULL,             -- commit record with its write set (`objects`)
+  PRIMARY KEY (tenant_id, vae_id, commit_id),
+  UNIQUE (tenant_id, vae_id, branch_id, cseq),
+  UNIQUE (tenant_id, vae_id, commit_no)
 );
 CREATE INDEX commit_time ON commit (tenant_id, vae_id, branch_id, tx_time);
 
-CREATE TABLE commit_parent  (tenant_id uuid, commit_id bytea, ord smallint, parent_id bytea,
-                             PRIMARY KEY (tenant_id, commit_id, ord));
+CREATE TABLE commit_parent  (tenant_id uuid, vae_id uuid, commit_id bytea, ord smallint, parent_id bytea,
+                             PRIMARY KEY (tenant_id, vae_id, commit_id, ord));
 CREATE TABLE commit_skip    (tenant_id uuid, commit_id bytea, level smallint, target_id bytea,
                              PRIMARY KEY (tenant_id, commit_id, level));  -- DSN-DVM-933
 CREATE TABLE commit_signature (tenant_id uuid, commit_id bytea, signer text, role text,
@@ -134,7 +135,8 @@ CREATE TABLE branch_ref (
   name         text   NOT NULL,
   kind         smallint NOT NULL,
   state        smallint NOT NULL,
-  head_commit  bytea  NOT NULL,
+  head_no      bigint NOT NULL,            -- handle of the head commit (DEC-053)
+  head_commit  bytea,                      -- content ID of the head; NULL before the first commit
   head_cseq    bigint NOT NULL,
   parent_branch bigint,                    -- read-through parent
   fork_cseq    bigint,                     -- fork or tracked upstream point
@@ -155,22 +157,28 @@ CREATE TABLE tag (tenant_id uuid, vae_id uuid, name text, commit_id bytea, signa
 CREATE TABLE merkle_node (tenant_id uuid, node_id bytea, level smallint, body bytea,
                           PRIMARY KEY (tenant_id, node_id)) PARTITION BY HASH (tenant_id);
 
-CREATE TABLE head_index (
+CREATE TABLE head_index (                 -- the head of an object per commit interval (DEC-053)
   tenant_id uuid, vae_id uuid, branch_id bigint, object_id uuid,
-  version_id bytea, class_ord integer, model_hash bytea, hidden boolean,
-  PRIMARY KEY (tenant_id, vae_id, branch_id, object_id)
+  cseq_from bigint, cseq_to bigint,
+  version_id bytea,                        -- NULL: no version on the branch
+  class_name text, kind smallint, slug text,
+  granularity smallint,                    -- 0 date, 1 instant
+  hidden boolean,                          -- removed on the branch
+  PRIMARY KEY (tenant_id, vae_id, branch_id, object_id, cseq_from)
 );
+CREATE INDEX head_class ON head_index (tenant_id, vae_id, branch_id, class_name, cseq_to);
 
 CREATE TABLE temporal_index (
   tenant_id uuid, vae_id uuid, branch_id bigint, object_id uuid,
   valid_from timestamptz, valid_to timestamptz,
   cseq_from bigint, cseq_to bigint,
-  version_id bytea, class_ord integer,
+  version_id bytea, class_name text, granularity smallint,
   PRIMARY KEY (tenant_id, vae_id, branch_id, object_id, valid_from, cseq_from)
 ) PARTITION BY HASH (tenant_id);
 CREATE INDEX temporal_valid ON temporal_index USING gist
   (tenant_id, vae_id, branch_id, tstzrange(valid_from, valid_to), int8range(cseq_from, cseq_to));
-CREATE INDEX temporal_class ON temporal_index (tenant_id, vae_id, branch_id, class_ord, cseq_to);
+CREATE INDEX temporal_cseq ON temporal_index USING gist (tenant_id, vae_id, branch_id, int8range(cseq_from, cseq_to));
+CREATE INDEX temporal_class ON temporal_index (tenant_id, vae_id, branch_id, class_name, cseq_to);
 
 CREATE TABLE relationship_index (
   tenant_id uuid, vae_id uuid, branch_id bigint,
@@ -296,11 +304,12 @@ DAT-TemporalIndexRow:
   cseq_from:  { type: integer, required: true, description: first commit ordinal where the row is visible }
   cseq_to:    { type: integer, required: true, description: first commit ordinal where it is no longer visible }
   version_id: { type: content_id, required: true, description: the version valid in this segment }
-  class_ord:  { type: integer, required: true, description: pre-order class position (DSN-DVM-107) }
+  class_name: { type: string, required: true, description: class of the object (DEC-053) }
+  granularity: { type: integer, required: true, description: valid-time granularity of the class, 0 date or 1 instant }
 ```
 - **Invariants:**
   1. For one `(object, cseq)`, segments do not overlap in valid time.
-  2. The set of rows equals the rebuild from commits (DSN-DVM-092).
+  2. The set of rows equals the rebuild from the write sets of the commit records (DSN-DVM-092, DEC-053).
 - **Satisfies:** STD-TIME-011, STD-TIME-012, AR-016
 
 ### DAT-BalanceDelta
@@ -406,7 +415,7 @@ These estimates feed NR-COST-001 and the capacity model in UBS-SYS-DVM-07.
 
 | Table | Rebuilt from | Procedure |
 |---|---|---|
-| `head_index`, `temporal_index`, `relationship_index`, `unique_key_index`, `field_index` | commits and versions | `rebuild index <name>` (IF-DVM-038) replays commits in `cseq` order |
+| `head_index`, `temporal_index`, `relationship_index`, `unique_key_index`, `field_index` | commits and versions | `rebuild index <name>` (IF-DVM-038) replays the write sets of the commit records in `cseq` order (DEC-053) |
 | `merkle_node` | head state per commit | tree rebuild; roots must equal stored roots |
 | `derivation_edge` | derivation records in commits | replay commit metadata |
 | `balance_delta`, `balance_checkpoint`, `projection_agg` | ledger entries and versions | `rebuild projection <name>` with shadow swap |

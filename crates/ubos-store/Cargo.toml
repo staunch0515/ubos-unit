@@ -11,6 +11,7 @@ publish.workspace = true
 [dependencies]
 ubos-types.workspace = true
 ubos-crypto.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 sqlx.workspace = true

@@ -7,8 +7,8 @@
 
 use crate::kernel::{
     Allocated, BranchRow, ChunkRow, CommitRow, CounterRow, EntryFilter, EntryMeta, Hash, HeadRow,
-    IdempotencyRow, IndexRow, LedgerRow, NodeRow, OPEN, OutboxRow, Placement, Scope,
-    SequenceRequest, StateRow, StoreRead, StoreTx, TemporalRow, VersionRow, hash_of,
+    IdempotencyRow, IndexRow, LedgerRow, NodeRow, OPEN, ObjectFacts, OutboxRow, Placement, Scope,
+    SequenceRequest, StoreRead, StoreTx, TemporalRow, VersionRow, hash_of, kind_code, kind_name,
 };
 use crate::physical::{Chunks, LocalBlobs, Physical};
 use crate::{BranchRef, Flush, Store};
@@ -26,8 +26,72 @@ static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
 /// Tables emptied by `reset` (adapter operation, STD-CONF-002).
 const TABLES: &str = "kernel_meta, branch_ref, commit, commit_parent, chunk, object_version, \
-    ledger_entry, ledger_sequence, merkle_node, object_state, head_index, temporal_index, \
+    ledger_entry, ledger_sequence, merkle_node, head_index, temporal_index, \
     derivation_edge, idempotency_record, outbox";
+
+/// Canonical text of a valid-time column (`date` or `instant` per the row's granularity;
+/// `'infinity'` reads as NULL) — the inverse of the `timestamptz` cast of the input text.
+fn time_text(col: &str, granularity: &str) -> String {
+    format!(
+        "CASE WHEN {col} = 'infinity' THEN NULL WHEN {granularity} = 1 THEN to_char({col} AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') ELSE to_char({col} AT TIME ZONE 'UTC', 'YYYY-MM-DD') END"
+    )
+}
+
+/// Objects of a branch at a commit ordinal: head rows joined with their segments.
+fn facts_query(filter: &str) -> String {
+    format!(
+        "SELECT h.object_id::text, h.version_id, h.class_name, h.kind, h.slug, h.hidden, {vf}, {vt}, t.version_id \
+         FROM head_index h LEFT JOIN temporal_index t ON t.tenant_id = h.tenant_id AND t.vae_id = h.vae_id \
+         AND t.branch_id = h.branch_id AND t.object_id = h.object_id AND t.cseq_from <= $4 AND t.cseq_to > $4 \
+         WHERE h.tenant_id = $1::uuid AND h.vae_id = $2::uuid AND h.branch_id = $3 AND h.cseq_from <= $4 AND h.cseq_to > $4{filter} \
+         ORDER BY h.object_id, t.valid_from",
+        vf = time_text("t.valid_from", "t.granularity"),
+        vt = time_text("t.valid_to", "t.granularity"),
+    )
+}
+
+/// Group the rows of [`facts_query`] by object.
+fn facts_of(rows: &[PgRow]) -> Result<Vec<(String, Option<ObjectFacts>)>, BpaError> {
+    let mut out: Vec<(String, Option<ObjectFacts>)> = Vec::new();
+    for r in rows {
+        let id: String = r.try_get(0).map_err(db)?;
+        if out.last().map(|x| x.0.as_str()) != Some(id.as_str()) {
+            let head = r
+                .try_get::<Option<Vec<u8>>, _>(1)
+                .map_err(db)?
+                .map(hash_col)
+                .transpose()?;
+            let hidden: bool = r.try_get(5).map_err(db)?;
+            let facts = if hidden {
+                None
+            } else {
+                Some(ObjectFacts {
+                    class: r.try_get(2).map_err(db)?,
+                    kind: kind_name(
+                        u16::try_from(r.try_get::<i16, _>(3).map_err(db)?).unwrap_or_default(),
+                    )
+                    .into(),
+                    slug: r.try_get(4).map_err(db)?,
+                    head,
+                    segments: Vec::new(),
+                })
+            };
+            out.push((id, facts));
+        }
+        if let Some((_, Some(f))) = out.last_mut()
+            && let Some(v) = r.try_get::<Option<Vec<u8>>, _>(8).map_err(db)?
+        {
+            f.segments.push((
+                r.try_get::<Option<String>, _>(6)
+                    .map_err(db)?
+                    .unwrap_or_default(),
+                r.try_get(7).map_err(db)?,
+                hash_col(v)?,
+            ));
+        }
+    }
+    Ok(out)
+}
 
 /// Default scope of the conformance adapter and the benchmark tools.
 pub const DEFAULT_SCOPE: (&str, &str) = (
@@ -120,7 +184,7 @@ impl PgBackend {
             owner.close().await.map_err(db)?;
         }
         let setup = format!(
-            "SET ROLE ubos_app; SET ubos.tenant = '{}'; SET synchronous_commit = on; SET plan_cache_mode = force_custom_plan;",
+            "SET ROLE ubos_app; SET ubos.tenant = '{}'; SET TIME ZONE 'UTC'; SET synchronous_commit = on; SET plan_cache_mode = force_custom_plan;",
             scope.tenant
         );
         let pool = PgPoolOptions::new()
@@ -183,13 +247,19 @@ fn branch_row(r: &PgRow) -> Result<BranchRow, BpaError> {
         branch_id: r.try_get("branch_id").map_err(db)?,
         name: r.try_get("name").map_err(db)?,
         head_no: uint(r.try_get("head_no").map_err(db)?),
+        head_commit: r
+            .try_get::<Option<Vec<u8>>, _>("head_commit")
+            .map_err(db)?
+            .map(hash_col)
+            .transpose()?,
         head_cseq: uint(r.try_get("head_cseq").map_err(db)?),
         parent: parent.map(|p| (p, uint(fork.unwrap_or_default()))),
         depth: u16::try_from(r.try_get::<i16, _>("depth").map_err(db)?).unwrap_or_default(),
     })
 }
 
-const BRANCH_COLS: &str = "branch_id, name, head_no, head_cseq, parent_branch, fork_cseq, depth";
+const BRANCH_COLS: &str =
+    "branch_id, name, head_no, head_commit, head_cseq, parent_branch, fork_cseq, depth";
 
 impl StoreRead for PgBackend {
     async fn branch(&self, name: &str) -> Result<Option<BranchRow>, BpaError> {
@@ -298,10 +368,35 @@ impl StoreRead for PgBackend {
         branch_id: i64,
         cseq: u64,
         object_id: &str,
-    ) -> Result<Option<Option<Vec<u8>>>, BpaError> {
-        let r = self
+    ) -> Result<Option<Option<ObjectFacts>>, BpaError> {
+        // Two direct lookups rather than one join: planning a join over the partitioned
+        // `temporal_index` costs more than both executions (DEC-053).
+        let Some(h) = self
             .opt(
-                sqlx::query("SELECT state FROM object_state WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND object_id = $4 AND cseq_from <= $5 AND cseq_to > $5")
+                sqlx::query("SELECT version_id, class_name, kind, slug, hidden FROM head_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND object_id = $4::uuid AND cseq_from <= $5 AND cseq_to > $5")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(branch_id)
+                    .bind(object_id)
+                    .bind(int(cseq)),
+            )
+            .await?
+        else {
+            return Ok(None);
+        };
+        if h.try_get::<bool, _>(4).map_err(db)? {
+            return Ok(Some(None));
+        }
+        static SEGMENTS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            format!(
+                "SELECT {vf}, {vt}, version_id FROM temporal_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND object_id = $4::uuid AND cseq_from <= $5 AND cseq_to > $5 ORDER BY valid_from",
+                vf = time_text("valid_from", "granularity"),
+                vt = time_text("valid_to", "granularity"),
+            )
+        });
+        let rows = self
+            .rows(
+                sqlx::query(&SEGMENTS)
                     .bind(&self.scope.tenant)
                     .bind(&self.scope.vae)
                     .bind(branch_id)
@@ -309,32 +404,53 @@ impl StoreRead for PgBackend {
                     .bind(int(cseq)),
             )
             .await?;
-        r.map(|r| r.try_get::<Option<Vec<u8>>, _>(0).map_err(db))
-            .transpose()
+        let mut segments = Vec::with_capacity(rows.len());
+        for r in &rows {
+            segments.push((
+                r.try_get::<Option<String>, _>(0)
+                    .map_err(db)?
+                    .unwrap_or_default(),
+                r.try_get(1).map_err(db)?,
+                hash_col(r.try_get(2).map_err(db)?)?,
+            ));
+        }
+        Ok(Some(Some(ObjectFacts {
+            class: h.try_get(1).map_err(db)?,
+            kind: kind_name(u16::try_from(h.try_get::<i16, _>(2).map_err(db)?).unwrap_or_default())
+                .into(),
+            slug: h.try_get(3).map_err(db)?,
+            head: h
+                .try_get::<Option<Vec<u8>>, _>(0)
+                .map_err(db)?
+                .map(hash_col)
+                .transpose()?,
+            segments,
+        })))
     }
     async fn objects(
         &self,
         branch_id: i64,
         cseq: u64,
         class: Option<&str>,
-    ) -> Result<Vec<(String, Option<Vec<u8>>)>, BpaError> {
+    ) -> Result<Vec<(String, Option<ObjectFacts>)>, BpaError> {
+        static ALL: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| facts_query(""));
+        static OF_CLASS: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| facts_query(" AND h.class_name = $5"));
         let q = match class {
-            Some(c) => sqlx::query("SELECT object_id, state FROM object_state WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND cseq_from <= $4 AND cseq_to > $4 AND class_name = $5")
+            Some(c) => sqlx::query(&OF_CLASS)
                 .bind(&self.scope.tenant)
                 .bind(&self.scope.vae)
                 .bind(branch_id)
                 .bind(int(cseq))
                 .bind(c),
-            None => sqlx::query("SELECT object_id, state FROM object_state WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND cseq_from <= $4 AND cseq_to > $4")
+            None => sqlx::query(&ALL)
                 .bind(&self.scope.tenant)
                 .bind(&self.scope.vae)
                 .bind(branch_id)
                 .bind(int(cseq)),
         };
-        let rows = q.fetch_all(&self.pool).await.map_err(db)?;
-        rows.iter()
-            .map(|r| Ok((r.try_get(0).map_err(db)?, r.try_get(1).map_err(db)?)))
-            .collect()
+        let rows = self.rows(q).await?;
+        facts_of(&rows)
     }
     async fn entries(
         &self,
@@ -349,9 +465,10 @@ impl StoreRead for PgBackend {
                 BASE,
                 " AND ledger_class = $5 AND ledger_key = $6 ORDER BY cseq, idx",
             )),
-            EntryFilter::Id(_) => {
-                sqlx::query(const_format(BASE, " AND entry_id = $5 ORDER BY cseq, idx"))
-            }
+            EntryFilter::Id(_) => sqlx::query(const_format(
+                BASE,
+                " AND entry_id = $5::uuid ORDER BY cseq, idx",
+            )),
         }
         .bind(&self.scope.tenant)
         .bind(&self.scope.vae)
@@ -383,15 +500,28 @@ impl StoreRead for PgBackend {
             })
             .collect()
     }
-    async fn state_rows(
+    async fn commit_bodies(&self, branch_id: i64) -> Result<Vec<(u64, Vec<u8>)>, BpaError> {
+        let rows = self
+            .rows(
+                sqlx::query("SELECT cseq, body FROM commit WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 ORDER BY cseq")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(branch_id),
+            )
+            .await?;
+        rows.iter()
+            .map(|r| Ok((uint(r.try_get(0).map_err(db)?), r.try_get(1).map_err(db)?)))
+            .collect()
+    }
+    async fn head_rows(
         &self,
         branch_id: i64,
         from: u64,
         to: u64,
-    ) -> Result<Vec<StateRow>, BpaError> {
+    ) -> Result<Vec<HeadRow>, BpaError> {
         let rows = self
             .rows(
-                sqlx::query("SELECT object_id, cseq_from, cseq_to, class_name, state FROM object_state WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND cseq_from BETWEEN $4 AND $5")
+                sqlx::query("SELECT object_id::text, cseq_from, cseq_to, version_id, class_name, kind, slug, granularity, hidden FROM head_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND cseq_from BETWEEN $4 AND $5")
                     .bind(&self.scope.tenant)
                     .bind(&self.scope.vae)
                     .bind(branch_id)
@@ -399,28 +529,25 @@ impl StoreRead for PgBackend {
                     .bind(int(to)),
             )
             .await?;
-        rows.iter().map(state_row).collect()
-    }
-    async fn head_rows(&self, branch_id: i64) -> Result<Vec<HeadRow>, BpaError> {
-        let rows = self
-            .rows(
-                sqlx::query("SELECT object_id, version_id, class_name, hidden FROM head_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3")
-                    .bind(&self.scope.tenant)
-                    .bind(&self.scope.vae)
-                    .bind(branch_id),
-            )
-            .await?;
         rows.iter()
             .map(|r| {
                 Ok(HeadRow {
                     object_id: r.try_get(0).map_err(db)?,
+                    cseq_from: uint(r.try_get(1).map_err(db)?),
+                    cseq_to: uint(r.try_get(2).map_err(db)?),
                     version: r
-                        .try_get::<Option<Vec<u8>>, _>(1)
+                        .try_get::<Option<Vec<u8>>, _>(3)
                         .map_err(db)?
                         .map(hash_col)
                         .transpose()?,
-                    class: r.try_get(2).map_err(db)?,
-                    hidden: r.try_get(3).map_err(db)?,
+                    class: r.try_get(4).map_err(db)?,
+                    kind: kind_name(
+                        u16::try_from(r.try_get::<i16, _>(5).map_err(db)?).unwrap_or_default(),
+                    )
+                    .into(),
+                    slug: r.try_get(6).map_err(db)?,
+                    instant: r.try_get::<i16, _>(7).map_err(db)? == 1,
+                    hidden: r.try_get(8).map_err(db)?,
                 })
             })
             .collect()
@@ -431,9 +558,16 @@ impl StoreRead for PgBackend {
         from: u64,
         to: u64,
     ) -> Result<Vec<TemporalRow>, BpaError> {
+        static SQL: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            format!(
+                "SELECT object_id::text, {vf}, {vt}, cseq_from, cseq_to, version_id, class_name FROM temporal_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND cseq_from BETWEEN $4 AND $5",
+                vf = time_text("valid_from", "granularity"),
+                vt = time_text("valid_to", "granularity"),
+            )
+        });
         let rows = self
             .rows(
-                sqlx::query("SELECT object_id, valid_from, valid_to, cseq_from, cseq_to, version_id, class_name FROM temporal_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND cseq_from BETWEEN $4 AND $5")
+                sqlx::query(&SQL)
                     .bind(&self.scope.tenant)
                     .bind(&self.scope.vae)
                     .bind(branch_id)
@@ -445,7 +579,10 @@ impl StoreRead for PgBackend {
             .map(|r| {
                 Ok(TemporalRow {
                     object_id: r.try_get(0).map_err(db)?,
-                    valid_from: r.try_get(1).map_err(db)?,
+                    valid_from: r
+                        .try_get::<Option<String>, _>(1)
+                        .map_err(db)?
+                        .unwrap_or_default(),
                     valid_to: r.try_get(2).map_err(db)?,
                     cseq_from: uint(r.try_get(3).map_err(db)?),
                     cseq_to: uint(r.try_get(4).map_err(db)?),
@@ -458,7 +595,7 @@ impl StoreRead for PgBackend {
     async fn entry_meta(&self, branch_id: i64) -> Result<Vec<EntryMeta>, BpaError> {
         let rows = self
             .rows(
-                sqlx::query("SELECT ledger_class, ledger_key, seq, entry_id, prev_hash, entry_hash FROM ledger_entry WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 ORDER BY ledger_class, ledger_key, seq")
+                sqlx::query("SELECT ledger_class, ledger_key, seq, entry_id::text, prev_hash, entry_hash FROM ledger_entry WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 ORDER BY ledger_class, ledger_key, seq")
                     .bind(&self.scope.tenant)
                     .bind(&self.scope.vae)
                     .bind(branch_id),
@@ -531,16 +668,6 @@ impl PgBackend {
     ) -> Result<Vec<PgRow>, BpaError> {
         q.fetch_all(&self.pool).await.map_err(db)
     }
-}
-
-fn state_row(r: &PgRow) -> Result<StateRow, BpaError> {
-    Ok(StateRow {
-        object_id: r.try_get(0).map_err(db)?,
-        cseq_from: uint(r.try_get(1).map_err(db)?),
-        cseq_to: uint(r.try_get(2).map_err(db)?),
-        class: r.try_get(3).map_err(db)?,
-        state: r.try_get(4).map_err(db)?,
-    })
 }
 
 /// The ledger queries differ only in their tail; the combined texts are leaked once each.
@@ -692,12 +819,24 @@ impl StoreTx for PgTx {
         let ids: Vec<Vec<u8>> = rows.iter().map(|r| r.version_id.to_vec()).collect();
         let oids: Vec<&str> = rows.iter().map(|r| r.object_id.as_str()).collect();
         let classes: Vec<&str> = rows.iter().map(|r| r.class.as_str()).collect();
+        let cv: Vec<Vec<u8>> = rows.iter().map(|r| r.class_version.to_vec()).collect();
+        let kinds: Vec<i16> = rows
+            .iter()
+            .map(|r| i16::try_from(r.kind).unwrap_or_default())
+            .collect();
+        let from: Vec<&str> = rows.iter().map(|r| r.valid_from.as_str()).collect();
+        let to: Vec<Option<&str>> = rows.iter().map(|r| r.valid_to.as_deref()).collect();
         let env: Vec<&[u8]> = rows.iter().map(|r| r.envelope.as_slice()).collect();
-        sqlx::query("INSERT INTO object_version (tenant_id, version_id, object_id, class_name, envelope) SELECT $1::uuid, t.i, t.o, t.c, t.e FROM unnest($2::bytea[], $3::text[], $4::text[], $5::bytea[]) AS t(i, o, c, e) ON CONFLICT DO NOTHING")
+        sqlx::query("INSERT INTO object_version (tenant_id, version_id, object_id, vae_id, class_name, class_version, kind, valid_from, valid_to, envelope) SELECT $1::uuid, t.i, t.o::uuid, $2::uuid, t.c, t.cv, t.k, t.f::timestamptz, coalesce(t.t::timestamptz, 'infinity'), t.e FROM unnest($3::bytea[], $4::text[], $5::text[], $6::bytea[], $7::smallint[], $8::text[], $9::text[], $10::bytea[]) AS t(i, o, c, cv, k, f, t, e) ON CONFLICT DO NOTHING")
             .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
             .bind(ids)
             .bind(oids)
             .bind(classes)
+            .bind(cv)
+            .bind(kinds)
+            .bind(from)
+            .bind(to)
             .bind(env)
             .execute(&mut *self.tx)
             .await
@@ -712,6 +851,7 @@ impl StoreTx for PgTx {
         let key: Vec<Vec<u8>> = rows.iter().map(|r| r.ledger_key.to_vec()).collect();
         let seq: Vec<i64> = rows.iter().map(|r| int(r.seq)).collect();
         let id: Vec<&str> = rows.iter().map(|r| r.entry_id.as_str()).collect();
+        let at: Vec<&str> = rows.iter().map(|r| r.valid_at.as_str()).collect();
         let cseq: Vec<i64> = rows.iter().map(|r| int(r.cseq)).collect();
         let idx: Vec<i32> = rows
             .iter()
@@ -720,7 +860,7 @@ impl StoreTx for PgTx {
         let prev: Vec<Vec<u8>> = rows.iter().map(|r| r.prev_hash.to_vec()).collect();
         let eh: Vec<Vec<u8>> = rows.iter().map(|r| r.entry_hash.to_vec()).collect();
         let body: Vec<&[u8]> = rows.iter().map(|r| r.body.as_slice()).collect();
-        sqlx::query("INSERT INTO ledger_entry (tenant_id, vae_id, branch_id, ledger_class, ledger_key, seq, entry_id, cseq, idx, prev_hash, entry_hash, body) SELECT $1::uuid, $2::uuid, $3, t.c, t.k, t.s, t.i, t.q, t.x, t.p, t.h, t.b FROM unnest($4::text[], $5::bytea[], $6::bigint[], $7::text[], $8::bigint[], $9::integer[], $10::bytea[], $11::bytea[], $12::bytea[]) AS t(c, k, s, i, q, x, p, h, b)")
+        sqlx::query("INSERT INTO ledger_entry (tenant_id, vae_id, branch_id, ledger_class, ledger_key, seq, entry_id, valid_at, cseq, idx, prev_hash, entry_hash, body) SELECT $1::uuid, $2::uuid, $3, t.c, t.k, t.s, t.i::uuid, t.a::timestamptz, t.q, t.x, t.p, t.h, t.b FROM unnest($4::text[], $5::bytea[], $6::bigint[], $7::text[], $8::text[], $9::bigint[], $10::integer[], $11::bytea[], $12::bytea[], $13::bytea[]) AS t(c, k, s, i, a, q, x, p, h, b)")
             .bind(&self.scope.tenant)
             .bind(&self.scope.vae)
             .bind(branch_id)
@@ -728,6 +868,7 @@ impl StoreTx for PgTx {
             .bind(key)
             .bind(seq)
             .bind(id)
+            .bind(at)
             .bind(cseq)
             .bind(idx)
             .bind(prev)
@@ -739,14 +880,17 @@ impl StoreTx for PgTx {
         Ok(())
     }
     async fn put_commit(&mut self, branch_id: i64, row: &CommitRow) -> Result<(), BpaError> {
-        sqlx::query("INSERT INTO commit (tenant_id, vae_id, commit_no, commit_id, branch_id, cseq, state_root, body) VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8)")
+        sqlx::query("INSERT INTO commit (tenant_id, commit_id, vae_id, branch_id, cseq, commit_no, tx_time, state_root, process_id, author, body) VALUES ($1::uuid, $2, $3::uuid, $4, $5, $6, $7::timestamptz, $8, $9::uuid, $10, $11)")
             .bind(&self.scope.tenant)
-            .bind(&self.scope.vae)
-            .bind(int(row.commit_no))
             .bind(&row.commit_id[..])
+            .bind(&self.scope.vae)
             .bind(branch_id)
             .bind(int(row.cseq))
+            .bind(int(row.commit_no))
+            .bind(row.tx_time.as_deref())
             .bind(&row.state_root[..])
+            .bind(row.process_id.as_deref())
+            .bind(row.author.as_deref())
             .bind(&row.body)
             .execute(&mut *self.tx)
             .await
@@ -756,15 +900,20 @@ impl StoreTx for PgTx {
                 .map(|i| i16::try_from(i).unwrap_or(i16::MAX))
                 .collect();
             let parents: Vec<i64> = row.parents.iter().map(|p| int(*p)).collect();
-            sqlx::query("INSERT INTO commit_parent (tenant_id, vae_id, commit_no, ord, parent_no) SELECT $1::uuid, $2::uuid, $3, t.o, t.p FROM unnest($4::smallint[], $5::bigint[]) AS t(o, p)")
+            // Parents are recorded by content ID (UBS-SYS-DVM-04); the engine names them
+            // by handle.
+            let r = sqlx::query("INSERT INTO commit_parent (tenant_id, vae_id, commit_id, ord, parent_id) SELECT $1::uuid, $2::uuid, $3, t.o, c.commit_id FROM unnest($4::smallint[], $5::bigint[]) AS t(o, p) JOIN commit c ON c.tenant_id = $1::uuid AND c.vae_id = $2::uuid AND c.commit_no = t.p")
                 .bind(&self.scope.tenant)
                 .bind(&self.scope.vae)
-                .bind(int(row.commit_no))
+                .bind(&row.commit_id[..])
                 .bind(ord)
                 .bind(parents)
                 .execute(&mut *self.tx)
                 .await
                 .map_err(db)?;
+            if r.rows_affected() != row.parents.len() as u64 {
+                return Err(db("a parent commit is unknown"));
+            }
         }
         Ok(())
     }
@@ -773,13 +922,15 @@ impl StoreTx for PgTx {
         branch_id: i64,
         expected: u64,
         head_no: u64,
+        head_commit: &Hash,
         head_cseq: u64,
     ) -> Result<bool, BpaError> {
-        let r = sqlx::query("UPDATE branch_ref SET head_no = $4, head_cseq = $5 WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND head_no = $6")
+        let r = sqlx::query("UPDATE branch_ref SET head_no = $4, head_commit = $5, head_cseq = $6 WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND head_no = $7")
             .bind(&self.scope.tenant)
             .bind(&self.scope.vae)
             .bind(branch_id)
             .bind(int(head_no))
+            .bind(&head_commit[..])
             .bind(int(head_cseq))
             .bind(int(expected))
             .execute(&mut *self.tx)
@@ -799,11 +950,10 @@ impl StoreTx for PgTx {
         let (t, v, c) = (&self.scope.tenant, &self.scope.vae, int(cseq));
         let ids: Vec<&str> = rows.iter().map(|r| r.object_id.as_str()).collect();
         let classes: Vec<&str> = rows.iter().map(|r| r.class.as_str()).collect();
-        let states: Vec<Option<&[u8]>> = rows.iter().map(|r| r.state.as_deref()).collect();
         let open = int(OPEN);
-        for table in ["object_state", "temporal_index"] {
+        for table in ["head_index", "temporal_index"] {
             let sql = format!(
-                "UPDATE {table} SET cseq_to = $4 WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND object_id = ANY($5::text[]) AND cseq_to = $6"
+                "UPDATE {table} SET cseq_to = $4 WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND object_id = ANY($5::uuid[]) AND cseq_to = $6"
             );
             sqlx::query(&sql)
                 .bind(t)
@@ -816,32 +966,32 @@ impl StoreTx for PgTx {
                 .await
                 .map_err(db)?;
         }
-        sqlx::query("INSERT INTO object_state (tenant_id, vae_id, branch_id, object_id, cseq_from, cseq_to, class_name, state) SELECT $1::uuid, $2::uuid, $3, t.o, $4, $5, t.c, t.s FROM unnest($6::text[], $7::text[], $8::bytea[]) AS t(o, c, s)")
+        let heads: Vec<Option<Vec<u8>>> = rows.iter().map(|r| r.head.map(|h| h.to_vec())).collect();
+        let kinds: Vec<i16> = rows
+            .iter()
+            .map(|r| i16::try_from(kind_code(&r.kind)).unwrap_or_default())
+            .collect();
+        let slugs: Vec<&str> = rows.iter().map(|r| r.slug.as_str()).collect();
+        let gran: Vec<i16> = rows.iter().map(|r| i16::from(r.instant)).collect();
+        let hidden: Vec<bool> = rows.iter().map(|r| !r.present).collect();
+        sqlx::query("INSERT INTO head_index (tenant_id, vae_id, branch_id, object_id, cseq_from, cseq_to, version_id, class_name, kind, slug, granularity, hidden) SELECT $1::uuid, $2::uuid, $3, t.o::uuid, $4, $5, t.h, t.c, t.k, t.s, t.g, t.x FROM unnest($6::text[], $7::bytea[], $8::text[], $9::smallint[], $10::text[], $11::smallint[], $12::boolean[]) AS t(o, h, c, k, s, g, x)")
             .bind(t)
             .bind(v)
             .bind(branch_id)
             .bind(c)
             .bind(open)
             .bind(&ids)
-            .bind(&classes)
-            .bind(&states)
-            .execute(&mut *self.tx)
-            .await
-            .map_err(db)?;
-        let heads: Vec<Option<Vec<u8>>> = rows.iter().map(|r| r.head.map(|h| h.to_vec())).collect();
-        let hidden: Vec<bool> = rows.iter().map(|r| r.state.is_none()).collect();
-        sqlx::query("INSERT INTO head_index (tenant_id, vae_id, branch_id, object_id, version_id, class_name, hidden) SELECT $1::uuid, $2::uuid, $3, t.o, t.h, t.c, t.x FROM unnest($4::text[], $5::bytea[], $6::text[], $7::boolean[]) AS t(o, h, c, x) ON CONFLICT (tenant_id, vae_id, branch_id, object_id) DO UPDATE SET version_id = EXCLUDED.version_id, class_name = EXCLUDED.class_name, hidden = EXCLUDED.hidden")
-            .bind(t)
-            .bind(v)
-            .bind(branch_id)
-            .bind(&ids)
             .bind(heads)
             .bind(&classes)
+            .bind(kinds)
+            .bind(slugs)
+            .bind(&gran)
             .bind(hidden)
             .execute(&mut *self.tx)
             .await
             .map_err(db)?;
-        let (mut so, mut sc, mut sf, mut st, mut sv) = (vec![], vec![], vec![], vec![], vec![]);
+        let (mut so, mut sc, mut sf, mut st, mut sv, mut sg) =
+            (vec![], vec![], vec![], vec![], vec![], vec![]);
         for r in rows {
             for (from, to, ver) in &r.segments {
                 so.push(r.object_id.as_str());
@@ -849,10 +999,11 @@ impl StoreTx for PgTx {
                 sf.push(from.as_str());
                 st.push(to.as_deref());
                 sv.push(ver.to_vec());
+                sg.push(i16::from(r.instant));
             }
         }
         if !so.is_empty() {
-            sqlx::query("INSERT INTO temporal_index (tenant_id, vae_id, branch_id, object_id, valid_from, valid_to, cseq_from, cseq_to, version_id, class_name) SELECT $1::uuid, $2::uuid, $3, t.o, t.f, t.t, $4, $5, t.v, t.c FROM unnest($6::text[], $7::text[], $8::text[], $9::bytea[], $10::text[]) AS t(o, f, t, v, c)")
+            sqlx::query("INSERT INTO temporal_index (tenant_id, vae_id, branch_id, object_id, valid_from, valid_to, cseq_from, cseq_to, version_id, class_name, granularity) SELECT $1::uuid, $2::uuid, $3, t.o::uuid, t.f::timestamptz, coalesce(t.t::timestamptz, 'infinity'), $4, $5, t.v, t.c, t.g FROM unnest($6::text[], $7::text[], $8::text[], $9::bytea[], $10::text[], $11::smallint[]) AS t(o, f, t, v, c, g)")
                 .bind(t)
                 .bind(v)
                 .bind(branch_id)
@@ -863,6 +1014,7 @@ impl StoreTx for PgTx {
                 .bind(st)
                 .bind(sv)
                 .bind(sc)
+                .bind(sg)
                 .execute(&mut *self.tx)
                 .await
                 .map_err(db)?;
@@ -959,13 +1111,13 @@ impl StoreTx for PgTx {
         Ok(())
     }
     async fn idempotency_put(&mut self, row: &IdempotencyRow) -> Result<bool, BpaError> {
-        let r = sqlx::query("INSERT INTO idempotency_record (tenant_id, scope, key, request_hash, outcome, commit_no) VALUES ($1::uuid, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING")
+        let r = sqlx::query("INSERT INTO idempotency_record (tenant_id, scope, key, request_hash, outcome, commit_id) VALUES ($1::uuid, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING")
             .bind(&self.scope.tenant)
             .bind(&row.scope)
             .bind(&row.key)
             .bind(&row.request_hash[..])
             .bind(row.outcome.as_deref())
-            .bind(row.commit_no.map(int))
+            .bind(row.commit_id.map(|h| h.to_vec()))
             .execute(&mut *self.tx)
             .await
             .map_err(db)?;
@@ -1006,8 +1158,8 @@ fn json(b: &[u8]) -> Result<Value, BpaError> {
 pub struct BulkRows {
     /// `(hash, record)` of version records.
     pub versions: Vec<(String, Value)>,
-    /// `(object_id, cseq_from, cseq_to, class, state)` object rows.
-    pub objects: Vec<(String, u64, Option<u64>, String, Value)>,
+    /// `(cseq_from, cseq_to, row)` object rows.
+    pub objects: Vec<(u64, Option<u64>, crate::ObjectRow)>,
     /// `(hash, node)` tree nodes.
     pub nodes: Vec<(String, Value)>,
 }
@@ -1150,54 +1302,77 @@ impl PgStore {
         let mut ver = String::new();
         for (h, r) in &rows.versions {
             let vid = hash_of(h)?;
-            let oid = r
-                .get("object_id")
+            let text = |k: &str| r.get(k).and_then(Value::as_str).unwrap_or_default();
+            let valid = r.get("valid").cloned().unwrap_or(Value::Null);
+            let from = valid
+                .get("from")
                 .and_then(Value::as_str)
                 .unwrap_or_default();
-            let class = r.get("class").and_then(Value::as_str).unwrap_or_default();
+            let to = valid
+                .get("to")
+                .and_then(Value::as_str)
+                .unwrap_or("infinity");
             copy_line(
                 &mut ver,
                 &[
                     &t,
                     &hex(&vid),
-                    oid,
-                    class,
+                    text("object_id"),
+                    &v,
+                    text("class"),
+                    &hex(&hash_of(text("class_version"))?),
+                    &kind_code(text("kind")).to_string(),
+                    from,
+                    to,
                     &hex(&self.physical.seal(&vid, &bytes(r)?)?),
                 ],
             );
         }
-        let (mut st, mut hi, mut ti) = (String::new(), String::new(), String::new());
+        let (mut hi, mut ti) = (String::new(), String::new());
         let bs = bid.to_string();
-        for (oid, from, to, class, state) in &rows.objects {
+        for (from, to, o) in &rows.objects {
             let to_s = to.map(int).unwrap_or(int(OPEN)).to_string();
             let from_s = from.to_string();
+            let row = crate::index_row(o)?;
+            let head = row.head.map(|h| hex(&h)).unwrap_or_else(|| "\\N".into());
+            let (kind, gran) = (
+                kind_code(&row.kind).to_string(),
+                i16::from(row.instant).to_string(),
+            );
             copy_line(
-                &mut st,
+                &mut hi,
                 &[
                     &t,
                     &v,
                     &bs,
-                    oid,
+                    &o.object_id,
                     &from_s,
                     &to_s,
-                    class,
-                    &hex(&bytes(state)?),
+                    &head,
+                    &o.class,
+                    &kind,
+                    &row.slug,
+                    &gran,
+                    if row.present { "f" } else { "t" },
                 ],
             );
-            let row = crate::index_row(&crate::ObjectRow {
-                object_id: oid.clone(),
-                class: class.clone(),
-                state: Some(state.clone()),
-            })?;
-            if to.is_none() {
-                let head = row.head.map(|h| hex(&h)).unwrap_or_else(|| "\\N".into());
-                copy_line(&mut hi, &[&t, &v, &bs, oid, &head, class, "f"]);
-            }
             for (f, e, h) in &row.segments {
-                let e = e.clone().unwrap_or_else(|| "\\N".into());
+                let e = e.clone().unwrap_or_else(|| "infinity".into());
                 copy_line(
                     &mut ti,
-                    &[&t, &v, &bs, oid, f, &e, &from_s, &to_s, &hex(h), class],
+                    &[
+                        &t,
+                        &v,
+                        &bs,
+                        &o.object_id,
+                        f,
+                        &e,
+                        &from_s,
+                        &to_s,
+                        &hex(h),
+                        &o.class,
+                        &gran,
+                    ],
                 );
             }
         }
@@ -1219,11 +1394,11 @@ impl PgStore {
         self.rt.block_on(async move {
             use sqlx::Connection;
             let mut conn = sqlx::PgConnection::connect_with(&owner).await.map_err(db)?;
+            conn.execute("SET TIME ZONE 'UTC'").await.map_err(db)?;
             for (sql, data) in [
-                ("COPY object_version (tenant_id, version_id, object_id, class_name, envelope) FROM STDIN", ver),
-                ("COPY object_state (tenant_id, vae_id, branch_id, object_id, cseq_from, cseq_to, class_name, state) FROM STDIN", st),
-                ("COPY head_index (tenant_id, vae_id, branch_id, object_id, version_id, class_name, hidden) FROM STDIN", hi),
-                ("COPY temporal_index (tenant_id, vae_id, branch_id, object_id, valid_from, valid_to, cseq_from, cseq_to, version_id, class_name) FROM STDIN", ti),
+                ("COPY object_version (tenant_id, version_id, object_id, vae_id, class_name, class_version, kind, valid_from, valid_to, envelope) FROM STDIN", ver),
+                ("COPY head_index (tenant_id, vae_id, branch_id, object_id, cseq_from, cseq_to, version_id, class_name, kind, slug, granularity, hidden) FROM STDIN", hi),
+                ("COPY temporal_index (tenant_id, vae_id, branch_id, object_id, valid_from, valid_to, cseq_from, cseq_to, version_id, class_name, granularity) FROM STDIN", ti),
                 ("COPY merkle_node (tenant_id, node_id, level, body) FROM STDIN", nodes),
             ] {
                 let mut w = conn.copy_in_raw(sql).await.map_err(db)?;
@@ -1249,18 +1424,19 @@ impl PgStore {
             .map(|(id, cseq, rec)| commit_row(*id, *cseq, rec))
             .collect::<Result<Vec<_>, _>>()?;
         let backend = self.backend.clone();
-        let last = commits.last().map(|(id, cseq, _)| (*id, *cseq));
+        let last = rows.last().map(|r| (r.commit_no, r.commit_id, r.cseq));
         self.rt.block_on(async move {
             let mut tx = backend.begin().await?;
             for r in &rows {
                 tx.put_commit(bid, r).await?;
             }
-            if let Some((id, cseq)) = last {
-                sqlx::query("UPDATE branch_ref SET head_no = $4, head_cseq = $5 WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3")
+            if let Some((id, commit_id, cseq)) = last {
+                sqlx::query("UPDATE branch_ref SET head_no = $4, head_commit = $5, head_cseq = $6 WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3")
                     .bind(&backend.scope.tenant)
                     .bind(&backend.scope.vae)
                     .bind(bid)
                     .bind(int(id))
+                    .bind(commit_id.to_vec())
                     .bind(int(cseq))
                     .execute(&mut *tx.tx)
                     .await
@@ -1347,7 +1523,13 @@ impl PgStore {
                 tx.upsert_index_rows(p.branch_id, f.cseq, &p.index).await?;
                 tx.put_tree_nodes(&p.nodes).await?;
                 if !tx
-                    .cas_branch_head(p.branch_id, f.expected_head, f.commit_id, f.cseq)
+                    .cas_branch_head(
+                        p.branch_id,
+                        f.expected_head,
+                        f.commit_id,
+                        &p.commit.commit_id,
+                        f.cseq,
+                    )
                     .await?
                 {
                     tx.rollback().await?;
@@ -1416,11 +1598,15 @@ fn commit_row(id: u64, cseq: u64, rec: &Value) -> Result<CommitRow, BpaError> {
         .and_then(Value::as_array)
         .map(|a| a.iter().filter_map(Value::as_u64).collect())
         .unwrap_or_default();
+    let text = |k: &str| rec.get(k).and_then(Value::as_str).map(str::to_string);
     Ok(CommitRow {
         commit_no: id,
         commit_id,
         cseq,
+        tx_time: text("tx_time"),
         state_root: root.unwrap_or(ZERO),
+        process_id: text("process_id"),
+        author: text("author"),
         parents,
         body,
     })
@@ -1449,18 +1635,24 @@ impl Plan {
             .iter()
             .map(|(h, r)| {
                 let version_id = hash_of(h)?;
+                let text = |k: &str| r.get(k).and_then(Value::as_str).unwrap_or_default();
                 Ok(VersionRow {
                     version_id,
-                    object_id: r
-                        .get("object_id")
+                    object_id: text("object_id").into(),
+                    class: text("class").into(),
+                    class_version: hash_of(text("class_version"))?,
+                    kind: kind_code(text("kind")),
+                    valid_from: r
+                        .get("valid")
+                        .and_then(|v| v.get("from"))
                         .and_then(Value::as_str)
                         .unwrap_or_default()
                         .into(),
-                    class: r
-                        .get("class")
+                    valid_to: r
+                        .get("valid")
+                        .and_then(|v| v.get("to"))
                         .and_then(Value::as_str)
-                        .unwrap_or_default()
-                        .into(),
+                        .map(str::to_string),
                     envelope: physical.seal(&version_id, &bytes(r)?)?,
                 })
             })
@@ -1502,6 +1694,12 @@ impl Plan {
                 ledger_key: key,
                 seq: 0,
                 entry_id: e.entry_id.clone(),
+                valid_at: e
+                    .entry
+                    .get("valid_at")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .into(),
                 cseq: f.cseq,
                 idx: u32::try_from(i).unwrap_or(u32::MAX),
                 prev_hash: ZERO,
@@ -1667,6 +1865,7 @@ impl Store for PgStore {
             branch_id: 0,
             name: name.to_string(),
             head_no: r.head,
+            head_commit: None,
             head_cseq: r.head_cseq,
             parent,
             depth,
@@ -1702,7 +1901,7 @@ impl Store for PgStore {
         let r = self
             .rt
             .block_on(self.backend.object(bid, cseq, object_id))?;
-        r.map(|s| s.as_deref().map(json).transpose()).transpose()
+        Ok(r.map(|f| f.as_ref().and_then(crate::state_of)))
     }
     fn objects(
         &mut self,
@@ -1714,9 +1913,10 @@ impl Store for PgStore {
             return Ok(Vec::new());
         };
         let rows = self.rt.block_on(self.backend.objects(bid, cseq, class))?;
-        rows.into_iter()
-            .map(|(id, s)| Ok((id, s.as_deref().map(json).transpose()?)))
-            .collect()
+        Ok(rows
+            .into_iter()
+            .map(|(id, f)| (id, f.as_ref().and_then(crate::state_of)))
+            .collect())
     }
     fn entries(
         &mut self,

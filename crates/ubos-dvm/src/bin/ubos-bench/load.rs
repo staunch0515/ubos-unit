@@ -12,7 +12,7 @@ use std::time::Instant;
 use serde_json::{Map, Value, json};
 use ubos_dvm::Engine;
 use ubos_model::Registry;
-use ubos_store::{BulkRows, MemStore, PgStore};
+use ubos_store::{BulkRows, MemStore, ObjectRow, PgStore};
 use ubos_tree::{MemNodes, Node};
 use ubos_types::BpaError;
 use ubos_version::{ObjectState, Repo, version_record};
@@ -40,7 +40,7 @@ fn fields(reg: &Registry) -> Result<Fields, BpaError> {
 /// Everything one object contributes to the load.
 struct ObjectLoad {
     versions: Vec<(String, Value)>,
-    rows: Vec<(String, u64, Option<u64>, String, Value)>,
+    rows: Vec<(u64, Option<u64>, ObjectRow)>,
     initial: (String, String),
     changes: Vec<(u64, String, String)>,
 }
@@ -104,14 +104,8 @@ fn object(spec: &Spec, reg: &Registry, fields: &Fields, i: u64) -> Result<Object
             None,
         )?;
         let cseq = 1 + m;
-        out.rows.push((
-            oid.clone(),
-            from,
-            Some(cseq),
-            class.clone(),
-            serde_json::to_value(&state)
-                .map_err(|e| BpaError::new("MODEL.INVALID_VALUE", e.to_string()))?,
-        ));
+        out.rows
+            .push((from, Some(cseq), row(&oid, &class, &state)?));
         state.timeline = ubos_time::apply(&state.timeline, "supersede_from", &vh, &dm, None)
             .map_err(|e| BpaError::new(e.0, "timeline"))?;
         state.head = vh.clone();
@@ -119,15 +113,21 @@ fn object(spec: &Spec, reg: &Registry, fields: &Fields, i: u64) -> Result<Object
         out.changes.push((m, key.clone(), vh));
         from = cseq;
     }
-    out.rows.push((
-        oid,
-        from,
-        None,
-        class,
-        serde_json::to_value(&state)
-            .map_err(|e| BpaError::new("MODEL.INVALID_VALUE", e.to_string()))?,
-    ));
+    out.rows.push((from, None, row(&oid, &class, &state)?));
     Ok(out)
+}
+
+/// An object row of the load (the generated classes have date granularity).
+fn row(oid: &str, class: &str, state: &ObjectState) -> Result<ObjectRow, BpaError> {
+    Ok(ObjectRow {
+        object_id: oid.to_string(),
+        class: class.to_string(),
+        instant: false,
+        state: Some(
+            serde_json::to_value(state)
+                .map_err(|e| BpaError::new("MODEL.INVALID_VALUE", e.to_string()))?,
+        ),
+    })
 }
 
 /// Keep only the nodes reachable from `root`.

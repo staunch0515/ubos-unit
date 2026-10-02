@@ -41,13 +41,17 @@ pub struct BranchRef {
 }
 
 /// An object-index row written by a flush: the object's state after the commit, or `None`
-/// when the object no longer exists on the branch.
-#[derive(Debug, Clone)]
+/// when the object no longer exists on the branch. The commit record carries these rows as
+/// its write set (`objects`), from which the kernel indexes are rebuilt (DEC-053).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ObjectRow {
     /// Object identifier.
     pub object_id: String,
     /// Class name (for class-scoped reads).
     pub class: String,
+    /// Valid-time granularity of the class: true for `instant`, false for `date`.
+    #[serde(default)]
+    pub instant: bool,
     /// Object state (class, kind, slug, head, timeline).
     pub state: Option<Value>,
 }
@@ -156,9 +160,18 @@ pub trait Store {
     }
 }
 
-/// Kernel index rows of one engine object row: head and valid-time segments come from the
-/// engine state (`head`, `timeline[].{from, to, version}`).
+/// Kernel index rows of one engine object row: head, kind and slug and the valid-time
+/// segments come from the engine state (`head`, `kind`, `slug`, `timeline[].{from, to,
+/// version}`).
 pub fn index_row(o: &ObjectRow) -> Result<kernel::IndexRow, BpaError> {
+    let text = |k: &str| {
+        o.state
+            .as_ref()
+            .and_then(|s| s.get(k))
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string()
+    };
     let (head, segments) = match &o.state {
         None => (None, Vec::new()),
         Some(s) => {
@@ -188,14 +201,28 @@ pub fn index_row(o: &ObjectRow) -> Result<kernel::IndexRow, BpaError> {
     Ok(kernel::IndexRow {
         object_id: o.object_id.clone(),
         class: o.class.clone(),
-        state: o
-            .state
-            .as_ref()
-            .map(|v| Ok::<_, BpaError>(ubos_types::canonical(v)?.into_bytes()))
-            .transpose()?,
+        present: o.state.is_some(),
         head,
+        kind: text("kind"),
+        slug: text("slug"),
+        instant: o.instant,
         segments,
     })
+}
+
+/// The engine's object state from the facts of the kernel indexes (the inverse of
+/// [`index_row`]): `None` when the branch holds no version of the object.
+pub fn state_of(facts: &kernel::ObjectFacts) -> Option<Value> {
+    let head = facts.head.as_ref()?;
+    let timeline: Vec<Value> = facts
+        .segments
+        .iter()
+        .map(|(f, t, v)| serde_json::json!({"from": f, "to": t, "version": kernel::hash_text(v)}))
+        .collect();
+    Some(serde_json::json!({
+        "class": facts.class, "kind": facts.kind, "slug": facts.slug,
+        "head": kernel::hash_text(head), "timeline": timeline,
+    }))
 }
 
 /// An object-index row as kept in memory.

@@ -133,9 +133,14 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    ledger and transactions in the kernel: evaluation evidence and `follow`, range queries
    and history, derivation records and impact sets, idempotent requests, outbox and
    became-effective events, bulk processes, AEAD registry; 841 of 1,227 vectors pass in
-   memory and on PostgreSQL, DEC-052). Next 4d (production identities replacing the
-   transition layout of DEC-047, tenancy, outbox and idempotency rows in the flush, signed
-   runner report). W-1 should run before the storage layout is fixed.
+   memory and on PostgreSQL, DEC-052); 4d-1 done (production identities of the kernel
+   schema, migration 0003: commits keyed by content ID, UUID identifiers, timestamptz valid
+   times, `head_index` with intervals replacing `object_state`, write sets in commit
+   records, verifier rebuilt from them; DEC-053). Next 4d-2 (branch, tag, process, change
+   set and derivation metadata into tables, outbox and idempotency rows in the flush, tenant
+   scope replacing the engine constants, `parse_uri`, `resolve`, `parse_did`, `key_did`,
+   signed runner report of EXIT-1-02). W-1 may still change partition counts and
+   commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
    occasion.
