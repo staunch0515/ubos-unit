@@ -95,9 +95,6 @@ pub struct Entry {
 /// Adapter clock when a transaction names none (STD-CONF-002 `set_now`).
 pub const DEFAULT_NOW: &str = "2026-01-01T00:00:00.000000Z";
 
-/// Authority of the conformance adapter's VAE (STD-CONF-005).
-pub const TENANT: &str = "acme";
-
 /// Hybrid logical clock (STD-TIME-001, DEC-041): the physical clock, or one microsecond
 /// after the previous commit when the clock did not advance.
 pub fn hlc(now: &str, prev: Option<&str>) -> Result<String, BpaError> {
@@ -111,11 +108,15 @@ pub fn hlc(now: &str, prev: Option<&str>) -> Result<String, BpaError> {
 }
 
 /// Content ID of a commit record (STD-VER-001): over VAE, branch, parent commit IDs, cseq,
-/// transaction time and root.
-pub fn commit_identity(rec: &CommitRecord, parent_ids: &[String]) -> Result<String, BpaError> {
+/// transaction time and root. The VAE is named by its authority (STD-ADDR-001, DEC-054).
+pub fn commit_identity(
+    rec: &CommitRecord,
+    parent_ids: &[String],
+    authority: &str,
+) -> Result<String, BpaError> {
     content_id(
         "ubos.commit.v1",
-        &json!({"vae": TENANT, "branch": rec.branch, "parents": parent_ids, "cseq": rec.cseq,
+        &json!({"vae": authority, "branch": rec.branch, "parents": parent_ids, "cseq": rec.cseq,
                 "tx_time": rec.tx_time, "root": rec.root}),
     )
 }
@@ -308,8 +309,8 @@ impl<'a> Repo<'a> {
     /// Initialise `main` with the empty genesis commit (cseq 0).
     pub fn init(&mut self) -> Result<(), BpaError> {
         let id = self.init_branch("main")?;
-        self.store.put_meta(
-            "branch:main",
+        self.store.put_branch_meta_rec(
+            "main",
             &json!({"kind": "main", "created_at": null, "active_at": null, "parent_line": null, "created_from": id}),
         )
     }
@@ -330,7 +331,7 @@ impl<'a> Repo<'a> {
             hidden: vec![],
             extra: Map::new(),
         };
-        rec.commit_id = commit_identity(&rec, &[])?;
+        rec.commit_id = commit_identity(&rec, &[], &self.store.authority())?;
         let r = BranchRef {
             head: 0,
             head_cseq: 0,
@@ -617,6 +618,10 @@ impl<'a> Repo<'a> {
             hidden: BTreeSet::new(),
             ops: BTreeMap::new(),
             extra: Map::new(),
+            outbox: Vec::new(),
+            idempotency: None,
+            derivations: Vec::new(),
+            timers: Vec::new(),
         })
     }
 
@@ -775,7 +780,12 @@ impl<'a> Repo<'a> {
             hidden: tx.hidden.iter().cloned().collect(),
             extra,
         };
-        rec.commit_id = commit_identity(&rec, &parent_ids)?;
+        rec.commit_id = commit_identity(&rec, &parent_ids, &self.store.authority())?;
+        let idempotency = tx.idempotency.map(|(scope, key, hash, mut result)| {
+            result["commit_id"] = json!(rec.commit_id);
+            result["tx_time"] = json!(rec.tx_time);
+            (scope, key, hash, result)
+        });
         let f = Flush {
             versions: tx.versions,
             commit_id: id,
@@ -790,6 +800,10 @@ impl<'a> Repo<'a> {
                 .iter()
                 .map(|(h, n)| (h.clone(), n.to_json()))
                 .collect(),
+            outbox: tx.outbox,
+            idempotency,
+            derivations: tx.derivations,
+            timers: tx.timers,
         };
         let branch = f.branch.clone();
         self.branches.remove(&branch);
@@ -1212,4 +1226,13 @@ pub struct Tx {
     pub ops: BTreeMap<String, Vec<Value>>,
     /// Further members of the commit record.
     pub extra: Map<String, Value>,
+    /// Effects released with the commit (STD-TXN-050).
+    pub outbox: Vec<Value>,
+    /// Idempotency record of the commit: `(scope, key, request hash, result so far)`; the
+    /// write completes the result with the commit identity (STD-TXN-040).
+    pub idempotency: Option<(String, String, String, Value)>,
+    /// Derivation records of the commit: `{id, record, inputs, outputs}` (STD-TXN-030).
+    pub derivations: Vec<Value>,
+    /// Future segment starts that emit BecameEffective (STD-TIME-050).
+    pub timers: Vec<Value>,
 }

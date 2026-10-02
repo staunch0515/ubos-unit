@@ -90,6 +90,17 @@ pub struct Flush {
     pub entries: Vec<EntryRow>,
     /// New tree nodes by hash.
     pub nodes: Vec<(String, Value)>,
+    /// Effects released with the commit (STD-TXN-050): `{effect_id, type, branch, cseq,
+    /// object_id?, payload?}`.
+    pub outbox: Vec<Value>,
+    /// Idempotency record of the commit (STD-TXN-040): `(scope, key, request hash,
+    /// outcome)`.
+    pub idempotency: Option<(String, String, String, Value)>,
+    /// Derivation records of the commit (STD-TXN-030): `{id, record, inputs, outputs}`.
+    pub derivations: Vec<Value>,
+    /// Future segment starts to emit BecameEffective for (STD-TIME-050): `{key: [branch,
+    /// object_id, from, version], class, instant}`.
+    pub timers: Vec<Value>,
 }
 
 /// Storage of versions, commits, branches, kernel indexes and tree nodes.
@@ -105,6 +116,8 @@ pub trait Store {
     fn commit(&mut self, id: u64) -> Result<Value, BpaError>;
     /// The commit of a branch with the given ordinal, among the branch's own commits.
     fn commit_at(&mut self, branch: &str, cseq: u64) -> Result<Option<u64>, BpaError>;
+    /// The commit with a commit identifier (content ID), on any branch.
+    fn commit_by_id(&mut self, commit_id: &str) -> Result<Option<u64>, BpaError>;
     /// A fresh commit identifier.
     fn next_commit_id(&mut self) -> Result<u64, BpaError>;
     /// A branch reference.
@@ -154,6 +167,150 @@ pub trait Store {
     fn meta(&mut self, key: &str) -> Result<Option<Value>, BpaError>;
     /// Backend name for reports.
     fn backend(&self) -> &'static str;
+    /// Authority of the VAE (STD-ADDR-001); `acme` for the conformance vectors.
+    fn authority(&self) -> String {
+        "acme".into()
+    }
+    /// Slugs the versions of an object ever carried (STD-ADDR-001 redirects).
+    fn object_slugs(&mut self, object_id: &str) -> Result<Vec<String>, BpaError>;
+
+    // ---- metadata records (DEC-054). The defaults keep them under settings keys; the
+    // PostgreSQL adapter keeps them in their tables. ----
+
+    /// Branch metadata record (`kind`, `created_at`, `active_at`, `parent_line`,
+    /// `created_from`).
+    fn branch_meta_rec(&mut self, name: &str) -> Result<Option<Value>, BpaError> {
+        self.meta(&format!("branch:{name}"))
+    }
+    /// Store a branch metadata record.
+    fn put_branch_meta_rec(&mut self, name: &str, rec: &Value) -> Result<(), BpaError> {
+        self.put_meta(&format!("branch:{name}"), rec)
+    }
+    /// A tag record.
+    fn tag_rec(&mut self, name: &str) -> Result<Option<Value>, BpaError> {
+        self.meta(&format!("tag:{name}"))
+    }
+    /// Store a tag record.
+    fn put_tag_rec(&mut self, name: &str, rec: &Value) -> Result<(), BpaError> {
+        self.put_meta(&format!("tag:{name}"), rec)
+    }
+    /// A process record.
+    fn process_rec(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
+        self.meta(&format!("process:{id}"))
+    }
+    /// Store a process record (new or updated).
+    fn put_process_rec(&mut self, id: &str, rec: &Value) -> Result<(), BpaError> {
+        if self.meta(&format!("process:{id}"))?.is_none() {
+            let mut ids: Vec<Value> = self
+                .meta("processes")?
+                .and_then(|v| v.as_array().cloned())
+                .unwrap_or_default();
+            ids.push(Value::String(id.to_string()));
+            self.put_meta("processes", &Value::Array(ids))?;
+        }
+        self.put_meta(&format!("process:{id}"), rec)
+    }
+    /// Identifiers of the recorded processes, in order of recording.
+    fn process_ids(&mut self) -> Result<Vec<String>, BpaError> {
+        Ok(self
+            .meta("processes")?
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|v| v.as_str().map(str::to_string))
+            .collect())
+    }
+    /// A change-set record (`target`, `merge`).
+    fn change_set_rec(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
+        self.meta(&format!("cs:{id}"))
+    }
+    /// Store a change-set record.
+    fn put_change_set_rec(&mut self, id: &str, rec: &Value) -> Result<(), BpaError> {
+        self.put_meta(&format!("cs:{id}"), rec)
+    }
+    /// A derivation record with its inputs (`{record, inputs}`), written by a flush.
+    fn derivation_rec(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
+        self.meta(&format!("derivation:{id}"))
+    }
+    /// The released effects not yet acknowledged, in release order.
+    fn outbox_pending(&mut self) -> Result<Vec<Value>, BpaError> {
+        let acked: std::collections::HashSet<String> = self
+            .meta("acked")?
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|v| v.as_str().map(str::to_string))
+            .collect();
+        Ok(self
+            .meta("outbox")?
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|e| {
+                !acked.contains(
+                    e.get("effect_id")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default(),
+                )
+            })
+            .collect())
+    }
+    /// Release effects outside a flush (BecameEffective events).
+    fn outbox_push(&mut self, items: &[Value]) -> Result<(), BpaError> {
+        let mut all = self
+            .meta("outbox")?
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default();
+        all.extend(items.iter().cloned());
+        self.put_meta("outbox", &Value::Array(all))
+    }
+    /// Acknowledge effects; false when one is unknown (nothing acknowledged then).
+    fn outbox_ack(&mut self, ids: &[String]) -> Result<bool, BpaError> {
+        let known: std::collections::HashSet<String> = self
+            .meta("outbox")?
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|e| {
+                e.get("effect_id")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+            })
+            .collect();
+        if ids.iter().any(|x| !known.contains(x)) {
+            return Ok(false);
+        }
+        let mut acked: Vec<Value> = self
+            .meta("acked")?
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default();
+        acked.extend(ids.iter().map(|x| Value::String(x.clone())));
+        self.put_meta("acked", &Value::Array(acked))?;
+        Ok(true)
+    }
+    /// All pending timers (`{id, key, class, instant}`).
+    fn timers(&mut self) -> Result<Vec<Value>, BpaError> {
+        Ok(self
+            .meta("schedule")?
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default())
+    }
+    /// Remove timers by identifier.
+    fn remove_timers(&mut self, ids: &[String]) -> Result<(), BpaError> {
+        let keep: Vec<Value> = self
+            .timers()?
+            .into_iter()
+            .filter(|t| {
+                !ids.iter()
+                    .any(|i| t.get("id").and_then(Value::as_str) == Some(i))
+            })
+            .collect();
+        self.put_meta("schedule", &Value::Array(keep))
+    }
+    /// An idempotency record (`hash`, `result`), written by a flush.
+    fn idempotency_rec(&mut self, scope: &str, key: &str) -> Result<Option<Value>, BpaError> {
+        self.meta(&format!("idem:{scope}:{key}"))
+    }
     /// Tenant and VAE of a kernel store (verifiers and the storage suite), if any.
     fn scope(&self) -> Option<kernel::Scope> {
         None
@@ -286,6 +443,13 @@ impl Store for MemStore {
     fn commit_at(&mut self, branch: &str, cseq: u64) -> Result<Option<u64>, BpaError> {
         Ok(self.by_cseq.get(&(branch.to_string(), cseq)).copied())
     }
+    fn commit_by_id(&mut self, commit_id: &str) -> Result<Option<u64>, BpaError> {
+        Ok(self
+            .commits
+            .iter()
+            .find(|(_, c)| c.get("commit_id").and_then(Value::as_str) == Some(commit_id))
+            .map(|(id, _)| *id))
+    }
     fn next_commit_id(&mut self) -> Result<u64, BpaError> {
         self.next += 1;
         Ok(self.next)
@@ -342,7 +506,19 @@ impl Store for MemStore {
         for (h, n) in &f.nodes {
             self.nodes.insert(h.clone(), n.clone());
         }
+        apply_metadata(self, f)?;
         Ok(true)
+    }
+    fn object_slugs(&mut self, object_id: &str) -> Result<Vec<String>, BpaError> {
+        let mut out: Vec<String> = self
+            .versions
+            .values()
+            .filter(|v| v.get("object_id").and_then(Value::as_str) == Some(object_id))
+            .filter_map(|v| v.get("slug").and_then(Value::as_str).map(str::to_string))
+            .collect();
+        out.sort();
+        out.dedup();
+        Ok(out)
     }
     fn object(
         &mut self,
@@ -407,6 +583,40 @@ impl Store for MemStore {
     fn backend(&self) -> &'static str {
         "memory"
     }
+}
+
+/// Apply the metadata of a flush through the settings keys of the default methods
+/// (memory store and overlays): released effects, the idempotency record, derivation
+/// records and timers.
+fn apply_metadata(s: &mut dyn Store, f: &Flush) -> Result<(), BpaError> {
+    if !f.outbox.is_empty() {
+        s.outbox_push(&f.outbox)?;
+    }
+    if let Some((scope, key, hash, result)) = &f.idempotency {
+        s.put_meta(
+            &format!("idem:{scope}:{key}"),
+            &serde_json::json!({"hash": hash, "result": result}),
+        )?;
+    }
+    for d in &f.derivations {
+        let id = d.get("id").and_then(Value::as_str).unwrap_or_default();
+        s.put_meta(
+            &format!("derivation:{id}"),
+            &serde_json::json!({"record": d["record"], "inputs": d["inputs"]}),
+        )?;
+    }
+    if !f.timers.is_empty() {
+        let mut all = s.timers()?;
+        for t in &f.timers {
+            if !all.iter().any(|x| x["key"] == t["key"]) {
+                let mut t = t.clone();
+                t["id"] = Value::String(format!("timer-{}", all.len() + 1));
+                all.push(t);
+            }
+        }
+        s.put_meta("schedule", &Value::Array(all))?;
+    }
+    Ok(())
 }
 
 /// A group of commits built on top of a store (DSN-DVM-006): flushes go to an in-memory
@@ -476,6 +686,12 @@ impl Store for Group {
         match self.overlay.commit_at(branch, cseq)? {
             Some(id) => Ok(Some(id)),
             None => self.inner.commit_at(branch, cseq),
+        }
+    }
+    fn commit_by_id(&mut self, commit_id: &str) -> Result<Option<u64>, BpaError> {
+        match self.overlay.commit_by_id(commit_id)? {
+            Some(id) => Ok(Some(id)),
+            None => self.inner.commit_by_id(commit_id),
         }
     }
     fn next_commit_id(&mut self) -> Result<u64, BpaError> {
@@ -550,6 +766,70 @@ impl Store for Group {
     }
     fn meta(&mut self, key: &str) -> Result<Option<Value>, BpaError> {
         self.inner.meta(key)
+    }
+    fn authority(&self) -> String {
+        self.inner.authority()
+    }
+    fn object_slugs(&mut self, object_id: &str) -> Result<Vec<String>, BpaError> {
+        let mut out = self.inner.object_slugs(object_id)?;
+        out.extend(self.overlay.object_slugs(object_id)?);
+        out.sort();
+        out.dedup();
+        Ok(out)
+    }
+    fn branch_meta_rec(&mut self, name: &str) -> Result<Option<Value>, BpaError> {
+        self.inner.branch_meta_rec(name)
+    }
+    fn put_branch_meta_rec(&mut self, name: &str, rec: &Value) -> Result<(), BpaError> {
+        self.inner.put_branch_meta_rec(name, rec)
+    }
+    fn tag_rec(&mut self, name: &str) -> Result<Option<Value>, BpaError> {
+        self.inner.tag_rec(name)
+    }
+    fn put_tag_rec(&mut self, name: &str, rec: &Value) -> Result<(), BpaError> {
+        self.inner.put_tag_rec(name, rec)
+    }
+    fn process_rec(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
+        self.inner.process_rec(id)
+    }
+    fn put_process_rec(&mut self, id: &str, rec: &Value) -> Result<(), BpaError> {
+        self.inner.put_process_rec(id, rec)
+    }
+    fn process_ids(&mut self) -> Result<Vec<String>, BpaError> {
+        self.inner.process_ids()
+    }
+    fn change_set_rec(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
+        self.inner.change_set_rec(id)
+    }
+    fn put_change_set_rec(&mut self, id: &str, rec: &Value) -> Result<(), BpaError> {
+        self.inner.put_change_set_rec(id, rec)
+    }
+    fn derivation_rec(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
+        match self.overlay.derivation_rec(id)? {
+            Some(v) => Ok(Some(v)),
+            None => self.inner.derivation_rec(id),
+        }
+    }
+    fn outbox_pending(&mut self) -> Result<Vec<Value>, BpaError> {
+        self.inner.outbox_pending()
+    }
+    fn outbox_push(&mut self, items: &[Value]) -> Result<(), BpaError> {
+        self.inner.outbox_push(items)
+    }
+    fn outbox_ack(&mut self, ids: &[String]) -> Result<bool, BpaError> {
+        self.inner.outbox_ack(ids)
+    }
+    fn timers(&mut self) -> Result<Vec<Value>, BpaError> {
+        self.inner.timers()
+    }
+    fn remove_timers(&mut self, ids: &[String]) -> Result<(), BpaError> {
+        self.inner.remove_timers(ids)
+    }
+    fn idempotency_rec(&mut self, scope: &str, key: &str) -> Result<Option<Value>, BpaError> {
+        match self.overlay.idempotency_rec(scope, key)? {
+            Some(v) => Ok(Some(v)),
+            None => self.inner.idempotency_rec(scope, key),
+        }
     }
     fn backend(&self) -> &'static str {
         self.inner.backend()

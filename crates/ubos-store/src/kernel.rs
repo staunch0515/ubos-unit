@@ -21,6 +21,19 @@ pub struct Scope {
     pub tenant: String,
     /// VAE identifier (UUID text).
     pub vae: String,
+    /// Authority of the VAE's object URIs and commit records (STD-ADDR-001, DEC-054).
+    pub authority: String,
+}
+
+impl Scope {
+    /// A scope with the default authority `acme` of the conformance vectors.
+    pub fn new(tenant: &str, vae: &str) -> Scope {
+        Scope {
+            tenant: tenant.into(),
+            vae: vae.into(),
+            authority: "acme".into(),
+        }
+    }
 }
 
 /// A branch reference row (`branch_ref`).
@@ -231,6 +244,8 @@ pub struct NodeRow {
 /// An outbox row (`outbox`, STD-TXN-070).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutboxRow {
+    /// Stable effect identifier (STD-TXN-050).
+    pub effect_id: String,
     /// Commit ordinal.
     pub cseq: u64,
     /// Position among the commit's effects.
@@ -330,6 +345,110 @@ pub struct CounterRow {
     pub last_hash: Hash,
 }
 
+/// Branch metadata (`branch_ref` columns, DEC-054).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct BranchMetaRow {
+    /// Kind (`main`, `release`, `draft`, …).
+    pub kind: String,
+    /// Creation instant (canonical text).
+    pub created_at: Option<String>,
+    /// Last activity instant.
+    pub active_at: Option<String>,
+    /// Parent line as canonical JSON (`{branch, mode, pin}`), if any.
+    pub parent_line: Option<Vec<u8>>,
+    /// Commit the branch was created from.
+    pub created_from: Option<Hash>,
+}
+
+/// A tag row (`tag`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TagRow {
+    /// Tag name.
+    pub name: String,
+    /// Tagged commit.
+    pub commit_id: Hash,
+    /// Branch the commit was selected on.
+    pub branch: String,
+    /// Signer DID.
+    pub signer: String,
+    /// Signature (a content ID until step 6 brings signatures).
+    pub signature: String,
+    /// Deleted: the name stays reserved (STD-VER-060).
+    pub tombstoned: bool,
+}
+
+/// A process row (`process_record`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProcessRow {
+    /// Process identifier (UUID text).
+    pub process_id: String,
+    /// Kind (`action`, `job`, …).
+    pub kind: String,
+    /// State (`running`, `committed`, `failed`, `aborted`).
+    pub state: String,
+    /// Initiator DID.
+    pub initiator: String,
+    /// Trigger type.
+    pub trigger_kind: String,
+    /// Trigger reference, if any.
+    pub trigger_ref: Option<String>,
+    /// Parent process, if any.
+    pub parent_process: Option<String>,
+    /// Bulk job the process belongs to, if any.
+    pub bulk: Option<String>,
+    /// Idempotency key, if any.
+    pub idempotency_key: Option<String>,
+    /// Effects released so far.
+    pub effects: u32,
+    /// Commits made, as `(branch, cseq)`.
+    pub commits: Vec<(String, u64)>,
+    /// Bulk-job state as canonical JSON (STD-TXN-070), if the process is a bulk job.
+    pub bulk_state: Option<Vec<u8>>,
+}
+
+/// A change-set row (`change_set`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChangeSetRow {
+    /// The `ChangeSet` object.
+    pub change_set_id: String,
+    /// Target branch.
+    pub target: String,
+    /// Merge commit once merged.
+    pub merge_commit: Option<Hash>,
+}
+
+/// One input of a derivation record (`derivation_edge`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DerivationEdge {
+    /// The derivation record (a chunk).
+    pub binding_id: Hash,
+    /// Derived version or entry hash.
+    pub output_version: Hash,
+    /// Input object or entry identifier.
+    pub input_object: String,
+    /// Input version or entry hash.
+    pub input_version: Hash,
+    /// Valid time the input was read at (canonical text).
+    pub valid_at: String,
+    /// Granularity of `valid_at`: true for an instant.
+    pub instant: bool,
+}
+
+/// A timer row (`timer`): a future segment start that emits BecameEffective.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TimerRow {
+    /// Timer identifier (UUID text).
+    pub id: String,
+    /// Due instant (canonical date or instant text).
+    pub due_at: String,
+    /// Granularity of `due_at`.
+    pub instant: bool,
+    /// Object.
+    pub target: String,
+    /// Step as canonical JSON (`{branch, from, version, class}`).
+    pub step: Vec<u8>,
+}
+
 /// Filter of a ledger read.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EntryFilter {
@@ -389,6 +508,26 @@ pub trait StoreTx {
     async fn idempotency_put(&mut self, row: &IdempotencyRow) -> Result<bool, BpaError>;
     /// Store a setting of the adapter.
     async fn put_meta(&mut self, key: &str, value: &[u8]) -> Result<(), BpaError>;
+    /// Store the metadata of a branch.
+    async fn put_branch_meta(
+        &mut self,
+        branch_id: i64,
+        row: &BranchMetaRow,
+    ) -> Result<(), BpaError>;
+    /// Store or update a tag.
+    async fn put_tag(&mut self, row: &TagRow) -> Result<(), BpaError>;
+    /// Store or update a process record.
+    async fn put_process(&mut self, row: &ProcessRow) -> Result<(), BpaError>;
+    /// Store or update a change-set record.
+    async fn put_change_set(&mut self, row: &ChangeSetRow) -> Result<(), BpaError>;
+    /// Store derivation edges (idempotent).
+    async fn put_derivation_edges(&mut self, rows: &[DerivationEdge]) -> Result<(), BpaError>;
+    /// Store timers (idempotent by identifier).
+    async fn put_timers(&mut self, rows: &[TimerRow]) -> Result<(), BpaError>;
+    /// Mark timers fired.
+    async fn fire_timers(&mut self, ids: &[String]) -> Result<(), BpaError>;
+    /// Acknowledge released effects; false when one is unknown.
+    async fn outbox_ack(&mut self, ids: &[String]) -> Result<bool, BpaError>;
     /// Make the writes durable and visible.
     async fn commit(self) -> Result<(), BpaError>;
     /// Discard the writes.
@@ -437,6 +576,34 @@ pub trait StoreRead {
     ) -> Result<Vec<Vec<u8>>, BpaError>;
     /// A setting of the adapter.
     async fn meta(&self, key: &str) -> Result<Option<Vec<u8>>, BpaError>;
+    /// The handle of a commit by content ID.
+    async fn commit_no_of(&self, commit_id: &Hash) -> Result<Option<u64>, BpaError>;
+    /// The content ID of a commit by handle.
+    async fn commit_id_of(&self, commit_no: u64) -> Result<Option<Hash>, BpaError>;
+    /// The stored envelopes of every version of an object, by version ID.
+    async fn object_versions(&self, object_id: &str) -> Result<Vec<(Hash, Vec<u8>)>, BpaError>;
+    /// Metadata of a branch.
+    async fn branch_meta(&self, branch_id: i64) -> Result<Option<BranchMetaRow>, BpaError>;
+    /// A tag.
+    async fn tag(&self, name: &str) -> Result<Option<TagRow>, BpaError>;
+    /// A process record.
+    async fn process(&self, process_id: &str) -> Result<Option<ProcessRow>, BpaError>;
+    /// Identifiers of the recorded processes in order of recording.
+    async fn process_ids(&self) -> Result<Vec<String>, BpaError>;
+    /// A change-set record.
+    async fn change_set(&self, id: &str) -> Result<Option<ChangeSetRow>, BpaError>;
+    /// The edges of a derivation record.
+    async fn derivation_edges(&self, binding_id: &Hash) -> Result<Vec<DerivationEdge>, BpaError>;
+    /// Released effects not yet acknowledged, in release order (`payload` bytes).
+    async fn outbox_pending(&self) -> Result<Vec<Vec<u8>>, BpaError>;
+    /// Pending timers.
+    async fn timers(&self) -> Result<Vec<TimerRow>, BpaError>;
+    /// An idempotency record: `(request hash, outcome)`.
+    async fn idempotency(
+        &self,
+        scope: &str,
+        key: &str,
+    ) -> Result<Option<(Hash, Option<Vec<u8>>)>, BpaError>;
     /// The commits of a branch as `(commit_no, cseq)`, by ordinal.
     async fn branch_commits(&self, branch_id: i64) -> Result<Vec<(u64, u64)>, BpaError>;
     /// The commit records of a branch as `(cseq, body)`, by ordinal (verifiers).

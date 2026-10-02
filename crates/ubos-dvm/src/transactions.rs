@@ -44,13 +44,6 @@ pub fn instant_or_date(v: &Value) -> Result<String, BpaError> {
     }
 }
 
-fn meta_list(store: &mut dyn Store, key: &str) -> Result<Vec<Value>, BpaError> {
-    Ok(store
-        .meta(key)?
-        .and_then(|v| v.as_array().cloned())
-        .unwrap_or_default())
-}
-
 /// The segment of a read result (`version_hash`, `body`, `slug`, `valid`, provenance).
 pub fn segment(
     repo: &mut Repo<'_>,
@@ -126,15 +119,27 @@ pub fn version_cseq(
     Ok(fallback)
 }
 
-/// The derivation record of a change, validated and stored under `derivation:<id>`;
-/// returns its identifier and the logic it names (STD-TXN-030).
+/// A derivation record of a commit, written with it (STD-TXN-030).
+#[derive(Debug, Clone)]
+pub struct Derivation {
+    /// Record identifier (content ID of the record).
+    pub id: String,
+    /// The logic versions named.
+    pub logic: Vec<String>,
+    /// The record.
+    pub record: Value,
+    /// Its inputs `{object, version, asof}`.
+    pub inputs: Vec<Value>,
+}
+
+/// The derivation record of a change, validated (STD-TXN-030); the commit writes it.
 pub fn derivation_of(
     repo: &mut Repo<'_>,
     tx: &Tx,
     ch: &Value,
     process_id: &str,
     max_inputs: u64,
-) -> Result<Option<(String, Vec<String>)>, BpaError> {
+) -> Result<Option<Derivation>, BpaError> {
     let Some(d) = ch.get("derivation").filter(|d| !d.is_null()) else {
         return Ok(None);
     };
@@ -213,38 +218,55 @@ pub fn derivation_of(
     } else if !inputs.is_empty() {
         rec["inputs"] = json!(inputs);
     }
-    let rid = content_id("ubos.chunk.v1", &rec)?;
-    repo.store.put_meta(
-        &format!("derivation:{rid}"),
-        &json!({"record": rec, "inputs": inputs}),
-    )?;
-    Ok(Some((rid, logic)))
+    let id = content_id("ubos.chunk.v1", &rec)?;
+    Ok(Some(Derivation {
+        id,
+        logic,
+        record: rec,
+        inputs,
+    }))
+}
+
+/// Add a derived output to the derivation records of a transaction.
+pub fn add_derived(tx: &mut Tx, d: &Derivation, output: &str) {
+    if let Some(e) = tx
+        .derivations
+        .iter_mut()
+        .find(|e| e["id"].as_str() == Some(d.id.as_str()))
+    {
+        e["outputs"]
+            .as_array_mut()
+            .expect("list")
+            .push(json!(output));
+        return;
+    }
+    tx.derivations
+        .push(json!({"id": d.id, "record": d.record, "inputs": d.inputs, "outputs": [output]}));
 }
 
 // ---- outbox (STD-TXN-050) and became-effective events (STD-TIME-050) ----
 
-/// Release the effects of a committed process to the outbox under stable identifiers
-/// `<process_id>/<n>` (STD-TXN-050).
-pub fn effects(
+/// The effects a process releases with a commit, under stable identifiers
+/// `<process_id>/<n>` continuing the process's count (STD-TXN-050); the flush writes them.
+pub fn effects_of(
     store: &mut dyn Store,
     p: &Process,
     branch: &str,
     cseq: u64,
-) -> Result<(), BpaError> {
+) -> Result<Vec<Value>, BpaError> {
     let list =
         p.p.get("effects")
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
     if list.is_empty() {
-        return Ok(());
+        return Ok(Vec::new());
     }
-    let ckey = format!("effects:{}", p.id);
     let mut n = store
-        .meta(&ckey)?
-        .and_then(|v| v.as_u64())
+        .process_rec(&p.id)?
+        .and_then(|r| r["effects"].as_u64())
         .unwrap_or_default();
-    let mut outbox = meta_list(store, "outbox")?;
+    let mut out = Vec::new();
     for e in &list {
         n += 1;
         let mut item = json!({"effect_id": format!("{}/{n}", p.id), "type": e["type"], "branch": branch, "cseq": cseq});
@@ -255,10 +277,9 @@ pub fn effects(
                 item[k] = v.clone();
             }
         }
-        outbox.push(item);
+        out.push(item);
     }
-    store.put_meta(&ckey, &json!(n))?;
-    store.put_meta("outbox", &Value::Array(outbox))
+    Ok(out)
 }
 
 fn emits(reg: &Registry, class: &str) -> bool {
@@ -278,7 +299,7 @@ fn due(reg: &Registry, now: &str, from: &str, class: &str) -> bool {
 }
 
 /// Future segment starts of the written objects of classes that emit `BecameEffective`
-/// (STD-TIME-050), to be added to the schedule after the commit is written.
+/// (STD-TIME-050): the timers the flush writes.
 pub fn pending_starts(
     reg: &Registry,
     now: &str,
@@ -294,40 +315,30 @@ pub fn pending_starts(
         if !emits(reg, &o.class) {
             continue;
         }
+        let instant = reg
+            .class(&o.class)
+            .map(|c| c.valid_time == "instant")
+            .unwrap_or(false);
         for seg in &o.timeline {
             if !due(reg, now, &seg.from, &o.class) {
-                out.push(json!({"key": [branch, oid, seg.from, seg.version], "class": o.class}));
+                out.push(json!({"key": [branch, oid, seg.from, seg.version], "class": o.class, "instant": instant}));
             }
         }
     }
     out
 }
 
-/// Add pending starts to the schedule (deduplicated).
-pub fn schedule(store: &mut dyn Store, pending: &[Value]) -> Result<(), BpaError> {
-    if pending.is_empty() {
-        return Ok(());
-    }
-    let mut sched = meta_list(store, "schedule")?;
-    for p in pending {
-        if !sched.iter().any(|x| x["key"] == p["key"]) {
-            sched.push(p.clone());
-        }
-    }
-    store.put_meta("schedule", &Value::Array(sched))
-}
-
 impl Engine {
     /// Emit the `BecameEffective` events whose segment start the clock has reached and
     /// whose segment still starts there with the same version (STD-TIME-050).
     pub fn tick(&mut self) -> Result<(), BpaError> {
-        let sched = meta_list(self.store.as_mut(), "schedule")?;
-        if sched.is_empty() {
+        let timers = self.store.timers()?;
+        if timers.is_empty() {
             return Ok(());
         }
-        let mut keep = Vec::new();
-        let mut outbox = meta_list(self.store.as_mut(), "outbox")?;
-        for item in sched {
+        let mut fired = Vec::new();
+        let mut events = Vec::new();
+        for item in timers {
             let key = &item["key"];
             let (branch, oid, from, vh) = (
                 text_of(&key[0]),
@@ -337,9 +348,9 @@ impl Engine {
             );
             let class = text_of(&item["class"]);
             if !due(&self.registry, &self.now, &from, &class) {
-                keep.push(item);
                 continue;
             }
+            fired.push(text_of(&item["id"]));
             let mut repo = Repo::new(self.store.as_mut(), &self.registry);
             let Ok((view, _)) = repo.view(&branch, &json!({})) else {
                 continue;
@@ -350,81 +361,68 @@ impl Engine {
                 .get(&oid)
                 .is_some_and(|o| o.timeline.iter().any(|x| x.from == from && x.version == vh))
             {
-                outbox.push(
+                events.push(
                     json!({"effect_id": format!("became-effective/{branch}/{oid}/{from}"),
                     "type": "BecameEffective", "branch": branch, "object_id": oid,
                     "payload": {"valid_from": from}}),
                 );
             }
         }
-        self.store.put_meta("schedule", &Value::Array(keep))?;
-        self.store.put_meta("outbox", &Value::Array(outbox))
+        if !events.is_empty() {
+            self.store.outbox_push(&events)?;
+        }
+        self.store.remove_timers(&fired)
     }
 
     /// `outbox`: the released effects not yet acknowledged, in release order (STD-TXN-050).
     pub fn outbox(&mut self) -> Result<Value, BpaError> {
         self.tick()?;
-        let acked: BTreeSet<String> = meta_list(self.store.as_mut(), "acked")?
-            .iter()
-            .map(text_of)
-            .collect();
-        let effects: Vec<Value> = meta_list(self.store.as_mut(), "outbox")?
-            .into_iter()
-            .filter(|e| !acked.contains(s(e, "effect_id").unwrap_or_default()))
-            .collect();
-        Ok(json!({"effects": effects}))
+        Ok(json!({"effects": self.store.outbox_pending()?}))
     }
 
     /// `ack`: acknowledge released effects.
     pub fn ack(&mut self, ids: &Value) -> Result<Value, BpaError> {
-        let known: BTreeSet<String> = meta_list(self.store.as_mut(), "outbox")?
-            .iter()
-            .map(|e| text_of(&e["effect_id"]))
-            .collect();
         let ids: Vec<String> = ids
             .as_array()
             .ok_or_else(|| invalid("effect_ids is a list"))?
             .iter()
             .map(text_of)
             .collect();
-        if let Some(x) = ids.iter().find(|x| !known.contains(*x)) {
-            return Err(not_found(&format!("unknown effect {x}")));
+        if !self.store.outbox_ack(&ids)? {
+            return Err(not_found("unknown effect"));
         }
-        let mut acked: BTreeSet<String> = meta_list(self.store.as_mut(), "acked")?
-            .iter()
-            .map(text_of)
-            .collect();
-        acked.extend(ids);
-        self.store.put_meta("acked", &json!(acked))?;
         Ok(Value::Bool(true))
     }
 
     // ---- idempotent requests (STD-TXN-040) ----
 
-    /// The idempotency record key and request hash of a commit, when its process names an
-    /// idempotency key: `(tenant, initiator, key)` → hash of `{branch, changes}`.
-    pub fn idempotency(p: &Process, input: &Value) -> Result<Option<(String, String)>, BpaError> {
+    /// The idempotency scope (the initiator; the store adds tenant and VAE), key and
+    /// request hash of a commit whose process names an idempotency key: the hash is over
+    /// `{branch, changes}` (STD-TXN-040).
+    pub fn idempotency(
+        p: &Process,
+        input: &Value,
+    ) -> Result<Option<(String, String, String)>, BpaError> {
         let Some(k) = p.p.get("idempotency_key").filter(|k| !k.is_null()) else {
             return Ok(None);
         };
-        let key = format!(
-            "idem:{}:{}:{}",
-            ubos_version::TENANT,
-            text_of(&p.p["initiator"]),
-            canonical(k)?
-        );
         let h = content_id(
             "ubos.chunk.v1",
             &json!({"branch": input.get("branch").cloned().unwrap_or(Value::Null),
                 "changes": input.get("changes").cloned().unwrap_or(json!([]))}),
         )?;
-        Ok(Some((key, h)))
+        Ok(Some((text_of(&p.p["initiator"]), canonical(k)?, h)))
     }
 
     /// The stored result of a repeated request, or `TXN.IDEMPOTENCY_MISMATCH` when the
     /// payload differs.
-    pub fn replay(&mut self, key: &str, hash: &str) -> Result<Option<Value>, BpaError> {
-        match self.store.meta(key)? {
+    pub fn replay(
+        &mut self,
+        scope: &str,
+        key: &str,
+        hash: &str,
+    ) -> Result<Option<Value>, BpaError> {
+        match self.store.idempotency_rec(scope, key)? {
             None => Ok(None),
             Some(known) => {
                 if s(&known, "hash") != Some(hash) {
@@ -436,14 +434,6 @@ impl Engine {
                 Ok(Some(known["result"].clone()))
             }
         }
-    }
-
-    /// Remember the result of a request under its idempotency key.
-    pub fn remember(&mut self, key: &str, hash: &str, result: &Value) -> Result<(), BpaError> {
-        self.store.put_meta(
-            key,
-            &json!({"hash": hash, "result": result, "at": self.now}),
-        )
     }
 
     // ---- range queries, history, derivation records (STD-TIME-014, -040, STD-TXN-030) ----
@@ -541,7 +531,7 @@ impl Engine {
         };
         let rec = self
             .store
-            .meta(&format!("derivation:{rid}"))?
+            .derivation_rec(&rid)?
             .ok_or_else(|| not_found("unknown derivation record"))?;
         let mut out = rec["record"].as_object().cloned().unwrap_or_default();
         out.insert("provenance_ref".into(), json!(rid));
@@ -634,7 +624,7 @@ impl Engine {
             if !inputs_of.contains_key(rid) {
                 let ins = repo
                     .store
-                    .meta(&format!("derivation:{rid}"))?
+                    .derivation_rec(rid)?
                     .and_then(|r| r["inputs"].as_array().cloned())
                     .unwrap_or_default();
                 inputs_of.insert(rid.clone(), ins);
@@ -721,8 +711,11 @@ impl Engine {
         if mode != "independent" && mode != "all_or_nothing" {
             return Err(invalid("mode is independent or all_or_nothing"));
         }
-        let key = format!("bulk:{pid}");
-        let mut b = match self.store.meta(&key)? {
+        let bulk_state = self
+            .store
+            .process_rec(&pid)?
+            .and_then(|r| r.get("bulk_state").filter(|b| b.is_object()).cloned());
+        let mut b = match bulk_state {
             Some(b) if i.get("resume") == Some(&json!(true)) => {
                 if s(&b, "state") != Some("failed") {
                     return Err(BpaError::new(
@@ -745,6 +738,7 @@ impl Engine {
                     Some(&json!({"process_id": s(i, "process_id"), "kind": "job"})),
                     "job",
                     &mut next,
+                    &self.principal,
                 )?;
                 self.next_process = next;
                 let now = self.now.clone();
@@ -755,8 +749,8 @@ impl Engine {
                     self.other("create_branch", &json!({"name": staging, "from": branch}))?;
                     b["staging"] = json!(staging);
                 }
-                self.store.put_meta(&key, &b)?;
-                record(self.store.as_mut(), &p, "running", None)?;
+                record(self.store.as_mut(), &p, "running", None, 0)?;
+                self.put_bulk_state(&pid, &b)?;
                 b
             }
         };
@@ -767,13 +761,13 @@ impl Engine {
         let done = b["children"].as_array().map(Vec::len).unwrap_or_default();
         for (n, chunk) in chunks.iter().enumerate().skip(done) {
             b["attempts"] = json!(b["attempts"].as_u64().unwrap_or_default() + 1);
-            self.store.put_meta(&key, &b)?;
+            self.put_bulk_state(&pid, &b)?;
             let input = json!({"branch": target, "changes": chunk,
                 "process": {"kind": "job", "trigger": {"type": "job", "ref": pid}, "parent_process": pid, "bulk": pid}});
             match self.commit(&input) {
                 Err(e) => {
                     b["state"] = json!("failed");
-                    self.store.put_meta(&key, &b)?;
+                    self.put_bulk_state(&pid, &b)?;
                     self.set_process_state(&pid, "failed")?;
                     return Ok(
                         json!({"state": "failed", "error": e.code, "children": b["children"]}),
@@ -783,7 +777,7 @@ impl Engine {
                     b["children"].as_array_mut().expect("list").push(
                         json!({"n": n + 1, "branch": target, "cseq": r["cseq"], "changes": chunk.len()}),
                     );
-                    self.store.put_meta(&key, &b)?;
+                    self.put_bulk_state(&pid, &b)?;
                 }
             }
         }
@@ -794,16 +788,24 @@ impl Engine {
             out["merge"] = json!({"cseq": r["cseq"]});
         }
         b["state"] = json!("committed");
-        self.store.put_meta(&key, &b)?;
+        self.put_bulk_state(&pid, &b)?;
         self.set_process_state(&pid, "committed")?;
         Ok(out)
     }
 
     fn set_process_state(&mut self, pid: &str, state: &str) -> Result<(), BpaError> {
-        let key = format!("process:{pid}");
-        if let Some(mut rec) = self.store.meta(&key)? {
+        if let Some(mut rec) = self.store.process_rec(pid)? {
             rec["state"] = json!(state);
-            self.store.put_meta(&key, &rec)?;
+            self.store.put_process_rec(pid, &rec)?;
+        }
+        Ok(())
+    }
+
+    /// Store the bulk-job state in the process record (STD-TXN-070).
+    fn put_bulk_state(&mut self, pid: &str, b: &Value) -> Result<(), BpaError> {
+        if let Some(mut rec) = self.store.process_rec(pid)? {
+            rec["bulk_state"] = b.clone();
+            self.store.put_process_rec(pid, &rec)?;
         }
         Ok(())
     }
@@ -812,8 +814,8 @@ impl Engine {
     pub fn bulk_children(&mut self, pid: &str) -> Result<u64, BpaError> {
         Ok(self
             .store
-            .meta(&format!("bulk:{pid}"))?
-            .and_then(|b| b["attempts"].as_u64())
+            .process_rec(pid)?
+            .and_then(|r| r["bulk_state"]["attempts"].as_u64())
             .unwrap_or_default())
     }
 
@@ -851,9 +853,10 @@ impl Engine {
             Some(Value::Array(items)) if is_list => items.iter().map(text_of).collect(),
             _ => Vec::new(),
         };
+        let authority = repo.store.authority();
         let mut out = Vec::new();
         for uri in uris {
-            if let Some(tid) = crate::relations::resolve(st, &uri)
+            if let Some(tid) = crate::relations::resolve(st, &uri, &authority)
                 && let Some(t) = st.objects.get(&tid)
                 && let Some(seg) = at(&t.timeline, asof)
             {
@@ -869,4 +872,127 @@ impl Engine {
 /// Entry of the `derived` member of a commit record: `[kind, id, hash, record]`.
 pub fn derived_entry(kind: &str, id: &str, hash: &str, rid: &str) -> Value {
     json!([kind, id, hash, rid])
+}
+
+// ---- addressing (STD-ADDR-001, -002) ----
+
+impl Engine {
+    /// `resolve`: the object an URI names, at the coordinates its selectors give
+    /// (STD-ADDR-001, STD-ADDR-002); redirects follow earlier slugs, `@vN` addresses the
+    /// n-th version on the branch line.
+    pub fn resolve(&mut self, uri: &Value) -> Result<Value, BpaError> {
+        let p = ubos_types::addr::parse_uri(uri)?;
+        let authority = self.store.authority();
+        if s(&p, "tenant") != Some(authority.as_str()) || p.get("vae").is_some() {
+            return Err(not_found("unknown authority"));
+        }
+        let sel = p["selectors"].clone();
+        if sel.get("key").is_some() {
+            return Err(BpaError::new(
+                "QRY.INVALID_QUERY",
+                "key selectors are not supported in BPA 1.0-rc1",
+            ));
+        }
+        let mut branch = s(&sel, "branch").map(str::to_string);
+        let mut i = json!({});
+        if let Some(c) = s(&sel, "commit") {
+            let handle = self
+                .store
+                .commit_by_id(c)?
+                .ok_or_else(|| not_found("unknown commit"))?;
+            let owner = Repo::new(self.store.as_mut(), &self.registry)
+                .commit(handle)?
+                .branch;
+            if branch.as_deref().is_some_and(|b| b != owner) {
+                return Err(BpaError::new(
+                    "ADDR.CONFLICTING_SELECTORS",
+                    format!("the commit belongs to branch {owner}"),
+                ));
+            }
+            branch = Some(owner);
+            i["commit"] = json!(c);
+        }
+        if let Some(t) = s(&sel, "tag") {
+            let tag = self
+                .store
+                .tag_rec(t)?
+                .filter(|x| x["deleted"] != json!(true))
+                .ok_or_else(|| not_found("unknown tag"))?;
+            let owner = text_of(&tag["branch"]);
+            if branch.as_deref().is_some_and(|b| b != owner) {
+                return Err(BpaError::new(
+                    "ADDR.CONFLICTING_SELECTORS",
+                    format!("the tag belongs to branch {owner}"),
+                ));
+            }
+            branch = Some(owner);
+            i["tag"] = json!(t);
+        }
+        if let Some(t) = s(&sel, "time") {
+            i["tx_time"] = json!(t);
+        }
+        let branch = branch.unwrap_or_else(|| "main".into());
+        let (class, slug) = (text_of(&p["class"]), text_of(&p["slug"]));
+        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+        let (view, snap) = repo.view(&branch, &i)?;
+        let mut cands: Vec<String> = view
+            .state
+            .objects
+            .iter()
+            .filter(|(_, o)| o.class == class && o.slug == slug)
+            .map(|(id, _)| id.clone())
+            .collect();
+        let mut redirected = false;
+        if cands.is_empty() {
+            for (id, o) in &view.state.objects {
+                if o.class == class && repo.store.object_slugs(id)?.contains(&slug) {
+                    cands.push(id.clone());
+                }
+            }
+            redirected = !cands.is_empty();
+        }
+        cands.sort();
+        let Some(oid) = cands.first().cloned() else {
+            return Err(not_found(&format!(
+                "no object at {}",
+                text_of(&p["canonical"])
+            )));
+        };
+        let o = view.state.objects[&oid].clone();
+        let mut out = if let Some(n) = p.get("version").and_then(Value::as_u64) {
+            let mut heads: Vec<String> = Vec::new();
+            let mut line = repo.first_parents(snap.commit)?;
+            line.reverse();
+            for c in line {
+                let cseq = repo.commit(c)?.cseq;
+                if let Some(h) = repo.object_at(&branch, Some(cseq), &oid)?
+                    && heads.last() != Some(&h.head)
+                {
+                    heads.push(h.head.clone());
+                }
+            }
+            let Some(vh) = heads.get(n as usize - 1) else {
+                return Err(not_found(&format!(
+                    "the object has {} versions",
+                    heads.len()
+                )));
+            };
+            let v = repo.version(vh)?;
+            json!({"version_hash": vh, "body": v["body"], "slug": v["slug"], "valid": v["valid"]})
+        } else {
+            let a = s(&sel, "asof")
+                .map(str::to_string)
+                .unwrap_or_else(|| self.default_valid_of(&o.class));
+            let seg = at(&o.timeline, &a)
+                .ok_or_else(|| BpaError::new("QRY.NOT_FOUND_AT_TIME", "no segment at asof"))?;
+            let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+            segment(&mut repo, &seg.from, seg.to.as_deref(), &seg.version)?
+        };
+        out["object_id"] = json!(oid);
+        out["branch"] = json!(branch);
+        out["redirected"] = json!(redirected);
+        out["evaluated_at"] = json!(view.evaluated_at);
+        out["canonical"] = json!(format!("ubos://{authority}/{}/{}", o.class, o.slug));
+        Ok(out)
+    }
 }

@@ -1,0 +1,5312 @@
+{
+  "environment": {
+    "arch": "x86_64",
+    "os": "linux"
+  },
+  "implementation": {
+    "backends": [
+      "postgresql"
+    ],
+    "build_hash": "b8a90d1a19cb8600db09c71a48177ed207d7e8a1",
+    "name": "ubos-dvm prototype",
+    "vendor": "UBOS",
+    "version": "0.0.0"
+  },
+  "profiles_claimed": [
+    "Core",
+    "Bitemporal",
+    "Ledger",
+    "Proof"
+  ],
+  "results": [
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1700"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1701"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1702"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1715"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1716"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1717"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1725"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1726"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1727"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1728"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1729"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1730"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1731"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1732"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1733"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1734"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1735"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1736"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1737"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1775"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1776"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1777"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1778"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1779"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1780"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1800"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1801"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1802"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1810"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1811"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1812"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1813"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1814"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1815"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1816"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1817"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1825"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1826"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1827"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1828"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1850"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1851"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1852"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1853"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1854"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1860"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1861"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1862"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1863"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1864"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1875"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1876"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1877"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1878"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1879"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1900"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1901"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1902"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1903"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1904"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1905"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0001"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0002"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0003"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0004"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0005"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0006"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0007"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0008"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0009"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0010"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0011"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0012"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0013"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0014"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0015"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0016"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0017"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0018"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0019"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0020"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0021"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0022"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0023"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0024"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0025"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0026"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0027"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0028"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0029"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0030"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0031"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0032"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0033"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0034"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0035"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0040"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0041"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0042"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0043"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0044"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0045"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0046"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0047"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0048"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0049"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0050"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0051"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0052"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0053"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0054"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0055"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0056"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0057"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0058"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0059"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0060"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0061"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0062"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0063"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0064"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0065"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0066"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0067"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0068"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0069"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0070"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0071"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0072"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0073"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0074"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0075"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0076"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0077"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0078"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0079"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0080"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0081"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0082"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0083"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0084"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0085"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0086"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0087"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0088"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0089"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0090"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0091"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0092"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0093"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0094"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0095"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0096"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0097"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0098"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0099"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0100"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0101"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0102"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0103"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0104"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0105"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0106"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0107"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0108"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0109"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0110"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0111"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0112"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0113"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0114"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0115"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0116"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0117"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0118"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0119"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0120"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0121"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0122"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0123"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0124"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0125"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0126"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0127"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0128"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0129"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0130"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0131"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0132"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0133"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0134"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0135"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0136"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0137"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0138"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0139"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0140"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0150"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0151"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0152"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0153"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0160"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0161"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0162"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0163"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0164"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0165"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0166"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0167"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0168"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0169"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0170"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0171"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0172"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0173"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0174"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0175"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0176"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0177"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0178"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0179"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0180"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0181"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0182"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0183"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0184"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0185"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0186"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0187"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0188"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0189"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0190"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0191"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0192"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0193"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0200"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0201"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0202"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0203"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0204"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0205"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0206"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0207"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0215"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0216"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0217"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0218"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0219"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0220"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0221"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0222"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0223"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0224"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0225"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0226"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0227"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0228"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0240"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0241"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0242"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0243"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0244"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0245"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0246"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0247"
+    },
+    {
+      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0260"
+    },
+    {
+      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0261"
+    },
+    {
+      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0262"
+    },
+    {
+      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0263"
+    },
+    {
+      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0264"
+    },
+    {
+      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0265"
+    },
+    {
+      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0266"
+    },
+    {
+      "detail": "a: custom value types need the L1 evaluator (PH-1 step 5)",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0267"
+    },
+    {
+      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-0268"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0269"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0270"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0271"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0272"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0273"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0274"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0275"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0276"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0277"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0300"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0301"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0302"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0303"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0305"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0306"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0307"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0308"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0309"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0310"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0311"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0312"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0313"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0314"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0315"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0316"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0317"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0318"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0319"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0330"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0331"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0332"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0340"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0341"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0342"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0345"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0346"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0347"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0348"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0349"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0360"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0361"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0375"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0376"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0377"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0378"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0379"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0405"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0406"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0407"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0408"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0409"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0500"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0501"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0502"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0503"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0504"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0505"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0506"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0507"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0508"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0509"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0510"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0511"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0512"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0513"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0514"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0515"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0530"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0531"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0532"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0533"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0534"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0535"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0536"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0537"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0538"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0539"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0540"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0541"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0542"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0543"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0544"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0545"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0546"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0547"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0548"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0549"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0550"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0551"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0552"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0553"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0554"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0600"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0601"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0602"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0603"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0604"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0605"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0606"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0607"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0608"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0609"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0610"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0611"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0612"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0613"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0614"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0615"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0630"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0631"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0632"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0633"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0650"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0651"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0652"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0653"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0654"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0655"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0656"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0657"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0658"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0659"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0660"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0661"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0662"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0663"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0664"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0665"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0666"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0667"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0668"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0669"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0670"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0671"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0672"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0673"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0674"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0700"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0701"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0702"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0703"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0704"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0705"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0706"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0707"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0708"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0710"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0711"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0720"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0721"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0722"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0723"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0724"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0725"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0726"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0727"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0728"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0729"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0730"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0740"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0741"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0742"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0743"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0744"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0745"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0746"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0747"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0748"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0749"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0755"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0756"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0757"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0758"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0759"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0760"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0761"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0762"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0763"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0764"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0765"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0766"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0780"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0781"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0782"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0783"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0784"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0785"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0786"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0787"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0788"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0789"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0790"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0791"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0792"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0793"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0794"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0810"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0811"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0812"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0813"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0814"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0815"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0816"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0817"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0818"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0819"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0820"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0821"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0822"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0823"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0824"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0825"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0826"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0827"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0840"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0841"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0842"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0843"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0844"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0845"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0846"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0847"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0848"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0849"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0850"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0851"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-0852"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1000"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1001"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1002"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1003"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1120"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1121"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1140"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1141"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1142"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1160"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1161"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1200"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1201"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1202"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1203"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1204"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1205"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1206"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1207"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1208"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1220"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1221"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1222"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1225"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1226"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1227"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1230"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1231"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1232"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1233"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1234"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1235"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1250"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1251"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1252"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1253"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1254"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1255"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1256"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1257"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1258"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1259"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1260"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1261"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1262"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1263"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1264"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1265"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1280"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1281"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1282"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1283"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1284"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1285"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1286"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1287"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1288"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1289"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1290"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1291"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1292"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1293"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1294"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1295"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1296"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1297"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1298"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1299"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1300"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1301"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1302"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1303"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1304"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1305"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1306"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1307"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1308"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1309"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1310"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1311"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1312"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1313"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1314"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1315"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1330"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1331"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1332"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1333"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1334"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1350"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1351"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1352"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1353"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1354"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1355"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1356"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1357"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1358"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1380"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1381"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1382"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1400"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1401"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1402"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1403"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1404"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1415"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1416"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1417"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1418"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1419"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1420"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1421"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1422"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1423"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1424"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1425"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1426"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1427"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1428"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1429"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1460"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1461"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1490"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1491"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1492"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1493"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1500"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1501"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1525"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1526"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1527"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1528"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1529"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1530"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1531"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1545"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1546"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1547"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1548"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1550"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1551"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1552"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1553"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1554"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1555"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1560"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1561"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1562"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1563"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1564"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1565"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1566"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1567"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1568"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1569"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1570"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1575"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1576"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1577"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1578"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1579"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1580"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1581"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1582"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1583"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1584"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1585"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1586"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1587"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1588"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1589"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1590"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1605"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1606"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1607"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1608"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1609"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1615"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1616"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1617"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1618"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1619"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1620"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1621"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1622"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1623"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1624"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1625"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1626"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1627"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1628"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1645"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1646"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1647"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1648"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1660"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1661"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1662"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1663"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1664"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1665"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1666"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1667"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1668"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2000"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2001"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2015"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2016"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2030"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2031"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2032"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2045"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2060"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2061"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2062"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2070"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2071"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2072"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2073"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2074"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2090"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2091"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2092"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2100"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2101"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2102"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2103"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2120"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2121"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2122"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2123"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2124"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2125"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2126"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2127"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2135"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2136"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2137"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2138"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2139"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2140"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2141"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2150"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2151"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2152"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2153"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2154"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2155"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2165"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2166"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2167"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2168"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2169"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2170"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2171"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2215"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2216"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2217"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2218"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2219"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2220"
+    },
+    {
+      "detail": "s3: operation bpu_state is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2600"
+    },
+    {
+      "detail": "s1: operation bpu_descriptor is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2601"
+    },
+    {
+      "detail": "s1: operation bpu_descriptor is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2602"
+    },
+    {
+      "detail": "s1: operation bpu_descriptor is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2603"
+    },
+    {
+      "detail": "s1: operation bpu_descriptor is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2610"
+    },
+    {
+      "detail": "a: operation bpu_descriptor is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2611"
+    },
+    {
+      "detail": "x: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2612"
+    },
+    {
+      "detail": "s3: operation bpu_descriptor is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2613"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2635"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2636"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2637"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2650"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2651"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2652"
+    },
+    {
+      "detail": "s3: operation verify_bpu is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2660"
+    },
+    {
+      "detail": "s2: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2661"
+    },
+    {
+      "detail": "s2: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2662"
+    },
+    {
+      "detail": "s1: operation verify_bpu is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2663"
+    },
+    {
+      "detail": "s1: operation instructions is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3000"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3001"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3010"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3011"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3012"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3013"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3014"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3030"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3031"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3032"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3040"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3041"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3042"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3043"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3044"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3045"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3050"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3051"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3052"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3053"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3054"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3060"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3061"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3100"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3101"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3102"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3103"
+    },
+    {
+      "detail": "s2: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3104"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3105"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3120"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3121"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3122"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3123"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3124"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3150"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3165"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3215"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3216"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3300"
+    },
+    {
+      "detail": "s5: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3301"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3302"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3303"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3330"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3340"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3350"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3360"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3361"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3400"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3401"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3402"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3403"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3430"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3431"
+    },
+    {
+      "detail": "s4: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3440"
+    },
+    {
+      "detail": "s4: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3441"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3480"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4000"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4001"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4002"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4003"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4004"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4005"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4020"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4021"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4022"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4030"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4031"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4032"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4033"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4034"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4035"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4036"
+    },
+    {
+      "detail": "s1: operation profile_limits is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4050"
+    },
+    {
+      "detail": "s1: operation profile_limits is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4051"
+    },
+    {
+      "detail": "s1: operation profile_limits is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4052"
+    },
+    {
+      "detail": "s1: operation profile_limits is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4053"
+    },
+    {
+      "detail": "s1: operation profile_limits is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4054"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4055"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4056"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4057"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4058"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4059"
+    },
+    {
+      "detail": "s4: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4060"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4080"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4081"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4082"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4083"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4100"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4101"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4102"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4120"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4121"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4122"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4123"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4124"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4150"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4151"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4152"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4165"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4166"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4167"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4168"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4169"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4200"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4201"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4202"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4203"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4204"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4205"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4206"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-4270"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-4271"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-4272"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4273"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4274"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4275"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4276"
+    },
+    {
+      "detail": "s2: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4285"
+    },
+    {
+      "detail": "s2: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4286"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4287"
+    },
+    {
+      "detail": "s2: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4288"
+    },
+    {
+      "detail": "s2: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4289"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4290"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4291"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4292"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4305"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4306"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4307"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4308"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4309"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4310"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4311"
+    },
+    {
+      "detail": "s3: operation verify_asset is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4312"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4345"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4346"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4400"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4401"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4402"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4403"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4404"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4405"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4406"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4407"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4408"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4409"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4410"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4411"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4412"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4413"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4414"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4415"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4416"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4417"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4418"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4419"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4420"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4421"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4422"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4460"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4461"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4462"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4463"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4464"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4465"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4466"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4467"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4468"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4469"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4470"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4471"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4472"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4473"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4474"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4475"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4476"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4477"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4478"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4479"
+    },
+    {
+      "detail": "s1: operation check_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4480"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4500"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4501"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4502"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4503"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4504"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4505"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4506"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4507"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4508"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4509"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4510"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4511"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4512"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4513"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4514"
+    },
+    {
+      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4515"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4520"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4521"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4522"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4523"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4524"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4525"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4526"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4527"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4528"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4529"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4530"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4540"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4541"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4542"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4543"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4544"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4545"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4546"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4547"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4548"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4549"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4550"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4551"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4552"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4553"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4554"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4555"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4556"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4557"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4558"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4559"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4560"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4561"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4562"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4563"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4564"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4565"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4566"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4567"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4568"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4569"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4570"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4571"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4572"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4573"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4574"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4575"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4576"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4577"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4578"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4579"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4580"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4581"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4582"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4583"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4584"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4585"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4586"
+    },
+    {
+      "detail": "s1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4587"
+    },
+    {
+      "detail": "s2: operation query is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4750"
+    },
+    {
+      "detail": "s2: operation query is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4751"
+    },
+    {
+      "detail": "s2: operation query is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4752"
+    },
+    {
+      "detail": "s2: operation query is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4753"
+    },
+    {
+      "detail": "p1: operation query is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4754"
+    },
+    {
+      "detail": "p1: operation query is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4755"
+    },
+    {
+      "detail": "s4: operation query is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4756"
+    },
+    {
+      "detail": "s3: operation query is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4757"
+    },
+    {
+      "detail": "s2: operation query is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4758"
+    },
+    {
+      "detail": "s2: operation query is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4759"
+    },
+    {
+      "detail": "s2: operation query is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-4760"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5200"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5201"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5202"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5203"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5204"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5205"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5206"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5207"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5208"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5209"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5210"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5211"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5212"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5213"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5214"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5215"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5240"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5241"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5242"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5243"
+    },
+    {
+      "detail": "u1: operation eval_expr is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-5244"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5245"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5246"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5280"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5281"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5282"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5283"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5284"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5285"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-5286"
+    },
+    {
+      "detail": "s2: operation did_document is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-5287"
+    },
+    {
+      "detail": "n: operation node_did is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-5288"
+    },
+    {
+      "detail": "s2: operation rotate_node_key is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-5289"
+    },
+    {
+      "detail": "s1: operation did_document is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-5290"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6000"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6001"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6010"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6011"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6012"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6013"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6014"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6015"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6016"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6017"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6200"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6201"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6202"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6203"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6204"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6205"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6206"
+    },
+    {
+      "detail": "s1: operation verify_signature is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-6207"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-6208"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1020"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1021"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1022"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1023"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1024"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1025"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1026"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1027"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1028"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1029"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1030"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1031"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1032"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1040"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1041"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1042"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1043"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1050"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1051"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1052"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1053"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1054"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1055"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1070"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1071"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1072"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1073"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1074"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1085"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1086"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1087"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1088"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1089"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1095"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1096"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1097"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1098"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1099"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1505"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1506"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1507"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1508"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1509"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1510"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1511"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1830"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1831"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1832"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1833"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-1834"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2110"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2111"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3170"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3195"
+    },
+    {
+      "detail": "s3: operation execute is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-3196"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2300"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2301"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2302"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2303"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2304"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2305"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2306"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2307"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2308"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2309"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2310"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2340"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2341"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2342"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2350"
+    },
+    {
+      "outcome": "pass",
+      "vector": "VER-CONF-2351"
+    },
+    {
+      "detail": "s1: operation public_key is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2360"
+    },
+    {
+      "detail": "s1: operation sign is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2361"
+    },
+    {
+      "detail": "s1: operation verify_signature is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2362"
+    },
+    {
+      "detail": "s1: operation verify_signature is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2363"
+    },
+    {
+      "detail": "s1: operation verify_signature is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2364"
+    },
+    {
+      "detail": "s1: operation verify_signature is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2365"
+    },
+    {
+      "detail": "s1: operation verify_signature is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2366"
+    },
+    {
+      "detail": "s1: operation sign is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2367"
+    },
+    {
+      "detail": "s1: operation verify_signature is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2368"
+    },
+    {
+      "detail": "r: operation commit_record is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2369"
+    },
+    {
+      "detail": "s: operation sign is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2370"
+    },
+    {
+      "detail": "s1: operation verify_signature is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2375"
+    },
+    {
+      "detail": "s1: operation verify_signature is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2376"
+    },
+    {
+      "detail": "s1: operation verify_signature is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2377"
+    },
+    {
+      "detail": "s1: operation verify_signature is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2378"
+    },
+    {
+      "detail": "s1: operation verify_signature is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2379"
+    },
+    {
+      "detail": "s1: operation verify_signature is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2380"
+    },
+    {
+      "detail": "r1: operation commit_record is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2381"
+    },
+    {
+      "detail": "r1: operation commit_record is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2382"
+    },
+    {
+      "detail": "s3: operation rotate_node_key is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2383"
+    },
+    {
+      "detail": "s1: operation inclusion_proof is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2390"
+    },
+    {
+      "detail": "s1: operation inclusion_proof is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2391"
+    },
+    {
+      "detail": "p: operation inclusion_proof is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2392"
+    },
+    {
+      "detail": "s1: operation inclusion_proof is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2393"
+    },
+    {
+      "detail": "s1: operation verify_inclusion is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2394"
+    },
+    {
+      "detail": "s1: operation verify_inclusion is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2395"
+    },
+    {
+      "detail": "s1: operation verify_inclusion is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2396"
+    },
+    {
+      "detail": "s1: operation verify_inclusion is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2397"
+    },
+    {
+      "detail": "p: operation prove is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2398"
+    },
+    {
+      "detail": "n: operation node_did is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2399"
+    },
+    {
+      "detail": "n: operation node_did is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2400"
+    },
+    {
+      "detail": "p: operation prove is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2401"
+    },
+    {
+      "detail": "s2: operation prove is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2402"
+    },
+    {
+      "detail": "n: operation node_did is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2410"
+    },
+    {
+      "detail": "n: operation node_did is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2411"
+    },
+    {
+      "detail": "s4: operation consistency_proof is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2412"
+    },
+    {
+      "detail": "n: operation node_did is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2413"
+    },
+    {
+      "detail": "s1: operation verify_consistency is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2414"
+    },
+    {
+      "detail": "s1: operation verify_consistency is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2415"
+    },
+    {
+      "detail": "s1: operation verify_consistency is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2416"
+    },
+    {
+      "detail": "s1: operation verify_consistency is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2417"
+    },
+    {
+      "detail": "s1: operation verify_consistency is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2418"
+    },
+    {
+      "detail": "t: operation tenant_root is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2420"
+    },
+    {
+      "detail": "t: operation tenant_root is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2421"
+    },
+    {
+      "detail": "t: operation tenant_root is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2422"
+    },
+    {
+      "detail": "t: operation tenant_root is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2423"
+    },
+    {
+      "detail": "a: operation export_archive is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2510"
+    },
+    {
+      "detail": "a: operation export_archive is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2511"
+    },
+    {
+      "detail": "s6: operation export_archive is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2512"
+    },
+    {
+      "detail": "a: operation export_archive is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2513"
+    },
+    {
+      "detail": "a: operation export_archive is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2514"
+    },
+    {
+      "detail": "s2: operation import_archive is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2515"
+    },
+    {
+      "detail": "s1: operation import_archive is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2516"
+    },
+    {
+      "detail": "s1: operation import_archive is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2517"
+    },
+    {
+      "detail": "s1: operation import_archive is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2518"
+    },
+    {
+      "detail": "s1: operation import_archive is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2519"
+    },
+    {
+      "detail": "s1: operation import_archive is not implemented",
+      "outcome": "not_applicable",
+      "vector": "VER-CONF-2520"
+    }
+  ],
+  "signature": {
+    "alg": "ed25519",
+    "key": "c1ce521a260e016632fc3ad59115e22f52f372fe171ab3920f428cc9e5d3802e",
+    "sig": "174c50a4d8a3f881d30edceddaabf7388f8baa158ade06a7087c792f438a7c540f85705eb02d2962b6d1899820f645f4e5f7d36ef630b02786c1a0541d3d2c05"
+  },
+  "standard_version": "1.0.0-rc1",
+  "summary": {
+    "Bitemporal": {
+      "pass": 61
+    },
+    "Core": {
+      "not_applicable": 298,
+      "pass": 740
+    },
+    "Ledger": {
+      "not_applicable": 3,
+      "pass": 52
+    },
+    "Proof": {
+      "not_applicable": 57,
+      "pass": 16
+    }
+  }
+}

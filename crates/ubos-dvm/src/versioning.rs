@@ -57,6 +57,7 @@ pub fn process(
     input: Option<&Value>,
     kind: &str,
     next: &mut u64,
+    principal: &str,
 ) -> Result<Process, BpaError> {
     let mut p = input.cloned().unwrap_or_else(|| json!({}));
     if !p.is_object() {
@@ -96,13 +97,13 @@ pub fn process(
     }
     if let Some(pp) = &parent
         && store
-            .meta(&format!("process:{}", pp.as_str().unwrap_or_default()))?
+            .process_rec(pp.as_str().unwrap_or_default())?
             .is_none()
     {
         return Err(not_found("unknown parent process"));
     }
     if p.get("initiator").is_none() {
-        p["initiator"] = json!(PRINCIPAL);
+        p["initiator"] = json!(principal);
     }
     for e in p
         .get("effects")
@@ -126,19 +127,20 @@ pub fn process(
     Ok(Process { id, explicit, p })
 }
 
-/// Record the state of a process, and a commit it made (STD-TXN-031). Processes the
-/// caller did not name are not recorded: nothing can refer to them.
+/// Record the state of a process, a commit it made and the effects it released
+/// (STD-TXN-031). Processes the caller did not name are not recorded: nothing can refer to
+/// them.
 pub fn record(
     store: &mut dyn Store,
     p: &Process,
     state: &str,
     commit: Option<(&str, u64)>,
+    effects: u32,
 ) -> Result<(), BpaError> {
     if !p.explicit {
         return Ok(());
     }
-    let key = format!("process:{}", p.id);
-    let mut rec = match store.meta(&key)? {
+    let mut rec = match store.process_rec(&p.id)? {
         Some(r) => r,
         None => {
             let mut r = json!({"process_id": p.id, "kind": p.p["kind"], "initiator": p.p["initiator"],
@@ -150,12 +152,6 @@ pub fn record(
                     r[k] = v.clone();
                 }
             }
-            let mut ids: Vec<Value> = store
-                .meta("processes")?
-                .and_then(|v| v.as_array().cloned())
-                .unwrap_or_default();
-            ids.push(json!(p.id));
-            store.put_meta("processes", &Value::Array(ids))?;
             r
         }
     };
@@ -166,17 +162,16 @@ pub fn record(
             .expect("list")
             .push(json!([b, c]));
     }
-    store.put_meta(&key, &rec)
+    if effects > 0 {
+        rec["effects"] = json!(rec["effects"].as_u64().unwrap_or_default() + u64::from(effects));
+    }
+    store.put_process_rec(&p.id, &rec)
 }
 
 fn all_processes(store: &mut dyn Store) -> Result<Vec<Value>, BpaError> {
-    let ids = store
-        .meta("processes")?
-        .and_then(|v| v.as_array().cloned())
-        .unwrap_or_default();
     let mut out = Vec::new();
-    for id in ids {
-        if let Some(r) = store.meta(&format!("process:{}", id.as_str().unwrap_or_default()))? {
+    for id in store.process_ids()? {
+        if let Some(r) = store.process_rec(&id)? {
             out.push(r);
         }
     }
@@ -206,7 +201,7 @@ impl Engine {
     pub fn process_info(&mut self, process_id: &str) -> Result<Value, BpaError> {
         let rec = self
             .store
-            .meta(&format!("process:{process_id}"))?
+            .process_rec(process_id)?
             .ok_or_else(|| not_found("unknown process"))?;
         let mut out = Map::new();
         for (k, v) in rec.as_object().into_iter().flatten() {
@@ -234,14 +229,14 @@ impl Engine {
     pub fn lineage(&mut self, process_id: &str, direction: &str) -> Result<Value, BpaError> {
         let rec = self
             .store
-            .meta(&format!("process:{process_id}"))?
+            .process_rec(process_id)?
             .ok_or_else(|| not_found("unknown process"))?;
         match direction {
             "ancestors" => {
                 let mut out = Vec::new();
                 let mut p = s(&rec, "parent_process").map(str::to_string);
                 while let Some(x) = p {
-                    let r = self.store.meta(&format!("process:{x}"))?;
+                    let r = self.store.process_rec(&x)?;
                     out.push(json!(x));
                     p = r
                         .as_ref()
@@ -340,8 +335,10 @@ impl Engine {
             }
             let eff = reg.class(&o.class)?;
             let refs = eff.refs(&v["body"]);
+            let authority = repo.store.authority();
             if refs.iter().any(|(_, u)| {
-                crate::relations::resolve(&tx.state, u).is_some_and(|t| changed.contains(&t))
+                crate::relations::resolve(&tx.state, u, &authority)
+                    .is_some_and(|t| changed.contains(&t))
             }) {
                 written.push((src, o.head.clone()));
             }
@@ -445,6 +442,7 @@ impl Engine {
             input.get("process"),
             "merge",
             &mut next,
+            &self.principal,
         )?;
         self.next_process = next;
         let plan = {
@@ -543,7 +541,13 @@ impl Engine {
             self.touch_branch(target)?;
             (c.commit_id, c.tx_time)
         };
-        record(self.store.as_mut(), &p, "committed", Some((target, cseq)))?;
+        record(
+            self.store.as_mut(),
+            &p,
+            "committed",
+            Some((target, cseq)),
+            0,
+        )?;
         self.instances.extend(classes);
         let mut out = json!({"cseq": cseq, "merged": true, "appended": plan.appended, "commit_id": commit_id, "tx_time": tx_time});
         if !plan.resolutions.is_empty() {
@@ -644,7 +648,7 @@ impl Engine {
     fn cs_body(&mut self, oid: &str) -> Result<(String, String, Map<String, Value>), BpaError> {
         let cs = self
             .store
-            .meta(&format!("cs:{oid}"))?
+            .change_set_rec(oid)?
             .ok_or_else(|| not_found("unknown change set"))?;
         let target = s(&cs, "target").unwrap_or_default().to_string();
         let mut repo = Repo::new(self.store.as_mut(), &self.registry);
@@ -736,10 +740,8 @@ impl Engine {
             }
             self.commit(&json!({"branch": target, "changes": [{"op": "create", "object_id": oid, "class": "ChangeSet",
                 "slug": format!("cs-{oid}"), "body": body}]}))?;
-            self.store.put_meta(
-                &format!("cs:{oid}"),
-                &json!({"target": target, "merge": null}),
-            )?;
+            self.store
+                .put_change_set_rec(&oid, &json!({"target": target, "merge": null}))?;
             return Ok(Self::cs_result(body.as_object().expect("object"), None));
         }
         if action == "get" {
@@ -811,10 +813,8 @@ impl Engine {
             _ => {
                 let res = self.merge_into(&source, &target, i, Some(&oid))?;
                 let head = Repo::new(self.store.as_mut(), &self.registry).head(&target)?;
-                self.store.put_meta(
-                    &format!("cs:{oid}"),
-                    &json!({"target": target, "merge": head}),
-                )?;
+                self.store
+                    .put_change_set_rec(&oid, &json!({"target": target, "merge": head}))?;
                 let merged_commit = match res.get("commit_id") {
                     Some(c) if !c.is_null() => c.clone(),
                     _ => json!(
@@ -849,13 +849,13 @@ impl Engine {
             ));
         }
         let c = repo.commit(snap.commit)?;
-        let signer = s(i, "signer").unwrap_or(PRINCIPAL).to_string();
+        let signer = s(i, "signer").unwrap_or(&self.principal).to_string();
         let signature = content_id(
             "ubos.chunk.v1",
             &json!({"name": name, "commit": c.commit_id, "signer": signer}),
         )?;
-        self.store.put_meta(
-            &format!("tag:{name}"),
+        self.store.put_tag_rec(
+            &name,
             &json!({"commit": snap.commit, "commit_id": c.commit_id, "branch": branch, "signer": signer,
                     "deleted": false, "signature": signature}),
         )?;
@@ -866,11 +866,11 @@ impl Engine {
     pub fn delete_tag(&mut self, name: &str) -> Result<Value, BpaError> {
         let mut t = self
             .store
-            .meta(&format!("tag:{name}"))?
+            .tag_rec(name)?
             .filter(|t| t["deleted"] != json!(true))
             .ok_or_else(|| not_found("unknown tag"))?;
         t["deleted"] = json!(true);
-        self.store.put_meta(&format!("tag:{name}"), &t)?;
+        self.store.put_tag_rec(name, &t)?;
         Ok(Value::Bool(true))
     }
 
@@ -878,7 +878,7 @@ impl Engine {
     pub fn tag_info(&mut self, name: &str) -> Result<Value, BpaError> {
         let t = self
             .store
-            .meta(&format!("tag:{name}"))?
+            .tag_rec(name)?
             .ok_or_else(|| not_found("unknown tag"))?;
         let c = Repo::new(self.store.as_mut(), &self.registry)
             .commit(t["commit"].as_u64().unwrap_or_default())?;
@@ -942,9 +942,9 @@ impl Engine {
             &json!({"branch": branch, "changes": [{"op": "create", "object_id": i["object_id"],
             "class": "Release", "slug": tag, "body": body}]}),
         )?;
-        let signer = s(i, "signer").unwrap_or(PRINCIPAL).to_string();
-        self.store.put_meta(
-            &format!("tag:{tag}"),
+        let signer = s(i, "signer").unwrap_or(&self.principal).to_string();
+        self.store.put_tag_rec(
+            &tag,
             &json!({"commit": tagged_commit, "commit_id": tagged_id, "branch": branch, "signer": signer, "deleted": false,
                     "signature": content_id("ubos.chunk.v1", &json!({"name": tag, "commit": tagged_id}))?}),
         )?;
@@ -1012,7 +1012,7 @@ impl Engine {
         if let Some(pid) = s(i, "process_id") {
             let rec = self
                 .store
-                .meta(&format!("process:{pid}"))?
+                .process_rec(pid)?
                 .ok_or_else(|| not_found("unknown process"))?;
             let mut repo = Repo::new(self.store.as_mut(), &self.registry);
             let mut targets = Vec::new();
@@ -1026,7 +1026,7 @@ impl Engine {
         let targets = if let Some(cs) = s(i, "change_set") {
             let rec = self
                 .store
-                .meta(&format!("cs:{cs}"))?
+                .change_set_rec(cs)?
                 .ok_or_else(|| not_found("unknown change set"))?;
             let Some(m) = rec["merge"].as_u64() else {
                 return Err(BpaError::new(
@@ -1102,7 +1102,13 @@ impl Engine {
         let now = self.now.clone();
         let today = now[..10].to_string();
         let mut next = self.next_process;
-        let p = process(self.store.as_mut(), i.get("process"), "action", &mut next)?;
+        let p = process(
+            self.store.as_mut(),
+            i.get("process"),
+            "action",
+            &mut next,
+            &self.principal,
+        )?;
         self.next_process = next;
         let branches: BTreeSet<String> = targets.iter().map(|t| t.0.clone()).collect();
         let mut plans: Vec<(Tx, Value, Vec<String>, Vec<String>)> = Vec::new();
@@ -1270,7 +1276,13 @@ impl Engine {
             let head = tx.head;
             Repo::new(self.store.as_mut(), &self.registry).write(tx, vec![head])?;
             self.touch_branch(&branch)?;
-            record(self.store.as_mut(), &p, "committed", Some((&branch, cseq)))?;
+            record(
+                self.store.as_mut(),
+                &p,
+                "committed",
+                Some((&branch, cseq)),
+                0,
+            )?;
             touched.extend(classes);
             out.push(json!({"branch": branch, "cseq": cseq, "versions": result["versions"], "entries": result["entries"]}));
         }

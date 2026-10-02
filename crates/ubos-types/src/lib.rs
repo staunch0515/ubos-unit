@@ -8,6 +8,7 @@
 //! (STD-FND-015, -016, STD-VER-013), value types, decimals, money, time values and
 //! classification (STD-FND-020…027).
 
+pub mod addr;
 pub mod canon;
 pub mod decimal;
 pub mod error;

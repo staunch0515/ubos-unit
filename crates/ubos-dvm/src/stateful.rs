@@ -2,7 +2,7 @@
 
 use crate::relations::{Checks, extensions_of, needs_full_state};
 use crate::transactions::{
-    derivation_of, derived_entry, effects, pending_starts, schedule, segment,
+    add_derived, derivation_of, derived_entry, effects_of, pending_starts, segment,
 };
 use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -30,6 +30,8 @@ pub struct Engine {
     pub next_process: u64,
     /// Branch metadata read in this adapter (invalidated when it changes).
     pub branch_cache: std::collections::HashMap<String, ubos_version::BranchMeta>,
+    /// Principal of operations that name none (DEC-041, DEC-054).
+    pub principal: String,
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
@@ -51,6 +53,7 @@ impl Engine {
             max_inputs: 10_000,
             next_process: 0,
             branch_cache: Default::default(),
+            principal: crate::versioning::PRINCIPAL.into(),
         };
         e.reset()?;
         Ok(e)
@@ -67,6 +70,7 @@ impl Engine {
             max_inputs: 10_000,
             next_process: 0,
             branch_cache: Default::default(),
+            principal: crate::versioning::PRINCIPAL.into(),
         };
         e.load_genesis(classes, None)?;
         Ok(e)
@@ -97,6 +101,11 @@ impl Engine {
             Ok("instant") => self.now.clone(),
             _ => self.today(),
         }
+    }
+
+    /// Default valid time of a class: today, or the clock for instant granularity.
+    pub fn default_valid_of(&self, class: &str) -> String {
+        self.default_valid(class)
     }
 
     /// `load_genesis` (STD-KIND-080: a kind does not change while instances exist).
@@ -144,12 +153,13 @@ impl Engine {
             input.get("process"),
             "action",
             &mut next,
+            &self.principal,
         )?;
         self.next_process = next;
         // STD-TXN-040: a known key returns the stored result without effect.
         let idem = Engine::idempotency(&p, input)?;
-        if let Some((key, hash)) = &idem
-            && let Some(result) = self.replay(key, hash)?
+        if let Some((scope, key, hash)) = &idem
+            && let Some(result) = self.replay(scope, key, hash)?
         {
             return Ok(result);
         }
@@ -159,7 +169,7 @@ impl Engine {
             return Err(BpaError::new("VER.BRANCH_ARCHIVED", branch));
         }
         if p.p.get("abort") == Some(&json!(true)) {
-            crate::versioning::record(self.store.as_mut(), &p, "aborted", None)?;
+            crate::versioning::record(self.store.as_mut(), &p, "aborted", None, 0)?;
             return Ok(json!({"state": "aborted"}));
         }
         let r = commit_on(
@@ -171,11 +181,12 @@ impl Engine {
             false,
             &meta,
             self.max_inputs,
+            idem,
         );
-        let (r, classes) = match r {
+        let (r, classes, effects) = match r {
             Ok(x) => x,
             Err(e) => {
-                crate::versioning::record(self.store.as_mut(), &p, "failed", None)?;
+                crate::versioning::record(self.store.as_mut(), &p, "failed", None, 0)?;
                 return Err(e);
             }
         };
@@ -185,10 +196,8 @@ impl Engine {
             &p,
             "committed",
             Some((&branch, r["cseq"].as_u64().unwrap_or_default())),
+            effects,
         )?;
-        if let Some((key, hash)) = &idem {
-            self.remember(key, hash, &r)?;
-        }
         self.instances.extend(classes);
         Ok(r)
     }
@@ -211,6 +220,7 @@ impl Engine {
                 input.get("process"),
                 "action",
                 &mut next,
+                &self.principal,
             ) {
                 Ok(p) => p,
                 Err(e) => {
@@ -238,8 +248,9 @@ impl Engine {
                 false,
                 &meta,
                 self.max_inputs,
+                None,
             ) {
-                Ok((r, c)) => {
+                Ok((r, c, _)) => {
                     out.push(Ok(r));
                     classes.extend(c);
                 }
@@ -524,6 +535,10 @@ impl Engine {
                 drop(repo);
                 self.bulk(input)
             }
+            "resolve" => {
+                drop(repo);
+                self.resolve(input.get("uri").unwrap_or(&Value::Null))
+            }
             "diff" => repo.diff(
                 input.get("from").unwrap_or(&Value::Null),
                 input.get("to").unwrap_or(&Value::Null),
@@ -767,7 +782,8 @@ pub fn object(v: &Value) -> Map<String, Value> {
     v.as_object().cloned().unwrap_or_default()
 }
 
-/// The commit operation over any store; returns the result and the classes touched.
+/// The commit operation over any store; returns the result, the classes touched and the
+/// number of effects released.
 #[allow(clippy::too_many_arguments)]
 fn commit_on(
     store: &mut dyn Store,
@@ -778,7 +794,8 @@ fn commit_on(
     via_change_set: bool,
     meta: &ubos_version::BranchMeta,
     max_inputs: u64,
-) -> Result<(Value, Vec<String>), BpaError> {
+    idempotency: Option<(String, String, String)>,
+) -> Result<(Value, Vec<String>, u32), BpaError> {
     let changes = input
         .get("changes")
         .and_then(Value::as_array)
@@ -879,17 +896,21 @@ fn commit_on(
     }
     for ch in &changes {
         let deriv = derivation_of(&mut repo, &tx, ch, &process.id, max_inputs)?;
-        let rid = deriv.as_ref().map(|d| d.0.as_str());
-        if let Some((_, l)) = &deriv {
-            logic.extend(l.iter().cloned());
+        let rid = deriv.as_ref().map(|d| d.id.as_str());
+        if let Some(d) = &deriv {
+            logic.extend(d.logic.iter().cloned());
         }
         match s(ch, "op").unwrap_or_default() {
             "create" => {
                 create(&mut repo, &mut tx, ch, &default_valid, &mut result, rid)?;
                 let oid = s(ch, "object_id").unwrap_or_default();
-                if let Some(r) = rid {
-                    let vh = result["versions"][oid].as_str().unwrap_or_default();
-                    derived.push(derived_entry("object", oid, vh, r));
+                if let Some(d) = &deriv {
+                    let vh = result["versions"][oid]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_string();
+                    derived.push(derived_entry("object", oid, &vh, &d.id));
+                    add_derived(&mut tx, d, &vh);
                 }
                 let a = result["versions"][oid].as_str().map(|_| ());
                 let from = tx
@@ -954,9 +975,13 @@ fn commit_on(
                 let oid = s(ch, "object_id").unwrap_or_default().to_string();
                 let before = tx.state.objects.get(&oid).map(|o| o.timeline.clone());
                 update(&mut repo, &mut tx, ch, op, &default_valid, &mut result, rid)?;
-                if let (Some(r), "update") = (rid, op) {
-                    let vh = result["versions"][&oid].as_str().unwrap_or_default();
-                    derived.push(derived_entry("object", &oid, vh, r));
+                if let (Some(d), "update") = (&deriv, op) {
+                    let vh = result["versions"][&oid]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_string();
+                    derived.push(derived_entry("object", &oid, &vh, &d.id));
+                    add_derived(&mut tx, d, &vh);
                 }
                 if op == "end" {
                     let d = ended.last().map(|x| x.1.clone()).unwrap_or_default();
@@ -986,10 +1011,11 @@ fn commit_on(
             }
             op @ ("append" | "reverse" | "adjust") => {
                 let (id, seq) = repo.append(&mut tx, ch, op, &today, &default_valid, rid)?;
-                if let Some(r) = rid
-                    && let Some(e) = tx.appended.last()
+                if let Some(d) = &deriv
+                    && let Some(eh) = tx.appended.last().map(|e| e.entry_hash.clone())
                 {
-                    derived.push(derived_entry("entry", &id, &e.entry_hash, r));
+                    derived.push(derived_entry("entry", &id, &eh, &d.id));
+                    add_derived(&mut tx, d, &eh);
                 }
                 result["entries"][id] = json!({"seq": seq});
             }
@@ -1074,16 +1100,20 @@ fn commit_on(
                 .collect::<Vec<_>>()
         ),
     );
+    // STD-TXN-050, STD-TIME-050, STD-TXN-040: effects, future segment starts and the
+    // idempotency record are written with the commit (DEC-054).
+    tx.timers = pending_starts(reg, now_, &branch, &tx.state, &result["versions"]);
+    tx.outbox = effects_of(repo.store, process, &branch, tx.cseq)?;
+    let effects = u32::try_from(tx.outbox.len()).unwrap_or(u32::MAX);
+    if let Some((scope, key, hash)) = idempotency {
+        tx.idempotency = Some((scope, key, hash, result.clone()));
+    }
     let head = tx.head;
-    let pending = pending_starts(reg, now_, &branch, &tx.state, &result["versions"]);
     let id = repo.write(tx, vec![head])?;
     let c = repo.commit(id)?;
     result["commit_id"] = json!(c.commit_id);
     result["tx_time"] = json!(c.tx_time);
-    // STD-TXN-050, STD-TIME-050: effects and future segment starts after the write.
-    effects(repo.store, process, &branch, c.cseq)?;
-    schedule(repo.store, &pending)?;
-    Ok((result, classes))
+    Ok((result, classes, effects))
 }
 
 /// The rule binding of a commit over the transaction's state (STD-TIME-040).

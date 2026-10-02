@@ -25,7 +25,7 @@
 | `chunks.corruption_detected` | DSN-DVM-002 | a modified byte or a chunk presented under another content ID raises `NOD.BLOB_UNAVAILABLE` with `{"integrity": true}` |
 | `physical.two_tenants` | DSN-DVM-002 | identical content has the same content ID and different stored bytes in two tenants; one tenant's key cannot open the other's |
 | `physical.version_sealed` | DSN-DVM-002 | stored version envelopes contain no plaintext and read back through the engine |
-| `tenancy.no_tenant` | DSN-DVM-010 | a session of `ubos_app` without `ubos.tenant` sees 0 rows in all 15 tables |
+| `tenancy.no_tenant` | DSN-DVM-010 | a session of `ubos_app` without `ubos.tenant` sees 0 rows in all 15 tables (18 since DEC-054) |
 | `tenancy.cross_tenant` | DSN-DVM-010 | tenant B sees none of tenant A's rows and cannot write rows for tenant A |
 | `tenancy.ledger_immutable` | DSN-DVM-010, STD-KIND-020 | deleting a ledger entry as owner raises `LEDG.IMMUTABLE_ENTRY`; updating as `ubos_app` is denied |
 | `tenancy.partitions` | DSN-DVM-010 | the five large tables have 64 hash partitions each |

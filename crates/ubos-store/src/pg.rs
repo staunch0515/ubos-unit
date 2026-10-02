@@ -6,9 +6,11 @@
 //! kernel rows (canonical bytes, 32-byte content IDs, `cseq` intervals).
 
 use crate::kernel::{
-    Allocated, BranchRow, ChunkRow, CommitRow, CounterRow, EntryFilter, EntryMeta, Hash, HeadRow,
-    IdempotencyRow, IndexRow, LedgerRow, NodeRow, OPEN, ObjectFacts, OutboxRow, Placement, Scope,
-    SequenceRequest, StoreRead, StoreTx, TemporalRow, VersionRow, hash_of, kind_code, kind_name,
+    Allocated, BranchMetaRow, BranchRow, ChangeSetRow, ChunkRow, CommitRow, CounterRow,
+    DerivationEdge, EntryFilter, EntryMeta, Hash, HeadRow, IdempotencyRow, IndexRow, LedgerRow,
+    NodeRow, OPEN, ObjectFacts, OutboxRow, Placement, ProcessRow, Scope, SequenceRequest,
+    StoreRead, StoreTx, TagRow, TemporalRow, TimerRow, VersionRow, hash_of, hash_text, kind_code,
+    kind_name,
 };
 use crate::physical::{Chunks, LocalBlobs, Physical};
 use crate::{BranchRef, Flush, Store};
@@ -27,7 +29,26 @@ static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 /// Tables emptied by `reset` (adapter operation, STD-CONF-002).
 const TABLES: &str = "kernel_meta, branch_ref, commit, commit_parent, chunk, object_version, \
     ledger_entry, ledger_sequence, merkle_node, head_index, temporal_index, \
-    derivation_edge, idempotency_record, outbox";
+    derivation_edge, idempotency_record, outbox, tag, process_record, change_set, timer";
+
+/// Canonical instant text of a `timestamptz` column (NULL stays NULL).
+fn instant_text(col: &str) -> String {
+    format!("to_char({col} AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')")
+}
+
+/// A random UUID (version 4) in text form.
+fn random_uuid() -> Result<String, BpaError> {
+    let r: [u8; 16] = ubos_crypto::random_bytes()?;
+    let h: String = r.iter().map(|b| format!("{b:02x}")).collect();
+    Ok(format!(
+        "{}-{}-4{}-8{}-{}",
+        &h[0..8],
+        &h[8..12],
+        &h[13..16],
+        &h[17..20],
+        &h[20..32]
+    ))
+}
 
 /// Canonical text of a valid-time column (`date` or `instant` per the row's granularity;
 /// `'infinity'` reads as NULL) — the inverse of the `timestamptz` cast of the input text.
@@ -659,6 +680,264 @@ impl StoreRead for PgBackend {
         })
         .transpose()
     }
+
+    async fn commit_no_of(&self, commit_id: &Hash) -> Result<Option<u64>, BpaError> {
+        let r = self
+            .opt(
+                sqlx::query("SELECT commit_no FROM commit WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND commit_id = $3")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(&commit_id[..]),
+            )
+            .await?;
+        r.map(|r| r.try_get::<i64, _>(0).map(uint).map_err(db))
+            .transpose()
+    }
+    async fn commit_id_of(&self, commit_no: u64) -> Result<Option<Hash>, BpaError> {
+        let r = self
+            .opt(
+                sqlx::query("SELECT commit_id FROM commit WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND commit_no = $3")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(int(commit_no)),
+            )
+            .await?;
+        r.map(|r| hash_col(r.try_get(0).map_err(db)?)).transpose()
+    }
+    async fn object_versions(&self, object_id: &str) -> Result<Vec<(Hash, Vec<u8>)>, BpaError> {
+        let rows = self
+            .rows(
+                sqlx::query("SELECT version_id, envelope FROM object_version WHERE tenant_id = $1::uuid AND object_id = $2::uuid")
+                    .bind(&self.scope.tenant)
+                    .bind(object_id),
+            )
+            .await?;
+        rows.iter()
+            .map(|r| {
+                Ok((
+                    hash_col(r.try_get(0).map_err(db)?)?,
+                    r.try_get(1).map_err(db)?,
+                ))
+            })
+            .collect()
+    }
+    async fn branch_meta(&self, branch_id: i64) -> Result<Option<BranchMetaRow>, BpaError> {
+        static SQL: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            format!(
+                "SELECT kind, {}, {}, parent_line::text, created_from FROM branch_ref WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3",
+                instant_text("created_at"),
+                instant_text("active_at")
+            )
+        });
+        let r = self
+            .opt(
+                sqlx::query(&SQL)
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(branch_id),
+            )
+            .await?;
+        r.map(|r| {
+            Ok(BranchMetaRow {
+                kind: r.try_get(0).map_err(db)?,
+                created_at: r.try_get(1).map_err(db)?,
+                active_at: r.try_get(2).map_err(db)?,
+                parent_line: r
+                    .try_get::<Option<String>, _>(3)
+                    .map_err(db)?
+                    .map(String::into_bytes),
+                created_from: r
+                    .try_get::<Option<Vec<u8>>, _>(4)
+                    .map_err(db)?
+                    .map(hash_col)
+                    .transpose()?,
+            })
+        })
+        .transpose()
+    }
+    async fn tag(&self, name: &str) -> Result<Option<TagRow>, BpaError> {
+        let r = self
+            .opt(
+                sqlx::query("SELECT commit_id, branch, signer, signature, tombstoned FROM tag WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND name = $3")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(name),
+            )
+            .await?;
+        r.map(|r| {
+            Ok(TagRow {
+                name: name.to_string(),
+                commit_id: hash_col(r.try_get(0).map_err(db)?)?,
+                branch: r.try_get(1).map_err(db)?,
+                signer: r.try_get(2).map_err(db)?,
+                signature: r.try_get(3).map_err(db)?,
+                tombstoned: r.try_get(4).map_err(db)?,
+            })
+        })
+        .transpose()
+    }
+    async fn process(&self, process_id: &str) -> Result<Option<ProcessRow>, BpaError> {
+        let r = self
+            .opt(
+                sqlx::query("SELECT kind, state, initiator, trigger_kind, trigger_ref, parent_process::text, bulk::text, idempotency_key, effects, commits::text, bulk_state::text FROM process_record WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND process_id = $3::uuid")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(process_id),
+            )
+            .await?;
+        r.map(|r| {
+            let commits: Vec<(String, u64)> =
+                serde_json::from_str::<Vec<(String, u64)>>(&r.try_get::<String, _>(9).map_err(db)?)
+                    .map_err(db)?;
+            Ok(ProcessRow {
+                process_id: process_id.to_string(),
+                kind: r.try_get(0).map_err(db)?,
+                state: r.try_get(1).map_err(db)?,
+                initiator: r.try_get(2).map_err(db)?,
+                trigger_kind: r.try_get(3).map_err(db)?,
+                trigger_ref: r.try_get(4).map_err(db)?,
+                parent_process: r.try_get(5).map_err(db)?,
+                bulk: r.try_get(6).map_err(db)?,
+                idempotency_key: r.try_get(7).map_err(db)?,
+                effects: u32::try_from(r.try_get::<i32, _>(8).map_err(db)?).unwrap_or_default(),
+                commits,
+                bulk_state: r
+                    .try_get::<Option<String>, _>(10)
+                    .map_err(db)?
+                    .map(String::into_bytes),
+            })
+        })
+        .transpose()
+    }
+    async fn process_ids(&self) -> Result<Vec<String>, BpaError> {
+        let rows = self
+            .rows(
+                sqlx::query("SELECT process_id::text FROM process_record WHERE tenant_id = $1::uuid AND vae_id = $2::uuid ORDER BY seq")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae),
+            )
+            .await?;
+        rows.iter().map(|r| r.try_get(0).map_err(db)).collect()
+    }
+    async fn change_set(&self, id: &str) -> Result<Option<ChangeSetRow>, BpaError> {
+        let r = self
+            .opt(
+                sqlx::query("SELECT target, merge_commit FROM change_set WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND change_set_id = $3::uuid")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(id),
+            )
+            .await?;
+        r.map(|r| {
+            Ok(ChangeSetRow {
+                change_set_id: id.to_string(),
+                target: r.try_get(0).map_err(db)?,
+                merge_commit: r
+                    .try_get::<Option<Vec<u8>>, _>(1)
+                    .map_err(db)?
+                    .map(hash_col)
+                    .transpose()?,
+            })
+        })
+        .transpose()
+    }
+    async fn derivation_edges(&self, binding_id: &Hash) -> Result<Vec<DerivationEdge>, BpaError> {
+        static SQL: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            format!(
+                "SELECT output_version, input_object::text, input_version, {}, granularity FROM derivation_edge WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND binding_id = $3 ORDER BY input_object, valid_at, input_version",
+                time_text("valid_at", "granularity")
+            )
+        });
+        let rows = self
+            .rows(
+                sqlx::query(&SQL)
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(&binding_id[..]),
+            )
+            .await?;
+        rows.iter()
+            .map(|r| {
+                Ok(DerivationEdge {
+                    binding_id: *binding_id,
+                    output_version: hash_col(r.try_get(0).map_err(db)?)?,
+                    input_object: r.try_get(1).map_err(db)?,
+                    input_version: hash_col(r.try_get(2).map_err(db)?)?,
+                    valid_at: r
+                        .try_get::<Option<String>, _>(3)
+                        .map_err(db)?
+                        .unwrap_or_default(),
+                    instant: r.try_get::<i16, _>(4).map_err(db)? == 1,
+                })
+            })
+            .collect()
+    }
+    async fn outbox_pending(&self) -> Result<Vec<Vec<u8>>, BpaError> {
+        let rows = self
+            .rows(
+                sqlx::query("SELECT payload FROM outbox WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND released_at IS NULL ORDER BY id")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae),
+            )
+            .await?;
+        rows.iter().map(|r| r.try_get(0).map_err(db)).collect()
+    }
+    async fn timers(&self) -> Result<Vec<TimerRow>, BpaError> {
+        static SQL: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            format!(
+                "SELECT id::text, {}, (step->>'instant')::boolean, target::text, step::text FROM timer WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND fired_at IS NULL ORDER BY due_at, id",
+                time_text(
+                    "due_at",
+                    "CASE WHEN (step->>'instant')::boolean THEN 1 ELSE 0 END"
+                )
+            )
+        });
+        let rows = self
+            .rows(
+                sqlx::query(&SQL)
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae),
+            )
+            .await?;
+        rows.iter()
+            .map(|r| {
+                Ok(TimerRow {
+                    id: r.try_get(0).map_err(db)?,
+                    due_at: r
+                        .try_get::<Option<String>, _>(1)
+                        .map_err(db)?
+                        .unwrap_or_default(),
+                    instant: r
+                        .try_get::<Option<bool>, _>(2)
+                        .map_err(db)?
+                        .unwrap_or(false),
+                    target: r.try_get(3).map_err(db)?,
+                    step: r.try_get::<String, _>(4).map_err(db)?.into_bytes(),
+                })
+            })
+            .collect()
+    }
+    async fn idempotency(
+        &self,
+        scope: &str,
+        key: &str,
+    ) -> Result<Option<(Hash, Option<Vec<u8>>)>, BpaError> {
+        let r = self
+            .opt(
+                sqlx::query("SELECT request_hash, outcome FROM idempotency_record WHERE tenant_id = $1::uuid AND scope = $2 AND key = $3")
+                    .bind(&self.scope.tenant)
+                    .bind(scope)
+                    .bind(key),
+            )
+            .await?;
+        r.map(|r| {
+            Ok((
+                hash_col(r.try_get(0).map_err(db)?)?,
+                r.try_get(1).map_err(db)?,
+            ))
+        })
+        .transpose()
+    }
 }
 
 impl PgBackend {
@@ -1095,7 +1374,7 @@ impl StoreTx for PgTx {
     }
     async fn outbox_append(&mut self, branch_id: i64, rows: &[OutboxRow]) -> Result<(), BpaError> {
         for r in rows {
-            sqlx::query("INSERT INTO outbox (tenant_id, vae_id, branch_id, cseq, idx, kind, aggregate_key, payload) VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8)")
+            sqlx::query("INSERT INTO outbox (tenant_id, vae_id, branch_id, cseq, idx, kind, aggregate_key, payload, effect_id) VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, $9)")
                 .bind(&self.scope.tenant)
                 .bind(&self.scope.vae)
                 .bind(branch_id)
@@ -1104,6 +1383,7 @@ impl StoreTx for PgTx {
                 .bind(i16::try_from(r.kind).unwrap_or(i16::MAX))
                 .bind(r.aggregate_key.as_deref())
                 .bind(&r.payload)
+                .bind(&r.effect_id)
                 .execute(&mut *self.tx)
                 .await
                 .map_err(db)?;
@@ -1134,6 +1414,158 @@ impl StoreTx for PgTx {
             .await
             .map_err(db)?;
         Ok(())
+    }
+    async fn put_branch_meta(
+        &mut self,
+        branch_id: i64,
+        row: &BranchMetaRow,
+    ) -> Result<(), BpaError> {
+        let pl = row
+            .parent_line
+            .as_ref()
+            .map(|b| String::from_utf8_lossy(b).into_owned());
+        sqlx::query("UPDATE branch_ref SET kind = $4, created_at = $5::timestamptz, active_at = $6::timestamptz, parent_line = $7::jsonb, created_from = $8 WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3")
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .bind(branch_id)
+            .bind(&row.kind)
+            .bind(row.created_at.as_deref())
+            .bind(row.active_at.as_deref())
+            .bind(pl)
+            .bind(row.created_from.map(|h| h.to_vec()))
+            .execute(&mut *self.tx)
+            .await
+            .map_err(db)?;
+        Ok(())
+    }
+    async fn put_tag(&mut self, row: &TagRow) -> Result<(), BpaError> {
+        sqlx::query("INSERT INTO tag (tenant_id, vae_id, name, commit_id, branch, signer, signature, tombstoned) VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8) ON CONFLICT (tenant_id, vae_id, name) DO UPDATE SET commit_id = EXCLUDED.commit_id, branch = EXCLUDED.branch, signer = EXCLUDED.signer, signature = EXCLUDED.signature, tombstoned = EXCLUDED.tombstoned")
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .bind(&row.name)
+            .bind(&row.commit_id[..])
+            .bind(&row.branch)
+            .bind(&row.signer)
+            .bind(&row.signature)
+            .bind(row.tombstoned)
+            .execute(&mut *self.tx)
+            .await
+            .map_err(db)?;
+        Ok(())
+    }
+    async fn put_process(&mut self, row: &ProcessRow) -> Result<(), BpaError> {
+        let commits = serde_json::to_string(&row.commits).map_err(db)?;
+        let bulk_state = row
+            .bulk_state
+            .as_ref()
+            .map(|b| String::from_utf8_lossy(b).into_owned());
+        sqlx::query("INSERT INTO process_record (tenant_id, process_id, vae_id, kind, state, initiator, trigger_kind, trigger_ref, parent_process, bulk, idempotency_key, effects, commits, bulk_state) VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9::uuid, $10::uuid, $11, $12, $13::jsonb, $14::jsonb) ON CONFLICT (tenant_id, vae_id, process_id) DO UPDATE SET state = EXCLUDED.state, effects = EXCLUDED.effects, commits = EXCLUDED.commits, bulk_state = EXCLUDED.bulk_state")
+            .bind(&self.scope.tenant)
+            .bind(&row.process_id)
+            .bind(&self.scope.vae)
+            .bind(&row.kind)
+            .bind(&row.state)
+            .bind(&row.initiator)
+            .bind(&row.trigger_kind)
+            .bind(row.trigger_ref.as_deref())
+            .bind(row.parent_process.as_deref())
+            .bind(row.bulk.as_deref())
+            .bind(row.idempotency_key.as_deref())
+            .bind(i32::try_from(row.effects).unwrap_or(i32::MAX))
+            .bind(commits)
+            .bind(bulk_state)
+            .execute(&mut *self.tx)
+            .await
+            .map_err(db)?;
+        Ok(())
+    }
+    async fn put_change_set(&mut self, row: &ChangeSetRow) -> Result<(), BpaError> {
+        sqlx::query("INSERT INTO change_set (tenant_id, vae_id, change_set_id, target, merge_commit) VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5) ON CONFLICT (tenant_id, vae_id, change_set_id) DO UPDATE SET target = EXCLUDED.target, merge_commit = EXCLUDED.merge_commit")
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .bind(&row.change_set_id)
+            .bind(&row.target)
+            .bind(row.merge_commit.map(|h| h.to_vec()))
+            .execute(&mut *self.tx)
+            .await
+            .map_err(db)?;
+        Ok(())
+    }
+    async fn put_derivation_edges(&mut self, rows: &[DerivationEdge]) -> Result<(), BpaError> {
+        if rows.is_empty() {
+            return Ok(());
+        }
+        let b: Vec<Vec<u8>> = rows.iter().map(|r| r.binding_id.to_vec()).collect();
+        let o: Vec<Vec<u8>> = rows.iter().map(|r| r.output_version.to_vec()).collect();
+        let io: Vec<&str> = rows.iter().map(|r| r.input_object.as_str()).collect();
+        let iv: Vec<Vec<u8>> = rows.iter().map(|r| r.input_version.to_vec()).collect();
+        let at: Vec<&str> = rows.iter().map(|r| r.valid_at.as_str()).collect();
+        let g: Vec<i16> = rows.iter().map(|r| i16::from(r.instant)).collect();
+        sqlx::query("INSERT INTO derivation_edge (tenant_id, vae_id, binding_id, output_version, input_object, input_version, valid_at, granularity) SELECT $1::uuid, $2::uuid, t.b, t.o, t.io::uuid, t.iv, t.a::timestamptz, t.g FROM unnest($3::bytea[], $4::bytea[], $5::text[], $6::bytea[], $7::text[], $8::smallint[]) AS t(b, o, io, iv, a, g) ON CONFLICT DO NOTHING")
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .bind(b)
+            .bind(o)
+            .bind(io)
+            .bind(iv)
+            .bind(at)
+            .bind(g)
+            .execute(&mut *self.tx)
+            .await
+            .map_err(db)?;
+        Ok(())
+    }
+    async fn put_timers(&mut self, rows: &[TimerRow]) -> Result<(), BpaError> {
+        for r in rows {
+            let step = String::from_utf8_lossy(&r.step).into_owned();
+            sqlx::query("INSERT INTO timer (tenant_id, vae_id, id, due_at, target, step) VALUES ($1::uuid, $2::uuid, $3::uuid, $4::timestamptz, $5::uuid, $6::jsonb) ON CONFLICT DO NOTHING")
+                .bind(&self.scope.tenant)
+                .bind(&self.scope.vae)
+                .bind(&r.id)
+                .bind(&r.due_at)
+                .bind(&r.target)
+                .bind(step)
+                .execute(&mut *self.tx)
+                .await
+                .map_err(db)?;
+        }
+        Ok(())
+    }
+    async fn fire_timers(&mut self, ids: &[String]) -> Result<(), BpaError> {
+        if ids.is_empty() {
+            return Ok(());
+        }
+        sqlx::query("UPDATE timer SET fired_at = now() WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND id = ANY($3::uuid[])")
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .bind(ids)
+            .execute(&mut *self.tx)
+            .await
+            .map_err(db)?;
+        Ok(())
+    }
+    async fn outbox_ack(&mut self, ids: &[String]) -> Result<bool, BpaError> {
+        let n: i64 = sqlx::query("SELECT count(*) FROM outbox WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND effect_id = ANY($3::text[])")
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .bind(ids)
+            .fetch_one(&mut *self.tx)
+            .await
+            .map_err(db)?
+            .try_get(0)
+            .map_err(db)?;
+        let distinct: std::collections::BTreeSet<&String> = ids.iter().collect();
+        if uint(n) != distinct.len() as u64 {
+            return Ok(false);
+        }
+        sqlx::query("UPDATE outbox SET released_at = now() WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND effect_id = ANY($3::text[]) AND released_at IS NULL")
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .bind(ids)
+            .execute(&mut *self.tx)
+            .await
+            .map_err(db)?;
+        Ok(true)
     }
     async fn commit(self) -> Result<(), BpaError> {
         self.tx.commit().await.map_err(db)
@@ -1195,11 +1627,7 @@ impl PgStore {
     /// Connect (a `postgres://` URL or `host=… user=… dbname=…`) in the default scope and
     /// apply the migrations.
     pub fn connect(url: &str) -> Result<PgStore, BpaError> {
-        let scope = Scope {
-            tenant: DEFAULT_SCOPE.0.into(),
-            vae: DEFAULT_SCOPE.1.into(),
-        };
-        PgStore::connect_scope(url, scope)
+        PgStore::connect_scope(url, Scope::new(DEFAULT_SCOPE.0, DEFAULT_SCOPE.1))
     }
 
     /// Connect in a given scope.
@@ -1494,7 +1922,13 @@ impl PgStore {
         }
         let mut plans = Vec::with_capacity(fs.len());
         for f in fs {
-            plans.push(Plan::of(f, ids[&f.branch], &self.physical)?);
+            plans.push(Plan::of(
+                f,
+                ids[&f.branch],
+                &self.physical,
+                &self.chunks,
+                &self.backend.scope.vae,
+            )?);
         }
         let backend = self.backend.clone();
         let ok = self.rt.block_on(async move {
@@ -1522,6 +1956,15 @@ impl PgStore {
                 tx.put_entries(p.branch_id, &p.entries).await?;
                 tx.upsert_index_rows(p.branch_id, f.cseq, &p.index).await?;
                 tx.put_tree_nodes(&p.nodes).await?;
+                // Metadata written with the commit (DEC-054): effects, the idempotency
+                // record, derivation records and edges, timers.
+                tx.outbox_append(p.branch_id, &p.outbox).await?;
+                if let Some(r) = &p.idempotency {
+                    tx.idempotency_put(r).await?;
+                }
+                tx.put_chunks(&p.chunks).await?;
+                tx.put_derivation_edges(&p.edges).await?;
+                tx.put_timers(&p.timers).await?;
                 if !tx
                     .cas_branch_head(
                         p.branch_id,
@@ -1587,7 +2030,12 @@ fn copy_line(out: &mut String, fields: &[&str]) {
 
 fn commit_row(id: u64, cseq: u64, rec: &Value) -> Result<CommitRow, BpaError> {
     let body = bytes(rec)?;
-    let commit_id = hash_of(&ubos_types::content_id("ubos.commit.v1", rec)?)?;
+    // The identity is the record's `commit_id` (STD-VER-001); records without one (bulk
+    // loads of benchmark datasets) are identified by their content.
+    let commit_id = match rec.get("commit_id").and_then(Value::as_str) {
+        Some(c) if !c.is_empty() => hash_of(c)?,
+        _ => hash_of(&ubos_types::content_id("ubos.commit.v1", rec)?)?,
+    };
     let root = rec
         .get("root")
         .and_then(Value::as_str)
@@ -1626,10 +2074,100 @@ struct Plan {
     entries: Vec<LedgerRow>,
     index: Vec<IndexRow>,
     nodes: Vec<NodeRow>,
+    outbox: Vec<OutboxRow>,
+    idempotency: Option<IdempotencyRow>,
+    chunks: Vec<ChunkRow>,
+    edges: Vec<DerivationEdge>,
+    timers: Vec<TimerRow>,
 }
 
 impl Plan {
-    fn of(f: &Flush, branch_id: i64, physical: &Physical) -> Result<Plan, BpaError> {
+    fn of(
+        f: &Flush,
+        branch_id: i64,
+        physical: &Physical,
+        chunks: &Chunks,
+        vae: &str,
+    ) -> Result<Plan, BpaError> {
+        let text = |v: &Value, k: &str| {
+            v.get(k)
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string()
+        };
+        let outbox = f
+            .outbox
+            .iter()
+            .enumerate()
+            .map(|(i, e)| {
+                Ok(OutboxRow {
+                    effect_id: text(e, "effect_id"),
+                    cseq: f.cseq,
+                    idx: u32::try_from(i).unwrap_or(u32::MAX),
+                    kind: 0,
+                    aggregate_key: None,
+                    payload: bytes(e)?,
+                })
+            })
+            .collect::<Result<Vec<_>, BpaError>>()?;
+        let commit = commit_row(f.commit_id, f.cseq, &f.commit)?;
+        let idempotency = match &f.idempotency {
+            Some((scope, key, hash, outcome)) => Some(IdempotencyRow {
+                scope: format!("{vae}:{scope}"),
+                key: key.clone(),
+                request_hash: hash_of(hash)?,
+                outcome: Some(bytes(outcome)?),
+                commit_id: Some(commit.commit_id),
+            }),
+            None => None,
+        };
+        let (mut chunk_rows, mut edges) = (Vec::new(), Vec::new());
+        for d in &f.derivations {
+            let rid = hash_of(&text(d, "id"))?;
+            let row = chunks.prepare(&bytes(&d["record"])?)?;
+            if row.content_id != rid {
+                return Err(db("derivation record identifier differs from its chunk"));
+            }
+            chunk_rows.push(row);
+            for out in d["outputs"].as_array().into_iter().flatten() {
+                let output = hash_of(out.as_str().unwrap_or_default())?;
+                for i in d["inputs"].as_array().into_iter().flatten() {
+                    let asof = text(i, "asof");
+                    edges.push(DerivationEdge {
+                        binding_id: rid,
+                        output_version: output,
+                        input_object: text(i, "object"),
+                        input_version: hash_of(&text(i, "version"))?,
+                        instant: asof.len() > 10,
+                        valid_at: asof,
+                    });
+                }
+            }
+        }
+        let mut timers = Vec::new();
+        for t in &f.timers {
+            let key = t["key"].as_array().cloned().unwrap_or_default();
+            let (branch, oid, from, vh) = (
+                key.first().and_then(Value::as_str).unwrap_or_default(),
+                key.get(1).and_then(Value::as_str).unwrap_or_default(),
+                key.get(2).and_then(Value::as_str).unwrap_or_default(),
+                key.get(3).and_then(Value::as_str).unwrap_or_default(),
+            );
+            let instant = t
+                .get("instant")
+                .and_then(Value::as_bool)
+                .unwrap_or(from.len() > 10);
+            timers.push(TimerRow {
+                id: random_uuid()?,
+                due_at: from.to_string(),
+                instant,
+                target: oid.to_string(),
+                step: bytes(
+                    &serde_json::json!({"branch": branch, "from": from, "version": vh,
+                    "class": t["class"], "instant": instant}),
+                )?,
+            });
+        }
         let versions = f
             .versions
             .iter()
@@ -1730,13 +2268,18 @@ impl Plan {
         Ok(Plan {
             branch_id,
             versions,
-            commit: commit_row(f.commit_id, f.cseq, &f.commit)?,
+            commit,
             requests,
             expected,
             slot,
             entries,
             index,
             nodes,
+            outbox,
+            idempotency,
+            chunks: chunk_rows,
+            edges,
+            timers,
         })
     }
 
@@ -1821,6 +2364,10 @@ impl Store for PgStore {
             return Ok(None);
         };
         self.rt.block_on(self.backend.commit_at(bid, cseq))
+    }
+    fn commit_by_id(&mut self, commit_id: &str) -> Result<Option<u64>, BpaError> {
+        self.rt
+            .block_on(self.backend.commit_no_of(&hash_of(commit_id)?))
     }
     fn next_commit_id(&mut self) -> Result<u64, BpaError> {
         if self.ids.is_empty() {
@@ -1961,6 +2508,313 @@ impl Store for PgStore {
     fn meta(&mut self, key: &str) -> Result<Option<Value>, BpaError> {
         let r = self.rt.block_on(self.backend.meta(key))?;
         r.as_deref().map(json).transpose()
+    }
+    fn authority(&self) -> String {
+        self.backend.scope.authority.clone()
+    }
+    fn object_slugs(&mut self, object_id: &str) -> Result<Vec<String>, BpaError> {
+        let rows = self.rt.block_on(self.backend.object_versions(object_id))?;
+        let mut out = Vec::new();
+        for (id, b) in rows {
+            let v = json(&self.physical.open(&id, &b)?)?;
+            if let Some(s) = v.get("slug").and_then(Value::as_str) {
+                out.push(s.to_string());
+            }
+        }
+        out.sort();
+        out.dedup();
+        Ok(out)
+    }
+    fn branch_meta_rec(&mut self, name: &str) -> Result<Option<Value>, BpaError> {
+        let Some(bid) = self.branch_id(name)? else {
+            return Ok(None);
+        };
+        let Some(m) = self.rt.block_on(self.backend.branch_meta(bid))? else {
+            return Ok(None);
+        };
+        let created_from = match m.created_from {
+            Some(h) => self.rt.block_on(self.backend.commit_no_of(&h))?,
+            None => None,
+        };
+        let pl = match &m.parent_line {
+            Some(b) => json(b)?,
+            None => Value::Null,
+        };
+        Ok(Some(
+            serde_json::json!({"kind": m.kind, "created_at": m.created_at, "active_at": m.active_at,
+            "parent_line": pl, "created_from": created_from}),
+        ))
+    }
+    fn put_branch_meta_rec(&mut self, name: &str, rec: &Value) -> Result<(), BpaError> {
+        let bid = self
+            .branch_id(name)?
+            .ok_or_else(|| db(format!("unknown branch {name}")))?;
+        let created_from = match rec.get("created_from").and_then(Value::as_u64) {
+            Some(no) => self.rt.block_on(self.backend.commit_id_of(no))?,
+            None => None,
+        };
+        let text = |k: &str| rec.get(k).and_then(Value::as_str).map(str::to_string);
+        let row = BranchMetaRow {
+            kind: text("kind").unwrap_or_else(|| "main".into()),
+            created_at: text("created_at"),
+            active_at: text("active_at"),
+            parent_line: rec
+                .get("parent_line")
+                .filter(|p| p.is_object())
+                .map(bytes)
+                .transpose()?,
+            created_from,
+        };
+        let backend = self.backend.clone();
+        self.rt.block_on(async move {
+            let mut tx = backend.begin().await?;
+            tx.put_branch_meta(bid, &row).await?;
+            tx.commit().await
+        })
+    }
+    fn tag_rec(&mut self, name: &str) -> Result<Option<Value>, BpaError> {
+        let Some(t) = self.rt.block_on(self.backend.tag(name))? else {
+            return Ok(None);
+        };
+        let commit = self.rt.block_on(self.backend.commit_no_of(&t.commit_id))?;
+        Ok(Some(
+            serde_json::json!({"commit": commit, "commit_id": hash_text(&t.commit_id), "branch": t.branch,
+            "signer": t.signer, "signature": t.signature, "deleted": t.tombstoned}),
+        ))
+    }
+    fn put_tag_rec(&mut self, name: &str, rec: &Value) -> Result<(), BpaError> {
+        let text = |k: &str| {
+            rec.get(k)
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string()
+        };
+        let row = TagRow {
+            name: name.to_string(),
+            commit_id: hash_of(&text("commit_id"))?,
+            branch: text("branch"),
+            signer: text("signer"),
+            signature: text("signature"),
+            tombstoned: rec.get("deleted") == Some(&Value::Bool(true)),
+        };
+        let backend = self.backend.clone();
+        self.rt.block_on(async move {
+            let mut tx = backend.begin().await?;
+            tx.put_tag(&row).await?;
+            tx.commit().await
+        })
+    }
+    fn process_rec(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
+        let Some(p) = self.rt.block_on(self.backend.process(id))? else {
+            return Ok(None);
+        };
+        let mut trigger = serde_json::json!({"type": p.trigger_kind});
+        if let Some(r) = &p.trigger_ref {
+            trigger["ref"] = Value::String(r.clone());
+        }
+        let mut out = serde_json::json!({"process_id": p.process_id, "kind": p.kind, "initiator": p.initiator,
+            "trigger": trigger, "state": p.state, "commits": p.commits, "effects": p.effects, "explicit": true});
+        for (k, v) in [
+            ("parent_process", &p.parent_process),
+            ("bulk", &p.bulk),
+            ("idempotency_key", &p.idempotency_key),
+        ] {
+            if let Some(v) = v {
+                out[k] = Value::String(v.clone());
+            }
+        }
+        if let Some(b) = &p.bulk_state {
+            out["bulk_state"] = json(b)?;
+        }
+        Ok(Some(out))
+    }
+    fn put_process_rec(&mut self, id: &str, rec: &Value) -> Result<(), BpaError> {
+        let text = |k: &str| rec.get(k).and_then(Value::as_str).map(str::to_string);
+        let commits: Vec<(String, u64)> = rec
+            .get("commits")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .map(|c| {
+                (
+                    c[0].as_str().unwrap_or_default().to_string(),
+                    c[1].as_u64().unwrap_or_default(),
+                )
+            })
+            .collect();
+        let row = ProcessRow {
+            process_id: id.to_string(),
+            kind: text("kind").unwrap_or_else(|| "action".into()),
+            state: text("state").unwrap_or_default(),
+            initiator: text("initiator").unwrap_or_default(),
+            trigger_kind: rec["trigger"]["type"]
+                .as_str()
+                .unwrap_or("user")
+                .to_string(),
+            trigger_ref: rec["trigger"]
+                .get("ref")
+                .and_then(Value::as_str)
+                .map(str::to_string),
+            parent_process: text("parent_process"),
+            bulk: text("bulk"),
+            idempotency_key: rec
+                .get("idempotency_key")
+                .filter(|v| !v.is_null())
+                .map(|v| match v {
+                    Value::String(s) => s.clone(),
+                    other => other.to_string(),
+                }),
+            effects: rec
+                .get("effects")
+                .and_then(Value::as_u64)
+                .and_then(|n| u32::try_from(n).ok())
+                .unwrap_or_default(),
+            commits,
+            bulk_state: rec
+                .get("bulk_state")
+                .filter(|v| !v.is_null())
+                .map(bytes)
+                .transpose()?,
+        };
+        let backend = self.backend.clone();
+        self.rt.block_on(async move {
+            let mut tx = backend.begin().await?;
+            tx.put_process(&row).await?;
+            tx.commit().await
+        })
+    }
+    fn process_ids(&mut self) -> Result<Vec<String>, BpaError> {
+        self.rt.block_on(self.backend.process_ids())
+    }
+    fn change_set_rec(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
+        let Some(c) = self.rt.block_on(self.backend.change_set(id))? else {
+            return Ok(None);
+        };
+        let merge = match c.merge_commit {
+            Some(h) => self.rt.block_on(self.backend.commit_no_of(&h))?,
+            None => None,
+        };
+        Ok(Some(
+            serde_json::json!({"target": c.target, "merge": merge}),
+        ))
+    }
+    fn put_change_set_rec(&mut self, id: &str, rec: &Value) -> Result<(), BpaError> {
+        let merge_commit = match rec.get("merge").and_then(Value::as_u64) {
+            Some(no) => self.rt.block_on(self.backend.commit_id_of(no))?,
+            None => None,
+        };
+        let row = ChangeSetRow {
+            change_set_id: id.to_string(),
+            target: rec
+                .get("target")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            merge_commit,
+        };
+        let backend = self.backend.clone();
+        self.rt.block_on(async move {
+            let mut tx = backend.begin().await?;
+            tx.put_change_set(&row).await?;
+            tx.commit().await
+        })
+    }
+    fn derivation_rec(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
+        let rid = hash_of(id)?;
+        let Some(row) = self.rt.block_on(self.backend.chunk(&rid))? else {
+            return Ok(None);
+        };
+        let record = json(&self.chunks.read(&row)?)?;
+        let edges = self.rt.block_on(self.backend.derivation_edges(&rid))?;
+        let mut inputs: Vec<Value> = Vec::new();
+        for e in edges {
+            let item = serde_json::json!({"object": e.input_object, "version": hash_text(&e.input_version), "asof": e.valid_at});
+            if !inputs.contains(&item) {
+                inputs.push(item);
+            }
+        }
+        Ok(Some(
+            serde_json::json!({"record": record, "inputs": inputs}),
+        ))
+    }
+    fn outbox_pending(&mut self) -> Result<Vec<Value>, BpaError> {
+        let rows = self.rt.block_on(self.backend.outbox_pending())?;
+        rows.iter().map(|b| json(b)).collect()
+    }
+    fn outbox_push(&mut self, items: &[Value]) -> Result<(), BpaError> {
+        let mut by_branch: BTreeMap<i64, Vec<OutboxRow>> = BTreeMap::new();
+        for e in items {
+            let branch = e.get("branch").and_then(Value::as_str).unwrap_or("main");
+            let bid = self.branch_id(branch)?.unwrap_or_default();
+            let rows = by_branch.entry(bid).or_default();
+            rows.push(OutboxRow {
+                effect_id: e
+                    .get("effect_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+                cseq: e.get("cseq").and_then(Value::as_u64).unwrap_or_default(),
+                idx: u32::try_from(rows.len()).unwrap_or(u32::MAX),
+                kind: 1,
+                aggregate_key: None,
+                payload: bytes(e)?,
+            });
+        }
+        let backend = self.backend.clone();
+        self.rt.block_on(async move {
+            let mut tx = backend.begin().await?;
+            for (bid, rows) in &by_branch {
+                tx.outbox_append(*bid, rows).await?;
+            }
+            tx.commit().await
+        })
+    }
+    fn outbox_ack(&mut self, ids: &[String]) -> Result<bool, BpaError> {
+        let backend = self.backend.clone();
+        let ids = ids.to_vec();
+        self.rt.block_on(async move {
+            let mut tx = backend.begin().await?;
+            let ok = tx.outbox_ack(&ids).await?;
+            if ok {
+                tx.commit().await?;
+            } else {
+                tx.rollback().await?;
+            }
+            Ok(ok)
+        })
+    }
+    fn timers(&mut self) -> Result<Vec<Value>, BpaError> {
+        let rows = self.rt.block_on(self.backend.timers())?;
+        rows.iter()
+            .map(|t| {
+                let step = json(&t.step)?;
+                Ok(serde_json::json!({"id": t.id, "key": [step["branch"], t.target, t.due_at, step["version"]],
+                    "class": step["class"], "instant": t.instant}))
+            })
+            .collect()
+    }
+    fn remove_timers(&mut self, ids: &[String]) -> Result<(), BpaError> {
+        let backend = self.backend.clone();
+        let ids = ids.to_vec();
+        self.rt.block_on(async move {
+            let mut tx = backend.begin().await?;
+            tx.fire_timers(&ids).await?;
+            tx.commit().await
+        })
+    }
+    fn idempotency_rec(&mut self, scope: &str, key: &str) -> Result<Option<Value>, BpaError> {
+        // Scoped by tenant (the table), VAE and initiator (STD-TXN-040).
+        let scope = format!("{}:{scope}", self.backend.scope.vae);
+        let Some((hash, outcome)) = self.rt.block_on(self.backend.idempotency(&scope, key))? else {
+            return Ok(None);
+        };
+        let result = match outcome {
+            Some(b) => json(&b)?,
+            None => Value::Null,
+        };
+        Ok(Some(
+            serde_json::json!({"hash": hash_text(&hash), "result": result}),
+        ))
     }
     fn backend(&self) -> &'static str {
         "postgresql"

@@ -12,8 +12,9 @@ depends_on: [UBS-SYS-DVM-02, UBS-ARC-04, UBS-STD-08]
 - **Statement:** `ubos-store` MUST define a transactional storage trait (`StoreTx`) with the operations the DVM needs:
   - `put_chunks`, `put_versions`, `put_entries`, `put_commit`, `cas_branch_head`;
   - `upsert_index_rows`, `put_tree_nodes`, `alloc_sequences`;
-  - `outbox_append`, `idempotency_put`;
-  - snapshot reads by commit ordinal.
+  - `outbox_append`, `idempotency_put`, `put_derivation_edges`, `put_timers` (written with the commit, DEC-054);
+  - `put_branch_meta`, `put_tag`, `put_process`, `put_change_set`, `fire_timers`, `outbox_ack` (metadata outside a commit);
+  - snapshot reads by commit ordinal, and reads of the metadata rows.
 
   The operations are split into `StoreTx` (one storage transaction) and `StoreRead` (snapshot reads by commit ordinal); both are asynchronous and use only backend-neutral row types (DEC-047).
 
