@@ -147,13 +147,13 @@ impl Repo<'_> {
     /// Metadata of a branch.
     pub fn branch_meta(&mut self, name: &str) -> Result<BranchMeta, BpaError> {
         self.head(name)?;
-        let v = self.store.meta(&format!("branch:{name}"))?;
+        let v = self.store.branch_meta_rec(name)?;
         Ok(BranchMeta::from_json(name, v))
     }
 
     /// Store the metadata of a branch.
     pub fn put_branch_meta(&mut self, name: &str, m: &BranchMeta) -> Result<(), BpaError> {
-        self.store.put_meta(&format!("branch:{name}"), &m.to_json())
+        self.store.put_branch_meta_rec(name, &m.to_json())
     }
 
     /// Expiry instant of a branch, if its kind has a lifetime (STD-VER-011).
@@ -272,9 +272,9 @@ impl Repo<'_> {
         Err(not_found("no commit at that time"))
     }
 
-    /// A tag record (`tag:<name>`).
+    /// A tag record.
     pub fn tag(&mut self, name: &str) -> Result<Option<Value>, BpaError> {
-        self.store.meta(&format!("tag:{name}"))
+        self.store.tag_rec(name)
     }
 
     /// Select a snapshot of a branch (STD-VER-090): at most one of `time`, `commit`, `tag`

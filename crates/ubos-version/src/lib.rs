@@ -18,6 +18,6 @@ pub mod state;
 pub use history::{BranchMeta, PROTECTED, ParentLine, Snapshot, View, branch_kind, expires_of};
 pub use merge::{MergePlan, Resolver, base_id, unique};
 pub use state::{
-    CommitRecord, DEFAULT_NOW, Entry, ObjectState, Repo, Segment, State, TENANT, Tx, at, hlc, lt,
+    CommitRecord, DEFAULT_NOW, Entry, ObjectState, Repo, Segment, State, Tx, at, hlc, lt,
     version_record,
 };

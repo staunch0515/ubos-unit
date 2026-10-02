@@ -13,9 +13,6 @@ use ubos_model::{Class, Registry};
 use ubos_types::BpaError;
 use ubos_version::{Repo, Segment, State, Tx, at, lt};
 
-/// Authority of object URIs in adapter inputs (STD-CONF-005).
-pub const TENANT: &str = "acme";
-
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
     v.get(k).and_then(Value::as_str)
 }
@@ -25,16 +22,16 @@ fn invalid_ref(m: impl Into<String>) -> BpaError {
 }
 
 /// Canonical URI of an object (STD-ADDR-001).
-pub fn uri_of(class: &str, slug: &str) -> String {
-    format!("ubos://{TENANT}/{class}/{slug}")
+pub fn uri_of(authority: &str, class: &str, slug: &str) -> String {
+    format!("ubos://{authority}/{class}/{slug}")
 }
 
 /// Object identifier a canonical URI names on a state, if any.
-pub fn resolve(st: &State, uri: &str) -> Option<String> {
+pub fn resolve(st: &State, uri: &str, authority: &str) -> Option<String> {
     let rest = uri.strip_prefix("ubos://")?;
     let mut parts = rest.split('/');
-    let (authority, class, slug) = (parts.next()?, parts.next()?, parts.next()?);
-    if parts.next().is_some() || authority != TENANT {
+    let (auth, class, slug) = (parts.next()?, parts.next()?, parts.next()?);
+    if parts.next().is_some() || auth != authority {
         return None;
     }
     st.objects
@@ -97,7 +94,7 @@ impl Checks<'_, '_> {
         period: Option<(&str, Option<&str>)>,
         instant: Option<&str>,
     ) -> Result<String, BpaError> {
-        let oid = resolve(&self.tx.state, uri)
+        let oid = resolve(&self.tx.state, uri, &self.repo.store.authority())
             .ok_or_else(|| invalid_ref(format!("reference {uri} does not resolve")))?;
         let o = self.tx.state.objects[&oid].clone();
         let f = &eff.fields[field];
@@ -128,7 +125,7 @@ impl Checks<'_, '_> {
     /// Link objects of relationships with an attributes class (STD-CLS-040).
     fn links(&mut self, oid: &str, eff: &Class, body: &Value) -> Result<(), BpaError> {
         let o = &self.tx.state.objects[oid];
-        let me = uri_of(&o.class, &o.slug);
+        let me = uri_of(&self.repo.store.authority(), &o.class, &o.slug);
         for (name, f) in &eff.fields {
             let Some(ac) = f
                 .get("relationship")
@@ -151,7 +148,8 @@ impl Checks<'_, '_> {
                 _ => vec![],
             };
             for u in uris {
-                let link = resolve(&self.tx.state, &u).map(|id| self.tx.state.objects[&id].clone());
+                let link = resolve(&self.tx.state, &u, &self.repo.store.authority())
+                    .map(|id| self.tx.state.objects[&id].clone());
                 let Some(link) = link else {
                     return Err(invalid_ref(format!("link is not a {ac}")));
                 };
@@ -179,9 +177,10 @@ impl Checks<'_, '_> {
             let eff = self.class(&o.class)?;
             let body = self.version(&o.head)?["body"].clone();
             for (field, uri) in eff.refs(&body) {
-                if let (Some(rel), Some(tid)) =
-                    (eff.relationship(&field), resolve(&self.tx.state, &uri))
-                {
+                if let (Some(rel), Some(tid)) = (
+                    eff.relationship(&field),
+                    resolve(&self.tx.state, &uri, &self.repo.store.authority()),
+                ) {
                     out.push((oid.clone(), field, rel.clone(), tid));
                 }
             }
@@ -278,7 +277,7 @@ impl Checks<'_, '_> {
                     let composition = eff
                         .relationship(&field)
                         .is_some_and(|r| s(r, "ownership") == Some("composition"));
-                    if let Some(tid) = resolve(&self.tx.state, &uri)
+                    if let Some(tid) = resolve(&self.tx.state, &uri, &self.repo.store.authority())
                         && composition
                         && self.live(&tid)?
                     {
@@ -323,7 +322,7 @@ impl Checks<'_, '_> {
             .cloned()
             .unwrap_or_default();
         let t = &self.tx.state.objects[target];
-        let uri = uri_of(&t.class, &t.slug);
+        let uri = uri_of(&self.repo.store.authority(), &t.class, &t.slug);
         match body.get(field).cloned() {
             Some(Value::Array(a)) => {
                 body.insert(
@@ -449,13 +448,17 @@ impl Checks<'_, '_> {
                 if fld != relation {
                     continue;
                 }
-                let mut tid = resolve(&self.tx.state, &uri);
+                let mut tid = resolve(&self.tx.state, &uri, &self.repo.store.authority());
                 if let Some(t) = &tid
                     && rel.get("attributes_class").is_some()
                 {
                     let link = self.tx.state.objects[t].clone();
                     let lb = self.version(&link.head)?;
-                    tid = resolve(&self.tx.state, s(&lb["body"], "target").unwrap_or_default());
+                    tid = resolve(
+                        &self.tx.state,
+                        s(&lb["body"], "target").unwrap_or_default(),
+                        &self.repo.store.authority(),
+                    );
                 }
                 if let Some(t) = tid
                     && self.live(&t)?
@@ -474,7 +477,12 @@ impl Checks<'_, '_> {
             if rel.get("attributes_class").is_some() {
                 let link = self.tx.state.objects[&tid].clone();
                 let lb = self.version(&link.head)?;
-                if resolve(&self.tx.state, s(&lb["body"], "target").unwrap_or_default()).as_deref()
+                if resolve(
+                    &self.tx.state,
+                    s(&lb["body"], "target").unwrap_or_default(),
+                    &self.repo.store.authority(),
+                )
+                .as_deref()
                     == Some(object_id)
                 {
                     out.insert(src);

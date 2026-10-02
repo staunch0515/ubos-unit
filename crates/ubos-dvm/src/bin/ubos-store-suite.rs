@@ -607,8 +607,12 @@ fn version_sealed(s: &mut Suite) -> Outcome {
     ))
 }
 
-const TABLES: [&str; 14] = [
+const TABLES: [&str; 18] = [
     "kernel_meta",
+    "tag",
+    "process_record",
+    "change_set",
+    "timer",
     "branch_ref",
     "commit",
     "commit_parent",

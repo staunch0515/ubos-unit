@@ -141,14 +141,22 @@ CREATE TABLE branch_ref (
   parent_branch bigint,                    -- read-through parent
   fork_cseq    bigint,                     -- fork or tracked upstream point
   depth        smallint NOT NULL,
+  created_at   timestamptz, active_at timestamptz,     -- lifetimes (STD-VER-011, DEC-054)
+  parent_line  jsonb,                      -- {branch, mode, pin} (STD-VER-080)
+  created_from bytea,                      -- commit the branch was created from
   leader_node  text, leader_lease_until timestamptz,   -- optional sequencer lease
   PRIMARY KEY (tenant_id, vae_id, branch_id),
   UNIQUE (tenant_id, vae_id, name)
 );
 
-CREATE TABLE tag (tenant_id uuid, vae_id uuid, name text, commit_id bytea, signature bytea,
+CREATE TABLE tag (tenant_id uuid, vae_id uuid, name text, commit_id bytea, branch text,
+                  signer text, signature text,          -- a content ID until step 6 (DEC-051)
                   tombstoned boolean NOT NULL DEFAULT false,
                   PRIMARY KEY (tenant_id, vae_id, name));
+
+CREATE TABLE change_set (tenant_id uuid, vae_id uuid, change_set_id uuid, target text,
+                         merge_commit bytea,            -- STD-VER-020 (DEC-054)
+                         PRIMARY KEY (tenant_id, vae_id, change_set_id));
 ```
 
 ## 3. Kernel indexes (category D)
@@ -204,12 +212,14 @@ CREATE TABLE field_index (
   PRIMARY KEY (tenant_id, vae_id, branch_id, field_id, value_key, object_id, cseq_from)
 ) PARTITION BY HASH (tenant_id);
 
-CREATE TABLE derivation_edge (
-  tenant_id uuid, output_version bytea, input_version bytea, binding_id bytea,
-  valid_at timestamptz,
-  PRIMARY KEY (tenant_id, input_version, output_version)
+CREATE TABLE derivation_edge (                -- one row per input of a derivation record (DEC-054)
+  tenant_id uuid, vae_id uuid, binding_id bytea,  -- the record: a chunk under its content ID
+  output_version bytea, input_object uuid, input_version bytea,
+  valid_at timestamptz, granularity smallint,
+  PRIMARY KEY (tenant_id, vae_id, binding_id, output_version, input_object, input_version, valid_at)
 );
-CREATE INDEX derivation_out ON derivation_edge (tenant_id, output_version);
+CREATE INDEX derivation_out ON derivation_edge (tenant_id, vae_id, output_version);
+CREATE INDEX derivation_in ON derivation_edge (tenant_id, vae_id, input_version);
 
 CREATE TABLE commit_write_summary (
   tenant_id uuid, vae_id uuid, branch_id bigint, cseq bigint,
@@ -251,15 +261,18 @@ value in the entry body remains the decimal string (STD-FND-022).
 ## 5. Operational tables (categories G and H)
 
 ```sql
-CREATE TABLE process_record (
-  tenant_id uuid, process_id uuid, vae_id uuid, branch_id bigint, state smallint,
-  trigger_kind smallint, trigger_ref text, causality_id uuid, channel smallint, client text,
-  commit_id bytea, journal_id bytea, metering bytea, error bytea,
+CREATE TABLE process_record (                 -- STD-TXN-031 (DEC-054)
+  tenant_id uuid, process_id uuid, vae_id uuid, seq bigint GENERATED ALWAYS AS IDENTITY,
+  kind text, state text, initiator text, trigger_kind text, trigger_ref text,
+  parent_process uuid, bulk uuid, idempotency_key text,
+  effects integer, commits jsonb,          -- [[branch, cseq], …]
+  bulk_state jsonb,                        -- STD-TXN-070: mode, staging, children, attempts
+  journal_id bytea, metering bytea, error bytea,     -- step 5
   started_at timestamptz, ended_at timestamptz,
-  PRIMARY KEY (tenant_id, process_id)
+  PRIMARY KEY (tenant_id, vae_id, process_id)
 );
 
-CREATE TABLE idempotency_record (
+CREATE TABLE idempotency_record (             -- scope = '<vae>:<initiator>' (STD-TXN-040)
   tenant_id uuid, scope text, key text, request_hash bytea, outcome bytea, commit_id bytea,
   expires_at timestamptz,
   PRIMARY KEY (tenant_id, scope, key)
@@ -268,17 +281,19 @@ CREATE TABLE idempotency_record (
 CREATE TABLE outbox (
   tenant_id uuid, id bigint GENERATED ALWAYS AS IDENTITY, vae_id uuid, branch_id bigint,
   cseq bigint, idx integer, kind smallint, aggregate_key bytea, payload bytea,
+  effect_id text,                          -- stable identifier (STD-TXN-050)
   claimed_by text, claim_until timestamptz, attempts integer DEFAULT 0, released_at timestamptz,
-  PRIMARY KEY (tenant_id, id)
+  PRIMARY KEY (tenant_id, id),
+  UNIQUE (tenant_id, vae_id, effect_id)
 );
 CREATE INDEX outbox_ready ON outbox (claim_until) WHERE released_at IS NULL;
 
 CREATE TABLE timer (
-  tenant_id uuid, id uuid, due_at timestamptz, target uuid, step text, attempt integer,
+  tenant_id uuid, vae_id uuid, id uuid, due_at timestamptz, target uuid, step jsonb, attempt integer,
   claimed_by text, claim_until timestamptz, fired_at timestamptz,
   PRIMARY KEY (tenant_id, id)
 );
-CREATE INDEX timer_due ON timer (due_at) WHERE fired_at IS NULL;
+CREATE INDEX timer_due ON timer (tenant_id, vae_id, due_at) WHERE fired_at IS NULL;
 
 CREATE TABLE decision_log (
   tenant_id uuid, at timestamptz, principal text, action text, resource text,
@@ -339,11 +354,12 @@ DAT-BalanceDelta:
 DAT-DerivationEdge:
   output_version: { type: content_id, required: true, description: derived version }
   input_version:  { type: content_id, required: true, description: version read as input }
-  binding_id:     { type: content_id, required: true, description: rule binding set used }
-  valid_at:       { type: instant, required: true, description: evaluation valid time }
+  binding_id:     { type: content_id, required: true, description: the derivation record (DAT-Derivation), stored as a chunk under this ID }
+  input_object:   { type: uuid, required: true, description: object or entry the input belongs to }
+  valid_at:       { type: instant, required: true, description: evaluation valid time (asof), with its granularity }
 ```
 - **Invariants:**
-  1. Every edge corresponds to a derivation record in the commit (STD-TXN-030).
+  1. Every edge corresponds to a derivation record in the commit (STD-TXN-030); the edges are written in the commit's flush (DSN-DVM-533, DEC-054).
 - **Satisfies:** FR-TXN-042, FR-TIME-042
 
 ### DAT-OutboxRow
@@ -364,6 +380,7 @@ DAT-OutboxRow:
 - **Invariants:**
   1. A row exists if and only if its commit exists.
   2. Rows of one aggregate key are released in `(cseq, idx)` order.
+  3. `effect_id` is `<process_id>/<n>` for a process effect and `became-effective/<branch>/<object_id>/<start>` for a BecameEffective event; acknowledgement sets `released_at` (DEC-054).
 - **Satisfies:** FR-TXN-051, FR-TXN-052, STD-TXN-050
 
 ### DAT-IdempotencyRecord
