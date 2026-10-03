@@ -215,7 +215,7 @@ depends_on: [UBS-IDX-00]
 | RSK-053 | Registry becomes a single point of failure or control | `50-phases/PH-5/00-plan.md` |
 | RSK-054 | E-SIGN ceremony not accepted by counsel (moved from RSK-025) | `50-phases/PH-5/00-plan.md` |
 
-## SUITE (77)
+## SUITE (78)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -264,6 +264,7 @@ depends_on: [UBS-IDX-00]
 | SUITE-NOD-BENCH | end-to-end NR-PERF through the edge; fairness; subscription latency | `40-systems/02-nod/08-verification.md` |
 | SUITE-NOD-EVENTS | outbox release ordering, webhooks, brokers, replay, masking per recipient | `40-systems/02-nod/08-verification.md` |
 | SUITE-NOD-FILES | resumable uploads, scanning, previews, WORM, download links | `40-systems/02-nod/08-verification.md` |
+| SUITE-NOD-HOST | in-process host services on PostgreSQL: tenant registry, key hierarchy, node signer, blobs, secrets, | `40-systems/02-nod/08-verification.md` |
 | SUITE-NOD-ISO | tenant isolation suite through every interface (DSN-NOD-406) | `40-systems/02-nod/08-verification.md` |
 | SUITE-NOD-JOBS | jobs, leases with fencing, schedules exactly-once, timers, dead letters, poison detection | `40-systems/02-nod/08-verification.md` |
 | SUITE-NOD-OPS | install, bootstrap, backup and PITR, failover, split-brain, rolling upgrade, rollback, DR drill | `40-systems/02-nod/08-verification.md` |

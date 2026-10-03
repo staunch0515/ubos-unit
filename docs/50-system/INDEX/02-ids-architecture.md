@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (59)
+## DEC (60)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -153,4 +153,5 @@ depends_on: [UBS-IDX-00]
 | DEC-057 | Verification gate, replay and BPU views (PH-1 step 5, part 5c) | `90-decisions/000-index.md` |
 | DEC-058 | L2 host at production quality (PH-1 step 5, part 5d) | `90-decisions/000-index.md` |
 | DEC-059 | Proofs: signed commit records, node key history and the pure verification primitives (PH-1 step 6, part 6a) | `90-decisions/000-index.md` |
+| DEC-060 | In-process host and host services on PostgreSQL (PH-1 step 7, part 7a) | `90-decisions/000-index.md` |
 

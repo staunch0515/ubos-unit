@@ -968,11 +968,16 @@ impl Host for EngineHost<'_> {
             "run.logic" => self.run_logic(core, a, d),
             "run.async" => self.run_async(core, a),
             "emit.event" => self.emit_event(core, a, d),
+            "call.connector" | "ask.model" => self.host_call(core, d, a),
             other => Err(BpaError::new(
                 "LOGIC.NOT_AVAILABLE",
                 format!("{other} is not available in BPA 1.0-rc1"),
             )),
         }
+    }
+
+    fn implements(&self, name: &str) -> bool {
+        self.e.services.is_some() && matches!(name, "call.connector" | "ask.model")
     }
 
     fn typed_ref(&mut self, core: &mut Core, uri: &str) -> Result<Option<Val>, BpaError> {
@@ -993,6 +998,37 @@ impl Host for EngineHost<'_> {
 
     fn class_type(&mut self, class: &str) -> Result<Ty, BpaError> {
         ubos_expr::class_type(&self.e.registry, class)
+    }
+}
+
+impl EngineHost<'_> {
+    /// `call.connector` and `ask.model` through the host services (CTR-002), journaled
+    /// before use (STD-CTX-011): a replay serves the recorded result and never calls the
+    /// host (SCN-011 A1).
+    fn host_call(
+        &mut self,
+        core: &mut Core,
+        d: &Instruction,
+        a: &Map<String, Value>,
+    ) -> Result<Value, BpaError> {
+        let Some(sv) = self.e.services.clone() else {
+            return Err(BpaError::new(
+                "LOGIC.NOT_AVAILABLE",
+                format!("{} needs a host", d.name),
+            ));
+        };
+        let args = Value::Object(a.clone());
+        program::journaled(core, &d.name, &args, |_| {
+            if d.name == "ask.model" {
+                return sv.models.ask(&args);
+            }
+            let text = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or_default();
+            sv.connectors.call(
+                text("connector"),
+                text("operation"),
+                a.get("request").unwrap_or(&Value::Null),
+            )
+        })
     }
 }
 
@@ -1057,7 +1093,19 @@ impl Engine {
             &self.principal,
         )?;
         self.next_process = next;
-        let seed0 = seed_of(i, &p.id)?;
+        let seed0 = match (
+            &self.services,
+            i.get("entropy_seed").filter(|v| !v.is_null()),
+        ) {
+            (Some(sv), None) => {
+                // a host seeds the process from its entropy (CTR-002); the seed is recorded
+                // with the process, so a replay needs no host
+                let mut seed = [0u8; 32];
+                sv.entropy.fill(&mut seed)?;
+                seed
+            }
+            _ => seed_of(i, &p.id)?,
+        };
         let interfere: BTreeMap<u64, Value> = i
             .get("interfere")
             .and_then(Value::as_array)
@@ -1271,7 +1319,8 @@ impl Engine {
         if let Some(n) = cseq {
             out["cseq"] = json!(n);
         }
-        if p.explicit {
+        if p.explicit || self.services.is_some() {
+            // a host always learns the process identifier (CTR-001 `invoke_port`)
             out["process_id"] = json!(pid);
         }
         Ok(out)

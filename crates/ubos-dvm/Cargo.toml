@@ -41,6 +41,8 @@ regex.workspace = true
 sqlx.workspace = true
 tokio.workspace = true
 cap.workspace = true
+getrandom.workspace = true
+chrono.workspace = true
 
 [lints]
 workspace = true

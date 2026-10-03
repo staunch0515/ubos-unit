@@ -1822,6 +1822,8 @@ name = "ubos-dvm"
 version = "0.0.0"
 dependencies = [
  "cap",
+ "chrono",
+ "getrandom 0.2.17",
  "regex",
  "serde_json",
  "sha2",
@@ -1867,6 +1869,17 @@ version = "0.0.0"
 dependencies = [
  "serde_json",
  "ubos-types",
+]
+
+[[package]]
+name = "ubos-node"
+version = "0.0.0"
+dependencies = [
+ "cap",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "ubos-dvm",
 ]
 
 [[package]]

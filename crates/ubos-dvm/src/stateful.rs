@@ -35,6 +35,9 @@ pub struct Engine {
     /// Whether the L2 host runs scripts (STD-CTX-020); off in the conformance adapter,
     /// whose vectors assume the oracle's declaration (DEC-058).
     pub l2: bool,
+    /// The host services (CTR-002) when a host opened this engine; the conformance adapter
+    /// has none and seeds processes deterministically.
+    pub services: Option<crate::host::Services>,
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
@@ -58,6 +61,7 @@ impl Engine {
             branch_cache: Default::default(),
             principal: crate::versioning::PRINCIPAL.into(),
             l2: false,
+            services: None,
         };
         e.reset()?;
         Ok(e)
@@ -76,6 +80,7 @@ impl Engine {
             branch_cache: Default::default(),
             principal: crate::versioning::PRINCIPAL.into(),
             l2: false,
+            services: None,
         };
         e.load_genesis(classes, None)?;
         Ok(e)
@@ -136,7 +141,45 @@ impl Engine {
             }
         }
         self.registry = next;
+        // the declarations persist with the VAE, so that a host reopens it (step 7a)
+        self.store.put_meta(
+            "genesis",
+            &json!({"classes": self.registry.declarations(), "value_types": self.registry.value_types().values().collect::<Vec<_>>()}),
+        )?;
         Ok(Value::Bool(true))
+    }
+
+    /// An engine over a VAE a host opened before: the declarations come from the store
+    /// (`genesis`), the process counter continues after the recorded processes; a store
+    /// without `main` is initialised (CTR-001 `open_vae`, step 7a).
+    pub fn open_existing(store: Box<dyn Store>) -> Result<Engine, BpaError> {
+        let mut e = Engine {
+            store,
+            registry: crate::expressions::registry(),
+            now: DEFAULT_NOW.into(),
+            instances: BTreeSet::new(),
+            max_inputs: 10_000,
+            next_process: 0,
+            branch_cache: Default::default(),
+            principal: crate::versioning::PRINCIPAL.into(),
+            l2: false,
+            services: None,
+        };
+        if e.store.branch("main")?.is_none() {
+            Repo::new(e.store.as_mut(), &e.registry).init()?;
+        }
+        if let Some(g) = e.store.meta("genesis")? {
+            let classes = g.get("classes").cloned().unwrap_or(json!([]));
+            let vts = g
+                .get("value_types")
+                .filter(|v| v.as_array().is_some_and(|a| !a.is_empty()));
+            e.registry = e.registry.load(
+                classes.as_array().map(Vec::as_slice).unwrap_or(&[]),
+                vts.and_then(Value::as_array).map(Vec::as_slice),
+            )?;
+        }
+        e.next_process = e.store.process_ids()?.len() as u64;
+        Ok(e)
     }
 
     /// Metadata of a branch, cached per adapter (DEC-051).

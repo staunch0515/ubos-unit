@@ -14,6 +14,7 @@ members = [
     "crates/ubos-expr",
     "crates/ubos-runtime",
     "crates/ubos-dvm",
+    "crates/ubos-node",
     "crates/ubos-forge",
     "verify/ubos-verify",
 ]
@@ -34,6 +35,7 @@ ubos-tree = { path = "crates/ubos-tree" }
 ubos-version = { path = "crates/ubos-version" }
 ubos-proof = { path = "crates/ubos-proof" }
 ubos-verify = { path = "verify/ubos-verify" }
+ubos-node = { path = "crates/ubos-node" }
 ubos-time = { path = "crates/ubos-time" }
 ubos-dvm = { path = "crates/ubos-dvm" }
 ubos-model = { path = "crates/ubos-model" }

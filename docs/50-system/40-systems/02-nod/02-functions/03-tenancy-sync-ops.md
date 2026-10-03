@@ -30,6 +30,7 @@ Reading order:
   1. Given a tenant plan change by CTL, when applied, then the tenant object in the VAE shows the new plan.
 - **Verification:** CONF
 - **Origin:** FR-TEN-011, AR-006
+- **Phase note:** PH-1 step 7a (DEC-060): the `tenant` and `vae` tables, read by the node as the owner role.
 
 ### DSN-NOD-402 — Tenant creation
 - **Statement:** Tenant creation (FR-TEN-051) MUST, idempotently: create the tenant KEK, register the tenant, create the first VAE through `create_vae` (IF-DVM-002), install genesis Buks, create the first administrator invitation, and emit a creation event. Each step MUST be resumable.
@@ -40,6 +41,7 @@ Reading order:
   1. Given a crash after the VAE step, when creation is retried, then it completes without duplicate VAEs or keys.
 - **Verification:** FAULT
 - **Origin:** FR-TEN-051, FR-PKG-072, FR-TEN-012
+- **Phase note:** PH-1 step 7a (DEC-060): `create_tenant` generates the tenant KEK wrapped by the root KEK; VAEs are created with their authority.
 
 ### DSN-NOD-403 — Suspension, archive and deletion
 - **Statement:** Suspension MUST block sign-in and API access while keeping data and scheduled compliance jobs (FR-TEN-052). Archive MUST make the tenant read-only for export. Deletion MUST destroy the tenant KEK after the grace period and holds check, which renders all tenant data unreadable, and then physically purge rows and objects (FR-TEN-053).
@@ -356,6 +358,7 @@ Reading order:
   1. Given a missing PostgreSQL extension, when bootstrapped, then the error names the extension and the fix.
 - **Verification:** SCN
 - **Origin:** NR-OPER-001, NR-USE-006
+- **Phase note:** PH-1 step 7a (DEC-060): the node applies the migrations at start before any tenant is opened.
 
 ### DSN-NOD-603 — Versioned node configuration
 - **Statement:** Node configuration MUST be a versioned document (file or CTL-managed) with a schema, validated at start and reload (FR-OPS-091, NR-OPER-003). Every applied version MUST be recorded with its hash and author (FR-OPS-093).
@@ -408,6 +411,7 @@ Reading order:
   1. Given a UBTP mutate, when traced, then the trace includes edge, DVM flush steps and storage spans.
 - **Verification:** CONF
 - **Origin:** FR-OPS-041, NR-OBS-001
+- **Phase note:** PH-1 step 7a (DEC-060): one event per operation and node action, kept in a bounded ring (and on standard error with `UBOS_TELEMETRY=stderr`); OpenTelemetry export follows with the Server of gate 1b.
 
 ### DSN-NOD-611 — No business data in telemetry
 - **Statement:** Telemetry MUST NOT contain field values, object names or document content (FR-OPS-042). A telemetry scrubber MUST enforce an allow-list of attribute keys.
@@ -418,6 +422,7 @@ Reading order:
   1. Given a canary value written in business data, when telemetry is searched, then it is not found.
 - **Verification:** SEC
 - **Origin:** FR-OPS-042, NR-SEC-009
+- **Phase note:** PH-1 step 7a (DEC-060): events are redacted to an allow-list of operational members before they are kept; SUITE-NOD-HOST checks that business data is dropped.
 
 ### DSN-NOD-612 — Metrics catalogue and dashboards
 - **Statement:** The node MUST publish the metrics catalogue (NR-OBS-002) and ship standard dashboards and alert rules (FR-OPS-043) with SLO burn alerts (NR-OBS-004).
