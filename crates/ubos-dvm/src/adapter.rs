@@ -22,6 +22,10 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "set_limits",
     "list_objects",
     "query",
+    "execute",
+    "journal",
+    "metering",
+    "metering_total",
     "traverse",
     "class_at",
     "merge_preview",
@@ -234,6 +238,12 @@ impl Adapter {
             "check_expr" => ubos_expr::check_expr(i)?,
             "eval_expr" => ubos_expr::eval_expr(i, None)?,
             "query" => self.engine.query(i)?,
+            "execute" => self.engine.execute(i)?,
+            "journal" => self.engine.journal(text(i, "process_id")?)?,
+            "metering" => self.engine.metering_record(text(i, "process_id")?)?,
+            "metering_total" => self.engine.metering_total()?,
+            "instructions" => ubos_runtime::isa::instructions_op(),
+            "profile_limits" => ubos_runtime::isa::profile_limits_op(i)?,
             "linearize" => json!(ubos_model::linearize_raw(
                 &list(i, "classes")?,
                 text(i, "class")?

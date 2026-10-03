@@ -13,6 +13,8 @@ name = "ubos-sandbox-spike"
 path = "src/bin/spike.rs"
 
 [dependencies]
+ubos-expr.workspace = true
+sha2.workspace = true
 rhai.workspace = true
 rust_decimal.workspace = true
 cap.workspace = true

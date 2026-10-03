@@ -1,0 +1,1345 @@
+//! Execution of logic (PH-1 step 5b, DEC-056): the store-facing half of the instructions
+//! of ABI 1.0 ([`EngineHost`], STD-ISA-010…), the `execute` operation (one process per
+//! invocation, STD-TXN-001; automatic retry on `TXN.HEAD_MOVED` and
+//! `TXN.READ_SET_CHANGED`, STD-TXN-023), its journal and metering records
+//! (STD-CTX-005, -011) and the logic-asset rules of STD-CTX-022 and -030. The interpreter
+//! and the gateway live in `ubos-runtime`.
+
+use crate::relations::{self, extensions_of};
+use crate::stateful::{Engine, commit_on};
+use crate::transactions::effects_of;
+use crate::versioning::{Process, process, record};
+use serde_json::{Map, Value, json};
+use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
+use ubos_expr::{Ty, Val, from_json};
+use ubos_model::Registry;
+use ubos_runtime::isa;
+use ubos_runtime::program::{self, PROTECTED};
+use ubos_runtime::{Core, Frame, Host, Instruction, Pending};
+use ubos_types::{BpaError, canonical, content_id, names};
+use ubos_version::{Repo, Segment, State, at};
+
+/// Codes that start another attempt (STD-TXN-023).
+const RETRY_CODES: &[&str] = &["TXN.HEAD_MOVED", "TXN.READ_SET_CHANGED"];
+/// Attempts per invocation unless `max_attempts` is given.
+const MAX_ATTEMPTS: u64 = 5;
+
+fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
+    v.get(k).and_then(Value::as_str)
+}
+
+fn invalid(m: &str) -> BpaError {
+    BpaError::new("MODEL.INVALID_VALUE", m)
+}
+
+fn not_found(m: &str) -> BpaError {
+    BpaError::new("IAM.NOT_FOUND", m)
+}
+
+fn last_segment(v: &Value) -> String {
+    v.as_str()
+        .map(|c| c.rsplit('/').next().unwrap_or(c).to_string())
+        .unwrap_or_default()
+}
+
+/// 32 bytes from lowercase hexadecimal.
+fn unhex32(v: &Value, what: &str) -> Result<[u8; 32], BpaError> {
+    let bad = || invalid(&format!("{what} is 32 bytes in hexadecimal"));
+    let s = v.as_str().ok_or_else(bad)?;
+    if s.len() != 64 || !s.bytes().all(|c| c.is_ascii_hexdigit()) {
+        return Err(bad());
+    }
+    let mut out = [0u8; 32];
+    for (i, b) in out.iter_mut().enumerate() {
+        *b = u8::from_str_radix(&s[2 * i..2 * i + 2], 16).map_err(|_| bad())?;
+    }
+    Ok(out)
+}
+
+/// The engine as the host of a run: the snapshot of the branch, the pending objects and
+/// the instructions that read or change the store.
+pub struct EngineHost<'a> {
+    e: &'a mut Engine,
+    view: Option<State>,
+}
+
+impl<'a> EngineHost<'a> {
+    fn new(e: &'a mut Engine) -> EngineHost<'a> {
+        EngineHost { e, view: None }
+    }
+
+    fn repo(&mut self) -> Repo<'_> {
+        Repo::new(self.e.store.as_mut(), &self.e.registry)
+    }
+
+    /// The pinned snapshot of the branch (STD-TXN-002).
+    fn state(&mut self, core: &mut Core) -> Result<&State, BpaError> {
+        if !core.pins.contains_key(&core.branch) {
+            let mut repo = self.repo();
+            let head = repo.head(&core.branch)?;
+            let id = repo.commit(head)?.commit_id;
+            core.pins.insert(core.branch.clone(), id);
+        }
+        if self.view.is_none() {
+            let (v, _) = self
+                .repo()
+                .view(&core.branch, &json!({"evaluated_at": core.pins}))?;
+            self.view = Some(v.state);
+        }
+        Ok(self.view.as_ref().expect("view"))
+    }
+
+    fn version(&mut self, vh: &str) -> Result<Value, BpaError> {
+        self.repo().version(vh)
+    }
+
+    /// The registry with the extensions in force on the snapshot.
+    fn registry(&mut self, core: &mut Core) -> Result<Registry, BpaError> {
+        let st = self.state(core)?.clone();
+        let exts = extensions_of(&mut self.repo(), &st)?;
+        if exts.is_empty() {
+            Ok(self.e.registry.clone())
+        } else {
+            self.e.registry.with_extensions(&exts)
+        }
+    }
+
+    // ---- targets ----
+
+    fn target_id(
+        &mut self,
+        core: &mut Core,
+        t: &Value,
+        missing_ok: bool,
+    ) -> Result<Option<String>, BpaError> {
+        if let Some(id) = t.as_str().filter(|x| names::matches("uuid", x)) {
+            if core.pending.contains_key(id) || self.state(core)?.objects.contains_key(id) {
+                return Ok(Some(id.to_string()));
+            }
+            if missing_ok {
+                return Ok(None);
+            }
+            return Err(not_found("unknown object"));
+        }
+        if !t.as_str().is_some_and(|x| x.starts_with("ubos://")) {
+            return Err(invalid("a target is a URI or an object id"));
+        }
+        let p = ubos_types::addr::parse_uri(t)?;
+        if s(&p, "tenant") != Some(self.e.store.authority().as_str()) || p.get("vae").is_some() {
+            return Err(not_found(
+                "objects of other VAEs are reached only as published objects",
+            ));
+        }
+        let (class, slug) = (
+            s(&p, "class").unwrap_or_default(),
+            s(&p, "slug").unwrap_or_default(),
+        );
+        if let Some((oid, _)) = core
+            .pending
+            .iter()
+            .find(|(_, o)| o.class == class && o.slug == slug)
+        {
+            return Ok(Some(oid.clone()));
+        }
+        let st = self.state(core)?;
+        if let Some((oid, _)) = st
+            .objects
+            .iter()
+            .find(|(_, o)| o.class == class && o.slug == slug)
+        {
+            return Ok(Some(oid.clone()));
+        }
+        if missing_ok {
+            return Ok(None);
+        }
+        Err(not_found(&format!(
+            "no object at {}",
+            s(&p, "canonical").unwrap_or_default()
+        )))
+    }
+
+    fn target(&mut self, core: &mut Core, t: &Value) -> Result<String, BpaError> {
+        Ok(self.target_id(core, t, false)?.expect("present"))
+    }
+
+    fn segment(&mut self, core: &mut Core, oid: &str) -> Result<Option<Segment>, BpaError> {
+        let asof = core.asof();
+        Ok(self
+            .state(core)?
+            .objects
+            .get(oid)
+            .and_then(|o| at(&o.timeline, &asof).cloned()))
+    }
+
+    fn class_of(&mut self, core: &mut Core, oid: &str) -> Result<String, BpaError> {
+        if let Some(p) = core.pending.get(oid) {
+            return Ok(p.class.clone());
+        }
+        Ok(self
+            .state(core)?
+            .objects
+            .get(oid)
+            .map(|o| o.class.clone())
+            .unwrap_or_default())
+    }
+
+    fn head_body(&mut self, core: &mut Core, oid: &str) -> Result<Map<String, Value>, BpaError> {
+        if let Some(p) = core.pending.get(oid) {
+            return Ok(p.body.clone());
+        }
+        let head = self
+            .state(core)?
+            .objects
+            .get(oid)
+            .map(|o| o.head.clone())
+            .ok_or_else(|| not_found("unknown object"))?;
+        Ok(self.version(&head)?["body"]
+            .as_object()
+            .cloned()
+            .unwrap_or_default())
+    }
+
+    fn slug_of(&mut self, core: &mut Core, oid: &str) -> Result<String, BpaError> {
+        if let Some(p) = core.pending.get(oid) {
+            return Ok(p.slug.clone());
+        }
+        Ok(self
+            .state(core)?
+            .objects
+            .get(oid)
+            .map(|o| o.slug.clone())
+            .unwrap_or_default())
+    }
+
+    // ---- assets (STD-CTX-022, -023, -030) ----
+
+    /// `(body, version hash)` of a logic asset by object id or name, pinned for the process.
+    fn asset(&mut self, core: &mut Core, key: &str) -> Result<(Value, String), BpaError> {
+        let objects: Vec<(String, String, String)> = self
+            .state(core)?
+            .objects
+            .iter()
+            .map(|(id, o)| (id.clone(), o.class.clone(), o.head.clone()))
+            .collect();
+        let mut cands = Vec::new();
+        for (oid, class, head) in &objects {
+            let is_logic = self
+                .e
+                .registry
+                .class(class)
+                .is_ok_and(|c| c.linearization.iter().any(|x| x == "LogicAsset"));
+            let v = self.version(head)?;
+            if v["tombstone"] == json!(true) {
+                continue;
+            }
+            if oid == key || (is_logic && s(&v["body"], "name") == Some(key)) {
+                cands.push((oid.clone(), class.clone(), head.clone()));
+            }
+        }
+        let Some((oid, class, head)) = cands.into_iter().next() else {
+            return Err(not_found(&format!("no logic asset {key}")));
+        };
+        if !self
+            .e
+            .registry
+            .class(&class)
+            .is_ok_and(|c| c.linearization.iter().any(|x| x == "LogicAsset"))
+        {
+            return Err(BpaError::new(
+                "MODEL.REFERENCE_INVALID",
+                "not a logic asset",
+            ));
+        }
+        let vh = core.pinned.entry(oid).or_insert(head).clone();
+        let body = self.version(&vh)?["body"].clone();
+        self.check_asset(core, &body)?;
+        if !core.logic.contains(&vh) {
+            core.logic.push(vh.clone());
+        }
+        Ok((body, vh))
+    }
+
+    fn check_asset(&mut self, core: &mut Core, body: &Value) -> Result<(), BpaError> {
+        let (major, minor) = isa::abi_version(body.get("abi"))?;
+        if major != 1 || minor > 0 {
+            return Err(BpaError::new(
+                "LOGIC.ABI_UNSUPPORTED",
+                "this implementation supports ABI 1.0",
+            ));
+        }
+        if s(body, "tier") != Some("host") {
+            return Err(BpaError::new(
+                "LOGIC.NOT_AVAILABLE",
+                "the adapter executes host programs only",
+            ));
+        }
+        let kind = self.e.branch_meta(&core.branch)?.kind;
+        if PROTECTED.contains(&kind.as_str()) {
+            let ok = matches!(s(body, "state"), Some("verified" | "deprecated"))
+                && self.verified(body)?;
+            if !ok {
+                return Err(BpaError::new("LOGIC.UNVERIFIED_ASSET", "unverified asset"));
+            }
+        } else if s(body, "state") == Some("retired") {
+            return Err(BpaError::new("LOGIC.UNVERIFIED_ASSET", "retired"));
+        }
+        Ok(())
+    }
+
+    /// Whether the asset's verification record is known and passed (STD-CTX-023); the
+    /// records come with the verification gate of step 5c.
+    fn verified(&mut self, body: &Value) -> Result<bool, BpaError> {
+        let Some(rid) = s(body, "verification") else {
+            return Ok(false);
+        };
+        let Some(rec) = self.e.store.meta(&format!("verification/{rid}"))? else {
+            return Ok(false);
+        };
+        let passed = rec["record"]["checks"]
+            .as_array()
+            .is_some_and(|cs| cs.iter().all(|c| c["result"] == json!("pass")));
+        Ok(passed && rec["code"] == json!(code_identity(body)?))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn call_impl(
+        &mut self,
+        core: &mut Core,
+        found: &Value,
+        oid: &str,
+        cls: &str,
+        body: Value,
+        port: &str,
+        params: &Value,
+    ) -> Result<Value, BpaError> {
+        let implementation = s(found, "impl").unwrap_or_default();
+        let (name, fname) = implementation
+            .split_once('#')
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .unwrap_or((implementation.to_string(), String::new()));
+        let (asset, vh) = self.asset(core, &name)?;
+        let frame = Frame {
+            asset,
+            vh: Some(vh),
+            fname: Some(fname),
+            oid: Some(oid.to_string()),
+            this: Some(body),
+            cls: Some(cls.to_string()),
+            port: Some(port.to_string()),
+            impl_class: s(found, "class").map(str::to_string),
+            params: BTreeMap::new(),
+        };
+        program::run_function(core, self, frame, params)
+    }
+
+    // ---- commit.* ----
+
+    fn commit_create(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let cls = last_segment(&a["class"]);
+        core.authorize(&d.authorization, &cls)?;
+        let fields = a
+            .get("fields")
+            .and_then(Value::as_object)
+            .cloned()
+            .unwrap_or_default();
+        core.per_item(d, fields.len() as u64)?;
+        let given = a.get("object_id").filter(|v| !v.is_null());
+        if given.is_some() && core.process_kind != "import" {
+            return Err(invalid("object_id is given by import processes only"));
+        }
+        let oid = given
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .unwrap_or_else(|| core.uuid());
+        let slug = s(&Value::Object(a.clone()), "slug")
+            .map(str::to_string)
+            .unwrap_or_else(|| oid.clone());
+        let mut ch =
+            json!({"op": "create", "object_id": oid, "class": cls, "slug": slug, "body": fields});
+        if let Some(v) = a.get("valid").filter(|v| v.is_object()) {
+            ch["valid"] = json!({"from": v.get("from").cloned().unwrap_or(Value::Null)});
+        }
+        let idx = core.add(ch)?;
+        core.pending.insert(
+            oid.clone(),
+            Pending {
+                class: cls,
+                slug,
+                body: fields,
+                change: Some(idx),
+                update: None,
+            },
+        );
+        Ok(json!({"object_id": oid, "version": null}))
+    }
+
+    fn base_of(&self, core: &Core, oid: &str, given: Option<&Value>) -> Result<Value, BpaError> {
+        if let Some(b) = given.filter(|v| !v.is_null()) {
+            return Ok(b.clone());
+        }
+        core.reads.get(oid).map(|h| json!(h)).ok_or_else(|| {
+            BpaError::new(
+                "MODEL.DECLARATION_INCOMPLETE",
+                "the base is required when the object was not read",
+            )
+        })
+    }
+
+    fn commit_update(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+        slug: Option<&str>,
+    ) -> Result<Value, BpaError> {
+        let oid = self.target(core, &a["target"])?;
+        let cls = self.class_of(core, &oid)?;
+        core.authorize(&d.authorization, &cls)?;
+        let sets = a
+            .get("set")
+            .and_then(Value::as_object)
+            .cloned()
+            .unwrap_or_default();
+        core.per_item(d, sets.len() as u64)?;
+        if let Some(p) = core.pending.get_mut(&oid) {
+            p.body
+                .extend(sets.iter().map(|(k, v)| (k.clone(), v.clone())));
+            let idx = p.change.or(p.update).expect("a pending change");
+            if let Some(sl) = slug {
+                p.slug = sl.to_string();
+                core.uow[idx]["slug"] = json!(sl);
+            }
+            if let Some(b) = core.uow[idx]["body"].as_object_mut() {
+                b.extend(sets);
+            }
+            return Ok(json!({"version": null}));
+        }
+        let mut ch = json!({"op": "update", "object_id": oid, "base": self.base_of(core, &oid, a.get("base"))?, "body": sets});
+        if let Some(sl) = slug {
+            ch["slug"] = json!(sl);
+        }
+        if let Some(tl) = a.get("timeline").filter(|v| v.is_object()) {
+            ch["valid"] = json!({"kind": tl.get("op"), "from": tl.get("from")});
+            if let Some(to) = tl.get("to").filter(|v| !v.is_null()) {
+                ch["valid"]["to"] = to.clone();
+            }
+        }
+        let idx = core.add(ch)?;
+        let (class, old_slug) = {
+            let o = self
+                .state(core)?
+                .objects
+                .get(&oid)
+                .ok_or_else(|| not_found("unknown object"))?;
+            (o.class.clone(), o.slug.clone())
+        };
+        let mut body = self.head_body(core, &oid)?;
+        body.extend(sets);
+        core.pending.insert(
+            oid,
+            Pending {
+                class,
+                slug: slug.map(str::to_string).unwrap_or(old_slug),
+                body,
+                change: None,
+                update: Some(idx),
+            },
+        );
+        Ok(json!({"version": null}))
+    }
+
+    fn commit_end(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let oid = self.target(core, &a["target"])?;
+        let cls = self.class_of(core, &oid)?;
+        core.authorize(&d.authorization, &cls)?;
+        let mut ch = json!({"op": "end", "object_id": oid, "base": self.base_of(core, &oid, a.get("base"))?});
+        if let Some(f) = a.get("from").filter(|v| !v.is_null()) {
+            ch["valid"] = json!({"from": f});
+        }
+        core.add(ch)?;
+        Ok(json!({"version": null}))
+    }
+
+    fn commit_append(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let cls = last_segment(&a["class"]);
+        core.authorize(&d.authorization, &cls)?;
+        let fields = a.get("fields").cloned().unwrap_or(Value::Null);
+        core.per_item(d, fields.as_object().map(Map::len).unwrap_or(0) as u64)?;
+        let eid = core.uuid();
+        let mut ch = json!({"op": "append", "class": cls, "entry_id": eid, "ledger_key": a.get("ledger_key"), "body": fields});
+        for k in ["valid_at", "posting_group", "source_refs"] {
+            if let Some(v) = a.get(k).filter(|v| !v.is_null()) {
+                ch[k] = v.clone();
+            }
+        }
+        core.add(ch)?;
+        Ok(json!({"entry_id": eid}))
+    }
+
+    fn entry_class(&mut self, core: &mut Core, eid: &Value) -> Result<String, BpaError> {
+        let eid = eid.as_str().unwrap_or_default();
+        self.state(core)?
+            .find_entry(eid)
+            .map(|e| e.class.clone())
+            .ok_or_else(|| not_found("unknown entry"))
+    }
+
+    fn commit_reverse(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let cls = self.entry_class(core, &a["entry"])?;
+        core.authorize(&d.authorization, &cls)?;
+        let nid = core.uuid();
+        let mut ch = json!({"op": "reverse", "entry_id": a["entry"], "new_entry_id": nid});
+        if let Some(v) = a.get("valid_at").filter(|v| !v.is_null()) {
+            ch["valid_at"] = v.clone();
+        }
+        core.add(ch)?;
+        Ok(json!({"entry_id": nid}))
+    }
+
+    fn commit_adjust(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let corrects = a.get("corrects").and_then(Value::as_array);
+        let Some(first) = corrects.filter(|c| c.len() == 1).and_then(|c| c.first()) else {
+            return Err(invalid("an adjustment corrects one entry in BPA 1.0-rc1"));
+        };
+        let cls = self.entry_class(core, first)?;
+        core.authorize(&d.authorization, &cls)?;
+        let nid = core.uuid();
+        let mut ch = json!({"op": "adjust", "entry_id": first, "new_entry_id": nid, "body": a.get("fields")});
+        if let Some(v) = a.get("valid_at").filter(|v| !v.is_null()) {
+            ch["valid_at"] = v.clone();
+        }
+        core.add(ch)?;
+        Ok(json!({"entry_id": nid}))
+    }
+
+    fn link(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+        on: bool,
+    ) -> Result<Value, BpaError> {
+        let oid = self.target(core, &a["from"])?;
+        let cls = self.class_of(core, &oid)?;
+        core.authorize(&d.authorization, &cls)?;
+        let rel = s(&Value::Object(a.clone()), "relationship")
+            .unwrap_or_default()
+            .to_string();
+        let f = self
+            .e
+            .registry
+            .class(&cls)?
+            .fields
+            .get(&rel)
+            .filter(|f| f.get("relationship").is_some_and(|r| !r.is_null()))
+            .cloned()
+            .ok_or_else(|| {
+                BpaError::new(
+                    "MODEL.REFERENCE_INVALID",
+                    format!("{rel} is not a relationship of {cls}"),
+                )
+            })?;
+        let tid = self.target(core, &a["to"])?;
+        let tcls = self.class_of(core, &tid)?;
+        let tslug = self.slug_of(core, &tid)?;
+        let uri = relations::uri_of(&self.e.store.authority(), &tcls, &tslug);
+        let body = self.head_body(core, &oid)?;
+        let cur = body.get(&rel).cloned().unwrap_or(Value::Null);
+        let new = if s(&f, "type") == Some("list") {
+            let mut vals: Vec<Value> = cur.as_array().cloned().unwrap_or_default();
+            if on {
+                if !vals.iter().any(|x| x == &json!(uri)) {
+                    vals.push(json!(uri));
+                }
+            } else {
+                vals.retain(|x| x != &json!(uri));
+            }
+            Value::Array(vals)
+        } else if on {
+            json!(uri)
+        } else {
+            Value::Null
+        };
+        if !core.pending.contains_key(&oid) && !core.reads.contains_key(&oid) {
+            let head = self
+                .state(core)?
+                .objects
+                .get(&oid)
+                .map(|o| o.head.clone())
+                .unwrap_or_default();
+            core.reads.insert(oid.clone(), head);
+        }
+        let mut args = Map::new();
+        args.insert("target".into(), json!(oid));
+        args.insert("set".into(), json!({rel: new}));
+        let upd = isa::by_name("commit.update").expect("catalogue");
+        self.commit_update(core, &args, upd, None)?;
+        Ok(json!({"link": null}))
+    }
+
+    // ---- read.* ----
+
+    fn read_get(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let t = a["target"].clone();
+        let mut out = if t.as_str().is_some_and(|x| x.contains('?')) {
+            let r = self.e.resolve(&t)?;
+            let vh = s(&r, "version_hash").unwrap_or_default().to_string();
+            let cls = s(&self.version(&vh)?, "class")
+                .unwrap_or_default()
+                .to_string();
+            core.authorize(&d.authorization, &cls)?;
+            let branch = s(&r, "branch").unwrap_or_default().to_string();
+            json!({"object_id": r["object_id"], "class": cls, "version": vh, "fields": r["body"], "valid": r["valid"],
+                "resolved_from": {"branch": branch, "commit": r["evaluated_at"][&branch]}})
+        } else {
+            let oid = self.target(core, &t)?;
+            let cls = self.class_of(core, &oid)?;
+            core.authorize(&d.authorization, &cls)?;
+            if let Some(p) = core.pending.get(&oid) {
+                json!({"object_id": oid, "class": cls, "version": null, "fields": p.body, "valid": null,
+                    "resolved_from": {"branch": core.branch, "commit": null}})
+            } else {
+                let seg = self
+                    .segment(core, &oid)?
+                    .ok_or_else(|| BpaError::new("QRY.NOT_FOUND_AT_TIME", "no segment at asof"))?;
+                let head = self
+                    .state(core)?
+                    .objects
+                    .get(&oid)
+                    .map(|o| o.head.clone())
+                    .unwrap_or_default();
+                core.reads.entry(oid.clone()).or_insert(head);
+                let trip = json!({"object": oid, "version": seg.version, "asof": core.asof()});
+                if !core.triples.contains(&trip) {
+                    core.triples.push(trip);
+                }
+                let v = self.version(&seg.version)?;
+                json!({"object_id": oid, "class": cls, "version": seg.version, "fields": v["body"],
+                    "valid": {"from": seg.from, "to": seg.to},
+                    "resolved_from": {"branch": core.branch, "commit": core.pins.get(&core.branch)}})
+            }
+        };
+        if let Some(keep) = a.get("fields").and_then(Value::as_array) {
+            let fields: Map<String, Value> = out["fields"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .filter(|(k, _)| keep.iter().any(|x| x.as_str() == Some(k.as_str())))
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
+            out["fields"] = Value::Object(fields);
+        }
+        let bytes = canonical(&out["fields"])?.len() as u64;
+        core.per_item(d, bytes.div_ceil(1024))?;
+        Ok(out)
+    }
+
+    fn read_history(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let oid = self.target(core, &a["target"])?;
+        let cls = self.class_of(core, &oid)?;
+        core.authorize(&d.authorization, &cls)?;
+        let h = self
+            .e
+            .history(&json!({"branch": core.branch, "object_id": oid,
+            "from": a.get("from_time"), "to": a.get("to_time")}))?;
+        let commits: Vec<Value> = h["commits"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|c| json!({"cseq": c["cseq"], "tx_time": c["tx_time"], "ops": c["ops"]}))
+            .collect();
+        core.per_item(d, commits.len() as u64)?;
+        Ok(json!({"commits": commits}))
+    }
+
+    fn read_timeline(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let oid = self.target(core, &a["target"])?;
+        let cls = self.class_of(core, &oid)?;
+        core.authorize(&d.authorization, &cls)?;
+        let first = self
+            .state(core)?
+            .objects
+            .get(&oid)
+            .and_then(|o| o.timeline.iter().map(|x| x.from.clone()).min());
+        let lo = a
+            .get("valid_from")
+            .filter(|v| !v.is_null())
+            .cloned()
+            .or(first.map(Value::String));
+        let segs: Vec<Value> = match lo {
+            Some(lo) => self
+                .e
+                .read_range(&json!({"branch": core.branch, "object_id": oid, "from": lo,
+                "to": a.get("valid_to"), "evaluated_at": core.pins}))?["segments"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default(),
+            None => Vec::new(),
+        };
+        core.per_item(d, segs.len() as u64)?;
+        Ok(
+            json!({"segments": segs.iter().map(|x| json!({"from": x["valid"]["from"], "to": x["valid"]["to"], "fields": x["body"]})).collect::<Vec<_>>()}),
+        )
+    }
+
+    fn read_diff(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let oid = self.target(core, &a["scope"])?;
+        let cls = self.class_of(core, &oid)?;
+        core.authorize(&d.authorization, &cls)?;
+        let coord = |v: &Value| -> Value {
+            let mut c = v.clone();
+            if c.get("branch").is_none() {
+                c["branch"] = json!(core.branch);
+            }
+            if let Some(t) = c
+                .get("time")
+                .and_then(Value::as_str)
+                .and_then(|t| t.parse::<u64>().ok())
+            {
+                c["time"] = json!(t);
+            }
+            c
+        };
+        let (ca, cb) = (coord(&a["a"]), coord(&a["b"]));
+        let entries: Vec<Value> = self
+            .repo()
+            .diff(&ca, &cb)?
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|e| e["object_id"] == json!(oid))
+            .map(|e| {
+                let mut e = e.clone();
+                e.as_object_mut().map(|m| m.remove("versions"));
+                e
+            })
+            .collect();
+        core.per_item(d, entries.len() as u64)?;
+        Ok(json!({"entries": entries}))
+    }
+
+    fn read_effective(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let cls = last_segment(&a["target"]);
+        core.authorize(&d.authorization, &cls)?;
+        match s(&Value::Object(a.clone()), "what") {
+            Some("class") => {
+                let mut i = json!({"branch": core.branch, "class": cls});
+                if !core.pins.is_empty() {
+                    i["evaluated_at"] = json!(core.pins);
+                }
+                self.e.other("class_at", &i)
+            }
+            Some("descriptor") => Err(BpaError::new(
+                crate::adapter::UNSUPPORTED,
+                "BPU descriptors come with step 5c",
+            )),
+            _ => Err(BpaError::new(
+                "LOGIC.NOT_AVAILABLE",
+                "effective declarations come with the Governance profile",
+            )),
+        }
+    }
+
+    // ---- run.* and emit.* ----
+
+    fn run_port(&mut self, core: &mut Core, a: &Map<String, Value>) -> Result<Value, BpaError> {
+        let oid = self.target(core, &a["target"])?;
+        let cls = self.class_of(core, &oid)?;
+        let port = s(&Value::Object(a.clone()), "port")
+            .unwrap_or_default()
+            .to_string();
+        let reg = self.registry(core)?;
+        let Some(p) = reg.class(&cls)?.ports.get(&port) else {
+            return Err(BpaError::new(
+                "MODEL.PORT_NOT_IMPLEMENTED",
+                format!("no port {port}"),
+            ));
+        };
+        let permission = s(&p.decl, "permission").unwrap_or("none").to_string();
+        core.authorize(&permission, &cls)?;
+        let found = reg.dispatch(&cls, &port, None)?;
+        let body = Value::Object(self.head_body(core, &oid)?);
+        let params = a.get("params").cloned().unwrap_or_else(|| json!({}));
+        self.call_impl(core, &found, &oid, &cls, body, &port, &params)
+    }
+
+    fn run_super(&mut self, core: &mut Core) -> Result<Value, BpaError> {
+        let f = core.frame().clone();
+        let Some(port) = f.port.clone() else {
+            return Err(BpaError::new(
+                "MODEL.PORT_NOT_IMPLEMENTED",
+                "run.super outside a port",
+            ));
+        };
+        let cls = f.cls.clone().unwrap_or_default();
+        let reg = self.registry(core)?;
+        let found = reg.dispatch(&cls, &port, f.impl_class.as_deref())?;
+        let mut params = Map::new();
+        for (k, v) in &f.params {
+            params.insert(k.clone(), ubos_expr::to_json(v)?);
+        }
+        self.call_impl(
+            core,
+            &found,
+            f.oid.as_deref().unwrap_or_default(),
+            &cls,
+            f.this.clone().unwrap_or(Value::Null),
+            &port,
+            &Value::Object(params),
+        )
+    }
+
+    fn run_logic(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let f = core.frame().clone();
+        let name = s(&Value::Object(a.clone()), "asset")
+            .unwrap_or_default()
+            .to_string();
+        let pin = f.asset["imports"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|x| s(x, "name") == Some(name.as_str()))
+            .map(|x| x.get("version").cloned().unwrap_or(Value::Null));
+        let Some(vh) = pin else {
+            return Err(BpaError::new(
+                "LOGIC.FORBIDDEN_CAPABILITY",
+                "the asset is not among the imports",
+            ));
+        };
+        let vh = vh.as_str().unwrap_or_default().to_string();
+        let v = self.version(&vh).ok();
+        let Some(v) = v.filter(|v| s(&v["body"], "name") == Some(name.as_str())) else {
+            return Err(BpaError::new(
+                "MODEL.REFERENCE_INVALID",
+                format!("the pinned version of {name} is unknown"),
+            ));
+        };
+        core.authorize(&d.authorization, s(&v, "class").unwrap_or_default())?;
+        self.check_asset(core, &v["body"])?;
+        if !core.logic.contains(&vh) {
+            core.logic.push(vh.clone());
+        }
+        let frame = Frame {
+            asset: v["body"].clone(),
+            vh: Some(vh),
+            fname: s(&Value::Object(a.clone()), "function").map(str::to_string),
+            ..Frame::default()
+        };
+        let args = a.get("args").cloned().unwrap_or_else(|| json!([]));
+        program::run_function(core, self, frame, &args)
+    }
+
+    fn run_async(&mut self, core: &mut Core, a: &Map<String, Value>) -> Result<Value, BpaError> {
+        let job = core.uuid();
+        let oid = self.target(core, a.get("target").unwrap_or(&Value::Null))?;
+        core.effects.push(json!({"type": "Job", "object_id": oid,
+            "payload": {"job_id": job, "port": a.get("port"), "params": a.get("params").cloned().unwrap_or_else(|| json!({})),
+                "not_before": a.get("not_before"), "parent_process": core.process_id}}));
+        Ok(json!({"job_id": job}))
+    }
+
+    fn emit_event(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let oid = self.target(core, &a["subject"])?;
+        let cls = self.class_of(core, &oid)?;
+        core.authorize(&d.authorization, &cls)?;
+        let lin = self.e.registry.class(&cls)?.linearization.clone();
+        let mut declared = Vec::new();
+        for c in &lin {
+            for e in self.e.registry.decl(c)?["events"]
+                .as_array()
+                .into_iter()
+                .flatten()
+            {
+                declared.push(s(e, "name").unwrap_or_default().to_string());
+            }
+        }
+        let t = s(&Value::Object(a.clone()), "type")
+            .unwrap_or_default()
+            .to_string();
+        if !declared.contains(&t) {
+            return Err(BpaError::new("EVT.UNKNOWN_EVENT_TYPE", t));
+        }
+        core.effects.push(json!({"type": t, "object_id": oid, "payload": a.get("payload").cloned().unwrap_or_else(|| json!({}))}));
+        let before = self
+            .e
+            .store
+            .process_rec(&core.process_id)?
+            .and_then(|r| r["effects"].as_u64())
+            .unwrap_or_default();
+        Ok(
+            json!({"event_id": format!("{}/{}", core.process_id, before + core.effects.len() as u64)}),
+        )
+    }
+}
+
+impl Host for EngineHost<'_> {
+    fn instruction(
+        &mut self,
+        core: &mut Core,
+        d: &Instruction,
+        a: &Map<String, Value>,
+    ) -> Result<Value, BpaError> {
+        match d.name.as_str() {
+            "commit.create" => self.commit_create(core, a, d),
+            "commit.update" => self.commit_update(core, a, d, None),
+            "commit.end" => self.commit_end(core, a, d),
+            "commit.move" => {
+                let mut b = Map::new();
+                b.insert("target".into(), a["target"].clone());
+                b.insert("set".into(), json!({}));
+                if let Some(x) = a.get("base") {
+                    b.insert("base".into(), x.clone());
+                }
+                let slug = s(&Value::Object(a.clone()), "slug").map(str::to_string);
+                self.commit_update(core, &b, d, slug.as_deref())
+            }
+            "commit.append" => self.commit_append(core, a, d),
+            "commit.reverse" => self.commit_reverse(core, a, d),
+            "commit.adjust" => self.commit_adjust(core, a, d),
+            "commit.link" => self.link(core, a, d, true),
+            "commit.unlink" => self.link(core, a, d, false),
+            "read.get" => self.read_get(core, a, d),
+            "read.history" => self.read_history(core, a, d),
+            "read.timeline" => self.read_timeline(core, a, d),
+            "read.diff" => self.read_diff(core, a, d),
+            "read.effective" => self.read_effective(core, a, d),
+            "run.port" => self.run_port(core, a),
+            "run.super" => self.run_super(core),
+            "run.logic" => self.run_logic(core, a, d),
+            "run.async" => self.run_async(core, a),
+            "emit.event" => self.emit_event(core, a, d),
+            other => Err(BpaError::new(
+                "LOGIC.NOT_AVAILABLE",
+                format!("{other} is not available in BPA 1.0-rc1"),
+            )),
+        }
+    }
+
+    fn typed_ref(&mut self, core: &mut Core, uri: &str) -> Result<Option<Val>, BpaError> {
+        let Some(oid) = self.target_id(core, &json!(uri), true)? else {
+            return Ok(None);
+        };
+        let (body, cls) = if let Some(p) = core.pending.get(&oid) {
+            (Value::Object(p.body.clone()), p.class.clone())
+        } else {
+            let Some(seg) = self.segment(core, &oid)? else {
+                return Ok(None);
+            };
+            let cls = self.class_of(core, &oid)?;
+            (self.version(&seg.version)?["body"].clone(), cls)
+        };
+        Ok(Some(from_json(&self.class_type(&cls)?, &body)))
+    }
+
+    fn class_type(&mut self, class: &str) -> Result<Ty, BpaError> {
+        ubos_expr::class_type(&self.e.registry, class)
+    }
+}
+
+/// Content ID of the code of an asset (STD-CTX-023).
+pub fn code_identity(body: &Value) -> Result<String, BpaError> {
+    let mut m = Map::new();
+    for k in [
+        "tier",
+        "abi",
+        "source",
+        "exports",
+        "imports",
+        "capabilities",
+    ] {
+        m.insert(k.into(), body.get(k).cloned().unwrap_or(Value::Null));
+    }
+    content_id("ubos.chunk.v1", &Value::Object(m))
+}
+
+fn seed_of(i: &Value, pid: &str) -> Result<[u8; 32], BpaError> {
+    if let Some(s) = i.get("entropy_seed").filter(|v| !v.is_null()) {
+        return unhex32(s, "entropy_seed");
+    }
+    let mut h = Sha256::new();
+    h.update(b"ubos.entropy.v1\0");
+    h.update(pid.as_bytes());
+    Ok(h.finalize().into())
+}
+
+fn changes_hash(uow: &[Value]) -> Result<String, BpaError> {
+    let list: Vec<Value> = uow
+        .iter()
+        .map(|c| {
+            let mut c = c.clone();
+            c.as_object_mut().map(|m| m.remove("derivation"));
+            c
+        })
+        .collect();
+    content_id("ubos.chunk.v1", &Value::Array(list))
+}
+
+impl Engine {
+    /// `execute`: run a logic function or a port as one process (STD-TXN-001) and commit
+    /// its unit of work; retried on head movement or read-set change when the function is
+    /// retryable (STD-TXN-023).
+    pub fn execute(&mut self, i: &Value) -> Result<Value, BpaError> {
+        let branch = s(i, "branch").unwrap_or("main").to_string();
+        let now = self.now.clone();
+        Repo::new(self.store.as_mut(), &self.registry).check_active(&branch, &now)?;
+        let mut next = self.next_process;
+        let p = process(
+            self.store.as_mut(),
+            i.get("process"),
+            "action",
+            &mut next,
+            &self.principal,
+        )?;
+        self.next_process = next;
+        let seed0 = seed_of(i, &p.id)?;
+        let interfere: BTreeMap<u64, Value> = i
+            .get("interfere")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|x| {
+                x.get("attempt")
+                    .and_then(Value::as_u64)
+                    .map(|a| (a, x["changes"].clone()))
+            })
+            .collect();
+        let max_attempts = i
+            .get("max_attempts")
+            .and_then(Value::as_u64)
+            .unwrap_or(MAX_ATTEMPTS);
+        let mut attempt = 0u64;
+        loop {
+            attempt += 1;
+            let seed = if attempt == 1 {
+                seed0
+            } else {
+                let mut h = Sha256::new();
+                h.update(seed0);
+                h.update((attempt as u32).to_be_bytes());
+                h.finalize().into()
+            };
+            let mut core = Core::new(i, seed, &p.id, s(&p.p, "kind").unwrap_or("action"))?;
+            let today = self.now[..10].to_string();
+            core.build_context(
+                i,
+                s(&p.p, "initiator").unwrap_or_default(),
+                &self.store.authority(),
+                &today,
+                &self.now,
+                &p.p["trigger"],
+            )?;
+            let mut retryable = false;
+            let r = (|| -> Result<(Value, Option<u64>), BpaError> {
+                let mut host = EngineHost::new(self);
+                let (result, rt) = start(&mut core, &mut host, i)?;
+                retryable = rt;
+                if let Some(changes) = interfere.get(&attempt) {
+                    self.commit(&json!({"branch": branch, "changes": changes}))?;
+                }
+                let mut cseq = None;
+                if !core.uow.is_empty() {
+                    let mut pc = p.p.clone();
+                    pc["serializable"] = i.get("serializable").cloned().unwrap_or(json!(false));
+                    pc["reads"] = json!(core.reads);
+                    pc["effects"] = json!(core.effects);
+                    let pr = Process {
+                        id: p.id.clone(),
+                        explicit: p.explicit,
+                        p: pc,
+                    };
+                    let meta = self.branch_meta(&branch)?;
+                    let input = json!({"branch": branch, "changes": core.uow, "process": pr.p});
+                    let (r, classes, effects) = commit_on(
+                        self.store.as_mut(),
+                        &self.registry,
+                        &self.now,
+                        &input,
+                        &pr,
+                        false,
+                        &meta,
+                        self.max_inputs,
+                        None,
+                    )?;
+                    self.touch_branch(&branch)?;
+                    let n = r["cseq"].as_u64().unwrap_or_default();
+                    record(
+                        self.store.as_mut(),
+                        &pr,
+                        "committed",
+                        Some((&branch, n)),
+                        effects,
+                    )?;
+                    self.instances.extend(classes);
+                    cseq = Some(n);
+                }
+                Ok((result, cseq))
+            })();
+            match r {
+                Ok((result, cseq)) => {
+                    return self.finish(&core, i, &p, Some(result), cseq, "ok", attempt);
+                }
+                Err(e) => {
+                    if RETRY_CODES.contains(&e.code) && retryable && attempt < max_attempts {
+                        continue;
+                    }
+                    let outcome = match e.code {
+                        "LOGIC.LIMIT_EXCEEDED" => "limit",
+                        "LOGIC.CANCELLED" => "cancelled",
+                        _ => "error",
+                    };
+                    self.finish(&core, i, &p, None, None, outcome, attempt)?;
+                    return Err(e);
+                }
+            }
+        }
+    }
+
+    /// Record the process, its effects, the metering record and the journal.
+    #[allow(clippy::too_many_arguments)]
+    fn finish(
+        &mut self,
+        core: &Core,
+        i: &Value,
+        p: &Process,
+        result: Option<Value>,
+        cseq: Option<u64>,
+        outcome: &str,
+        attempt: u64,
+    ) -> Result<Value, BpaError> {
+        let pid = p.id.clone();
+        if outcome == "ok" {
+            if cseq.is_none() {
+                let mut pc = p.p.clone();
+                pc["effects"] = json!(core.effects);
+                let pr = Process {
+                    id: pid.clone(),
+                    explicit: p.explicit,
+                    p: pc,
+                };
+                record(self.store.as_mut(), &pr, "committed", None, 0)?;
+                if !core.effects.is_empty() {
+                    let head = {
+                        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+                        let h = repo.head(&core.branch)?;
+                        repo.commit(h)?.cseq
+                    };
+                    let rows = effects_of(self.store.as_mut(), &pr, &core.branch, head)?;
+                    let n = rows.len() as u32;
+                    self.store.outbox_push(&rows)?;
+                    record(self.store.as_mut(), &pr, "committed", None, n)?;
+                }
+            }
+        } else {
+            record(self.store.as_mut(), p, "failed", None, 0)?;
+        }
+        let m = core.metering(outcome);
+        let commit_ids: Vec<String> = match cseq {
+            Some(_) => {
+                let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+                let h = repo.head(&core.branch)?;
+                vec![repo.commit(h)?.commit_id]
+            }
+            None => Vec::new(),
+        };
+        let journal = json!({
+            "context": core.context,
+            "snapshots": core.pins,
+            "logic": core.logic,
+            "entropy_seed": ubos_types::addr::b64u(&core.seed),
+            "tzdb": program::TZDB,
+            "records": core.records,
+            "outputs": {
+                "commit_ids": commit_ids,
+                "result_hash": content_id("ubos.chunk.v1", result.as_ref().unwrap_or(&Value::Null))?,
+                "changes_hash": changes_hash(&core.uow)?,
+                "effects": core.effects.iter().map(|e| e["type"].clone()).collect::<Vec<_>>(),
+            },
+        });
+        let invocation: Map<String, Value> = i
+            .as_object()
+            .into_iter()
+            .flatten()
+            .filter(|(k, _)| !matches!(k.as_str(), "interfere" | "process" | "world"))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        self.store.put_meta(&format!("journal/{pid}"), &journal)?;
+        self.store.put_meta(&format!("metering/{pid}"), &m)?;
+        self.store
+            .put_meta(&format!("invocation/{pid}"), &Value::Object(invocation))?;
+        let mut index = self
+            .store
+            .meta("metering/_index")?
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default();
+        if !index.iter().any(|x| x.as_str() == Some(pid.as_str())) {
+            index.push(json!(pid));
+            self.store
+                .put_meta("metering/_index", &Value::Array(index))?;
+        }
+        if outcome != "ok" {
+            return Ok(Value::Null);
+        }
+        let mut out =
+            json!({"result": result.unwrap_or(Value::Null), "attempts": attempt, "metering": m});
+        if let Some(n) = cseq {
+            out["cseq"] = json!(n);
+        }
+        if p.explicit {
+            out["process_id"] = json!(pid);
+        }
+        Ok(out)
+    }
+
+    /// `journal` (STD-CTX-011): the journal of a process, without the observed results.
+    pub fn journal(&mut self, process_id: &str) -> Result<Value, BpaError> {
+        let Some(mut j) = self.store.meta(&format!("journal/{process_id}"))? else {
+            return Err(not_found("no journal for the process"));
+        };
+        if let Some(recs) = j["records"].as_array_mut() {
+            for r in recs {
+                r.as_object_mut().map(|m| m.remove("result"));
+            }
+        }
+        let logic = j["logic"].take();
+        j.as_object_mut().map(|m| m.remove("logic"));
+        j["logic_versions"] = logic;
+        Ok(j)
+    }
+
+    /// `metering` (STD-CTX-005): the metering record of a process.
+    pub fn metering_record(&mut self, process_id: &str) -> Result<Value, BpaError> {
+        self.store
+            .meta(&format!("metering/{process_id}"))?
+            .ok_or_else(|| not_found("no metering record for the process"))
+    }
+
+    /// `metering_total` (STD-CTX-006): units and processes per tenant.
+    pub fn metering_total(&mut self) -> Result<Value, BpaError> {
+        let ids = self
+            .store
+            .meta("metering/_index")?
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default();
+        let mut units = 0u64;
+        for id in &ids {
+            if let Some(m) = self
+                .store
+                .meta(&format!("metering/{}", id.as_str().unwrap_or_default()))?
+            {
+                units += m["units"].as_u64().unwrap_or_default();
+            }
+        }
+        Ok(json!({"tenants": {self.store.authority(): {"units": units, "processes": ids.len()}}}))
+    }
+}
+
+/// Start a run: a port on a target, or an exported function of an asset. Returns the
+/// result and whether the function is retryable.
+fn start(core: &mut Core, host: &mut EngineHost<'_>, i: &Value) -> Result<(Value, bool), BpaError> {
+    let (res, asset, fname) = if let Some(port) = s(i, "port") {
+        core.frames.push(Frame {
+            asset: json!({"capabilities": ["run"], "abi": "1.0"}),
+            ..Frame::default()
+        });
+        let mut a = Map::new();
+        a.insert(
+            "target".into(),
+            i.get("target").cloned().unwrap_or(Value::Null),
+        );
+        a.insert("port".into(), json!(port));
+        a.insert(
+            "params".into(),
+            i.get("params").cloned().unwrap_or_else(|| json!({})),
+        );
+        let res = host.run_port(core, &a);
+        core.frames.pop();
+        let res = res?;
+        let oid = host.target(core, i.get("target").unwrap_or(&Value::Null))?;
+        let cls = host.class_of(core, &oid)?;
+        let found = host.registry(core)?.dispatch(&cls, port, None)?;
+        let implementation = s(&found, "impl").unwrap_or_default().to_string();
+        let (name, fname) = implementation
+            .split_once('#')
+            .map(|(a, b)| (a.to_string(), b.to_string()))
+            .unwrap_or((implementation.clone(), String::new()));
+        let (asset, _) = host.asset(core, &name)?;
+        (res, asset, fname)
+    } else {
+        let (asset, vh) = host.asset(core, s(i, "asset").unwrap_or_default())?;
+        let fname = s(i, "function").unwrap_or_default().to_string();
+        let frame = Frame {
+            asset: asset.clone(),
+            vh: Some(vh),
+            fname: Some(fname.clone()),
+            ..Frame::default()
+        };
+        let args = i.get("args").cloned().unwrap_or_else(|| json!([]));
+        let res = program::run_function(core, host, frame, &args)?;
+        (res, asset, fname)
+    };
+    let retryable = asset["source"]["functions"]
+        .get(&fname)
+        .is_some_and(|f| f["retryable"] == json!(true));
+    Ok((res, retryable))
+}

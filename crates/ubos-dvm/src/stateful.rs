@@ -785,7 +785,7 @@ pub fn object(v: &Value) -> Map<String, Value> {
 /// The commit operation over any store; returns the result, the classes touched and the
 /// number of effects released.
 #[allow(clippy::too_many_arguments)]
-fn commit_on(
+pub(crate) fn commit_on(
     store: &mut dyn Store,
     registry: &Registry,
     now_: &str,

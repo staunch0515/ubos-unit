@@ -29,6 +29,7 @@ Reading order:
   1. Given the instruction vectors, when executed through each tier, then results and errors are identical.
 - **Verification:** CONF
 - **Origin:** FR-LOGIC-011, FR-LOGIC-013, FR-LOGIC-014, FR-LOGIC-015, STD-ISA-001, STD-ISA-007
+- **Phase note:** PH-1 step 5b (DEC-056) implements the instructions as one gateway and one host binding: `ubos-runtime` holds the catalogue, the checks of the pipeline, the budget and the program interpreter, and the store-facing half of each instruction is supplied by the engine through the `Host` trait (AR-031: `ubos-runtime` cannot reach the store). The L2 and L3 bindings of step 5d call the same gateway.
 
 ### DSN-DVM-602 — Per-instruction pipeline
 - **Statement:** Every handler invocation MUST pass these steps in order:
@@ -76,6 +77,7 @@ Reading order:
   1. Given the catalogue output, when compared with the standard's instruction list, then they match.
 - **Verification:** INSP, CONF
 - **Origin:** FR-LOGIC-013, STD-ISA-001, STD-ISA-003
+- **Phase note:** PH-1 step 5b (DEC-056) embeds the catalogue as data generated from the clause text of the standard (`standard/tools/gen_isa_json.py`), the same source the oracle reads, so that the kernel and the specification cannot drift; generation from a handler registry follows when the handlers of the L2 and L3 tiers exist (step 5d).
 
 ### DSN-DVM-606 — Business errors
 - **Statement:** Logic MUST raise business errors through a single `fail(code, message, details)` instruction; the code MUST be declared in the asset's error list. Undeclared codes MUST be reported by static analysis.
