@@ -66,10 +66,8 @@ jobs:
             ./target/release/ubos-bench run --what $w --objects 300 --months 4 --seconds 3 \
               --rate 50 --workers 2 --database "$DB" > /dev/null
           done
-      - name: L2 escape suite, 100 of 100 blocked (VER-SEC-0001, DEC-034)
-        run: |
-          cargo build --release --locked -p ubos-runtime
-          ./target/release/ubos-sandbox-spike --cases verify/sandbox/l2-escape-cases.json
+      # The L2 escape suite runs again with its runner `ubos-l2-suite` (VER-SEC-0100,
+      # EXIT-1-10), PH-1 step 5d-2; the PH-0 spike runner was removed by DEC-058.
 
   models:
     name: formal models (reduced bounds)

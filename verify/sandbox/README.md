@@ -21,5 +21,8 @@ Scripts see three names: the constant `ctx` (`now`, `tenant`), the constant gate
 (`uuid()`, `random_bytes(n)`) and a typed handle `rec` of class `Invoice` (`number` string,
 `amount` decimal, `qty` integer, `paid` boolean).
 
-The runner is `ubos-sandbox-spike` in crate `ubos-runtime`; the report of the recorded run
-is `verify/reports/exit-0-06/`. Case IDs are permanent; later suites add cases with new IDs.
+The PH-0 runner `ubos-sandbox-spike` ran these cases on the sandbox spike; its recorded run
+is `verify/reports/exit-0-06/`. PH-1 step 5d (DEC-058) replaced the spike with the L2 host
+of `ubos-runtime::l2`; the runner of the grown suite (`ubos-l2-suite`, VER-SEC-0100,
+EXIT-1-10) comes with part 5d-2. Case IDs are permanent; later suites add cases with new
+IDs.

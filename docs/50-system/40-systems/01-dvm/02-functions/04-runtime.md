@@ -133,6 +133,7 @@ Reading order:
   2. Given a cached script, when invoked, then the host overhead is within NR-PERF-010.
 - **Verification:** SEC, CONF, BENCH
 - **Origin:** FR-LOGIC-041, FR-LOGIC-042, FR-LOGIC-075, STD-CTX-020, NR-PERF-010, NR-SEC-002
+- **Phase note:** PH-1 step 5d (DEC-058) implements the host on a worker thread per nesting level with the gateway of step 5b, the kernel decimal and money as script numbers, memory accounted through a counting allocator of the host binary and the thread CPU clock; the conformance adapter keeps L2 off (`forge conform --l2` enables it) because the rc1 vectors assume the oracle's declaration.
 
 ### DSN-DVM-613 — Script modules and imports
 - **Statement:** Scripts MAY import modules by pinned asset version (FR-LOGIC-043). The loader MUST resolve imports from the snapshot, reject unpinned imports on protected branches, and detect cycles.

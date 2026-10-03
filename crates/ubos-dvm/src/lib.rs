@@ -13,6 +13,10 @@ pub mod relations;
 pub mod stateful;
 pub mod transactions;
 pub mod verification;
+
+/// Memory probe of the L2 host, for host binaries that install a counting allocator
+/// (DSN-DVM-612).
+pub use ubos_runtime::memory;
 pub mod verify;
 pub mod versioning;
 

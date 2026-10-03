@@ -32,6 +32,9 @@ pub struct Engine {
     pub branch_cache: std::collections::HashMap<String, ubos_version::BranchMeta>,
     /// Principal of operations that name none (DEC-041, DEC-054).
     pub principal: String,
+    /// Whether the L2 host runs scripts (STD-CTX-020); off in the conformance adapter,
+    /// whose vectors assume the oracle's declaration (DEC-058).
+    pub l2: bool,
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
@@ -54,6 +57,7 @@ impl Engine {
             next_process: 0,
             branch_cache: Default::default(),
             principal: crate::versioning::PRINCIPAL.into(),
+            l2: false,
         };
         e.reset()?;
         Ok(e)
@@ -71,6 +75,7 @@ impl Engine {
             next_process: 0,
             branch_cache: Default::default(),
             principal: crate::versioning::PRINCIPAL.into(),
+            l2: false,
         };
         e.load_genesis(classes, None)?;
         Ok(e)

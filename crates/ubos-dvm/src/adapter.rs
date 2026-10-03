@@ -182,6 +182,11 @@ impl Adapter {
         })
     }
 
+    /// Enable the L2 host (STD-CTX-020); off by default, see `Engine::l2`.
+    pub fn enable_l2(&mut self) {
+        self.engine.l2 = true;
+    }
+
     /// A new adapter over a PostgreSQL database (for example `host=127.0.0.1 user=postgres`).
     pub fn postgres(url: &str) -> Result<Self, BpaError> {
         Ok(Adapter {

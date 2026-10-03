@@ -516,6 +516,9 @@ pub fn run_function(
     mut frame: Frame,
     args: &Value,
 ) -> Result<Value, BpaError> {
+    if s(&frame.asset, "tier") == Some("l2") {
+        return crate::l2::run_function(core, host, frame, args);
+    }
     if (core.frames.len() as u64).saturating_add(1) > core.limits.depth {
         return Err(BpaError::new("LOGIC.LIMIT_EXCEEDED", "nesting depth"));
     }

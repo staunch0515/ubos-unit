@@ -272,11 +272,21 @@ impl<'a> EngineHost<'a> {
                 "this implementation supports ABI 1.0",
             ));
         }
-        if s(body, "tier") != Some("host") {
-            return Err(BpaError::new(
-                "LOGIC.NOT_AVAILABLE",
-                "the adapter executes host programs only",
-            ));
+        match s(body, "tier") {
+            Some("host") => {}
+            Some("l2") if self.e.l2 => {}
+            Some("l2") => {
+                return Err(BpaError::new(
+                    "LOGIC.NOT_AVAILABLE",
+                    "L2 execution is not enabled",
+                ));
+            }
+            _ => {
+                return Err(BpaError::new(
+                    "LOGIC.NOT_AVAILABLE",
+                    "L3 components come with a later release",
+                ));
+            }
         }
         let kind = self.e.branch_meta(&core.branch)?.kind;
         if PROTECTED.contains(&kind.as_str()) {
