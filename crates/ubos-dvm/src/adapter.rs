@@ -202,6 +202,16 @@ impl Adapter {
         })
     }
 
+    /// A new adapter over a PostgreSQL database in the VAE scope `(tenant, vae)`; `reset`
+    /// moves it to a fresh VAE of the tenant, so several adapters share one database
+    /// (round trips between VAEs, EXIT-1-12).
+    pub fn postgres_scope(url: &str, tenant: &str, vae: &str) -> Result<Self, BpaError> {
+        let scope = ubos_store::kernel::Scope::new(tenant, vae);
+        Ok(Adapter {
+            engine: Engine::new(Box::new(PgStore::connect_scope(url, scope)?))?,
+        })
+    }
+
     /// The engine (storage suite and verifiers).
     pub fn engine_mut(&mut self) -> &mut Engine {
         &mut self.engine

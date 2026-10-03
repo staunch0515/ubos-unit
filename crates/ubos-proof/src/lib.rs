@@ -232,12 +232,14 @@ fn obj<'a>(v: &'a Value, k: &str) -> &'a serde_json::Map<String, Value> {
         .unwrap_or_else(|| EMPTY.get_or_init(serde_json::Map::new))
 }
 
-/// Verify a portable archive (STD-PROOF-070) without a store: format, manifest signature by
-/// a node whose DID document the archive carries, every content ID (chunks, version
-/// envelopes, entry records, commit records with their signatures), the parents and the
-/// branch heads named, and the counts of the manifest. The state roots are checked by the
-/// importer, which rebuilds the states. Returns the DID documents by subject.
-pub fn verify_archive(archive: &Value) -> Result<Vec<Value>, BpaError> {
+/// `PROOF.SIGNATURE_INVALID`.
+fn signature_invalid(m: &str) -> BpaError {
+    BpaError::new("PROOF.SIGNATURE_INVALID", m)
+}
+
+/// Step 1 of an archive check: the format and the manifest signature by a node whose DID
+/// document the archive carries (verified at no particular time). Returns the DID documents.
+pub fn archive_manifest(archive: &Value) -> Result<Vec<Value>, BpaError> {
     let m = archive
         .get("manifest")
         .filter(|m| m.is_object())
@@ -253,8 +255,7 @@ pub fn verify_archive(archive: &Value) -> Result<Vec<Value>, BpaError> {
     let sig = m.get("signature").filter(|s| s.is_object());
     let doc = sig.and_then(|s| dids.iter().find(|d| d.get("id") == s.get("signer")));
     let (Some(sig), Some(doc)) = (sig, doc) else {
-        return Err(BpaError::new(
-            "PROOF.SIGNATURE_INVALID",
+        return Err(signature_invalid(
             "the manifest is not signed by a known node",
         ));
     };
@@ -266,6 +267,11 @@ pub fn verify_archive(archive: &Value) -> Result<Vec<Value>, BpaError> {
         doc,
         None,
     )?;
+    Ok(dids)
+}
+
+/// Step 2: every chunk matches its content ID.
+pub fn archive_chunks(archive: &Value) -> Result<usize, BpaError> {
     let chunks = obj(archive, "chunks");
     for (cid, v) in chunks {
         if content_id("ubos.chunk.v1", v)? != *cid {
@@ -274,6 +280,12 @@ pub fn verify_archive(archive: &Value) -> Result<Vec<Value>, BpaError> {
             )));
         }
     }
+    Ok(chunks.len())
+}
+
+/// Step 3: every version envelope matches its hash and names a chunk of the archive.
+pub fn archive_versions(archive: &Value) -> Result<usize, BpaError> {
+    let chunks = obj(archive, "chunks");
     let versions = obj(archive, "versions");
     for (vh, env) in versions {
         let body = env.get("body_ref").and_then(Value::as_str);
@@ -283,6 +295,12 @@ pub fn verify_archive(archive: &Value) -> Result<Vec<Value>, BpaError> {
             return Err(failed(&format!("version {vh} does not match its envelope")));
         }
     }
+    Ok(versions.len())
+}
+
+/// Step 4: every entry record matches its hash and names a chunk of the archive.
+pub fn archive_entries(archive: &Value) -> Result<usize, BpaError> {
+    let chunks = obj(archive, "chunks");
     let entries = obj(archive, "entries");
     for (eh, rec) in entries {
         let body = rec.get("body_ref").and_then(Value::as_str);
@@ -291,10 +309,16 @@ pub fn verify_archive(archive: &Value) -> Result<Vec<Value>, BpaError> {
             return Err(failed(&format!("entry {eh} does not match its record")));
         }
     }
+    Ok(entries.len())
+}
+
+/// Step 5: every commit record gives its commit ID, its signatures verify against `dids`
+/// at its transaction time, and its parents are in the archive.
+pub fn archive_commits(archive: &Value, dids: &[Value]) -> Result<usize, BpaError> {
     let commits = obj(archive, "commits");
     for (cid, c) in commits {
         let rec = c.get("record").unwrap_or(&Value::Null);
-        if commit_check(rec, &dids)? != *cid {
+        if commit_check(rec, dids)? != *cid {
             return Err(failed(&format!("commit {cid} does not match its record")));
         }
         let missing = rec
@@ -308,8 +332,16 @@ pub fn verify_archive(archive: &Value) -> Result<Vec<Value>, BpaError> {
             return Err(failed(&format!("a parent of commit {cid} is missing")));
         }
     }
+    Ok(commits.len())
+}
+
+/// Step 6: every branch names commits of the archive, and its head root in the manifest is
+/// the root of that commit's record.
+pub fn archive_refs(archive: &Value) -> Result<usize, BpaError> {
+    let commits = obj(archive, "commits");
     let refs = obj(archive, "refs");
-    for r in refs.values() {
+    for (name, r) in refs {
+        let head = r.get("head").and_then(Value::as_str);
         let known = |k: &str| {
             r.get(k)
                 .and_then(Value::as_str)
@@ -318,11 +350,42 @@ pub fn verify_archive(archive: &Value) -> Result<Vec<Value>, BpaError> {
         if !known("head") || !known("created_from") {
             return Err(failed("a branch names a missing commit"));
         }
+        let root = head
+            .and_then(|h| commits.get(h))
+            .and_then(|c| c["record"].get("root"));
+        if archive["manifest"]["heads"][name].get("root") != root {
+            return Err(failed(&format!(
+                "the head root of {name} differs from the manifest"
+            )));
+        }
     }
-    let counts = json!({"chunks": chunks.len(), "versions": versions.len(), "entries": entries.len(),
-        "commits": commits.len(), "refs": refs.len(), "tags": obj(archive, "tags").len()});
-    if m.get("counts") != Some(&counts) {
+    Ok(refs.len())
+}
+
+/// Step 7: the counts of the manifest are the counts of the members.
+pub fn archive_counts(archive: &Value) -> Result<Value, BpaError> {
+    let counts = json!({"chunks": obj(archive, "chunks").len(), "versions": obj(archive, "versions").len(),
+        "entries": obj(archive, "entries").len(), "commits": obj(archive, "commits").len(),
+        "refs": obj(archive, "refs").len(), "tags": obj(archive, "tags").len()});
+    if archive["manifest"].get("counts") != Some(&counts) {
         return Err(failed("the counts differ from the manifest"));
     }
+    Ok(counts)
+}
+
+/// Verify a portable archive (STD-PROOF-070) without a store: format, manifest signature by
+/// a node whose DID document the archive carries, every content ID (chunks, version
+/// envelopes, entry records, commit records with their signatures), the parents, the
+/// branch heads and head roots named, and the counts of the manifest (steps
+/// [`archive_manifest`] … [`archive_counts`]). The state roots are checked by the importer,
+/// which rebuilds the states. Returns the DID documents.
+pub fn verify_archive(archive: &Value) -> Result<Vec<Value>, BpaError> {
+    let dids = archive_manifest(archive)?;
+    archive_chunks(archive)?;
+    archive_versions(archive)?;
+    archive_entries(archive)?;
+    archive_commits(archive, &dids)?;
+    archive_refs(archive)?;
+    archive_counts(archive)?;
     Ok(dids)
 }

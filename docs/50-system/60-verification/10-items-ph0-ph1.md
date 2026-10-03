@@ -274,7 +274,7 @@ Numbers follow UBS-VER-00 §3.
   1. Export 20 test VAEs (including one with WL-GENERIC-10M) from one PostgreSQL database; import into a second PostgreSQL database; export again and import into the first (SQLite round trip from PH-4, DEC-024).
   2. Compare head roots, tags, ledger sequences and query results.
 - **Pass criterion:** identical roots and results in 100% of VAEs.
-- **Evidence:** round-trip report.
+- **Evidence:** round-trip report `verify/reports/exit-1-12/` (PH-1 step 6c, DEC-059: 3 VAEs on the workstation, identical after import and re-import, archives verified by `ubos-verify`); the ENV-REF-SERVER run of the procedure with 20 VAEs follows at step 9.
 - **Supports:** EXIT-1-12
 
 ### VER-SCN-1000 — Gate-1a scenarios in process

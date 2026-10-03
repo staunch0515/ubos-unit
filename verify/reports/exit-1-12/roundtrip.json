@@ -1,0 +1,208 @@
+{
+  "clause": "STD-PROOF-070",
+  "criterion": "EXIT-1-12",
+  "environment": {
+    "arch": "x86_64",
+    "backend": "postgresql",
+    "cpus": 4,
+    "os": "linux"
+  },
+  "implementation": {
+    "crate": "ubos-dvm",
+    "name": "ubos-roundtrip",
+    "version": "0.0.0"
+  },
+  "item": "VER-CONF-8403",
+  "result": "pass",
+  "seconds": 34.0,
+  "signature": {
+    "alg": "ed25519",
+    "key": "f8404e5d81cff51b1d9ab3a00d115a0a028b78f84d917d1050a1baef473387e3",
+    "sig": "e1332d77ded653207cd2beae24453f7e8ee11b2ebf006b4ad1f9560096b5cd8fec07d0e98828910dfa4c7094821f276c7ed515907955386d017ad1a8882cbb02"
+  },
+  "specification": {
+    "entries": 300,
+    "months": 3,
+    "objects": 200,
+    "vaes": 3
+  },
+  "vaes": [
+    {
+      "archive_bytes": 1741702,
+      "compared": {
+        "branches": 5,
+        "ledgers": 50,
+        "objects": 1018,
+        "tags": 3
+      },
+      "counts": {
+        "commits": 20,
+        "entries": 300,
+        "refs": 5,
+        "tags": 3,
+        "version_records": 249
+      },
+      "dataset": {
+        "entries": 300,
+        "months": 3,
+        "objects": 206
+      },
+      "differences_after_import": [],
+      "differences_after_reimport": [],
+      "imported": {
+        "branches": {
+          "feature/m0": 8,
+          "feature/m1": 12,
+          "feature/m2": 16,
+          "main": 16,
+          "release/v1": 4
+        }
+      },
+      "milliseconds": {
+        "build": 1405,
+        "export": 553,
+        "import": 265
+      },
+      "result": "pass",
+      "scopes": {
+        "imported": {
+          "tenant": "01900000-0000-7000-8000-0000000000a1",
+          "vae": "7f18e236-a525-4282-89f4-1fdf49a6adf9"
+        },
+        "reimported": {
+          "tenant": "01900000-0000-7000-8000-0000000000a1",
+          "vae": "231c41a2-9e91-4807-879a-f2ac1435f3e1"
+        },
+        "source": {
+          "tenant": "01900000-0000-7000-8000-0000000000a1",
+          "vae": "ebdc63f9-645a-4efa-805e-0c9e3301610f"
+        }
+      },
+      "second_export_identical": true,
+      "vae": 1,
+      "verifier": {
+        "binary": "./target/release/ubos-verify",
+        "exit": 0,
+        "output": "ubos-verify: archive verified (7 checks)"
+      }
+    },
+    {
+      "archive_bytes": 1762201,
+      "compared": {
+        "branches": 5,
+        "ledgers": 50,
+        "objects": 1018,
+        "tags": 3
+      },
+      "counts": {
+        "commits": 20,
+        "entries": 300,
+        "refs": 5,
+        "tags": 3,
+        "version_records": 261
+      },
+      "dataset": {
+        "entries": 300,
+        "months": 3,
+        "objects": 206
+      },
+      "differences_after_import": [],
+      "differences_after_reimport": [],
+      "imported": {
+        "branches": {
+          "feature/m0": 8,
+          "feature/m1": 12,
+          "feature/m2": 16,
+          "main": 16,
+          "release/v1": 4
+        }
+      },
+      "milliseconds": {
+        "build": 1103,
+        "export": 460,
+        "import": 198
+      },
+      "result": "pass",
+      "scopes": {
+        "imported": {
+          "tenant": "01900000-0000-7000-8000-0000000000a1",
+          "vae": "9a18333a-c97d-4490-80e9-9ef822b2bdc9"
+        },
+        "reimported": {
+          "tenant": "01900000-0000-7000-8000-0000000000a1",
+          "vae": "3bedb92c-a1a2-46c1-868d-abf6fb1df2ee"
+        },
+        "source": {
+          "tenant": "01900000-0000-7000-8000-0000000000a1",
+          "vae": "f83d5013-6007-4e58-8c12-8a8f661c2e68"
+        }
+      },
+      "second_export_identical": true,
+      "vae": 2,
+      "verifier": {
+        "binary": "./target/release/ubos-verify",
+        "exit": 0,
+        "output": "ubos-verify: archive verified (7 checks)"
+      }
+    },
+    {
+      "archive_bytes": 1743838,
+      "compared": {
+        "branches": 5,
+        "ledgers": 50,
+        "objects": 1018,
+        "tags": 3
+      },
+      "counts": {
+        "commits": 20,
+        "entries": 300,
+        "refs": 5,
+        "tags": 3,
+        "version_records": 253
+      },
+      "dataset": {
+        "entries": 300,
+        "months": 3,
+        "objects": 206
+      },
+      "differences_after_import": [],
+      "differences_after_reimport": [],
+      "imported": {
+        "branches": {
+          "feature/m0": 8,
+          "feature/m1": 12,
+          "feature/m2": 16,
+          "main": 16,
+          "release/v1": 4
+        }
+      },
+      "milliseconds": {
+        "build": 1286,
+        "export": 375,
+        "import": 200
+      },
+      "result": "pass",
+      "scopes": {
+        "imported": {
+          "tenant": "01900000-0000-7000-8000-0000000000a1",
+          "vae": "a293ccc5-3eac-4a09-8499-a9cc1fd8b962"
+        },
+        "reimported": {
+          "tenant": "01900000-0000-7000-8000-0000000000a1",
+          "vae": "fc1ef7cf-c966-4d83-8100-91b71e610bb1"
+        },
+        "source": {
+          "tenant": "01900000-0000-7000-8000-0000000000a1",
+          "vae": "e56bb927-5e23-4ee1-841e-b690c9ecf1f1"
+        }
+      },
+      "second_export_identical": true,
+      "vae": 3,
+      "verifier": {
+        "binary": "./target/release/ubos-verify",
+        "exit": 0,
+        "output": "ubos-verify: archive verified (7 checks)"
+      }
+    }
+  ]
+}
