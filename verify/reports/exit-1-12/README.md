@@ -5,7 +5,8 @@
 | Criterion | EXIT-1-12: a portable export/import round trip between PostgreSQL VAEs yields identical roots (NR-PORT-003, STD-PROOF-070) |
 | Verification item | VER-CONF-8403 (SUITE-DVM-STORE); DSN-DVM-950, DSN-DVM-951 |
 | Result | **pass: 3 of 3 VAEs identical** after import and after re-import, every archive verified by the independent verifier |
-| Build | PH-1 step 6c (`cargo build --release --locked -p ubos-dvm --bin ubos-roundtrip -p ubos-verify`) |
+| Build | PH-1 step 6c (`cargo build --release --locked -p ubos-verify
+cargo build --release --locked -p ubos-dvm --bin ubos-roundtrip`) |
 | Tool | `ubos-roundtrip` (crate `ubos-dvm`); verifier `ubos-verify` (`verify/ubos-verify/`, depends on `ubos-proof` only) |
 | Database | PostgreSQL 16, development workstation (4 vCPU, linux x86_64, Rust 1.94); the ENV-REF-SERVER run with 20 VAEs including WL-GENERIC-10M is made at gate-1a acceptance (step 9) |
 | Report | `roundtrip.json`, signed by an ephemeral runner key; whole run 29.5 s |
@@ -65,7 +66,8 @@ ubos-verify: archive NOT verified (failed: chunks)
 ## 4. Reproduce
 
 ```
-cargo build --release --locked -p ubos-dvm --bin ubos-roundtrip -p ubos-verify
+cargo build --release --locked -p ubos-verify
+cargo build --release --locked -p ubos-dvm --bin ubos-roundtrip
 ./target/release/ubos-roundtrip --database "host=127.0.0.1 user=postgres dbname=bpa" \
     --vaes 3 --objects 200 --entries 300 --months 3 \
     --verifier ./target/release/ubos-verify --report roundtrip.json

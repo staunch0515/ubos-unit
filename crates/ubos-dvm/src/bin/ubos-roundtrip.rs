@@ -357,6 +357,7 @@ fn run(
             verified = verifier(bin, &path);
             if verified["exit"] != json!(0) {
                 all_ok = false;
+                eprintln!("vae {v}: verifier failed: {verified}");
             }
         }
         // leg 1: import into a second, empty VAE scope
