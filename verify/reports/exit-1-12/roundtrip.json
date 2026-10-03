@@ -14,11 +14,11 @@
   },
   "item": "VER-CONF-8403",
   "result": "pass",
-  "seconds": 34.0,
+  "seconds": 29.5,
   "signature": {
     "alg": "ed25519",
-    "key": "f8404e5d81cff51b1d9ab3a00d115a0a028b78f84d917d1050a1baef473387e3",
-    "sig": "e1332d77ded653207cd2beae24453f7e8ee11b2ebf006b4ad1f9560096b5cd8fec07d0e98828910dfa4c7094821f276c7ed515907955386d017ad1a8882cbb02"
+    "key": "3c2dfdaba66c7a49f1cba8b059b8a59a2bccbc550e4a4abddddba971e2281523",
+    "sig": "417592eedf1528aa0ed626b451910edbe51d09c808ca1be7815115ff5e427791479a5648cffb420c7d3f3626d192b4fd112ae3c9e271d012e99ad81df956a506"
   },
   "specification": {
     "entries": 300,
@@ -45,6 +45,7 @@
       "dataset": {
         "entries": 300,
         "months": 3,
+        "now": "2026-03-21T10:20:00.000000Z",
         "objects": 206
       },
       "differences_after_import": [],
@@ -59,23 +60,23 @@
         }
       },
       "milliseconds": {
-        "build": 1405,
-        "export": 553,
-        "import": 265
+        "build": 1072,
+        "export": 212,
+        "import": 242
       },
       "result": "pass",
       "scopes": {
         "imported": {
           "tenant": "01900000-0000-7000-8000-0000000000a1",
-          "vae": "7f18e236-a525-4282-89f4-1fdf49a6adf9"
+          "vae": "e14e9b81-5596-45cf-8233-d11dbe77a149"
         },
         "reimported": {
           "tenant": "01900000-0000-7000-8000-0000000000a1",
-          "vae": "231c41a2-9e91-4807-879a-f2ac1435f3e1"
+          "vae": "51d3fe5d-354b-47e4-8156-aa3222d83a10"
         },
         "source": {
           "tenant": "01900000-0000-7000-8000-0000000000a1",
-          "vae": "ebdc63f9-645a-4efa-805e-0c9e3301610f"
+          "vae": "d904360f-5336-43c6-84b2-810cdcfd2a30"
         }
       },
       "second_export_identical": true,
@@ -104,6 +105,7 @@
       "dataset": {
         "entries": 300,
         "months": 3,
+        "now": "2026-03-21T10:20:00.000000Z",
         "objects": 206
       },
       "differences_after_import": [],
@@ -118,23 +120,23 @@
         }
       },
       "milliseconds": {
-        "build": 1103,
-        "export": 460,
-        "import": 198
+        "build": 1012,
+        "export": 211,
+        "import": 257
       },
       "result": "pass",
       "scopes": {
         "imported": {
           "tenant": "01900000-0000-7000-8000-0000000000a1",
-          "vae": "9a18333a-c97d-4490-80e9-9ef822b2bdc9"
+          "vae": "50f87403-72d6-4338-8dbf-1e506ecf4a12"
         },
         "reimported": {
           "tenant": "01900000-0000-7000-8000-0000000000a1",
-          "vae": "3bedb92c-a1a2-46c1-868d-abf6fb1df2ee"
+          "vae": "70baa39e-cd19-45df-8d96-856c98e309e9"
         },
         "source": {
           "tenant": "01900000-0000-7000-8000-0000000000a1",
-          "vae": "f83d5013-6007-4e58-8c12-8a8f661c2e68"
+          "vae": "b8e8ce54-1ebb-429d-8bc6-b2136e8b3f44"
         }
       },
       "second_export_identical": true,
@@ -163,6 +165,7 @@
       "dataset": {
         "entries": 300,
         "months": 3,
+        "now": "2026-03-21T10:20:00.000000Z",
         "objects": 206
       },
       "differences_after_import": [],
@@ -177,23 +180,23 @@
         }
       },
       "milliseconds": {
-        "build": 1286,
-        "export": 375,
-        "import": 200
+        "build": 949,
+        "export": 211,
+        "import": 285
       },
       "result": "pass",
       "scopes": {
         "imported": {
           "tenant": "01900000-0000-7000-8000-0000000000a1",
-          "vae": "a293ccc5-3eac-4a09-8499-a9cc1fd8b962"
+          "vae": "7c9ac284-1a29-47aa-8bf2-9b9afcd567c4"
         },
         "reimported": {
           "tenant": "01900000-0000-7000-8000-0000000000a1",
-          "vae": "fc1ef7cf-c966-4d83-8100-91b71e610bb1"
+          "vae": "5532afca-20b1-40b7-8496-275fcdefdfb3"
         },
         "source": {
           "tenant": "01900000-0000-7000-8000-0000000000a1",
-          "vae": "e56bb927-5e23-4ee1-841e-b690c9ecf1f1"
+          "vae": "ed8c8b6b-f01e-4166-8343-4441c86572ba"
         }
       },
       "second_export_identical": true,

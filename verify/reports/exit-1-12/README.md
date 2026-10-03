@@ -8,7 +8,7 @@
 | Build | PH-1 step 6c (`cargo build --release --locked -p ubos-dvm --bin ubos-roundtrip -p ubos-verify`) |
 | Tool | `ubos-roundtrip` (crate `ubos-dvm`); verifier `ubos-verify` (`verify/ubos-verify/`, depends on `ubos-proof` only) |
 | Database | PostgreSQL 16, development workstation (4 vCPU, linux x86_64, Rust 1.94); the ENV-REF-SERVER run with 20 VAEs including WL-GENERIC-10M is made at gate-1a acceptance (step 9) |
-| Report | `roundtrip.json`, signed by an ephemeral runner key; whole run 34.0 s |
+| Report | `roundtrip.json`, signed by an ephemeral runner key; whole run 29.5 s |
 
 ## 1. Procedure
 
@@ -25,9 +25,10 @@ For each VAE the tool runs in one PostgreSQL database:
 3. **Import** the archive into a second, empty VAE scope of the same database
    (`import_archive`: the same checks without a store, then the commits loaded in parent
    order with every state root and head root recomputed).
-4. **Compare** the source and the imported VAE: `export_state` (root and entries) and
-   `branch_info` of every branch, `tenant_root`, `tag_info` of every tag, `read_ledger` of
-   every ledger key, and `read` of every object of every class on every branch.
+4. **Compare** the source and the imported VAE at the same adapter clock: `export_state`
+   (root and entries) and `branch_info` of every branch, `tenant_root`, `tag_info` of every
+   tag, `read_ledger` of every ledger key, and `read` of every object of every class on
+   every branch.
 5. **Re-export** the imported VAE and compare the archive with the first one byte for byte
    (the same node key signs both, so even the signatures agree); **import** it into a third
    VAE scope and compare again as in step 4.
@@ -39,9 +40,9 @@ identical to the first.
 
 | VAE | Commits | Versions | Entries | Branches | Tags | Archive KB | Export ms | Import ms | Compared branches / objects / ledgers / tags | `ubos-verify` exit | Second export | Result |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | 20 | 249 | 300 | 5 | 3 | 1700 | 553 | 265 | 5 / 1018 / 50 / 3 | 0 | identical | pass |
-| 2 | 20 | 261 | 300 | 5 | 3 | 1720 | 460 | 198 | 5 / 1018 / 50 / 3 | 0 | identical | pass |
-| 3 | 20 | 253 | 300 | 5 | 3 | 1702 | 375 | 200 | 5 / 1018 / 50 / 3 | 0 | identical | pass |
+| 1 | 20 | 249 | 300 | 5 | 3 | 1700 | 212 | 242 | 5 / 1018 / 50 / 3 | 0 | identical | pass |
+| 2 | 20 | 261 | 300 | 5 | 3 | 1720 | 211 | 257 | 5 / 1018 / 50 / 3 | 0 | identical | pass |
+| 3 | 20 | 253 | 300 | 5 | 3 | 1702 | 211 | 285 | 5 / 1018 / 50 / 3 | 0 | identical | pass |
 
 The compared objects are the reads of every object on every branch (the heads of `main`,
 `release/v1` and the three feature branches), the ledgers every `StockMove` key on `main`.

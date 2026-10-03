@@ -8,8 +8,9 @@
 //! second, empty VAE scope of the same database, exports that one again and imports it into
 //! a third. After each import it compares, branch by branch, the head roots and state
 //! entries, the tenant root, every tag, every ledger and every object read on every branch,
-//! and the second export against the first. The report (`--report`) is signed by an
-//! ephemeral runner key like the other suite reports.
+//! and the second export against the first, every side reading at the same adapter clock.
+//! The report (`--report`) is signed by an ephemeral runner key like the other suite
+//! reports.
 //!
 //! ```text
 //! ubos-roundtrip --database "host=127.0.0.1 user=postgres dbname=bpa" [--vaes 3]
@@ -199,8 +200,12 @@ fn build(side: &mut Side, spec: &Spec, v: u64) -> Result<Value, BpaError> {
             json!({"name": format!("m{m}-close"), "branch": "main"}),
         )?;
     }
+    // the clock the comparisons read at: every side is set to it before its snapshot
+    let now = now_of(spec.months.saturating_sub(1), step);
+    side.exec("set_now", json!({"now": now}))?;
     Ok(
-        json!({"objects": spec.objects + 2 * spec.months, "entries": entry_no, "months": spec.months}),
+        json!({"objects": spec.objects + 2 * spec.months, "entries": entry_no,
+        "months": spec.months, "now": now}),
     )
 }
 
@@ -276,7 +281,26 @@ fn compare(a: &Value, b: &Value) -> (Value, Vec<String>) {
             .unwrap_or(0);
         counts.insert(k.into(), json!(n));
         if ma != mb {
-            diffs.push(k.to_string());
+            // name the first differing members, so that a failure says where to look
+            let keys: Vec<String> = ma
+                .into_iter()
+                .flatten()
+                .filter(|(name, v)| mb.and_then(|m| m.get(*name)) != Some(v))
+                .map(|(name, v)| {
+                    let other = mb.and_then(|m| m.get(name)).unwrap_or(&Value::Null);
+                    let inner: Vec<String> = v
+                        .as_object()
+                        .into_iter()
+                        .flatten()
+                        .filter(|(f, x)| other.get(*f) != Some(x))
+                        .map(|(f, _)| f.clone())
+                        .take(5)
+                        .collect();
+                    format!("{name} ({})", inner.join(", "))
+                })
+                .take(5)
+                .collect();
+            diffs.push(format!("{k}: {}", keys.join("; ")));
         }
     }
     if a["tenant_root"] != b["tenant_root"] {
@@ -340,7 +364,7 @@ fn run(
             adapter: Adapter::postgres(url)?,
         };
         b.exec("reset", json!({}))?;
-        b.exec("set_now", json!({"now": now_of(spec.months, 99)}))?;
+        b.exec("set_now", json!({"now": dataset["now"].clone()}))?;
         let t2 = Instant::now();
         let imported = b.exec("import_archive", json!({"archive": archive}))?;
         let import_ms = t2.elapsed().as_millis();
@@ -355,7 +379,7 @@ fn run(
             adapter: Adapter::postgres(url)?,
         };
         c.exec("reset", json!({}))?;
-        c.exec("set_now", json!({"now": now_of(spec.months, 99)}))?;
+        c.exec("set_now", json!({"now": dataset["now"].clone()}))?;
         c.exec("import_archive", json!({"archive": archive2}))?;
         let scope_c = c.scope();
         let snap_c = snapshot(&mut c, &archive)?;
