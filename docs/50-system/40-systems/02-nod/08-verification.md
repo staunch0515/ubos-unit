@@ -12,6 +12,7 @@ depends_on: [UBS-SYS-NOD-02, UBS-SYS-DVM-08]
 
 | Suite | Content | Method | Runs |
 |---|---|---|---|
+| SUITE-NOD-HOST | in-process host services on PostgreSQL: tenant registry, key hierarchy, node signer, blobs, secrets, journaled connectors, event log, jobs, telemetry redaction (PH-1 step 7a, DEC-060) | CONF, SEC | every commit |
 | SUITE-NOD-PROTO | UBTP conformance on every binding; REST equivalence; version skew | CONF | every commit |
 | SUITE-NOD-ISO | tenant isolation suite through every interface (DSN-NOD-406) | SEC | every commit, every release |
 | SUITE-NOD-AUTH | authentication, sessions, revocation latency, SCIM compliance, OAuth flows, step-up | SEC, CONF | every commit (fast), nightly (full) |

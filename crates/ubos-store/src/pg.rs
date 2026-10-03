@@ -12,7 +12,7 @@ use crate::kernel::{
     StoreRead, StoreTx, TagRow, TemporalRow, TimerRow, VersionRow, hash_of, hash_text, kind_code,
     kind_name,
 };
-use crate::physical::{Chunks, LocalBlobs, Physical};
+use crate::physical::{BlobStore, Chunks, LocalBlobs, Physical};
 use crate::{BranchRef, Flush, Store};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -29,7 +29,8 @@ static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 /// Tables emptied by `reset` (adapter operation, STD-CONF-002).
 const TABLES: &str = "kernel_meta, branch_ref, commit, commit_parent, chunk, object_version, \
     ledger_entry, ledger_sequence, merkle_node, head_index, temporal_index, \
-    derivation_edge, idempotency_record, outbox, tag, process_record, change_set, timer";
+    derivation_edge, idempotency_record, outbox, tag, process_record, change_set, timer, \
+    blob, secret, node_key, event_log, job";
 
 /// Canonical instant text of a `timestamptz` column (NULL stays NULL).
 fn instant_text(col: &str) -> String {
@@ -224,6 +225,22 @@ impl PgBackend {
             pool,
             scope,
             owner: options(url)?,
+        })
+    }
+
+    /// Apply the migrations as the connecting (owner) role without opening a scope: the
+    /// node host runs this once at start (DSN-NOD-602), before any tenant is opened.
+    pub fn migrate(url: &str) -> Result<(), BpaError> {
+        use sqlx::Connection;
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(db)?;
+        let opts = options(url)?;
+        rt.block_on(async move {
+            let mut owner = sqlx::PgConnection::connect_with(&opts).await.map_err(db)?;
+            MIGRATOR.run(&mut owner).await.map_err(db)?;
+            owner.close().await.map_err(db)
         })
     }
 
@@ -1647,6 +1664,8 @@ pub struct PgStore {
     rt: tokio::runtime::Runtime,
     /// `reset` moves to a fresh VAE (conformance runs) instead of purging all tables.
     fresh_on_reset: bool,
+    /// The node signer of the host, if any (DSN-NOD-134).
+    signer: Option<Arc<dyn crate::node::NodeSigner>>,
     backend: PgBackend,
     physical: Physical,
     chunks: Chunks,
@@ -1666,22 +1685,35 @@ impl PgStore {
         PgStore::connect_scope(url, Scope::new(DEFAULT_SCOPE.0, DEFAULT_SCOPE.1))
     }
 
-    /// Connect in a given scope.
+    /// Connect in a given scope with the local key provider and blob directory of
+    /// development and CI (DEC-047, DEC-048).
     pub fn connect_scope(url: &str, scope: Scope) -> Result<PgStore, BpaError> {
+        let keys: Arc<dyn KeyService> = Arc::new(LocalKeys::from_env()?);
+        let dir = std::env::var_os("UBOS_BLOB_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::env::temp_dir().join("ubos-blobs"));
+        PgStore::connect_with(url, scope, keys, Arc::new(LocalBlobs::new(dir)?))
+    }
+
+    /// Connect in a given scope with the key service and blob store of a host (CTR-002:
+    /// the node host's key hierarchy and blob service, PH-1 step 7a).
+    pub fn connect_with(
+        url: &str,
+        scope: Scope,
+        keys: Arc<dyn KeyService>,
+        blobs: Arc<dyn BlobStore>,
+    ) -> Result<PgStore, BpaError> {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .map_err(db)?;
-        let keys: Arc<dyn KeyService> = Arc::new(LocalKeys::from_env()?);
         let physical = Physical::new(keys, &scope.tenant);
-        let dir = std::env::var_os("UBOS_BLOB_DIR")
-            .map(std::path::PathBuf::from)
-            .unwrap_or_else(|| std::env::temp_dir().join("ubos-blobs"));
-        let chunks = Chunks::new(physical.clone(), Arc::new(LocalBlobs::new(dir)?));
+        let chunks = Chunks::new(physical.clone(), blobs);
         let backend = rt.block_on(PgBackend::connect(url, scope))?;
         Ok(PgStore {
             rt,
             fresh_on_reset: true,
+            signer: None,
             backend,
             physical,
             chunks,
@@ -1698,6 +1730,13 @@ impl PgStore {
     /// later runs open in the same scope).
     pub fn with_fixed_scope(mut self) -> PgStore {
         self.fresh_on_reset = false;
+        self
+    }
+
+    /// Install the node signer of the host (DSN-NOD-134): commit and verification records
+    /// are then signed by the key hierarchy instead of the node record.
+    pub fn with_signer(mut self, signer: Arc<dyn crate::node::NodeSigner>) -> PgStore {
+        self.signer = Some(signer);
         self
     }
 
@@ -2550,6 +2589,9 @@ impl Store for PgStore {
     }
     fn authority(&self) -> String {
         self.backend.scope.authority.clone()
+    }
+    fn signer(&self) -> Option<Arc<dyn crate::node::NodeSigner>> {
+        self.signer.clone()
     }
     fn object_slugs(&mut self, object_id: &str) -> Result<Vec<String>, BpaError> {
         let rows = self.rt.block_on(self.backend.object_versions(object_id))?;

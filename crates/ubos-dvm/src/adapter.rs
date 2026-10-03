@@ -212,6 +212,11 @@ impl Adapter {
         })
     }
 
+    /// An adapter over an engine a host built (the host API, CTR-001).
+    pub fn from_engine(engine: Engine) -> Self {
+        Adapter { engine }
+    }
+
     /// The engine (storage suite and verifiers).
     pub fn engine_mut(&mut self) -> &mut Engine {
         &mut self.engine

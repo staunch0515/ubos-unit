@@ -1,0 +1,130 @@
+{
+  "cases": 12,
+  "decision": "DEC-060",
+  "environment": {
+    "arch": "x86_64",
+    "backend": "postgresql",
+    "os": "linux"
+  },
+  "implementation": {
+    "crate": "ubos-node",
+    "version": "0.0.0"
+  },
+  "passed": 12,
+  "results": [
+    {
+      "case": "tenant_registry",
+      "detail": {
+        "tenants": [
+          "alpha-02560397",
+          "beta-a7908b09"
+        ],
+        "vae": "cfb5ac68-29a8-4579-88cf-f61ae94f111a"
+      },
+      "ms": 9,
+      "result": "pass"
+    },
+    {
+      "case": "key_hierarchy",
+      "detail": {
+        "generations": 2
+      },
+      "ms": 9,
+      "result": "pass"
+    },
+    {
+      "case": "open_vae_signed_commits",
+      "detail": {
+        "commit_id": "sha256:d1efe9ddde7c979b0e0327a61de22288d9b6b8c3aff2df1df5fd4928a7ba3ad4",
+        "did": "did:ubos:signco:43c67b8c-ee26-4bda-8aa2-ba7d7c5eda7a"
+      },
+      "ms": 61,
+      "result": "pass"
+    },
+    {
+      "case": "reopen_vae",
+      "detail": {
+        "cseq": 2
+      },
+      "ms": 100,
+      "result": "pass"
+    },
+    {
+      "case": "node_key_rotation",
+      "detail": {
+        "keys": 2
+      },
+      "ms": 85,
+      "result": "pass"
+    },
+    {
+      "case": "blob_service_isolated",
+      "detail": {
+        "blobs": 1
+      },
+      "ms": 79,
+      "result": "pass"
+    },
+    {
+      "case": "secrets",
+      "detail": {
+        "handles": 1
+      },
+      "ms": 24,
+      "result": "pass"
+    },
+    {
+      "case": "connector_journaled_and_replayed",
+      "detail": {
+        "journal_records": 1,
+        "model": "LOGIC.TYPE_ERROR"
+      },
+      "ms": 126,
+      "result": "pass"
+    },
+    {
+      "case": "event_log_release",
+      "detail": {
+        "events": 1
+      },
+      "ms": 52,
+      "result": "pass"
+    },
+    {
+      "case": "jobs_lease_retry_poison",
+      "detail": {
+        "done": "0bae93fa-5f37-4474-86a3-12d8c4bf8128",
+        "poison": "03853e33-54f5-4a01-815f-9c5bc4cadb8b"
+      },
+      "ms": 19,
+      "result": "pass"
+    },
+    {
+      "case": "telemetry_redaction",
+      "detail": {
+        "duration_us": 12,
+        "name": "suite.event",
+        "op": "commit"
+      },
+      "ms": 0,
+      "result": "pass"
+    },
+    {
+      "case": "entropy_from_host",
+      "detail": {
+        "a": "6a676422-7018-480b-a7b0-74e7039d44af",
+        "b": "5fb4b649-897c-46d3-9048-a0539a91f8ce"
+      },
+      "ms": 87,
+      "result": "pass"
+    }
+  ],
+  "seconds": 0.7,
+  "signature": {
+    "alg": "ed25519",
+    "key": "d4ac91428cbcdd15ad39bcf347a87695871a2472e06be17ef4087735cb511f2c",
+    "sig": "69fa23ed4a953b338ceeb96f5f8ea589a7542637d404301a1f578398145fa4afc14eb08f8905c7b13474477bdcffd08eb04454f52a4782fb5c613cf0059fb207"
+  },
+  "step": "PH-1 7a",
+  "suite": "SUITE-NOD-HOST"
+}

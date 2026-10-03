@@ -38,6 +38,7 @@ phase plans.
 | DVM | SUITE-DVM-SEC | sandbox escape suite (L2, L3), permission matrix, isolation suite, masking leak tests | SEC |
 | DVM | SUITE-DVM-REPLAY | replay corpus across OS, CPU and browser build | CONF |
 | DVM | SUITE-DVM-XIMPL | cross-implementation equivalence: export from one kernel build, import into another, compare roots and query results | CONF |
+| NOD | SUITE-NOD-HOST | in-process host services on PostgreSQL: tenant registry, key hierarchy, node signer, blobs, secrets, journaled connectors, event log, jobs, telemetry redaction (PH-1 step 7a, DEC-060) | CONF, SEC |
 | NOD | SUITE-NOD-PROTO | UBTP conformance on every binding; REST equivalence; version skew | CONF |
 | NOD | SUITE-NOD-ISO | tenant isolation suite through every interface (DSN-NOD-406) | SEC |
 | NOD | SUITE-NOD-AUTH | authentication, sessions, revocation latency, SCIM compliance, OAuth flows, step-up | SEC, CONF |

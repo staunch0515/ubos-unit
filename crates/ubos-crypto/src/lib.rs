@@ -24,7 +24,7 @@ pub const NONCE_LEN: usize = 24;
 /// A data key with its identifier (generation) within a tenant.
 #[derive(Clone)]
 pub struct DataKey {
-    /// Key identifier, stored with every ciphertext for rotation (FR-IAM-095).
+    /// Key identifier, stored with every ciphertext for rotation (FR-IAM-033).
     pub id: u32,
     /// Key bytes.
     pub key: [u8; 32],
@@ -388,4 +388,14 @@ pub fn verify(
         return Err(signature_invalid("the signature does not verify"));
     }
     Ok(true)
+}
+
+/// HKDF-SHA-256 (RFC 5869), one 32-byte output block: `HKDF-Expand(HKDF-Extract(salt, ikm),
+/// info, 32)`. Used by the key hierarchy of the node host (DSN-NOD-131): tenant KEK → data
+/// keys and node signing keys.
+pub fn hkdf_sha256(ikm: &[u8], salt: &[u8], info: &[u8]) -> [u8; 32] {
+    let prk = hmac_sha256(salt, ikm);
+    let mut msg = info.to_vec();
+    msg.push(1);
+    hmac_sha256(&prk, &msg)
 }

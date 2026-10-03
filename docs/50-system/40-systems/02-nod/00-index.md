@@ -27,6 +27,7 @@ store; the Node's own state is operational and recoverable.
 
 | Edition or role | Crate | Store | Phase |
 |---|---|---|---|
+| In-process host (gate 1a) | `ubos-node` library behind `ubos-dvm::host` | PostgreSQL, blobs in a table (DEC-060) | PH-1a |
 | Server (single node) | `ubos-node` | PostgreSQL + S3-compatible or file-system blobs | PH-1b |
 | Server (HA) | `ubos-node` | PostgreSQL with standby + object store + runtime store cluster | PH-2 |
 | Cell (multi-tenant) | `ubos-node` with Cell profile | clustered PostgreSQL, tiered object store | PH-4 |

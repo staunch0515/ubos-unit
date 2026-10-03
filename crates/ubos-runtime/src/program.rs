@@ -176,6 +176,11 @@ pub trait Host {
     fn typed_ref(&mut self, core: &mut Core, uri: &str) -> Result<Option<Val>, BpaError>;
     /// The static type of a class (custom value types as their base).
     fn class_type(&mut self, class: &str) -> Result<Ty, BpaError>;
+    /// Whether the host implements an instruction outside `IMPLEMENTED` (the connector and
+    /// model instructions of a node host with services, CTR-002).
+    fn implements(&self, _name: &str) -> bool {
+        false
+    }
 }
 
 impl Core {
@@ -341,7 +346,7 @@ impl Core {
     pub fn metering(&self, outcome: &str) -> Value {
         json!({"process_id": self.process_id, "asset": self.logic.first(), "units": self.units,
             "cpu_us": 0, "peak_memory": 0, "wall_us": 0, "instructions": self.families,
-            "connector_calls": 0, "outcome": outcome})
+            "connector_calls": self.families.get("call").copied().unwrap_or(0), "outcome": outcome})
     }
 
     // ---- entropy (STD-CTX-010) ----
@@ -787,7 +792,7 @@ pub fn instruction(
         ));
     }
     core.charge(d.base_cost)?;
-    if !IMPLEMENTED.contains(&name) {
+    if !IMPLEMENTED.contains(&name) && !host.implements(name) {
         return Err(BpaError::new(
             "LOGIC.NOT_AVAILABLE",
             format!("{name} is not available in BPA 1.0-rc1"),
@@ -811,43 +816,54 @@ fn system(core: &mut Core, name: &str, args: &Value) -> Result<Value, BpaError> 
                 b.iter().map(|x| format!("{x:02x}")).collect::<String>()
             ))
         }
-        _ => {
-            use ubos_expr::model::types::content_id;
-            let req = json!({"instruction": name, "args_hash": content_id("ubos.chunk.v1", args)?});
-            let seq = core.records.len() + 1;
-            let val = if let Some(rp) = &mut core.replay {
-                let Some(r) = rp.records.get(seq - 1).cloned() else {
-                    return Err(BpaError::new(
-                        "LOGIC.REPLAY_INPUT_MISSING",
-                        format!("no journal record {seq}"),
-                    ));
-                };
-                if r.get("instruction") != req.get("instruction")
-                    || r.get("args_hash") != req.get("args_hash")
-                {
-                    rp.divergence.get_or_insert_with(
-                        || json!({"seq": seq, "expected": r["instruction"], "actual": name}),
-                    );
-                }
-                r["result"].clone()
-            } else {
-                let key = s(args, "name").unwrap_or_default();
-                match core.world.get(key) {
-                    Some(v) => v.clone(),
-                    None => {
-                        return Err(BpaError::new(
-                            "LOGIC.CONNECTOR_UNAVAILABLE",
-                            format!("nothing observed as {key}"),
-                        ));
-                    }
-                }
-            };
-            let mut rec = req;
-            rec["seq"] = json!(seq);
-            rec["result_ref"] = json!(content_id("ubos.chunk.v1", &val)?);
-            rec["result"] = val.clone();
-            core.records.push(rec);
-            Ok(val)
-        }
+        _ => journaled(core, name, args, |core| {
+            let key = s(args, "name").unwrap_or_default();
+            match core.world.get(key) {
+                Some(v) => Ok(v.clone()),
+                None => Err(BpaError::new(
+                    "LOGIC.CONNECTOR_UNAVAILABLE",
+                    format!("nothing observed as {key}"),
+                )),
+            }
+        }),
     }
+}
+
+/// A journaled instruction (STD-CTX-011): on a replay the result comes from the journal
+/// record of this sequence number (`LOGIC.REPLAY_INPUT_MISSING` when absent, a divergence
+/// when the instruction or its arguments differ); otherwise `fetch` produces it. The
+/// record `{instruction, args_hash, seq, result_ref, result}` is appended either way.
+pub fn journaled(
+    core: &mut Core,
+    name: &str,
+    args: &Value,
+    fetch: impl FnOnce(&mut Core) -> Result<Value, BpaError>,
+) -> Result<Value, BpaError> {
+    use ubos_expr::model::types::content_id;
+    let req = json!({"instruction": name, "args_hash": content_id("ubos.chunk.v1", args)?});
+    let seq = core.records.len() + 1;
+    let val = if let Some(rp) = &mut core.replay {
+        let Some(r) = rp.records.get(seq - 1).cloned() else {
+            return Err(BpaError::new(
+                "LOGIC.REPLAY_INPUT_MISSING",
+                format!("no journal record {seq}"),
+            ));
+        };
+        if r.get("instruction") != req.get("instruction")
+            || r.get("args_hash") != req.get("args_hash")
+        {
+            rp.divergence.get_or_insert_with(
+                || json!({"seq": seq, "expected": r["instruction"], "actual": name}),
+            );
+        }
+        r["result"].clone()
+    } else {
+        fetch(core)?
+    };
+    let mut rec = req;
+    rec["seq"] = json!(seq);
+    rec["result_ref"] = json!(content_id("ubos.chunk.v1", &val)?);
+    rec["result"] = val.clone();
+    core.records.push(rec);
+    Ok(val)
 }

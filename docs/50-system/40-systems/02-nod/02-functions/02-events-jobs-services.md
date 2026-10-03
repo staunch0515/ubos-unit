@@ -29,6 +29,7 @@ Reading order:
   1. Given 3 nodes and 100,000 events over 1,000 keys, when released, then every event is delivered at least once, and per-key order holds.
 - **Verification:** SIM, FAULT
 - **Origin:** FR-TXN-052, FR-EVT-014, NR-DUR-006
+- **Phase note:** PH-1 step 7a (DEC-060): the in-process host releases the pending effects after every operation (`Vae::release_outbox`) to the `OutboxSink` service and acknowledges them; the polling releaser with claims follows with the Server of gate 1b.
 
 ### DSN-NOD-202 — Event log
 - **Statement:** Declared events (FR-EVT-011) and standard lifecycle events (FR-EVT-012) MUST be appended to an event log table after release, retained per event-type policy (FR-EVT-015), and queryable by type, object and time.
@@ -39,6 +40,7 @@ Reading order:
   1. Given an event type with 90-day retention, when the sweep runs, then older events are removed, and newer ones stay.
 - **Verification:** CONF
 - **Origin:** FR-EVT-011, FR-EVT-012, FR-EVT-015
+- **Phase note:** PH-1 step 7a (DEC-060): released effects are appended to the `event_log` table once per effect identifier; subscriptions and fan-out follow with the Server of gate 1b.
 
 ### DSN-NOD-203 — Subscriptions and listener registry
 - **Statement:** Subscription objects (FR-EVT-021) MUST be compiled into a listener registry keyed by event type and branch scope (FR-EVT-023), rebuilt on commit of any subscription object.
@@ -121,6 +123,7 @@ Reading order:
   1. Given the runtime store wiped, when the sweeper runs, then all pending jobs resume.
 - **Verification:** FAULT
 - **Origin:** FR-EVT-031, FR-EVT-032
+- **Phase note:** PH-1 step 7a (DEC-060): jobs in the `job` table with `enqueue`, `claim`, `complete` and `fail` through the `Jobs` service; jobs as governed objects and schedules follow with the Server of gate 1b.
 
 ### DSN-NOD-221 — Leases and heartbeats
 - **Statement:** A job MUST be claimed with `UPDATE … SET lease_holder, lease_until WHERE state = ready AND (lease_until < now) … FOR UPDATE SKIP LOCKED` and heartbeated every lease/3 (FR-EVT-033). Results MUST be committed with a fencing check on the lease token.
@@ -131,6 +134,7 @@ Reading order:
   1. Given a paused node whose lease expired and was re-claimed, when it resumes and tries to commit, then its commit is rejected.
 - **Verification:** SIM, FAULT
 - **Origin:** FR-EVT-033
+- **Phase note:** PH-1 step 7a (DEC-060): claims under a lease (`FOR UPDATE SKIP LOCKED`), expired leases reclaimable; heartbeats and fencing tokens follow with the Server of gate 1b.
 
 ### DSN-NOD-222 — Fairness and limits
 - **Statement:** Job claiming MUST round-robin across tenants and queues and respect per-tenant concurrency limits (FR-EVT-034).
@@ -151,6 +155,7 @@ Reading order:
   1. Given a job that crashes its process deterministically, when retried, then it is marked poison after 3 attempts.
 - **Verification:** CONF
 - **Origin:** FR-EVT-051, FR-EVT-053
+- **Phase note:** PH-1 step 7a (DEC-060): a failed attempt requeues the job until `max_attempts`, after which it is poison; backoff policies follow with the Server of gate 1b.
 
 ### DSN-NOD-224 — Schedules
 - **Statement:** Schedule objects (FR-EVT-041) with cron or business-calendar rules MUST be evaluated by a leader per VAE. Each slot MUST be recorded in `schedule_state` with a unique `(schedule, slot)` key before its job is enqueued, guaranteeing exactly one firing per slot (FR-EVT-043).
@@ -305,6 +310,7 @@ Reading order:
   1. Given one connector of each type against test endpoints, when called, then responses are returned and journaled.
 - **Verification:** CONF
 - **Origin:** FR-INT-041, FR-LOGIC-101
+- **Phase note:** PH-1 step 7a (DEC-060): connectors are Rust functions registered in the node, called through the `Connectors` service with the tenant's secrets, and journaled by the kernel before use; the response-only replay of SCN-011 A1 is verified by SUITE-NOD-HOST. The connector runtime with external egress follows with the Server of gate 1b.
 
 ### DSN-NOD-302 — Egress through the allow-list
 - **Statement:** All connector traffic MUST go through the egress path with a per-tenant allow-list of hosts and ports (AR-011). DNS resolution MUST be pinned per call to prevent rebinding, and private address ranges MUST be blocked unless explicitly allowed.
@@ -315,6 +321,7 @@ Reading order:
   1. Given a connector host that resolves to 169.254.169.254, when called, then the call is blocked.
 - **Verification:** SEC
 - **Origin:** FR-LOGIC-104, AR-011, NR-SEC-001
+- **Phase note:** PH-1 step 7a (DEC-060): the registry of the node is the allow-list; an unregistered connector is `LOGIC.CONNECTOR_UNAVAILABLE`.
 
 ### DSN-NOD-303 — Resilience
 - **Statement:** The runtime MUST apply per-connector timeouts, retries (only for idempotent operations), circuit breakers and bulkheads per tenant (FR-LOGIC-105).
@@ -368,6 +375,7 @@ Reading order:
   1. Given a 2 GB upload interrupted at 60%, when resumed, then only the remaining 40% is sent.
 - **Verification:** FAULT
 - **Origin:** FR-FILE-011, FR-FILE-012, FR-PROOF-014
+- **Phase note:** PH-1 step 7a (DEC-060): the blob service is the tenant's `blob` table under row-level security (content-addressed paths deduplicate); uploads, S3-compatible stores and scanning follow with the Server of gate 1b.
 
 ### DSN-NOD-321 — Deduplication
 - **Statement:** Identical chunks within a tenant MUST be stored once. Cross-tenant deduplication MUST NOT be used (it leaks information).

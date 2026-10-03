@@ -165,9 +165,13 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    memory and on PostgreSQL); 6c done (`ubos-verify` CLI and library in
    `verify/ubos-verify/` over `ubos-proof` only, structured reports; `ubos-roundtrip` and
    the EXIT-1-12 report `verify/reports/exit-1-12/`: 3 VAEs identical after import and
-   re-import, archives verified). Step 6 is complete. Next step 7 (in-process host services
-   on PostgreSQL, Forge check/types/test/conform, the ten gate-1a scenarios; EXIT-1-02,
-   EXIT-1-13). W-1
+   re-import, archives verified). Step 6 is complete. Step 7 (EXIT-1-02, EXIT-1-13) in
+   parts 7a–7c (DEC-060): 7a done (host boundary `ubos-dvm::host` with the CTR-002 service
+   traits and the `Vae` host API; crate `ubos-node` with the PostgreSQL services: tenant
+   registry, key hierarchy, node signer, blobs, secrets, journaled connectors, event log,
+   jobs, telemetry; SUITE-NOD-HOST 12/12, `verify/reports/suite-nod-host/`). Next 7b (Forge
+   project model, `check`, `types`, `test` with the deterministic services), then 7c (the
+   ten gate-1a scenarios, EXIT-1-13 report, final EXIT-1-02 report). W-1
    may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that

@@ -331,6 +331,11 @@ pub trait Store {
     fn scope(&self) -> Option<kernel::Scope> {
         None
     }
+    /// The node signer a host installed (DSN-NOD-134); none in the conformance adapter,
+    /// which signs with the node record of STD-CONF-005.
+    fn signer(&self) -> Option<std::sync::Arc<dyn node::NodeSigner>> {
+        None
+    }
 }
 
 /// Kernel index rows of one engine object row: head, kind and slug and the valid-time

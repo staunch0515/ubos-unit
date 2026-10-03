@@ -70,6 +70,10 @@ jobs:
         run: |
           cargo build --release --locked -p ubos-dvm --bin ubos-l2-suite
           ./target/release/ubos-l2-suite --cases verify/sandbox/l2-escape-cases.json
+      - name: host services on PostgreSQL (SUITE-NOD-HOST, DEC-060)
+        run: |
+          cargo build --release --locked -p ubos-node --bin ubos-node-suite
+          ./target/release/ubos-node-suite --database "host=127.0.0.1 user=postgres dbname=bpa"
       - name: export/import round trip with the independent verifier (VER-CONF-8403, EXIT-1-12, DEC-059)
         run: |
           cargo build --release --locked -p ubos-verify

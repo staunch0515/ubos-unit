@@ -23,7 +23,7 @@ naming the requirement directly.
 | Control mapping | CR-NIST-001 | Should | INSP | — | — | — |
 | Non-rewriteable, non-erasable or audit-trail storage | CR-SEC-001 | Must | AUDIT | — | — | VER-SCN-3150 |
 | Prompt production in readable form | CR-SEC-003 | Must | SCN, AUDIT | DSN-NTY-008 | SUITE-NTY-EXAM | VER-SCN-3100 |
-| Retention periods | CR-SEC-004 | Must | CONF, AUDIT | DSN-NOD-380 | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-PROTO, SUITE-NOD-SYNC | — |
+| Retention periods | CR-SEC-004 | Must | CONF, AUDIT | DSN-NOD-380 | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST, SUITE-NOD-PROTO … | — |
 | Electronic communications capture (integration) | CR-SEC-007 | Should | CONF | — | — | — |
 | Logical access controls | CR-SOC2-002 | Must | AUDIT, SEC | — | — | VER-INSP-9503 |
 | Monitoring and incident response | CR-SOC2-005 | Must | AUDIT | — | — | VER-INSP-9503 |
@@ -87,13 +87,13 @@ naming the requirement directly.
 | Dashboard objects | FR-ANL-061 | Must | SCN | DSN-WSP-209 | SUITE-WSP-PERF | — |
 | Live updates | FR-ANL-062 | Should | BENCH | DSN-WSP-209 | SUITE-WSP-PERF | — |
 | Drill-down to records | FR-ANL-063 | Must | SCN | DSN-WSP-209 | SUITE-WSP-PERF | — |
-| Hold objects | FR-AUD-061 | Must | CONF, SCN | DSN-NOD-382 | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-PROTO, SUITE-NOD-SYNC | VER-SCN-3150 |
-| Holds override disposal and erasure | FR-AUD-062 | Must | SCN, AUDIT | DSN-NOD-380 | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-PROTO, SUITE-NOD-SYNC | VER-SCN-3150 |
-| Hold lifecycle | FR-AUD-063 | Must | CONF | DSN-NOD-382 | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-PROTO, SUITE-NOD-SYNC | VER-SCN-3150 |
+| Hold objects | FR-AUD-061 | Must | CONF, SCN | DSN-NOD-382 | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST, SUITE-NOD-PROTO … | VER-SCN-3150 |
+| Holds override disposal and erasure | FR-AUD-062 | Must | SCN, AUDIT | DSN-NOD-380 | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST, SUITE-NOD-PROTO … | VER-SCN-3150 |
+| Hold lifecycle | FR-AUD-063 | Must | CONF | DSN-NOD-382 | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST, SUITE-NOD-PROTO … | VER-SCN-3150 |
 | Retention schedules | FR-AUD-071 | Must | CONF | DSN-DVM-835, DSN-NOD-380 | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL … | VER-SCN-3150 |
 | Disposal with certificates | FR-AUD-072 | Must | CONF, PROP | DSN-DVM-835, DSN-NOD-380, STD-PROOF-060 | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL … | VER-SCN-3150 |
-| WORM mode for records | FR-AUD-073 | Must | AUDIT, SEC | DSN-NOD-381 | SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES, SUITE-NOD-ISO … | VER-SCN-3150 |
-| Retention reporting | FR-AUD-074 | Should | SCN | DSN-NOD-383 | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-PROTO, SUITE-NOD-SYNC | — |
+| WORM mode for records | FR-AUD-073 | Must | AUDIT, SEC | DSN-NOD-381 | SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES, SUITE-NOD-HOST … | VER-SCN-3150 |
+| Retention reporting | FR-AUD-074 | Should | SCN | DSN-NOD-383 | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST, SUITE-NOD-PROTO … | — |
 | Additional language SDKs | FR-DEV-062 | Should | CONF | DSN-SDK-015 | SUITE-SDK-PROTO, SUITE-SDK-SKEW, SUITE-SDK-TYPES | — |
 | Mountable views | FR-FILE-042 | Could | SEC | DSN-NOD-326 | SUITE-NOD-OPS | — |
 | Dialogues for agents | FR-FLOW-072 | Should | CONF | DSN-AGT-108, DSN-DVM-735 | SUITE-AGT-SCN, SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE … | — |
@@ -106,10 +106,10 @@ naming the requirement directly.
 | Schema export | FR-INT-053 | Should | CONF | DSN-BRG-104 | SUITE-BRG-ADAPT, SUITE-BRG-MIG | — |
 | Inbound e-mail to records | FR-INT-061 | Should | SCN | DSN-NOD-366 | SUITE-NOD-OPS | — |
 | Chat integration | FR-INT-062 | Should | SCN, SEC | DSN-BRG-103 | SUITE-BRG-EXPORT | — |
-| ISO 20022 statements | FR-INT-071 | Must | CONF | DSN-BRG-102, DSN-NOD-305 | SUITE-BRG-MIG, SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-OPS … | — |
-| Legacy bank formats | FR-INT-072 | Should | CONF | DSN-BRG-102, DSN-NOD-305 | SUITE-BRG-MIG, SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-OPS … | — |
-| Generic fund-platform files | FR-INT-073 | Must | CONF | DSN-BRG-102, DSN-NOD-305 | SUITE-BRG-MIG, SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-OPS … | — |
-| Outbound payment files | FR-INT-074 | Could | CONF | DSN-BRG-102, DSN-NOD-305 | SUITE-BRG-MIG, SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-OPS … | — |
+| ISO 20022 statements | FR-INT-071 | Must | CONF | DSN-BRG-102, DSN-NOD-305 | SUITE-BRG-MIG, SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST … | — |
+| Legacy bank formats | FR-INT-072 | Should | CONF | DSN-BRG-102, DSN-NOD-305 | SUITE-BRG-MIG, SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST … | — |
+| Generic fund-platform files | FR-INT-073 | Must | CONF | DSN-BRG-102, DSN-NOD-305 | SUITE-BRG-MIG, SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST … | — |
+| Outbound payment files | FR-INT-074 | Could | CONF | DSN-BRG-102, DSN-NOD-305 | SUITE-BRG-MIG, SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST … | — |
 | Right-to-left support | FR-LOC-013 | Could | USE | DSN-WSP-207 | SUITE-WSP-A11Y, SUITE-WSP-RENDER, SUITE-WSP-USE | — |
 | WASM components through a standard interface | FR-LOGIC-051 | Must | CONF, SEC | DSN-DVM-614, DSN-FRG-505, STD-CTX-021 | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-SEC, SUITE-DVM-STORE … | — |
 | Language-agnostic toolchain support | FR-LOGIC-052 | Should | CONF | DSN-DVM-614, DSN-FRG-505 | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-SEC, SUITE-DVM-STORE … | — |
@@ -122,8 +122,8 @@ naming the requirement directly.
 | Actions on slides | FR-OFFICE-053 | Must | SCN | DSN-WSP-402 | SUITE-WSP-E2E | — |
 | Snapshot export | FR-OFFICE-054 | Must | CONF | DSN-WSP-402 | SUITE-WSP-E2E | — |
 | Messages carrying actions | FR-OFFICE-061 | Must | SEC, SCN | DSN-NOD-365, DSN-WSP-403, STD-ISA-071 | SUITE-DVM-CONF, SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES … | — |
-| Authentication and policy on execution | FR-OFFICE-062 | Must | SEC | DSN-NOD-365, DSN-WSP-403 | SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES, SUITE-NOD-ISO … | — |
-| Version-bound actions | FR-OFFICE-063 | Must | SCN | DSN-NOD-365, DSN-WSP-403 | SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES, SUITE-NOD-ISO … | — |
+| Authentication and policy on execution | FR-OFFICE-062 | Must | SEC | DSN-NOD-365, DSN-WSP-403 | SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES, SUITE-NOD-HOST … | — |
+| Version-bound actions | FR-OFFICE-063 | Must | SCN | DSN-NOD-365, DSN-WSP-403 | SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES, SUITE-NOD-HOST … | — |
 | Threads tied to objects | FR-OFFICE-064 | Should | SCN | DSN-NOD-366 | SUITE-NOD-OPS | — |
 | Accessible documents | FR-OFFICE-084 | Should | CONF | DSN-WSP-405 | SUITE-WSP-RENDER | — |
 | Periodic anchoring | FR-PROOF-041 | Must | CONF, AUDIT | DSN-DVM-935, DSN-NTY-001, DSN-NTY-003, STD-PROOF-040 | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL … | VER-CONF-8100 |

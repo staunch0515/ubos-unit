@@ -461,6 +461,7 @@ Reading order:
   1. Given a log search for all secret values after the test run, when executed, then no match is found.
 - **Verification:** SEC
 - **Origin:** FR-IAM-091, NR-SEC-009
+- **Phase note:** PH-1 step 7a (DEC-060): secrets of a tenant are sealed under the current data key with the handle as associated data (`secret` table) and resolved only inside connector execution through the `Secrets` service; the Server of gate 1b adds the operator interface.
 
 ### DSN-NOD-131 — Envelope encryption hierarchy
 - **Statement:** The key hierarchy MUST be: root KEK (KMS, HSM or OS key store) → tenant KEK → tenant data keys (chunk AEAD, secret store) and subject keys (DSN-DVM-830). Data keys MUST be cached in memory for at most 1 hour.
@@ -471,6 +472,7 @@ Reading order:
   1. Given the root KEK revoked, when the cache expires, then encrypted reads fail with `IAM.KEY_UNAVAILABLE`.
 - **Verification:** SEC, FAULT
 - **Origin:** FR-IAM-092, NR-SEC-006
+- **Phase note:** PH-1 step 7a (DEC-060): root KEK from `UBOS_ROOT_KEK` (or a file; development key otherwise) → tenant KEK stored wrapped in the registry → data keys and node signing keys derived with HKDF-SHA-256, never stored; data key generations rotate. A KMS or HSM root follows with the Server of gate 1b.
 
 ### DSN-NOD-132 — KMS adapters and customer-managed keys
 - **Statement:** The key service MUST support AWS KMS, Azure Key Vault, Google Cloud KMS, HashiCorp Vault Transit, PKCS#11 HSMs and a local file-based KEK (development only). Customer-managed keys MUST be configurable per tenant (FR-IAM-093).
@@ -501,6 +503,7 @@ Reading order:
   1. Given 1,000 commits per second, when signed with custodial keys, then signing adds under 0.2 ms p95.
 - **Verification:** BENCH
 - **Origin:** NR-SEC-006, STD-PROOF-010
+- **Phase note:** PH-1 step 7a (DEC-060): the node signer of `ubos-node` signs commit records and verification records through the store's signer hook with keys derived from the tenant KEK; the key history is `node_key` and the DID is the VAE's registered form.
 
 ### DSN-NOD-135 — Subject key destruction
 - **Statement:** Destroying a subject key MUST remove it from the key store, add a tombstone that key-store restores apply (DSN-DVM-832), and produce an erasure certificate.

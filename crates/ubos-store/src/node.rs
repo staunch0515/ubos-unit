@@ -9,7 +9,25 @@
 
 use crate::Store;
 use serde_json::{Value, json};
+use std::sync::Arc;
 use ubos_crypto::types::BpaError;
+
+/// The node signing key of a host key hierarchy (DSN-NOD-131, -134): the seed never
+/// leaves the host; the store asks it to sign commit records and verification records.
+/// Without a signer the store uses the node record of the conformance convention.
+pub trait NodeSigner: Send + Sync {
+    /// The node's DID document `{id, keys}` with its key history.
+    fn did(&self) -> Result<Value, BpaError>;
+    /// A DAT-Signature of a content ID by the current key.
+    fn sign(&self, cid: &str, role: &str) -> Result<Value, BpaError>;
+    /// Rotate the key at `at`; returns the new DID document.
+    fn rotate(&self, at: &str) -> Result<Value, BpaError>;
+}
+
+/// The signer of a store, if its host installed one.
+pub fn signer(store: &dyn Store) -> Option<Arc<dyn NodeSigner>> {
+    store.signer()
+}
 
 /// The adapter's node DID (STD-CONF-005, convention 10).
 pub const NODE_DID: &str = "did:ubos:acme:01900000-0000-7000-8000-000000000001";
@@ -35,6 +53,9 @@ pub fn record(store: &mut dyn Store) -> Result<Value, BpaError> {
 
 /// A DAT-Signature of a content ID by the node's current key.
 pub fn sign(store: &mut dyn Store, cid: &str, role: &str) -> Result<Value, BpaError> {
+    if let Some(s) = store.signer() {
+        return s.sign(cid, role);
+    }
     let n = record(store)?;
     let seed = ubos_crypto::unhex32(&n["seed"], "seed")?;
     let key_id = n["keys"]
@@ -49,6 +70,9 @@ pub fn sign(store: &mut dyn Store, cid: &str, role: &str) -> Result<Value, BpaEr
 
 /// The node's DID document `{id, keys}` with its key history (STD-ADDR-010).
 pub fn did(store: &mut dyn Store) -> Result<Value, BpaError> {
+    if let Some(s) = store.signer() {
+        return s.did();
+    }
     let n = record(store)?;
     Ok(json!({"id": NODE_DID, "keys": n["keys"]}))
 }
@@ -57,6 +81,10 @@ pub fn did(store: &mut dyn Store) -> Result<Value, BpaError> {
 /// of `seed` starts there as `#k<n+1>`. Returns the new DID document.
 pub fn rotate(store: &mut dyn Store, seed: &Value, at: &str) -> Result<Value, BpaError> {
     let bytes = ubos_crypto::unhex32(seed, "seed")?;
+    if let Some(s) = store.signer() {
+        // a host key hierarchy derives the next key itself; the seed given is ignored
+        return s.rotate(at);
+    }
     let mut n = record(store)?;
     let count = n["n"].as_u64().unwrap_or(1) + 1;
     if let Some(last) = n["keys"].as_array_mut().and_then(|k| k.last_mut()) {
