@@ -219,3 +219,110 @@ pub fn verify_consistency(
     }
     Ok(true)
 }
+
+// ---- portable archive (STD-PROOF-070) ----
+
+/// Format name of the portable archive.
+pub const ARCHIVE_FORMAT: &str = "ubos.archive.v1";
+
+fn obj<'a>(v: &'a Value, k: &str) -> &'a serde_json::Map<String, Value> {
+    static EMPTY: std::sync::OnceLock<serde_json::Map<String, Value>> = std::sync::OnceLock::new();
+    v.get(k)
+        .and_then(Value::as_object)
+        .unwrap_or_else(|| EMPTY.get_or_init(serde_json::Map::new))
+}
+
+/// Verify a portable archive (STD-PROOF-070) without a store: format, manifest signature by
+/// a node whose DID document the archive carries, every content ID (chunks, version
+/// envelopes, entry records, commit records with their signatures), the parents and the
+/// branch heads named, and the counts of the manifest. The state roots are checked by the
+/// importer, which rebuilds the states. Returns the DID documents by subject.
+pub fn verify_archive(archive: &Value) -> Result<Vec<Value>, BpaError> {
+    let m = archive
+        .get("manifest")
+        .filter(|m| m.is_object())
+        .ok_or_else(|| invalid(&format!("not a {ARCHIVE_FORMAT} archive")))?;
+    if m.get("format") != Some(&json!(ARCHIVE_FORMAT)) {
+        return Err(invalid(&format!("not a {ARCHIVE_FORMAT} archive")));
+    }
+    let dids: Vec<Value> = archive
+        .get("dids")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let sig = m.get("signature").filter(|s| s.is_object());
+    let doc = sig.and_then(|s| dids.iter().find(|d| d.get("id") == s.get("signer")));
+    let (Some(sig), Some(doc)) = (sig, doc) else {
+        return Err(BpaError::new(
+            "PROOF.SIGNATURE_INVALID",
+            "the manifest is not signed by a known node",
+        ));
+    };
+    let mut unsigned = m.as_object().cloned().unwrap_or_default();
+    unsigned.remove("signature");
+    ubos_crypto::verify(
+        sig,
+        &content_id("ubos.chunk.v1", &Value::Object(unsigned))?,
+        doc,
+        None,
+    )?;
+    let chunks = obj(archive, "chunks");
+    for (cid, v) in chunks {
+        if content_id("ubos.chunk.v1", v)? != *cid {
+            return Err(failed(&format!(
+                "chunk {cid} does not match its content ID"
+            )));
+        }
+    }
+    let versions = obj(archive, "versions");
+    for (vh, env) in versions {
+        let body = env.get("body_ref").and_then(Value::as_str);
+        if content_id("ubos.version.v1", env)? != *vh
+            || !body.is_some_and(|b| chunks.contains_key(b))
+        {
+            return Err(failed(&format!("version {vh} does not match its envelope")));
+        }
+    }
+    let entries = obj(archive, "entries");
+    for (eh, rec) in entries {
+        let body = rec.get("body_ref").and_then(Value::as_str);
+        if content_id("ubos.entry.v1", rec)? != *eh || !body.is_some_and(|b| chunks.contains_key(b))
+        {
+            return Err(failed(&format!("entry {eh} does not match its record")));
+        }
+    }
+    let commits = obj(archive, "commits");
+    for (cid, c) in commits {
+        let rec = c.get("record").unwrap_or(&Value::Null);
+        if commit_check(rec, &dids)? != *cid {
+            return Err(failed(&format!("commit {cid} does not match its record")));
+        }
+        let missing = rec
+            .get("parents")
+            .and_then(Value::as_array)
+            .is_some_and(|ps| {
+                ps.iter()
+                    .any(|p| !p.as_str().is_some_and(|p| commits.contains_key(p)))
+            });
+        if missing {
+            return Err(failed(&format!("a parent of commit {cid} is missing")));
+        }
+    }
+    let refs = obj(archive, "refs");
+    for r in refs.values() {
+        let known = |k: &str| {
+            r.get(k)
+                .and_then(Value::as_str)
+                .is_some_and(|c| commits.contains_key(c))
+        };
+        if !known("head") || !known("created_from") {
+            return Err(failed("a branch names a missing commit"));
+        }
+    }
+    let counts = json!({"chunks": chunks.len(), "versions": versions.len(), "entries": entries.len(),
+        "commits": commits.len(), "refs": refs.len(), "tags": obj(archive, "tags").len()});
+    if m.get("counts") != Some(&counts) {
+        return Err(failed("the counts differ from the manifest"));
+    }
+    Ok(dids)
+}

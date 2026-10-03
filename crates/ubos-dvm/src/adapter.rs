@@ -58,6 +58,11 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "did_document",
     "rotate_node_key",
     "commit_record",
+    "prove",
+    "consistency_proof",
+    "tenant_root",
+    "export_archive",
+    "import_archive",
 ];
 
 const ENVELOPE_REQUIRED: &[&str] = &[
@@ -286,6 +291,11 @@ impl Adapter {
             "did_document" => self.engine.did_document(field(i, "did")?)?,
             "rotate_node_key" => self.engine.rotate_node_key(field(i, "seed")?)?,
             "commit_record" => self.engine.commit_record(i)?,
+            "prove" => self.engine.prove(i)?,
+            "consistency_proof" => self.engine.consistency_proof(i)?,
+            "tenant_root" => self.engine.tenant_root()?,
+            "export_archive" => self.engine.export_archive()?,
+            "import_archive" => self.engine.import_archive(field(i, "archive")?)?,
             "sign" => ubos_crypto::sign(
                 &ubos_crypto::unhex32(field(i, "seed")?, "seed")?,
                 field(i, "content_id")?

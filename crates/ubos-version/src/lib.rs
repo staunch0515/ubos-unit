@@ -11,6 +11,7 @@
 //! Commits are written as deltas to the store's indexes with the new state-tree root; reads
 //! resolve a branch through its parents at their fork points (PH-0 step 5, DSN-DVM-004…008).
 
+pub mod archive;
 pub mod history;
 pub mod merge;
 pub mod state;

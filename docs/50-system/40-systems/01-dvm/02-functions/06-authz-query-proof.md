@@ -519,6 +519,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a tenant root and a commit on a protected branch, when proven, then a path from the commit to the tenant root verifies.
 - **Verification:** CONF
 - **Origin:** FR-PROOF-034, STD-PROOF-030
+- **Phase note:** The tenant root of BPA 1.0-rc1 (STD-PROOF-030) over the heads of the active main, release and overlay branches of one VAE is implemented in PH-1 step 6b (DEC-059, `tenant_root`, node-signed); the roots over all VAEs of a tenant, the anchoring cadence and NTY stay in PH-3.
 
 ### DSN-DVM-935 — Anchor receipts
 - **Statement:** The DVM MUST store anchor receipts (STD-PROOF-040) delivered by NTY and link them to the tenant roots they cover, so proofs can include the receipt.
@@ -624,6 +625,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a 100 GB VAE, when exported, then memory stays under 512 MB, and the archive verifies.
 - **Verification:** BENCH, CONF
 - **Origin:** NR-PORT-003, NR-PORT-004, NR-COMPAT-003, STD-PROOF-070
+- **Phase note:** PH-1 step 6b (DEC-059) exports a whole VAE as one JSON document of format `ubos.archive.v1` from `ubos-version` (every commit with its state, versions, entries, chunks, branches, tags, DID documents, signed manifest); the streaming form and the branch and history-range selections follow with the host of step 7 and the benchmark of acceptance 1 on ENV-REF-SERVER.
 
 ### DSN-DVM-951 — Import with verification
 - **Statement:** Import MUST verify every item (DSN-DVM-936), rebuild kernel indexes and projections, and produce the same roots. Re-import of the same archive MUST be idempotent.
@@ -635,6 +637,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   2. Given the SQLite adapter (PH-4, DEC-024), when the same archive is imported into SQLite, then roots and query results are equal.
 - **Verification:** CONF
 - **Origin:** NR-PORT-003, NR-DET-002, FR-MIG-013
+- **Phase note:** PH-1 step 6b (DEC-059): the import verifies the archive with the storage-free checks of `ubos-proof`, loads the commits in parent order through the kernel flush (indexes rebuilt from the write sets, DEC-053) and recomputes every state root and head root; it imports into an empty store, so re-import is rejected rather than idempotent until the sync structures of PH-4 (acceptance 1 is the round trip of part 6c, EXIT-1-12).
 
 ### DSN-DVM-952 — Sync data structures
 - **Statement:** The DVM MUST provide the data structures of the sync protocol (STD-SYNC-001…004): scope evaluation to a set of keys, have/want computation by tree comparison, packing of missing nodes and commits, and integration of device branches by merge.

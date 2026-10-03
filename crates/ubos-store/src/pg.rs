@@ -767,6 +767,18 @@ impl StoreRead for PgBackend {
         })
         .transpose()
     }
+    async fn tag_names(&self) -> Result<Vec<String>, BpaError> {
+        let rows = self
+            .rows(
+                sqlx::query("SELECT name FROM tag WHERE tenant_id = $1::uuid AND vae_id = $2::uuid ORDER BY name")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae),
+            )
+            .await?;
+        rows.iter()
+            .map(|r| r.try_get::<String, _>(0).map_err(db))
+            .collect()
+    }
     async fn tag(&self, name: &str) -> Result<Option<TagRow>, BpaError> {
         let r = self
             .opt(
@@ -2608,6 +2620,9 @@ impl Store for PgStore {
             serde_json::json!({"commit": commit, "commit_id": hash_text(&t.commit_id), "branch": t.branch,
             "signer": t.signer, "signature": t.signature, "deleted": t.tombstoned}),
         ))
+    }
+    fn tag_names(&mut self) -> Result<Vec<String>, BpaError> {
+        self.rt.block_on(self.backend.tag_names())
     }
     fn put_tag_rec(&mut self, name: &str, rec: &Value) -> Result<(), BpaError> {
         let text = |k: &str| {

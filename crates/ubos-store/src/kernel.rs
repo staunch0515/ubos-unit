@@ -592,6 +592,8 @@ pub trait StoreRead {
     async fn branch_meta(&self, branch_id: i64) -> Result<Option<BranchMetaRow>, BpaError>;
     /// A tag.
     async fn tag(&self, name: &str) -> Result<Option<TagRow>, BpaError>;
+    /// Names of every tag of the VAE, sorted (tombstoned ones included).
+    async fn tag_names(&self) -> Result<Vec<String>, BpaError>;
     /// A process record.
     async fn process(&self, process_id: &str) -> Result<Option<ProcessRow>, BpaError>;
     /// Identifiers of the recorded processes in order of recording.
