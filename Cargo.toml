@@ -48,9 +48,9 @@ chrono-tz = "0.10"
 regex = "1"
 ed25519-dalek = "2"
 # Rhai for the L2 sandbox spike (STD-CTX-020, DSN-DVM-612); floats off, exact decimals on
-rhai = { version = "1", default-features = false, features = ["std", "no_float", "decimal", "no_time", "no_module", "no_closure", "no_custom_syntax"] }
-rust_decimal = { version = "1", default-features = false, features = ["std"] }
+rhai = { version = "1", default-features = false, features = ["std", "no_float", "no_time", "no_module", "no_closure", "no_custom_syntax"] }
 # counting allocator: memory probe of the sandbox spike binary
+cpu-time = "1"
 cap = "0.1"
 # kernel storage on PostgreSQL (DEC-007, DEC-047)
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "macros", "migrate"] }

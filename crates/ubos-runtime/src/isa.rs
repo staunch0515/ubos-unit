@@ -180,6 +180,11 @@ pub fn abi() -> &'static str {
     &catalogue().abi
 }
 
+/// The names of every declared instruction, in catalogue order.
+pub fn instruction_names() -> impl Iterator<Item = &'static str> {
+    catalogue().instructions.iter().map(|i| i.name.as_str())
+}
+
 /// The instruction named `name`, if declared.
 pub fn by_name(name: &str) -> Option<&'static Instruction> {
     let c = catalogue();

@@ -8,9 +8,13 @@ use std::process::ExitCode;
 use ubos_dvm::{Adapter, canonical};
 use ubos_forge::runner::{Outcome, run_vector};
 
+/// Live bytes are counted for the memory limit of the L2 host (DSN-DVM-612, W-2).
+#[global_allocator]
+static ALLOC: cap::Cap<std::alloc::System> = cap::Cap::new(std::alloc::System, usize::MAX);
+
 const USAGE: &str = "usage: forge conform --vectors <dir> [--tag <tag>] [--profiles <p1,p2>] \
 [--report <file>] [--key <file with 64 hex chars>] [--standard <version>] [--build <hash>] \
-[--backend memory|postgres] [--database <connection string>] [--verbose]";
+[--backend memory|postgres] [--database <connection string>] [--l2] [--verbose]";
 
 fn files(dir: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
     for e in std::fs::read_dir(dir)? {
@@ -53,10 +57,12 @@ fn hex(b: &[u8]) -> String {
 fn conform(args: &[String]) -> Result<bool, String> {
     let mut opts: BTreeMap<&str, String> = BTreeMap::new();
     let mut verbose = false;
+    let mut l2 = false;
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--verbose" => verbose = true,
+            "--l2" => l2 = true,
             "--vectors" | "--tag" | "--profiles" | "--report" | "--key" | "--standard"
             | "--build" | "--backend" | "--database" => {
                 opts.insert(a.as_str(), it.next().ok_or(USAGE)?.clone());
@@ -87,6 +93,10 @@ fn conform(args: &[String]) -> Result<bool, String> {
         _ => return Err(USAGE.into()),
     }
     .map_err(|e| e.to_string())?;
+    ubos_dvm::memory::install_probe(|| ALLOC.allocated());
+    if l2 {
+        adapter.enable_l2();
+    }
     let mut paths = Vec::new();
     files(Path::new(dir), &mut paths).map_err(|e| e.to_string())?;
     paths.sort();
