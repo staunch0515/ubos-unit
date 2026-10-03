@@ -1,0 +1,101 @@
+{
+  "threshold_percent": 85.0,
+  "kernel_crates": [
+    "ubos-types",
+    "ubos-crypto",
+    "ubos-tree",
+    "ubos-time",
+    "ubos-model",
+    "ubos-expr",
+    "ubos-version",
+    "ubos-store",
+    "ubos-runtime",
+    "ubos-proof",
+    "ubos-dvm"
+  ],
+  "crates": {
+    "ubos-types": {
+      "lines": 1117,
+      "covered": 1060,
+      "percent": 94.9,
+      "kernel": true
+    },
+    "ubos-crypto": {
+      "lines": 301,
+      "covered": 268,
+      "percent": 89.0,
+      "kernel": true
+    },
+    "ubos-tree": {
+      "lines": 445,
+      "covered": 436,
+      "percent": 98.0,
+      "kernel": true
+    },
+    "ubos-time": {
+      "lines": 92,
+      "covered": 89,
+      "percent": 96.7,
+      "kernel": true
+    },
+    "ubos-model": {
+      "lines": 943,
+      "covered": 903,
+      "percent": 95.8,
+      "kernel": true
+    },
+    "ubos-expr": {
+      "lines": 2515,
+      "covered": 2126,
+      "percent": 84.5,
+      "kernel": true
+    },
+    "ubos-version": {
+      "lines": 2493,
+      "covered": 2324,
+      "percent": 93.2,
+      "kernel": true
+    },
+    "ubos-store": {
+      "lines": 3760,
+      "covered": 3233,
+      "percent": 86.0,
+      "kernel": true
+    },
+    "ubos-runtime": {
+      "lines": 1697,
+      "covered": 1508,
+      "percent": 88.9,
+      "kernel": true
+    },
+    "ubos-proof": {
+      "lines": 352,
+      "covered": 318,
+      "percent": 90.3,
+      "kernel": true
+    },
+    "ubos-dvm": {
+      "lines": 9055,
+      "covered": 8249,
+      "percent": 91.1,
+      "kernel": true
+    },
+    "ubos-forge": {
+      "lines": 1738,
+      "covered": 1167,
+      "percent": 67.1,
+      "kernel": false
+    },
+    "ubos-node": {
+      "lines": 1167,
+      "covered": 1071,
+      "percent": 91.8,
+      "kernel": false
+    }
+  },
+  "kernel": {
+    "lines": 22770,
+    "covered": 20514,
+    "percent": 90.1
+  }
+}

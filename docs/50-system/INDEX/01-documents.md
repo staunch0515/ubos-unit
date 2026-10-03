@@ -253,4 +253,5 @@ depends_on: [UBS-IDX-00]
 | UBS-VER-25 | Traceability — PH-4 (generated) | draft | PH-4 | `60-verification/25-trace-ph4.md` |
 | UBS-VER-26 | Traceability — PH-5 (generated) | draft | PH-5 | `60-verification/26-trace-ph5.md` |
 | UBS-DEC-000 | Decision Log | complete | ALL | `90-decisions/000-index.md` |
+| UBS-DEC-01 | Decision Records DEC-001 … DEC-029 | complete | ALL | `90-decisions/01-records-dec-001-029.md` |
 | UBS-README | UBOS Business Processing Architecture — System Specification | draft | ALL | `README.md` |

@@ -93,29 +93,12 @@ impl Suite {
     }
 }
 
-fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let arg = |k: &str| {
-        args.iter()
-            .position(|a| a == k)
-            .and_then(|i| args.get(i + 1))
-            .cloned()
-    };
-    let Some(url) = arg("--database") else {
-        eprintln!("usage: ubos-node-suite --database <url> [--report <file>]");
-        std::process::exit(2);
-    };
-    let start = Instant::now();
-    let node = match Node::connect(&url) {
-        Ok(n) => n,
-        Err(e) => {
-            eprintln!("cannot connect: {e}");
-            std::process::exit(1);
-        }
-    };
+/// Run every case of the suite on the node at `url`.
+fn run(url: &str) -> Result<Suite, BpaError> {
+    let node = Node::connect(url)?;
     let mut s = Suite {
         node,
-        url: url.clone(),
+        url: url.to_string(),
         results: Vec::new(),
     };
     let ctx = Node::context("did:ubos:acme:01900000-0000-7000-8000-000000000002");
@@ -407,7 +390,29 @@ fn main() {
         check(replay["outcome"] == json!("identical"), "seed recorded, replay identical")?;
         Ok(json!({"a": a["result"], "b": b["result"]}))
     });
+    Ok(s)
+}
 
+fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let arg = |k: &str| {
+        args.iter()
+            .position(|a| a == k)
+            .and_then(|i| args.get(i + 1))
+            .cloned()
+    };
+    let Some(url) = arg("--database") else {
+        eprintln!("usage: ubos-node-suite --database <url> [--report <file>]");
+        std::process::exit(2);
+    };
+    let start = Instant::now();
+    let s = match run(&url) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("cannot connect: {e}");
+            std::process::exit(1);
+        }
+    };
     let passed = s
         .results
         .iter()
@@ -444,5 +449,27 @@ fn main() {
     );
     if passed != s.results.len() {
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// Every case of the host suite passes on the PostgreSQL named by `UBOS_TEST_DATABASE`
+    /// (SUITE-NOD-HOST; a test body of the mutation score, VER-INSP-0001); skipped otherwise.
+    #[test]
+    fn host_suite_passes_on_postgres() {
+        let Ok(url) = std::env::var("UBOS_TEST_DATABASE") else {
+            eprintln!("UBOS_TEST_DATABASE not set: skipped");
+            return;
+        };
+        let s = super::run(&url).expect("node connects");
+        let failed: Vec<String> = s
+            .results
+            .iter()
+            .filter(|r| r["result"] != serde_json::json!("pass"))
+            .map(|r| r.to_string())
+            .collect();
+        assert!(s.results.len() >= 12, "{} cases", s.results.len());
+        assert!(failed.is_empty(), "failing cases:\n{}", failed.join("\n"));
     }
 }

@@ -38,6 +38,7 @@ the work without the earlier conversations. Read `CLAUDE.md` first for the worki
 | DEC-035 | EXIT-0-05 (storage benchmark) is carried over into PH-1 because hosts cannot be rented now; it is due before the PH-1 storage layout is fixed, at the latest at gate 1a. |
 | DEC-036 | PH-1 re-baselined after PH-0: every finding dispositioned (UBS-PHR-0), work items W-1…W-12, OQ-007 and OQ-008 resolved, RSK-004 closed, RSK-016 and RSK-017 added. |
 | DEC-037 | PH-0 accepted with EXIT-0-05 carried over; external review together with the carried benchmark. |
+| DEC-061 | Step 8 in parts 8a–8c; kernel property set VER-PROP-0100; coverage and mutation score of the eleven kernel crates measured by the suites themselves, shards on the workstation completed by nightly CI. |
 | DEC-038 | PH-1 executed by the owner with AI sessions: gate-1a steps 0–9, verification requested, ENV-REF-SERVER rented for W-1 and gate 1a, GitHub-hosted CI incl. nightly and ARM64/macOS runners. |
 | DEC-039 | BPA 1.0-rc1 scope by rule (0.1 plus Core, Bitemporal, Ledger, Proof clauses serving gate 1a), checked by the builder; BPA 0.1 frozen; regen builds rc1; step 1 in parts 1a–1f. |
 | DEC-040 | BPA 1.0-rc1 object and class model clarified: ports and dispatch, selectors, extensions (genesis `ClassExtension`), relationships, reference integrity, blind indexes; new adapter operations. |
@@ -175,10 +176,14 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    JUnit reports, signed verification records; `verify/reports/forge-7b/`); 7c done (the
    ten gate-1a scenarios as the Forge project `verify/scenarios/`, 22 of 22 tests on
    PostgreSQL and in memory, `verify/reports/exit-1-13/`; final EXIT-1-02 reports with
-   1,227 of 1,227 on both backends, `verify/reports/exit-1-02/`). Step 7 is complete. Next
-   step 8 (verification close-out: properties at a million cases, simulation nights,
-   fault injection, replay on three platforms, coverage and mutation score; EXIT-1-04,
-   -05, -06, -08, -11). W-1
+   1,227 of 1,227 on both backends, `verify/reports/exit-1-02/`). Step 7 is complete.
+   Step 8 (DEC-061, verification close-out) in progress: 8a done (kernel property set
+   VER-PROP-0100 at a million cases per property, `verify/reports/exit-1-04/`, EXIT-1-04
+   met; coverage 90.1% of the kernel crates by the suites and a sampled mutation score
+   89.9% on a workstation sample of 237 viable mutants (213 detected) with the vectors, scenarios and properties as test bodies,
+   `verify/reports/exit-1-11/`, `verify/tools/{coverage.sh,mutants.sh}`). Next 8b
+   (simulation suite and fault injection on PostgreSQL, EXIT-1-05, -06), then 8c (replay
+   corpus, nightly workflow with mutation shards and the three platforms, EXIT-1-08). W-1
    may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that

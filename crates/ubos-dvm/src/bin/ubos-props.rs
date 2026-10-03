@@ -15,6 +15,13 @@
 //! - `tree_incremental` (VER-PROP-0004): batches of inserts, updates and removals applied to
 //!   stored nodes give the root of a full rebuild, and the tree diff of two roots equals the
 //!   key-wise difference of their entry sets (DSN-DVM-007).
+//! - VER-PROP-0100 (PH-1 step 8a): `index_rebuild_equality` (reads through the kernel indexes
+//!   equal reads through the state rebuilt from the commit records, root verifier clean),
+//!   `diff_cost_bound` (a tree diff reads at most `2·(h+1)·(3·c+1)` nodes for `c` changes),
+//!   `merge_ledger_completeness` (a merge appends every entry of the branch in order with
+//!   dense sequences and the same balance), `balance_bitemporal` (the balance at any
+//!   `(asof, cseq)` is the sum of the included entries) and `cursor_completeness` (pages of a
+//!   query under concurrent commits return the snapshot exactly once, in order).
 
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -433,6 +440,564 @@ fn prop_tree(rng: &mut Rng) -> Result<(), String> {
     Ok(())
 }
 
+// ---- VER-PROP-0100: kernel property set (PH-1 step 8a, DEC-061) ----
+
+/// Diff cost seen: node reads, and the bound `2·(h+1)·(3·c+1)` they are checked against.
+static DIFF_COST: [AtomicU64; 2] = [AtomicU64::new(0), AtomicU64::new(0)];
+
+fn text_field(n: &str) -> Value {
+    json!({"name": n, "type": "text", "label": n, "description": n})
+}
+
+fn item_class() -> Value {
+    json!({"name": "Item", "namespace": "p", "kind": "definition", "parent": "DataObject",
+        "label": "Item", "description": "Item", "schema_version": 1,
+        "fields": [text_field("a"), text_field("b"), text_field("c")]})
+}
+
+fn stock_class() -> Value {
+    json!({"name": "StockMove", "namespace": "p", "kind": "ledger", "parent": "DataObject",
+        "label": "StockMove", "description": "StockMove", "schema_version": 1,
+        "fields": [json!({"name": "item", "type": "text", "label": "item", "description": "item", "required": true}),
+                   json!({"name": "quantity", "type": "decimal", "label": "quantity", "description": "quantity", "required": true})],
+        "ledger": {"key": ["item"], "amounts": ["quantity"], "double_entry": false}})
+}
+
+fn genesis(a: &mut Adapter) -> Result<(), String> {
+    run(a, "set_now", json!({"now": "2026-01-15T00:00:00.000000Z"}))?;
+    run(
+        a,
+        "load_genesis",
+        json!({"classes": [item_class(), stock_class()]}),
+    )?;
+    Ok(())
+}
+
+fn stock(eid: u64, item: &str, qty: i64, valid_at: &str) -> Value {
+    json!({"op": "append", "class": "StockMove", "entry_id": uid(eid), "ledger_key": {"item": item},
+        "valid_at": valid_at, "body": {"item": item, "quantity": qty.to_string()}})
+}
+
+fn qty(e: &Value) -> i64 {
+    e["body"]["quantity"]
+        .as_str()
+        .and_then(|q| q.parse().ok())
+        .unwrap_or(i64::MIN / 4)
+}
+
+/// Index rebuild equality (DSN-DVM-005, DSN-DVM-092): a random history of creates, updates,
+/// ends and appends on one or two branches; every read of every object and ledger key at
+/// every commit and several `asof` dates through the kernel indexes (`time: cseq`) equals the
+/// read through the state rebuilt from the commit records (`commit: id`); the root verifier
+/// finds nothing.
+fn prop_index(rng: &mut Rng) -> Result<(), String> {
+    let mut a = Adapter::new().map_err(|e| e.to_string())?;
+    genesis(&mut a)?;
+    let objects = 1 + rng.below(5);
+    let mut branches = vec!["main".to_string()];
+    let mut heads: BTreeMap<(String, u64), String> = BTreeMap::new();
+    let mut commits: Vec<(String, String, u64)> = Vec::new();
+    let mut eid = 100;
+    let n_commits = 1 + rng.below(12);
+    for c in 0..n_commits {
+        if c > 0 && branches.len() == 1 && rng.chance(30) {
+            run(
+                &mut a,
+                "create_branch",
+                json!({"name": "feature/x", "from": "main"}),
+            )?;
+            for o in 0..objects {
+                if let Some(h) = heads.get(&("main".to_string(), o)).cloned() {
+                    heads.insert(("feature/x".to_string(), o), h);
+                }
+            }
+            branches.push("feature/x".to_string());
+        }
+        let branch = branches[rng.below(branches.len() as u64) as usize].clone();
+        let o = rng.below(objects);
+        let mut changes = Vec::new();
+        match heads.get(&(branch.clone(), o)).cloned() {
+            None => changes.push(json!({"op": "create", "object_id": uid(o), "class": "Item",
+                "slug": format!("i{o}"), "body": {"a": format!("a{}", rng.below(4))},
+                "valid": {"from": date(rng.below(14))}})),
+            Some(base) => {
+                let field = ["a", "b", "c"][rng.below(3) as usize];
+                changes.push(match rng.below(6) {
+                    0 => {
+                        json!({"op": "end", "object_id": uid(o), "base": base, "valid": {"from": date(5 + rng.below(15))}})
+                    }
+                    1 => {
+                        json!({"op": "update", "object_id": uid(o), "base": base, "body": {field: format!("v{}", rng.below(5))}})
+                    }
+                    _ => {
+                        json!({"op": "update", "object_id": uid(o), "base": base, "body": {field: format!("v{}", rng.below(5))},
+                            "valid": {"kind": "supersede_from", "from": date(rng.below(20))}})
+                    }
+                });
+            }
+        }
+        if rng.chance(40) {
+            eid += 1;
+            changes.push(stock(
+                eid,
+                ["bolt", "nut"][rng.below(2) as usize],
+                rng.below(20) as i64 - 5,
+                &date(rng.below(20)),
+            ));
+        }
+        let r = match run(
+            &mut a,
+            "commit",
+            json!({"branch": branch, "changes": changes}),
+        ) {
+            Ok(r) => r,
+            // A rejected change (no segment at the date, a stale base, …) is not the property.
+            Err(_) => continue,
+        };
+        for (k, v) in r["versions"].as_object().into_iter().flatten() {
+            if let Some(o) = (0..objects).find(|o| uid(*o) == *k) {
+                heads.insert(
+                    (branch.clone(), o),
+                    v.as_str().unwrap_or_default().to_string(),
+                );
+            }
+        }
+        commits.push((
+            branch.clone(),
+            r["commit_id"].as_str().unwrap_or_default().to_string(),
+            r["cseq"].as_u64().unwrap_or_default(),
+        ));
+    }
+    if commits.is_empty() {
+        return Ok(());
+    }
+    let dates: Vec<String> = (0..4).map(|_| date(rng.below(20))).collect();
+    for (branch, cid, cseq) in &commits {
+        for o in 0..objects {
+            for d in &dates {
+                let by_index = a.execute(
+                    "read",
+                    &json!({"branch": branch, "object_id": uid(o), "time": cseq, "asof": d}),
+                );
+                let by_rebuild = a.execute(
+                    "read",
+                    &json!({"branch": branch, "object_id": uid(o), "commit": cid, "asof": d}),
+                );
+                let strip = |r: Result<Value, ubos_types::BpaError>| match r {
+                    Ok(mut v) => {
+                        v.as_object_mut().map(|m| m.remove("evaluated_at"));
+                        v
+                    }
+                    Err(e) => json!(e.code),
+                };
+                let (x, y) = (strip(by_index), strip(by_rebuild));
+                if x != y {
+                    return Err(format!(
+                        "index read differs from rebuild at {branch}@{cseq} {} asof {d}: {x} vs {y}",
+                        uid(o)
+                    ));
+                }
+            }
+        }
+        for item in ["bolt", "nut"] {
+            for d in &dates {
+                let x = run(&mut a, "read_ledger", json!({"branch": branch, "class": "StockMove", "ledger_key": {"item": item}, "time": cseq, "asof": d}))
+                    .map_err(|e| format!("ledger read by index at {branch}@{cseq} asof {d}: {e}"))?;
+                let y = run(&mut a, "read_ledger", json!({"branch": branch, "class": "StockMove", "ledger_key": {"item": item}, "commit": cid, "asof": d}))
+                    .map_err(|e| format!("ledger read by rebuild at {branch}@{cseq} ({cid}) asof {d}: {e}"))?;
+                if x["entries"] != y["entries"] {
+                    return Err(format!(
+                        "ledger index read differs from rebuild at {branch}@{cseq} {item}: {} vs {}",
+                        x["entries"], y["entries"]
+                    ));
+                }
+            }
+        }
+    }
+    for b in &branches {
+        let r = ubos_dvm::verify::verify_roots(a.engine_mut(), b, 0, u64::MAX >> 1)
+            .map_err(|e| e.to_string())?;
+        if !r.findings.is_empty() {
+            return Err(format!("root verifier on {b}: {}", r.to_json()));
+        }
+    }
+    Ok(())
+}
+
+/// A node source that counts the nodes it serves.
+struct Counting<'a> {
+    inner: &'a mut ubos_tree::MemNodes,
+    reads: u64,
+}
+
+impl ubos_tree::NodeSource for Counting<'_> {
+    fn node(&mut self, hash: &str) -> Result<std::rc::Rc<ubos_tree::Node>, ubos_types::BpaError> {
+        self.reads += 1;
+        self.inner.node(hash)
+    }
+}
+
+/// Diff cost bound (DSN-DVM-230, STD-VER-031): the tree diff of a tree of `n` keys and the
+/// tree after `c` changes reads at most `2·(h+1)·(3·c+1)` nodes, `h` the tree height, so the
+/// cost is O(changes × log n); the diff lists exactly the changed keys.
+fn prop_diff_cost(rng: &mut Rng) -> Result<(), String> {
+    let err = |e: ubos_types::BpaError| e.to_string();
+    let size = match rng.below(10) {
+        0 => 5_000 + rng.below(15_000),
+        1..=3 => 500 + rng.below(4_500),
+        _ => 1 + rng.below(500),
+    };
+    let space = size * 3;
+    let mut state: BTreeMap<String, String> = BTreeMap::new();
+    for _ in 0..size {
+        state.insert(key(rng.below(space)), value(rng.next()));
+    }
+    let entries: Vec<(String, String)> = state.clone().into_iter().collect();
+    let built = ubos_tree::build(&entries).map_err(err)?;
+    let mut nodes = ubos_tree::MemNodes::default();
+    nodes.extend(built.nodes);
+    let root = built.root;
+    let height = ubos_tree::NodeSource::node(&mut nodes, &root)
+        .map_err(err)?
+        .level as u64;
+    let c = match rng.below(4) {
+        0 => 1,
+        1 => 1 + rng.below(5),
+        _ => 1 + rng.below(50),
+    };
+    let existing: Vec<String> = state.keys().cloned().collect();
+    let mut changes: BTreeMap<String, Option<String>> = BTreeMap::new();
+    while (changes.len() as u64) < c {
+        let k = if rng.chance(60) {
+            existing[rng.below(existing.len() as u64) as usize].clone()
+        } else {
+            key(rng.below(space + 100))
+        };
+        let v = if rng.chance(30) && state.contains_key(&k) {
+            None
+        } else {
+            Some(value(rng.next()))
+        };
+        if state.get(&k) == v.as_ref() {
+            continue;
+        }
+        changes.insert(k, v);
+    }
+    let w = ubos_tree::update(&mut nodes, &root, &changes).map_err(err)?;
+    nodes.extend(w.nodes);
+    let mut counting = Counting {
+        inner: &mut nodes,
+        reads: 0,
+    };
+    let d = ubos_tree::diff(&mut counting, &root, &w.root).map_err(err)?;
+    let reads = counting.reads;
+    let c = changes.len() as u64;
+    let bound = 2 * (height + 1) * (3 * c + 1);
+    DIFF_COST[0].fetch_max(reads, Ordering::Relaxed);
+    DIFF_COST[1].fetch_max(reads * 1000 / bound.max(1), Ordering::Relaxed);
+    if reads > bound {
+        return Err(format!(
+            "diff read {reads} nodes for {c} changes in a tree of {size} keys and height {height}; bound {bound}"
+        ));
+    }
+    let want: Vec<String> = changes.keys().cloned().collect();
+    let got: Vec<String> = d.into_iter().map(|x| x.0).collect();
+    if got != want {
+        return Err(format!("diff lists {} keys, expected {}", got.len(), c));
+    }
+    Ok(())
+}
+
+/// Merge ledger completeness (DSN-DVM-242, STD-VER-052, STD-KIND-022): after merging a
+/// branch, the target's ledger holds its own entries followed by every entry of the branch
+/// in branch order, with dense sequences, the same bodies, and the sum of the quantities.
+fn prop_merge_ledger(rng: &mut Rng) -> Result<(), String> {
+    let mut a = Adapter::new().map_err(|e| e.to_string())?;
+    genesis(&mut a)?;
+    let items = ["bolt", "nut", "gear"];
+    let mut eid = 0;
+    let mut model: BTreeMap<&str, Vec<(String, i64)>> = BTreeMap::new();
+    let mut append = |a: &mut Adapter,
+                      rng: &mut Rng,
+                      branch: &str,
+                      model: &mut BTreeMap<&str, Vec<(String, i64)>>,
+                      n: u64|
+     -> Result<(), String> {
+        for _ in 0..n {
+            let mut changes = Vec::new();
+            let mut added = Vec::new();
+            for _ in 0..1 + rng.below(3) {
+                eid += 1;
+                let item = items[rng.below(3) as usize];
+                let q = rng.below(40) as i64 - 10;
+                changes.push(stock(eid, item, q, &date(rng.below(20))));
+                added.push((item, uid(eid), q));
+            }
+            run(a, "commit", json!({"branch": branch, "changes": changes}))?;
+            for (item, id, q) in added {
+                model.entry(item).or_default().push((id, q));
+            }
+        }
+        Ok(())
+    };
+    let n0 = rng.below(4);
+    append(&mut a, rng, "main", &mut model, n0)?;
+    run(
+        &mut a,
+        "create_branch",
+        json!({"name": "feature/l", "from": "main"}),
+    )?;
+    let mut branch_model: BTreeMap<&str, Vec<(String, i64)>> = BTreeMap::new();
+    let n1 = 1 + rng.below(5);
+    append(&mut a, rng, "feature/l", &mut branch_model, n1)?;
+    let n2 = rng.below(3);
+    append(&mut a, rng, "main", &mut model, n2)?;
+    run(
+        &mut a,
+        "merge",
+        json!({"source": "feature/l", "target": "main"}),
+    )?;
+    for item in items {
+        let mut want = model.remove(item).unwrap_or_default();
+        want.extend(branch_model.remove(item).unwrap_or_default());
+        let r = run(
+            &mut a,
+            "read_ledger",
+            json!({"branch": "main", "class": "StockMove", "ledger_key": {"item": item}}),
+        )?;
+        let got = r["entries"].as_array().cloned().unwrap_or_default();
+        if got.len() != want.len() {
+            return Err(format!(
+                "{item}: {} entries after the merge, expected {}",
+                got.len(),
+                want.len()
+            ));
+        }
+        for (i, (e, (id, q))) in got.iter().zip(&want).enumerate() {
+            if e["seq"].as_u64() != Some(i as u64 + 1) {
+                return Err(format!("{item}: seq {} at position {i}", e["seq"]));
+            }
+            if e["entry_id"].as_str() != Some(id.as_str()) || qty(e) != *q {
+                return Err(format!(
+                    "{item}: entry {} ({}) at position {i}, expected {id} ({q})",
+                    e["entry_id"],
+                    qty(e)
+                ));
+            }
+        }
+        let sum: i64 = got.iter().map(qty).sum();
+        let want_sum: i64 = want.iter().map(|x| x.1).sum();
+        if sum != want_sum {
+            return Err(format!(
+                "{item}: balance {sum} after the merge, expected {want_sum}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Bitemporal balance (DSN-DVM-420, DSN-DVM-421, STD-TIME-020): the balance of a ledger key
+/// read at any `(asof, cseq)` equals the sum of the entries with `valid_at ≤ asof` committed
+/// at or before `cseq`, backdated entries included; the entries are listed in sequence order.
+fn prop_balance(rng: &mut Rng) -> Result<(), String> {
+    let mut a = Adapter::new().map_err(|e| e.to_string())?;
+    genesis(&mut a)?;
+    let mut model: Vec<(u64, String, i64)> = Vec::new();
+    let mut eid = 0;
+    let n = 1 + rng.below(10);
+    for _ in 0..n {
+        let mut changes = Vec::new();
+        let mut added = Vec::new();
+        for _ in 0..1 + rng.below(3) {
+            eid += 1;
+            let at = date(rng.below(20));
+            let q = rng.below(1000) as i64 - 300;
+            changes.push(stock(eid, "bolt", q, &at));
+            added.push((at, q));
+        }
+        if rng.chance(30) {
+            eid += 1;
+            changes.push(stock(eid, "nut", 1, &date(rng.below(20))));
+        }
+        let r = run(
+            &mut a,
+            "commit",
+            json!({"branch": "main", "changes": changes}),
+        )?;
+        let cseq = r["cseq"].as_u64().unwrap_or_default();
+        for (at, q) in added {
+            model.push((cseq, at, q));
+        }
+    }
+    let head = model.last().map(|m| m.0).unwrap_or_default();
+    for _ in 0..12 {
+        let asof = date(rng.below(20));
+        let time = 1 + rng.below(head);
+        let input = if rng.chance(20) {
+            json!({"branch": "main", "class": "StockMove", "ledger_key": {"item": "bolt"}, "asof": asof})
+        } else {
+            json!({"branch": "main", "class": "StockMove", "ledger_key": {"item": "bolt"}, "asof": asof, "time": time})
+        };
+        let time = if input.get("time").is_some() {
+            time
+        } else {
+            head
+        };
+        let r = run(&mut a, "read_ledger", input)?;
+        let got = r["entries"].as_array().cloned().unwrap_or_default();
+        let want: Vec<&(u64, String, i64)> = model
+            .iter()
+            .filter(|(c, at, _)| *c <= time && at.as_str() <= asof.as_str())
+            .collect();
+        let sum: i64 = got.iter().map(qty).sum();
+        let want_sum: i64 = want.iter().map(|x| x.2).sum();
+        if got.len() != want.len() || sum != want_sum {
+            return Err(format!(
+                "balance at asof {asof} cseq {time}: {} entries summing to {sum}, expected {} summing to {want_sum}",
+                got.len(),
+                want.len()
+            ));
+        }
+        let seqs: Vec<u64> = got.iter().filter_map(|e| e["seq"].as_u64()).collect();
+        if seqs.windows(2).any(|w| w[0] >= w[1]) {
+            return Err(format!(
+                "entries out of sequence order at asof {asof} cseq {time}: {seqs:?}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Cursor completeness (DSN-DVM-908, FR-QRY-071, FR-QRY-072): paging a query with its cursor
+/// while commits land between the pages returns every object of the first page's snapshot
+/// exactly once, in the query order with ties broken by object id.
+fn prop_cursor(rng: &mut Rng) -> Result<(), String> {
+    let mut a = Adapter::new().map_err(|e| e.to_string())?;
+    genesis(&mut a)?;
+    let mut model: BTreeMap<u64, String> = BTreeMap::new();
+    let mut heads: BTreeMap<u64, String> = BTreeMap::new();
+    let mut next = 0;
+    let mut create = |a: &mut Adapter,
+                      model: &mut BTreeMap<u64, String>,
+                      heads: &mut BTreeMap<u64, String>,
+                      n: u64,
+                      rng: &mut Rng|
+     -> Result<(), String> {
+        let mut changes = Vec::new();
+        let mut added = Vec::new();
+        for _ in 0..n {
+            let v = format!("k{}", rng.below(6));
+            changes.push(json!({"op": "create", "object_id": uid(next), "class": "Item", "slug": format!("i{next}"), "body": {"a": v}}));
+            added.push((next, v));
+            next += 1;
+        }
+        if changes.is_empty() {
+            return Ok(());
+        }
+        let r = run(a, "commit", json!({"branch": "main", "changes": changes}))?;
+        for (o, v) in added {
+            model.insert(o, v);
+            heads.insert(
+                o,
+                r["versions"][uid(o)]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string(),
+            );
+        }
+        Ok(())
+    };
+    let rounds = 1 + rng.below(3);
+    for _ in 0..rounds {
+        let n = rng.below(14);
+        create(&mut a, &mut model, &mut heads, n, rng)?;
+    }
+    let desc = rng.chance(50);
+    let limit = 1 + rng.below(7);
+    let mut want: Vec<(String, u64)> = model.iter().map(|(o, v)| (v.clone(), *o)).collect();
+    want.sort_by(|x, y| {
+        let o = x.0.cmp(&y.0);
+        (if desc { o.reverse() } else { o }).then(uid(x.1).cmp(&uid(y.1)))
+    });
+    let want: Vec<String> = want.into_iter().map(|x| uid(x.1)).collect();
+    let spec = json!({"branch": "main", "from": "Item", "order_by": [{"path": "this.a", "dir": if desc { "desc" } else { "asc" }}], "limit": limit});
+    let mut got: Vec<String> = Vec::new();
+    let mut cursor: Option<String> = None;
+    let mut pages = 0;
+    loop {
+        let mut input = spec.clone();
+        if let Some(c) = &cursor {
+            input["cursor"] = json!(c);
+        }
+        let r = run(&mut a, "query", input)?;
+        let page = r["objects"].as_array().cloned().unwrap_or_default();
+        if page.len() as u64 > limit {
+            return Err(format!(
+                "page of {} objects over the limit {limit}",
+                page.len()
+            ));
+        }
+        got.extend(page.iter().filter_map(|v| v.as_str().map(str::to_string)));
+        pages += 1;
+        match r.get("cursor").and_then(Value::as_str) {
+            Some(c) => cursor = Some(c.to_string()),
+            None => break,
+        }
+        if pages > 200 {
+            return Err("paging does not end".into());
+        }
+        // Concurrent commits between the pages: creates, updates of the ordering field, ends.
+        match rng.below(3) {
+            0 => {
+                let n = 1 + rng.below(3);
+                create(&mut a, &mut model, &mut heads, n, rng)?
+            }
+            1 if !heads.is_empty() => {
+                let o = *heads
+                    .keys()
+                    .nth(rng.below(heads.len() as u64) as usize)
+                    .expect("key");
+                let base = heads[&o].clone();
+                let r = run(
+                    &mut a,
+                    "commit",
+                    json!({"branch": "main", "changes": [{"op": "update", "object_id": uid(o), "base": base, "body": {"a": format!("k{}", rng.below(6))}}]}),
+                )?;
+                heads.insert(
+                    o,
+                    r["versions"][uid(o)]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_string(),
+                );
+            }
+            _ if !heads.is_empty() => {
+                let o = *heads
+                    .keys()
+                    .nth(rng.below(heads.len() as u64) as usize)
+                    .expect("key");
+                let base = heads.remove(&o).expect("head");
+                run(
+                    &mut a,
+                    "commit",
+                    json!({"branch": "main", "changes": [{"op": "end", "object_id": uid(o), "base": base, "valid": {"from": "2026-01-15"}}]}),
+                )?;
+            }
+            _ => {}
+        }
+    }
+    if got != want {
+        return Err(format!(
+            "pages return {} objects {:?}, expected {} {:?}",
+            got.len(),
+            got,
+            want.len(),
+            want
+        ));
+    }
+    Ok(())
+}
+
 // ---- driver ----
 
 const PROPERTIES: &[(&str, &str, u64)] = &[
@@ -440,6 +1005,11 @@ const PROPERTIES: &[(&str, &str, u64)] = &[
     ("timeline_non_overlap", "VER-PROP-0002", 2),
     ("merge_determinism", "VER-PROP-0003", 3),
     ("tree_incremental", "VER-PROP-0004", 4),
+    ("index_rebuild_equality", "VER-PROP-0100", 5),
+    ("diff_cost_bound", "VER-PROP-0100", 6),
+    ("merge_ledger_completeness", "VER-PROP-0100", 7),
+    ("balance_bitemporal", "VER-PROP-0100", 8),
+    ("cursor_completeness", "VER-PROP-0100", 9),
 ];
 
 fn check(name: &str, id: u64, seed: u64, case: u64) -> Result<(), String> {
@@ -447,12 +1017,15 @@ fn check(name: &str, id: u64, seed: u64, case: u64) -> Result<(), String> {
         "merge_determinism" => prop_merge(seed, case),
         _ => {
             let mut rng = Rng::new(seed, id, case);
-            if name == "root_history_independence" {
-                prop_roots(&mut rng)
-            } else if name == "tree_incremental" {
-                prop_tree(&mut rng)
-            } else {
-                prop_timeline(&mut rng)
+            match name {
+                "root_history_independence" => prop_roots(&mut rng),
+                "tree_incremental" => prop_tree(&mut rng),
+                "index_rebuild_equality" => prop_index(&mut rng),
+                "diff_cost_bound" => prop_diff_cost(&mut rng),
+                "merge_ledger_completeness" => prop_merge_ledger(&mut rng),
+                "balance_bitemporal" => prop_balance(&mut rng),
+                "cursor_completeness" => prop_cursor(&mut rng),
+                _ => prop_timeline(&mut rng),
             }
         }
     }
@@ -522,6 +1095,16 @@ fn main() {
                 n(2)
             );
         }
+        if name == "diff_cost_bound" {
+            let (reads, permille) = (
+                DIFF_COST[0].load(Ordering::Relaxed),
+                DIFF_COST[1].load(Ordering::Relaxed),
+            );
+            r["cost"] = json!({"max_node_reads": reads, "max_reads_per_bound_permille": permille});
+            println!(
+                "  cost: at most {reads} node reads; at most {permille}‰ of the bound 2·(h+1)·(3·c+1)"
+            );
+        }
         results.push(r);
     }
     if let Some(path) = opt("--report") {
@@ -533,4 +1116,23 @@ fn main() {
         .expect("write report");
     }
     std::process::exit(if failed { 1 } else { 0 });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every property holds on a small sample (the test body of the mutation score,
+    /// VER-INSP-0001); the million-case runs are `ubos-props --cases 1000000`.
+    #[test]
+    fn properties_hold_on_a_sample() {
+        for &(name, _, id) in PROPERTIES {
+            let cases = if name == "merge_determinism" { 8 } else { 25 };
+            for case in 0..cases {
+                if let Err(e) = check(name, id, 20_260_930, case) {
+                    panic!("{name} case {case}: {e}");
+                }
+            }
+        }
+    }
 }
