@@ -197,6 +197,8 @@ pub trait Store {
     fn put_tag_rec(&mut self, name: &str, rec: &Value) -> Result<(), BpaError> {
         self.put_meta(&format!("tag:{name}"), rec)
     }
+    /// Names of every tag, sorted, deleted ones included (archive export, STD-PROOF-070).
+    fn tag_names(&mut self) -> Result<Vec<String>, BpaError>;
     /// A process record.
     fn process_rec(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
         self.meta(&format!("process:{id}"))
@@ -476,6 +478,15 @@ impl Store for MemStore {
         names.sort();
         Ok(names)
     }
+    fn tag_names(&mut self) -> Result<Vec<String>, BpaError> {
+        let mut names: Vec<String> = self
+            .meta
+            .keys()
+            .filter_map(|k| k.strip_prefix("tag:").map(str::to_string))
+            .collect();
+        names.sort();
+        Ok(names)
+    }
     fn create_branch(&mut self, name: &str, r: &BranchRef) -> Result<bool, BpaError> {
         if self.branches.contains_key(name) {
             return Ok(false);
@@ -725,6 +736,13 @@ impl Store for Group {
     fn branch_names(&mut self) -> Result<Vec<String>, BpaError> {
         let mut names = self.inner.branch_names()?;
         names.extend(self.overlay.branches.keys().cloned());
+        names.sort();
+        names.dedup();
+        Ok(names)
+    }
+    fn tag_names(&mut self) -> Result<Vec<String>, BpaError> {
+        let mut names = self.inner.tag_names()?;
+        names.extend(self.overlay.tag_names()?);
         names.sort();
         names.dedup();
         Ok(names)

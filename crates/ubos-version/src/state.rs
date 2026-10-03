@@ -196,7 +196,7 @@ pub struct CommitRecord {
     pub extra: Map<String, Value>,
 }
 
-fn storage(e: impl std::fmt::Display) -> BpaError {
+pub(crate) fn storage(e: impl std::fmt::Display) -> BpaError {
     BpaError::new("NOD.STORAGE_UNAVAILABLE", e.to_string())
 }
 
@@ -239,6 +239,9 @@ pub fn version_record(
     let mut rec = json!({"object_id": oid, "class": class, "class_version": c.class_version,
         "schema_version": c.schema_version, "kind": c.kind, "slug": slug, "body": body,
         "valid": valid, "tombstone": tombstone});
+    if let Some(p) = predecessor {
+        rec["predecessor"] = json!(p);
+    }
     if let Some(p) = provenance {
         rec["provenance_ref"] = json!(p);
     }
@@ -254,7 +257,7 @@ thread_local! {
 }
 
 /// Tree nodes read from the store through the node cache.
-struct StoreNodes<'s>(&'s mut dyn Store);
+pub(crate) struct StoreNodes<'s>(pub(crate) &'s mut dyn Store);
 
 impl NodeSource for StoreNodes<'_> {
     fn node(&mut self, hash: &str) -> Result<Rc<Node>, BpaError> {
@@ -279,10 +282,10 @@ pub struct Repo<'a> {
     pub store: &'a mut dyn Store,
     /// The class registry.
     pub reg: &'a Registry,
-    cache: HashMap<u64, CommitRecord>,
+    pub(crate) cache: HashMap<u64, CommitRecord>,
     /// Branch references as first read by this view, so that one operation sees one
     /// snapshot of every branch (DSN-DVM-008).
-    branches: HashMap<String, BranchRef>,
+    pub(crate) branches: HashMap<String, BranchRef>,
 }
 
 impl<'a> Repo<'a> {
@@ -697,7 +700,7 @@ impl<'a> Repo<'a> {
     }
 
     /// State-tree key of an entry (STD-PROOF-001).
-    fn entry_key(e: &Entry) -> Result<String, BpaError> {
+    pub(crate) fn entry_key(e: &Entry) -> Result<String, BpaError> {
         let ch = content_id("ubos.chunk.v1", &json!(e.class))?[7..].to_string();
         let kh = content_id("ubos.chunk.v1", &e.ledger_key)?[7..].to_string();
         Ok(format!("l/{ch}/{kh}/{:020}", e.seq))
@@ -865,6 +868,12 @@ impl<'a> Repo<'a> {
     /// Entry hash: the entry without `seq`, `source_seq` and `cseq`, with class version and
     /// body reference (STD-KIND-020).
     pub fn entry_hash(&self, e: &Entry) -> Result<String, BpaError> {
+        content_id("ubos.entry.v1", &self.entry_record(e)?)
+    }
+
+    /// The entry record an entry hash is computed over (STD-KIND-020): the entry without
+    /// `seq`, `source_seq` and `cseq`, with its class version and body reference.
+    pub fn entry_record(&self, e: &Entry) -> Result<Value, BpaError> {
         let mut rec = json!({"entry_id": e.entry_id, "class": e.class, "ledger_key": e.ledger_key, "valid_at": e.valid_at});
         if let Some(c) = &e.corrects {
             rec["corrects"] = json!(c);
@@ -883,7 +892,7 @@ impl<'a> Repo<'a> {
         }
         rec["class_version"] = json!(self.reg.class(&e.class)?.class_version);
         rec["body_ref"] = json!(content_id("ubos.chunk.v1", &e.body)?);
-        content_id("ubos.entry.v1", &rec)
+        Ok(rec)
     }
 
     /// The period rule of a ledger class at `today` (STD-KIND-025): `LEDG.PERIOD_CLOSED`

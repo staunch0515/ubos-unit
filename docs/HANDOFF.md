@@ -160,9 +160,10 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    against DID documents with key histories in `ubos-crypto`, crate `ubos-proof` with the
    storage-free inclusion, commit-record and consistency checks, `rotate_node_key`,
    `did_document`, `commit_record`; 1,203 of 1,227 vectors pass in memory and on
-   PostgreSQL). Next 6b (`prove`, `consistency_proof`, `tenant_root`, `export_archive`,
-   `import_archive`; the 24 remaining vectors), then 6c (`ubos-verify` CLI and library under
-   `verify/`, EXIT-1-12 round trip between two VAE scopes of one PostgreSQL database). W-1
+   PostgreSQL); 6b done (`prove`, `consistency_proof`, `tenant_root`, `export_archive`,
+   `import_archive` with `verify_archive` in `ubos-proof`; 1,227 of 1,227 vectors pass in
+   memory and on PostgreSQL). Next 6c (`ubos-verify` CLI and library under `verify/`,
+   EXIT-1-12 round trip between two VAE scopes of one PostgreSQL database). W-1
    may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
