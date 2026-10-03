@@ -13,6 +13,10 @@ pub mod lexer;
 pub mod parser;
 pub mod value;
 
+/// The model layer below this crate, for crates whose allowed dependency is `ubos-expr`
+/// (UBS-ARC-07 §2).
+pub use ubos_model as model;
+
 pub use ast::Node;
 pub use check::{Env, check};
 pub use eval::{Evaluator, MAX_ITEMS, MAX_UNITS, OrderKey, Resolver, order_key};

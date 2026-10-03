@@ -21,6 +21,7 @@ ubos-types.workspace = true
 ubos-tree.workspace = true
 ubos-model.workspace = true
 ubos-expr.workspace = true
+ubos-runtime.workspace = true
 ubos-store.workspace = true
 ubos-version.workspace = true
 ubos-time.workspace = true

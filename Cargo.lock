@@ -1958,6 +1958,7 @@ dependencies = [
  "ubos-crypto",
  "ubos-expr",
  "ubos-model",
+ "ubos-runtime",
  "ubos-store",
  "ubos-time",
  "ubos-tree",
@@ -2002,6 +2003,8 @@ dependencies = [
  "rhai",
  "rust_decimal",
  "serde_json",
+ "sha2",
+ "ubos-expr",
 ]
 
 [[package]]
