@@ -101,7 +101,7 @@ Reading order:
   2. Given a typical guard expression, when evaluated 1,000,000 times, then the mean cost is below 1 µs.
 - **Verification:** CONF, BENCH
 - **Origin:** FR-LOGIC-031, FR-LOGIC-033, FR-LOGIC-034, STD-EXPR-001, STD-EXPR-002, STD-EXPR-003, STD-EXPR-004, FR-LOGIC-032
-- **Phase note:** PH-1 step 5a (DEC-055) evaluates expressions by walking the checked syntax tree; the bytecode form and the compile cache follow with the performance work of step 5d, where acceptance 2 is measured.
+- **Phase note:** PH-1 step 5a (DEC-055) evaluates expressions by walking the checked syntax tree; step 5d (DEC-058) caches the checked tree by expression and static environment and measured 1.28 µs median per evaluation of a typical guard on the workstation (NR-PERF-010 met; acceptance 2 is measured on ENV-REF-SERVER at step 9, where the bytecode form is reconsidered).
 
 ### DSN-DVM-611 — Function library
 - **Statement:** The function library (STD-EXPR-005) MUST be versioned with the ABI and implemented once for both expressions and scripts.

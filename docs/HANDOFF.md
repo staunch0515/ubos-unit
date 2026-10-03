@@ -151,11 +151,12 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    and on PostgreSQL). 5c done (DEC-057: verification gate with
    node-signed records and a minimal Ed25519 node key in `ubos-crypto`, journals and
    metering records as chunks referenced from the process record, replay, BPU views,
-   `node_did`; 1,165 of 1,227 vectors pass in memory and on PostgreSQL). 5d-1 done (DEC-058: the L2 host
-   in `ubos-runtime::l2` on a worker thread with the step-5b gateway, typed handles, kernel
-   decimal and money, memory, CPU and wall limits; the conformance adapter keeps L2 off).
-   Next 5d-2 (escape suite of 300 or more cases with runner `ubos-l2-suite`, W-4 and
-   NR-PERF-010 measurements, EXIT-1-10 report, dispositions of W-2…W-5 and W-12). W-1
+   `node_did`; 1,165 of 1,227 vectors pass in memory and on PostgreSQL). 5d done (DEC-058: the L2 host in
+   `ubos-runtime::l2` on a worker thread with the step-5b gateway, typed handles, kernel
+   decimal and money, memory, CPU and wall limits; the escape suite of 382 cases all
+   blocked, `verify/reports/exit-1-10/`, EXIT-1-10 met; W-2…W-5 and W-12 closed). Step 5 is
+   complete. Next step 6 (proofs: signatures, inclusion and consistency proofs, portable
+   export and import, verifier library; EXIT-1-12; the 62 remaining vectors). W-12). W-1
    may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that

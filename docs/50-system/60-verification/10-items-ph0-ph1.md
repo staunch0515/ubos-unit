@@ -252,7 +252,7 @@ Numbers follow UBS-VER-00 §3.
   1. Run the L2 escape corpus (≥ 300 cases).
   2. For each case, assert termination or capability denial and absence of any external effect (file, network, clock, cross-tenant memory).
 - **Pass criterion:** 100% blocked (MET-SEC-010).
-- **Evidence:** security report.
+- **Evidence:** security report `verify/reports/exit-1-10/` (382 of 382 blocked, PH-1 step 5d-2, DEC-058).
 - **Supports:** EXIT-1-10
 
 ### VER-INSP-0001 — Coverage, mutation and dependency graph

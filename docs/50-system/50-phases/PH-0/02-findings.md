@@ -70,6 +70,12 @@ are those of the reports named in the Source column.
 | W-11 | MUST coverage 100% for BPA 1.0-rc1 | EXIT-1-01 |
 | W-12 | grow the L2 escape suite from 100 to at least 300 cases | EXIT-1-10 |
 
+Dispositions recorded in PH-1: W-2, W-3, W-4, W-5 and W-12 closed by DEC-058 (step 5d,
+`verify/reports/exit-1-10/`: 382 cases blocked, memory accounted per execution, CPU
+clock and size-charged gateway calls, size checks off under memory accounting, kernel
+decimal); W-7 by DEC-047…049 (step 3); W-8 by DEC-046 (step 2); W-10 by DEC-050 (step 4);
+W-11 by DEC-045 (BPA 1.0-rc1).
+
 ## 4. Assumptions and risks
 
 | # | Item | Disposition |

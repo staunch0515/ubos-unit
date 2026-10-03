@@ -1821,6 +1821,7 @@ dependencies = [
 name = "ubos-dvm"
 version = "0.0.0"
 dependencies = [
+ "cap",
  "regex",
  "serde_json",
  "sha2",

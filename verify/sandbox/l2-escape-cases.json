@@ -1,923 +1,3493 @@
 {
-  "suite": "UBOS L2 escape suite (initial)",
-  "version": "0.1",
-  "verifies": "VER-SEC-0001",
-  "profile": "strict unless stated",
-  "cases": [
-    {
-      "id": "L2E-001",
-      "category": "file",
-      "title": "open a host file",
-      "script": "open(\"/etc/passwd\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-002",
-      "category": "file",
-      "title": "read a file by a free function",
-      "script": "read_file(\"/etc/passwd\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-003",
-      "category": "file",
-      "title": "write a file",
-      "script": "write_file(\"/tmp/ubos-escape\", \"x\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-004",
-      "category": "file",
-      "title": "import a module from a file",
-      "script": "import \"fs\" as fs; fs::read(\"x\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-005",
-      "category": "file",
-      "title": "namespaced std file API",
-      "script": "std::fs::read(\"x\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-006",
-      "category": "file",
-      "title": "eval of a script string",
-      "script": "eval(\"1 + 1\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-007",
-      "category": "file",
-      "title": "file access through a function pointer",
-      "script": "let f = Fn(\"open\"); f.call(\"/etc/passwd\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-008",
-      "category": "file",
-      "title": "file access as a string method",
-      "script": "\"/etc/passwd\".read()",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-009",
-      "category": "file",
-      "title": "run another script file",
-      "script": "run_file(\"other.rhai\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-010",
-      "category": "file",
-      "title": "load or include a script",
-      "script": "load(\"lib.rhai\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-011",
-      "category": "file",
-      "title": "file capability on the gateway",
-      "script": "sys.fs.read(\"/etc/passwd\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-012",
-      "category": "file",
-      "title": "file capability by gateway index",
-      "script": "sys[\"files\"]",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-013",
-      "category": "network",
-      "title": "HTTP GET",
-      "script": "http_get(\"http://169.254.169.254/latest/meta-data\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-014",
-      "category": "network",
-      "title": "fetch",
-      "script": "fetch(\"https://example.com\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-015",
-      "category": "network",
-      "title": "raw socket connect",
-      "script": "connect(\"10.0.0.1\", 80)",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-016",
-      "category": "network",
-      "title": "socket constructor",
-      "script": "let s = socket(); s.send(\"x\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-017",
-      "category": "network",
-      "title": "DNS lookup",
-      "script": "dns_lookup(\"example.com\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-018",
-      "category": "network",
-      "title": "import an HTTP module",
-      "script": "import \"http\" as http; http::get(\"x\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-019",
-      "category": "network",
-      "title": "HTTP through a function pointer",
-      "script": "Fn(\"http_get\").call(\"http://example.com\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-020",
-      "category": "network",
-      "title": "HTTP as a string method",
-      "script": "\"http://example.com\".fetch()",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-021",
-      "category": "network",
-      "title": "connector method on the gateway",
-      "script": "sys.connector(\"bank\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-022",
-      "category": "network",
-      "title": "network capability by gateway index",
-      "script": "sys[\"net\"]",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-023",
-      "category": "network",
-      "title": "send mail",
-      "script": "send_mail(\"a@example.com\", \"x\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-024",
-      "category": "network",
-      "title": "connector field on the context",
-      "script": "ctx.connector",
-      "expect": {
-        "error": "LOGIC.UNKNOWN_FIELD"
-      }
-    },
-    {
-      "id": "L2E-025",
-      "category": "time",
-      "title": "host timestamp",
-      "script": "timestamp()",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-026",
-      "category": "time",
-      "title": "host clock now()",
-      "script": "now()",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-027",
-      "category": "time",
-      "title": "sleep (language core package)",
-      "script": "sleep(1)",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-028",
-      "category": "time",
-      "title": "elapsed time of a timestamp",
-      "script": "let t = timestamp(); t.elapsed",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-029",
-      "category": "time",
-      "title": "clock method on the gateway",
-      "script": "sys.now()",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-030",
-      "category": "time",
-      "title": "environment variable TZ",
-      "script": "env(\"TZ\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-031",
-      "category": "time",
-      "title": "system time",
-      "script": "system_time()",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-032",
-      "category": "time",
-      "title": "ctx.now is the fixed execution time",
-      "script": "ctx.now",
-      "expect": {
-        "value": "2026-01-01T00:00:00.000000Z"
-      }
-    },
-    {
-      "id": "L2E-033",
-      "category": "time",
-      "title": "assign ctx.now",
-      "script": "ctx.now = \"2030-01-01T00:00:00Z\"",
-      "expect": {
-        "error": "LOGIC.CONTEXT_IMMUTABLE"
-      }
-    },
-    {
-      "id": "L2E-034",
-      "category": "time",
-      "title": "assign ctx by index",
-      "script": "ctx[\"now\"] = \"2030-01-01T00:00:00Z\"",
-      "expect": {
-        "error": "LOGIC.CONTEXT_IMMUTABLE"
-      }
-    },
-    {
-      "id": "L2E-035",
-      "category": "time",
-      "title": "replace the ctx object",
-      "script": "ctx = #{ now: \"2030-01-01T00:00:00Z\" }",
-      "expect": {
-        "error": "LOGIC.CONTEXT_IMMUTABLE"
-      }
-    },
-    {
-      "id": "L2E-036",
-      "category": "time",
-      "title": "mutate ctx through a method with this",
-      "script": "fn shift() { this.now = \"2030-01-01T00:00:00Z\"; } ctx.shift()",
-      "expect": {
-        "error": "LOGIC.CONTEXT_IMMUTABLE"
-      }
-    },
-    {
-      "id": "L2E-037",
-      "category": "entropy",
-      "title": "rand()",
-      "script": "rand()",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-038",
-      "category": "entropy",
-      "title": "random()",
-      "script": "random()",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-039",
-      "category": "entropy",
-      "title": "rand_int",
-      "script": "rand_int(1, 6)",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-040",
-      "category": "entropy",
-      "title": "random method on the gateway",
-      "script": "sys.random()",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-041",
-      "category": "entropy",
-      "title": "shuffle",
-      "script": "let a = [3, 1, 2]; a.shuffle(); a",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-042",
-      "category": "entropy",
-      "title": "hash of a value",
-      "script": "hash(\"x\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-043",
-      "category": "entropy",
-      "title": "sys.random_bytes is journaled and replayable",
-      "script": "sys.random_bytes(8)",
-      "expect": {
-        "journaled": 1
-      }
-    },
-    {
-      "id": "L2E-044",
-      "category": "entropy",
-      "title": "sys.uuid is journaled and replayable",
-      "script": "[sys.uuid(), sys.uuid()]",
-      "expect": {
-        "journaled": 2
-      }
-    },
-    {
-      "id": "L2E-045",
-      "category": "entropy",
-      "title": "map iteration follows key order",
-      "script": "let m = #{}; m.z = 1; m.a = 2; m.m = 3; m.keys()",
-      "expect": {
-        "value": [
-          "a",
-          "m",
-          "z"
-        ]
-      }
-    },
-    {
-      "id": "L2E-046",
-      "category": "entropy",
-      "title": "map JSON output follows key order",
-      "script": "let m = #{}; m.b = 1; m.a = 2; m.to_json()",
-      "expect": {
-        "value": "{\"a\":2,\"b\":1}"
-      }
-    },
-    {
-      "id": "L2E-047",
-      "category": "entropy",
-      "title": "textual form of the gateway leaks no address",
-      "script": "sys.to_string()",
-      "expect": {
-        "deterministic": true
-      }
-    },
-    {
-      "id": "L2E-048",
-      "category": "entropy",
-      "title": "random_bytes above the per-call maximum",
-      "script": "sys.random_bytes(2000)",
-      "expect": {
-        "error": "LOGIC.TYPE_ERROR"
-      }
-    },
-    {
-      "id": "L2E-049",
-      "category": "float",
-      "title": "decimal literal addition is exact",
-      "script": "1.5 + 2.25",
-      "expect": {
-        "value": "3.75"
-      }
-    },
-    {
-      "id": "L2E-050",
-      "category": "float",
-      "title": "0.1 + 0.2 == 0.3 (exact decimals)",
-      "script": "0.1 + 0.2 == 0.3",
-      "expect": {
-        "value": true
-      }
-    },
-    {
-      "id": "L2E-051",
-      "category": "float",
-      "title": "to_float",
-      "script": "to_float(1)",
-      "expect": {
-        "error": "LOGIC.FLOAT_TO_DECIMAL"
-      }
-    },
-    {
-      "id": "L2E-052",
-      "category": "float",
-      "title": "to_float as a method",
-      "script": "let x = 1.5; x.to_float()",
-      "expect": {
-        "error": "LOGIC.FLOAT_TO_DECIMAL"
-      }
-    },
-    {
-      "id": "L2E-053",
-      "category": "float",
-      "title": "parse_float",
-      "script": "parse_float(\"1.5\")",
-      "expect": {
-        "error": "LOGIC.FLOAT_TO_DECIMAL"
-      }
-    },
-    {
-      "id": "L2E-054",
-      "category": "float",
-      "title": "sqrt",
-      "script": "sqrt(2)",
-      "expect": {
-        "error": "LOGIC.FLOAT_TO_DECIMAL"
-      }
-    },
-    {
-      "id": "L2E-055",
-      "category": "float",
-      "title": "sin",
-      "script": "sin(1)",
-      "expect": {
-        "error": "LOGIC.FLOAT_TO_DECIMAL"
-      }
-    },
-    {
-      "id": "L2E-056",
-      "category": "float",
-      "title": "exp",
-      "script": "exp(1)",
-      "expect": {
-        "error": "LOGIC.FLOAT_TO_DECIMAL"
-      }
-    },
-    {
-      "id": "L2E-057",
-      "category": "float",
-      "title": "pi",
-      "script": "pi()",
-      "expect": {
-        "error": "LOGIC.FLOAT_TO_DECIMAL"
-      }
-    },
-    {
-      "id": "L2E-058",
-      "category": "float",
-      "title": "f32_to_f64",
-      "script": "f32_to_f64(1)",
-      "expect": {
-        "error": "LOGIC.FLOAT_TO_DECIMAL"
-      }
-    },
-    {
-      "id": "L2E-059",
-      "category": "float",
-      "title": "decimal division is exact to 28 digits",
-      "script": "1.0 / 3.0",
-      "expect": {
-        "value": "0.3333333333333333333333333333"
-      }
-    },
-    {
-      "id": "L2E-060",
-      "category": "float",
-      "title": "integer division by zero",
-      "script": "1 / 0",
-      "expect": {
-        "error": "LOGIC.DIVISION_BY_ZERO"
-      }
-    },
-    {
-      "id": "L2E-061",
-      "category": "float",
-      "title": "decimal division by zero",
-      "script": "parse_decimal(\"1.5\") / 0.0",
-      "expect": {
-        "error": "LOGIC.DIVISION_BY_ZERO"
-      }
-    },
-    {
-      "id": "L2E-062",
-      "category": "float",
-      "title": "string to a decimal field",
-      "script": "rec.amount = \"1.5\"; rec.amount",
-      "expect": {
-        "error": "LOGIC.TYPE_ERROR"
-      }
-    },
-    {
-      "id": "L2E-063",
-      "category": "host-abuse",
-      "title": "unknown field on a handle",
-      "script": "rec.secret",
-      "expect": {
-        "error": "LOGIC.UNKNOWN_FIELD"
-      }
-    },
-    {
-      "id": "L2E-064",
-      "category": "host-abuse",
-      "title": "unknown field by index",
-      "script": "rec[\"password\"]",
-      "expect": {
-        "error": "LOGIC.UNKNOWN_FIELD"
-      }
-    },
-    {
-      "id": "L2E-065",
-      "category": "host-abuse",
-      "title": "string into an integer field",
-      "script": "rec.qty = \"ten\"",
-      "expect": {
-        "error": "LOGIC.TYPE_ERROR"
-      }
-    },
-    {
-      "id": "L2E-066",
-      "category": "host-abuse",
-      "title": "integer into a boolean field",
-      "script": "rec.paid = 1",
-      "expect": {
-        "error": "LOGIC.TYPE_ERROR"
-      }
-    },
-    {
-      "id": "L2E-067",
-      "category": "host-abuse",
-      "title": "return the object handle",
-      "script": "rec",
-      "expect": {
-        "error": "LOGIC.TYPE_ERROR"
-      }
-    },
-    {
-      "id": "L2E-068",
-      "category": "host-abuse",
-      "title": "return the gateway",
-      "script": "sys",
-      "expect": {
-        "error": "LOGIC.TYPE_ERROR"
-      }
-    },
-    {
-      "id": "L2E-069",
-      "category": "host-abuse",
-      "title": "return the gateway inside an array",
-      "script": "[1, sys]",
-      "expect": {
-        "error": "LOGIC.TYPE_ERROR"
-      }
-    },
-    {
-      "id": "L2E-070",
-      "category": "host-abuse",
-      "title": "return the context inside a map",
-      "script": "#{ g: ctx }",
-      "expect": {
-        "error": "LOGIC.TYPE_ERROR"
-      }
-    },
-    {
-      "id": "L2E-071",
-      "category": "host-abuse",
-      "title": "return a function pointer",
-      "script": "Fn(\"uuid\")",
-      "expect": {
-        "error": "LOGIC.TYPE_ERROR"
-      }
-    },
-    {
-      "id": "L2E-072",
-      "category": "host-abuse",
-      "title": "closure capturing the gateway",
-      "script": "let f = |x| sys.uuid(); f.call(1)",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-073",
-      "category": "host-abuse",
-      "title": "script function reaching the gateway",
-      "script": "fn leak() { sys.uuid() } leak()",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-074",
-      "category": "host-abuse",
-      "title": "assign ctx.tenant",
-      "script": "ctx.tenant = \"t2\"",
-      "expect": {
-        "error": "LOGIC.CONTEXT_IMMUTABLE"
-      }
-    },
-    {
-      "id": "L2E-075",
-      "category": "host-abuse",
-      "title": "overwrite a gateway member",
-      "script": "sys.uuid = \"x\"",
-      "expect": {
-        "error": "LOGIC.CONTEXT_IMMUTABLE"
-      }
-    },
-    {
-      "id": "L2E-076",
-      "category": "host-abuse",
-      "title": "negative random_bytes length",
-      "script": "sys.random_bytes(-1)",
-      "expect": {
-        "error": "LOGIC.TYPE_ERROR"
-      }
-    },
-    {
-      "id": "L2E-077",
-      "category": "host-abuse",
-      "title": "wrong argument type to a gateway call",
-      "script": "sys.random_bytes(\"x\")",
-      "expect": {
-        "error": "LOGIC.TYPE_ERROR"
-      }
-    },
-    {
-      "id": "L2E-078",
-      "category": "host-abuse",
-      "title": "print to the host console",
-      "script": "print(\"x\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-079",
-      "category": "host-abuse",
-      "title": "debug to the host console",
-      "script": "debug(sys)",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-080",
-      "category": "host-abuse",
-      "title": "exit the host",
-      "script": "exit(1)",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-081",
-      "category": "host-abuse",
-      "title": "host JSON parser",
-      "script": "parse_json(\"{}\")",
-      "expect": {
-        "error": "LOGIC.FORBIDDEN_CAPABILITY"
-      }
-    },
-    {
-      "id": "L2E-082",
-      "category": "host-abuse",
-      "title": "host errors cannot be caught",
-      "script": "try { sys.random_bytes(0) } catch { 1 }",
-      "expect": {
-        "error": "LOGIC.TYPE_ERROR"
-      }
-    },
-    {
-      "id": "L2E-083",
-      "category": "resource-exhaustion",
-      "title": "infinite loop",
-      "script": "loop {}",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      }
-    },
-    {
-      "id": "L2E-084",
-      "category": "resource-exhaustion",
-      "title": "memory across 1,000 arrays of 65,536 elements",
-      "script": "{{N:1000:let v$i = []; v$i.pad(65536, 0);\n}}1",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      }
-    },
-    {
-      "id": "L2E-085",
-      "category": "resource-exhaustion",
-      "title": "unbounded recursion",
-      "script": "fn f(n) { f(n + 1) } f(0)",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      }
-    },
-    {
-      "id": "L2E-086",
-      "category": "resource-exhaustion",
-      "title": "string doubling",
-      "script": "let s = \"x\"; loop { s += s; }",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      }
-    },
-    {
-      "id": "L2E-087",
-      "category": "resource-exhaustion",
-      "title": "array growth",
-      "script": "let a = []; loop { a.push(1); }",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      }
-    },
-    {
-      "id": "L2E-088",
-      "category": "resource-exhaustion",
-      "title": "map growth",
-      "script": "let m = #{}; let i = 0; loop { m[i.to_string()] = i; i += 1; }",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      }
-    },
-    {
-      "id": "L2E-089",
-      "category": "resource-exhaustion",
-      "title": "array pad to 10^8",
-      "script": "let a = []; a.pad(100000000, 0); a.len()",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      }
-    },
-    {
-      "id": "L2E-090",
-      "category": "resource-exhaustion",
-      "title": "string pad to 10^8",
-      "script": "let s = \"x\"; s.pad(100000000, \"y\"); s.len()",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      }
-    },
-    {
-      "id": "L2E-091",
-      "category": "resource-exhaustion",
-      "title": "nested array doubling",
-      "script": "let a = [0]; loop { a = [a, a]; }",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      }
-    },
-    {
-      "id": "L2E-092",
-      "category": "resource-exhaustion",
-      "title": "expression nesting of 200 levels",
-      "script": "{{R:200:(}}1{{R:200:)}}",
-      "expect": {
-        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
-      }
-    },
-    {
-      "id": "L2E-093",
-      "category": "resource-exhaustion",
-      "title": "source above 64 KiB",
-      "script": "{{R:40000:1+}}1",
-      "expect": {
-        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
-      }
-    },
-    {
-      "id": "L2E-094",
-      "category": "resource-exhaustion",
-      "title": "300 script functions",
-      "script": "{{N:300:fn f$i() { $i }\n}}1",
-      "expect": {
-        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
-      }
-    },
-    {
-      "id": "L2E-095",
-      "category": "resource-exhaustion",
-      "title": "2,000 variables",
-      "script": "{{N:2000:let v$i = $i;\n}}1",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      }
-    },
-    {
-      "id": "L2E-096",
-      "category": "resource-exhaustion",
-      "title": "time budget without an operation budget",
-      "script": "loop {}",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      },
-      "limits": {
-        "operations": 1000000000000,
-        "cpu_ms": 100,
-        "wall_ms": 100
-      }
-    },
-    {
-      "id": "L2E-097",
-      "category": "resource-exhaustion",
-      "title": "cancellation",
-      "script": "loop {}",
-      "expect": {
-        "error": "LOGIC.CANCELLED"
-      },
-      "limits": {
-        "operations": 1000000000000,
-        "cpu_ms": 600000,
-        "wall_ms": 600000
-      },
-      "cancel_after_ms": 50
-    },
-    {
-      "id": "L2E-098",
-      "category": "resource-exhaustion",
-      "title": "limit termination cannot be caught",
-      "script": "try { loop {} } catch { 42 }",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      }
-    },
-    {
-      "id": "L2E-099",
-      "category": "resource-exhaustion",
-      "title": "instruction call budget",
-      "script": "try { loop { sys.uuid(); } } catch { 0 }",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      }
-    },
-    {
-      "id": "L2E-100",
-      "category": "resource-exhaustion",
-      "title": "repeated sort of a large array",
-      "script": "let a = []; a.pad(60000, 1); loop { a.sort(); }",
-      "expect": {
-        "error": "LOGIC.LIMIT_EXCEEDED"
-      }
+ "suite": "UBOS L2 escape suite (initial)",
+ "version": "0.2",
+ "verifies": "VER-SEC-0001",
+ "profile": "strict unless stated",
+ "cases": [
+  {
+   "id": "L2E-001",
+   "category": "file",
+   "title": "open a host file",
+   "script": "open(\"/etc/passwd\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-002",
+   "category": "file",
+   "title": "read a file by a free function",
+   "script": "read_file(\"/etc/passwd\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-003",
+   "category": "file",
+   "title": "write a file",
+   "script": "write_file(\"/tmp/ubos-escape\", \"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-004",
+   "category": "file",
+   "title": "import a module from a file",
+   "script": "import \"fs\" as fs; fs::read(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-005",
+   "category": "file",
+   "title": "namespaced std file API",
+   "script": "std::fs::read(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-006",
+   "category": "file",
+   "title": "eval of a script string",
+   "script": "eval(\"1 + 1\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-007",
+   "category": "file",
+   "title": "file access through a function pointer",
+   "script": "let f = Fn(\"open\"); f.call(\"/etc/passwd\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-008",
+   "category": "file",
+   "title": "file access as a string method",
+   "script": "\"/etc/passwd\".read()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-009",
+   "category": "file",
+   "title": "run another script file",
+   "script": "run_file(\"other.rhai\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-010",
+   "category": "file",
+   "title": "load or include a script",
+   "script": "load(\"lib.rhai\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-011",
+   "category": "file",
+   "title": "file capability on the gateway",
+   "script": "sys.fs.read(\"/etc/passwd\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-012",
+   "category": "file",
+   "title": "file capability by gateway index",
+   "script": "sys[\"files\"]",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-013",
+   "category": "network",
+   "title": "HTTP GET",
+   "script": "http_get(\"http://169.254.169.254/latest/meta-data\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-014",
+   "category": "network",
+   "title": "fetch",
+   "script": "fetch(\"https://example.com\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-015",
+   "category": "network",
+   "title": "raw socket connect",
+   "script": "connect(\"10.0.0.1\", 80)",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-016",
+   "category": "network",
+   "title": "socket constructor",
+   "script": "let s = socket(); s.send(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-017",
+   "category": "network",
+   "title": "DNS lookup",
+   "script": "dns_lookup(\"example.com\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-018",
+   "category": "network",
+   "title": "import an HTTP module",
+   "script": "import \"http\" as http; http::get(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-019",
+   "category": "network",
+   "title": "HTTP through a function pointer",
+   "script": "Fn(\"http_get\").call(\"http://example.com\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-020",
+   "category": "network",
+   "title": "HTTP as a string method",
+   "script": "\"http://example.com\".fetch()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-021",
+   "category": "network",
+   "title": "connector method on the gateway",
+   "script": "sys.connector(\"bank\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-022",
+   "category": "network",
+   "title": "network capability by gateway index",
+   "script": "sys[\"net\"]",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-023",
+   "category": "network",
+   "title": "send mail",
+   "script": "send_mail(\"a@example.com\", \"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-024",
+   "category": "network",
+   "title": "connector field on the context",
+   "script": "ctx.connector",
+   "expect": {
+    "error": "LOGIC.UNKNOWN_FIELD"
+   }
+  },
+  {
+   "id": "L2E-025",
+   "category": "time",
+   "title": "host timestamp",
+   "script": "timestamp()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-026",
+   "category": "time",
+   "title": "host clock now()",
+   "script": "now()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-027",
+   "category": "time",
+   "title": "sleep (language core package)",
+   "script": "sleep(1)",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-028",
+   "category": "time",
+   "title": "elapsed time of a timestamp",
+   "script": "let t = timestamp(); t.elapsed",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-029",
+   "category": "time",
+   "title": "clock method on the gateway",
+   "script": "sys.now()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-030",
+   "category": "time",
+   "title": "environment variable TZ",
+   "script": "env(\"TZ\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-031",
+   "category": "time",
+   "title": "system time",
+   "script": "system_time()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-032",
+   "category": "time",
+   "title": "ctx.now is the fixed execution time",
+   "script": "ctx.now",
+   "expect": {
+    "value": "2026-01-01T00:00:00.000000Z"
+   }
+  },
+  {
+   "id": "L2E-033",
+   "category": "time",
+   "title": "assign ctx.now",
+   "script": "ctx.now = \"2030-01-01T00:00:00Z\"",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-034",
+   "category": "time",
+   "title": "assign ctx by index",
+   "script": "ctx[\"now\"] = \"2030-01-01T00:00:00Z\"",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-035",
+   "category": "time",
+   "title": "replace the ctx object",
+   "script": "ctx = #{ now: \"2030-01-01T00:00:00Z\" }",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-036",
+   "category": "time",
+   "title": "mutate ctx through a method with this",
+   "script": "fn shift() { this.now = \"2030-01-01T00:00:00Z\"; } ctx.shift()",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-037",
+   "category": "entropy",
+   "title": "rand()",
+   "script": "rand()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-038",
+   "category": "entropy",
+   "title": "random()",
+   "script": "random()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-039",
+   "category": "entropy",
+   "title": "rand_int",
+   "script": "rand_int(1, 6)",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-040",
+   "category": "entropy",
+   "title": "random method on the gateway",
+   "script": "sys.random()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-041",
+   "category": "entropy",
+   "title": "shuffle",
+   "script": "let a = [3, 1, 2]; a.shuffle(); a",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-042",
+   "category": "entropy",
+   "title": "hash of a value",
+   "script": "hash(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-043",
+   "category": "entropy",
+   "title": "sys.random_bytes is journaled and replayable",
+   "script": "sys.random_bytes(8)",
+   "expect": {
+    "deterministic": true
+   }
+  },
+  {
+   "id": "L2E-044",
+   "category": "entropy",
+   "title": "sys.uuid is journaled and replayable",
+   "script": "[sys.uuid(), sys.uuid()]",
+   "expect": {
+    "deterministic": true
+   }
+  },
+  {
+   "id": "L2E-045",
+   "category": "entropy",
+   "title": "map iteration follows key order",
+   "script": "let m = #{}; m.z = 1; m.a = 2; m.m = 3; m.keys()",
+   "expect": {
+    "value": [
+     "a",
+     "m",
+     "z"
+    ]
+   }
+  },
+  {
+   "id": "L2E-046",
+   "category": "entropy",
+   "title": "map JSON output follows key order",
+   "script": "let m = #{}; m.b = 1; m.a = 2; m.to_json()",
+   "expect": {
+    "value": "{\"a\":2,\"b\":1}"
+   }
+  },
+  {
+   "id": "L2E-047",
+   "category": "entropy",
+   "title": "textual form of the gateway leaks no address",
+   "script": "sys.to_string()",
+   "expect": {
+    "deterministic": true
+   }
+  },
+  {
+   "id": "L2E-048",
+   "category": "entropy",
+   "title": "random_bytes above the per-call maximum",
+   "script": "sys.random_bytes(2000)",
+   "expect": {
+    "error": "MODEL.INVALID_VALUE"
+   }
+  },
+  {
+   "id": "L2E-049",
+   "category": "float",
+   "title": "decimal literal addition is exact",
+   "script": "1.5 + 2.25",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-050",
+   "category": "float",
+   "title": "0.1 + 0.2 == 0.3 (exact decimals)",
+   "script": "0.1 + 0.2 == 0.3",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-051",
+   "category": "float",
+   "title": "to_float",
+   "script": "to_float(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-052",
+   "category": "float",
+   "title": "to_float as a method",
+   "script": "let x = 1.5; x.to_float()",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-053",
+   "category": "float",
+   "title": "parse_float",
+   "script": "parse_float(\"1.5\")",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-054",
+   "category": "float",
+   "title": "sqrt",
+   "script": "sqrt(2)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-055",
+   "category": "float",
+   "title": "sin",
+   "script": "sin(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-056",
+   "category": "float",
+   "title": "exp",
+   "script": "exp(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-057",
+   "category": "float",
+   "title": "pi",
+   "script": "pi()",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-058",
+   "category": "float",
+   "title": "f32_to_f64",
+   "script": "f32_to_f64(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-059",
+   "category": "float",
+   "title": "decimal division is exact to 28 digits",
+   "script": "1.0 / 3.0",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-060",
+   "category": "float",
+   "title": "integer division by zero",
+   "script": "1 / 0",
+   "expect": {
+    "error": "LOGIC.DIVISION_BY_ZERO"
+   }
+  },
+  {
+   "id": "L2E-061",
+   "category": "float",
+   "title": "decimal division by zero",
+   "script": "div(dec(\"1.5\"), 0, 2, \"half_even\")",
+   "expect": {
+    "error": "LOGIC.DIVISION_BY_ZERO"
+   }
+  },
+  {
+   "id": "L2E-062",
+   "category": "float",
+   "title": "string to a decimal field",
+   "script": "this.amount = \"1.5\"; this.amount",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-063",
+   "category": "host-abuse",
+   "title": "unknown field on a handle",
+   "script": "this.secret",
+   "expect": {
+    "error": "LOGIC.UNKNOWN_FIELD"
+   }
+  },
+  {
+   "id": "L2E-064",
+   "category": "host-abuse",
+   "title": "unknown field by index",
+   "script": "this[\"password\"]",
+   "expect": {
+    "error": "LOGIC.UNKNOWN_FIELD"
+   }
+  },
+  {
+   "id": "L2E-065",
+   "category": "host-abuse",
+   "title": "string into an integer field",
+   "script": "this.qty = \"ten\"",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-066",
+   "category": "host-abuse",
+   "title": "integer into a boolean field",
+   "script": "this.paid = 1",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-067",
+   "category": "host-abuse",
+   "title": "return the object handle",
+   "script": "this",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-068",
+   "category": "host-abuse",
+   "title": "return the gateway",
+   "script": "sys",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-069",
+   "category": "host-abuse",
+   "title": "return the gateway inside an array",
+   "script": "[1, sys]",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-070",
+   "category": "host-abuse",
+   "title": "return the context inside a map",
+   "script": "#{ g: ctx }",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-071",
+   "category": "host-abuse",
+   "title": "return a function pointer",
+   "script": "Fn(\"uuid\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-072",
+   "category": "host-abuse",
+   "title": "closure capturing the gateway",
+   "script": "let f = |x| sys.uuid(); f.call(1)",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-073",
+   "category": "host-abuse",
+   "title": "script function reaching the gateway",
+   "script": "fn leak() { sys.uuid() } leak()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-074",
+   "category": "host-abuse",
+   "title": "assign ctx.tenant",
+   "script": "ctx.tenant = \"t2\"",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-075",
+   "category": "host-abuse",
+   "title": "overwrite a gateway member",
+   "script": "sys.uuid = \"x\"",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-076",
+   "category": "host-abuse",
+   "title": "negative random_bytes length",
+   "script": "sys.random_bytes(-1)",
+   "expect": {
+    "error": "MODEL.INVALID_VALUE"
+   }
+  },
+  {
+   "id": "L2E-077",
+   "category": "host-abuse",
+   "title": "wrong argument type to a gateway call",
+   "script": "sys.random_bytes(\"x\")",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-078",
+   "category": "host-abuse",
+   "title": "print to the host console",
+   "script": "print(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-079",
+   "category": "host-abuse",
+   "title": "debug to the host console",
+   "script": "debug(sys)",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-080",
+   "category": "host-abuse",
+   "title": "exit the host",
+   "script": "exit(1)",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-081",
+   "category": "host-abuse",
+   "title": "host JSON parser",
+   "script": "parse_json(\"{}\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-082",
+   "category": "host-abuse",
+   "title": "host errors cannot be caught",
+   "script": "try { sys.random_bytes(0) } catch { 1 }",
+   "expect": {
+    "error": "MODEL.INVALID_VALUE"
+   }
+  },
+  {
+   "id": "L2E-083",
+   "category": "resource-exhaustion",
+   "title": "infinite loop",
+   "script": "loop {}",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-084",
+   "category": "resource-exhaustion",
+   "title": "memory across 1,000 arrays of 65,536 elements",
+   "script": "{{N:1000:let v$i = []; v$i.pad(65536, 0);\n}}1",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-085",
+   "category": "resource-exhaustion",
+   "title": "unbounded recursion",
+   "script": "fn f(n) { f(n + 1) } f(0)",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-086",
+   "category": "resource-exhaustion",
+   "title": "string doubling",
+   "script": "let s = \"x\"; loop { s += s; }",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-087",
+   "category": "resource-exhaustion",
+   "title": "array growth",
+   "script": "let a = []; loop { a.push(1); }",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-088",
+   "category": "resource-exhaustion",
+   "title": "map growth",
+   "script": "let m = #{}; let i = 0; loop { m[i.to_string()] = i; i += 1; }",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-089",
+   "category": "resource-exhaustion",
+   "title": "array pad to 10^8",
+   "script": "let a = []; a.pad(100000000, 0); a.len()",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-090",
+   "category": "resource-exhaustion",
+   "title": "string pad to 10^8",
+   "script": "let s = \"x\"; s.pad(100000000, \"y\"); s.len()",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-091",
+   "category": "resource-exhaustion",
+   "title": "nested array doubling",
+   "script": "let a = [0]; loop { a = [a, a]; }",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-092",
+   "category": "resource-exhaustion",
+   "title": "expression nesting of 200 levels",
+   "script": "{{R:200:(}}1{{R:200:)}}",
+   "expect": {
+    "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+   }
+  },
+  {
+   "id": "L2E-093",
+   "category": "resource-exhaustion",
+   "title": "source above 64 KiB",
+   "script": "{{R:40000:1+}}1",
+   "expect": {
+    "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+   }
+  },
+  {
+   "id": "L2E-094",
+   "category": "resource-exhaustion",
+   "title": "300 script functions",
+   "script": "{{N:300:fn f$i() { $i }\n}}1",
+   "expect": {
+    "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+   }
+  },
+  {
+   "id": "L2E-095",
+   "category": "resource-exhaustion",
+   "title": "2,000 variables",
+   "script": "{{N:2000:let v$i = $i;\n}}1",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-096",
+   "category": "resource-exhaustion",
+   "title": "time budget without an operation budget",
+   "script": "loop {}",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   },
+   "profile": "standard"
+  },
+  {
+   "id": "L2E-097",
+   "category": "resource-exhaustion",
+   "title": "cancellation",
+   "script": "loop {}",
+   "expect": {
+    "error": "LOGIC.CANCELLED"
+   },
+   "cancel_after_units": 5000
+  },
+  {
+   "id": "L2E-098",
+   "category": "resource-exhaustion",
+   "title": "limit termination cannot be caught",
+   "script": "try { loop {} } catch { 42 }",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-099",
+   "category": "resource-exhaustion",
+   "title": "instruction call budget",
+   "script": "try { loop { sys.uuid(); } } catch { 0 }",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-100",
+   "category": "resource-exhaustion",
+   "title": "repeated sort of a large array",
+   "script": "let a = []; a.pad(60000, 1); loop { a.sort(); }",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-101",
+   "category": "gateway",
+   "title": "identity parameter tenant on commit.create",
+   "script": "sys.commit.create(#{class: \"Invoice\", fields: #{number: \"I\"}, tenant: \"x\"})",
+   "expect": {
+    "error": "LOGIC.PARAMETER_FORBIDDEN"
+   }
+  },
+  {
+   "id": "L2E-102",
+   "category": "gateway",
+   "title": "identity parameter tenant on read.get",
+   "script": "sys.read.get(#{target: self_id, tenant: \"x\"})",
+   "expect": {
+    "error": "LOGIC.PARAMETER_FORBIDDEN"
+   }
+  },
+  {
+   "id": "L2E-103",
+   "category": "gateway",
+   "title": "identity parameter vae on commit.create",
+   "script": "sys.commit.create(#{class: \"Invoice\", fields: #{number: \"I\"}, vae: \"x\"})",
+   "expect": {
+    "error": "LOGIC.PARAMETER_FORBIDDEN"
+   }
+  },
+  {
+   "id": "L2E-104",
+   "category": "gateway",
+   "title": "identity parameter vae on read.get",
+   "script": "sys.read.get(#{target: self_id, vae: \"x\"})",
+   "expect": {
+    "error": "LOGIC.PARAMETER_FORBIDDEN"
+   }
+  },
+  {
+   "id": "L2E-105",
+   "category": "gateway",
+   "title": "identity parameter principal on commit.create",
+   "script": "sys.commit.create(#{class: \"Invoice\", fields: #{number: \"I\"}, principal: \"x\"})",
+   "expect": {
+    "error": "LOGIC.PARAMETER_FORBIDDEN"
+   }
+  },
+  {
+   "id": "L2E-106",
+   "category": "gateway",
+   "title": "identity parameter principal on read.get",
+   "script": "sys.read.get(#{target: self_id, principal: \"x\"})",
+   "expect": {
+    "error": "LOGIC.PARAMETER_FORBIDDEN"
+   }
+  },
+  {
+   "id": "L2E-107",
+   "category": "gateway",
+   "title": "identity parameter on_behalf_of on commit.create",
+   "script": "sys.commit.create(#{class: \"Invoice\", fields: #{number: \"I\"}, on_behalf_of: \"x\"})",
+   "expect": {
+    "error": "LOGIC.PARAMETER_FORBIDDEN"
+   }
+  },
+  {
+   "id": "L2E-108",
+   "category": "gateway",
+   "title": "identity parameter on_behalf_of on read.get",
+   "script": "sys.read.get(#{target: self_id, on_behalf_of: \"x\"})",
+   "expect": {
+    "error": "LOGIC.PARAMETER_FORBIDDEN"
+   }
+  },
+  {
+   "id": "L2E-109",
+   "category": "gateway",
+   "title": "unknown parameter",
+   "script": "sys.read.get(#{target: self_id, verbose: true})",
+   "expect": {
+    "error": "MODEL.INVALID_VALUE"
+   }
+  },
+  {
+   "id": "L2E-110",
+   "category": "gateway",
+   "title": "missing parameter",
+   "script": "sys.commit.create(#{fields: #{}})",
+   "expect": {
+    "error": "MODEL.DECLARATION_INCOMPLETE"
+   }
+  },
+  {
+   "id": "L2E-111",
+   "category": "gateway",
+   "title": "missing target",
+   "script": "sys.read.get(#{})",
+   "expect": {
+    "error": "MODEL.DECLARATION_INCOMPLETE"
+   }
+  },
+  {
+   "id": "L2E-112",
+   "category": "gateway",
+   "title": "undeclared family search",
+   "script": "sys.search.query(#{})",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-113",
+   "category": "gateway",
+   "title": "undeclared family call",
+   "script": "sys.call.query(#{})",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-114",
+   "category": "gateway",
+   "title": "undeclared family ask",
+   "script": "sys.ask.query(#{})",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-115",
+   "category": "gateway",
+   "title": "unknown family fs",
+   "script": "sys.fs.open(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-116",
+   "category": "gateway",
+   "title": "unknown family net",
+   "script": "sys.net.open(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-117",
+   "category": "gateway",
+   "title": "unknown family os",
+   "script": "sys.os.open(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-118",
+   "category": "gateway",
+   "title": "unknown family env",
+   "script": "sys.env.open(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-119",
+   "category": "gateway",
+   "title": "unknown family time",
+   "script": "sys.time.open(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-120",
+   "category": "gateway",
+   "title": "unknown family random",
+   "script": "sys.random.open(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-121",
+   "category": "gateway",
+   "title": "unknown family process",
+   "script": "sys.process.open(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-122",
+   "category": "gateway",
+   "title": "unknown family ffi",
+   "script": "sys.ffi.open(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-123",
+   "category": "gateway",
+   "title": "unknown family db",
+   "script": "sys.db.open(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-124",
+   "category": "gateway",
+   "title": "unknown family shell",
+   "script": "sys.shell.open(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-125",
+   "category": "gateway",
+   "title": "unknown operation commit.drop_table",
+   "script": "sys.commit.drop_table(#{})",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-126",
+   "category": "gateway",
+   "title": "unknown operation commit.shell",
+   "script": "sys.commit.shell(#{})",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-127",
+   "category": "gateway",
+   "title": "unknown operation commit.raw_sql",
+   "script": "sys.commit.raw_sql(#{})",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-128",
+   "category": "gateway",
+   "title": "unknown operation commit.delete_all",
+   "script": "sys.commit.delete_all(#{})",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-129",
+   "category": "gateway",
+   "title": "unknown operation commit.eval",
+   "script": "sys.commit.eval(#{})",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-130",
+   "category": "gateway",
+   "title": "arguments that are not a map",
+   "script": "sys.commit.create(1)",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-131",
+   "category": "gateway",
+   "title": "arguments as a string",
+   "script": "sys.read.get(\"ubos://acme/Invoice/inv-1\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-132",
+   "category": "gateway",
+   "title": "read of the object",
+   "script": "sys.read.get(#{target: self_id}).fields.number",
+   "expect": {
+    "value": "INV-1"
+   }
+  },
+  {
+   "id": "L2E-133",
+   "category": "gateway",
+   "title": "read with field selection",
+   "script": "sys.read.get(#{target: self_id, fields: [\"qty\"]}).fields",
+   "expect": {
+    "value": {
+     "qty": 2
     }
-  ]
+   }
+  },
+  {
+   "id": "L2E-134",
+   "category": "gateway",
+   "title": "read of another tenant",
+   "script": "sys.read.get(#{target: \"ubos://evil/Invoice/inv-1\"})",
+   "expect": {
+    "error": "IAM.NOT_FOUND"
+   }
+  },
+  {
+   "id": "L2E-135",
+   "category": "gateway",
+   "title": "read of an unknown object",
+   "script": "sys.read.get(#{target: \"ubos://acme/Invoice/nope\"})",
+   "expect": {
+    "error": "IAM.NOT_FOUND"
+   }
+  },
+  {
+   "id": "L2E-136",
+   "category": "gateway",
+   "title": "update of an unknown object",
+   "script": "sys.commit.update(#{target: \"ubos://acme/Invoice/nope\", set: #{qty: 1}})",
+   "expect": {
+    "error": "IAM.NOT_FOUND"
+   }
+  },
+  {
+   "id": "L2E-137",
+   "category": "gateway",
+   "title": "update that violates the model is refused at commit",
+   "script": "sys.read.get(#{target: self_id}); sys.commit.update(#{target: self_id, set: #{amount: \"abc\"}}); 1",
+   "expect": {
+    "error": "MODEL.INVALID_VALUE"
+   }
+  },
+  {
+   "id": "L2E-138",
+   "category": "gateway",
+   "title": "undeclared field in an update",
+   "script": "sys.read.get(#{target: self_id}); sys.commit.update(#{target: self_id, set: #{secret: 1}}); 1",
+   "expect": {
+    "error": "MODEL.INVALID_VALUE"
+   }
+  },
+  {
+   "id": "L2E-139",
+   "category": "gateway",
+   "title": "update without a read needs a base",
+   "script": "sys.commit.update(#{target: self_id, set: #{qty: 3}})",
+   "expect": {
+    "error": "MODEL.DECLARATION_INCOMPLETE"
+   }
+  },
+  {
+   "id": "L2E-140",
+   "category": "gateway",
+   "title": "create of an abstract class",
+   "script": "sys.commit.create(#{class: \"DataObject\", fields: #{}})",
+   "expect": {
+    "error": "MODEL.ABSTRACT_INSTANTIATION"
+   }
+  },
+  {
+   "id": "L2E-141",
+   "category": "gateway",
+   "title": "create of a system class",
+   "script": "sys.commit.create(#{class: \"Logic\", fields: #{name: \"x\"}})",
+   "expect": {
+    "error": "MODEL.CONSTRAINT_VIOLATED"
+   }
+  },
+  {
+   "id": "L2E-142",
+   "category": "gateway",
+   "title": "object_id is for import processes only",
+   "script": "sys.commit.create(#{class: \"Invoice\", fields: #{number: \"I\"}, object_id: \"01890a5d-ac96-7002-8000-000000000002\"})",
+   "expect": {
+    "error": "MODEL.INVALID_VALUE"
+   }
+  },
+  {
+   "id": "L2E-143",
+   "category": "gateway",
+   "title": "unknown event type",
+   "script": "sys.emit.event(#{subject: self_id, type: \"Nope\", payload: #{}})",
+   "expect": {
+    "error": "EVT.UNKNOWN_EVENT_TYPE"
+   }
+  },
+  {
+   "id": "L2E-144",
+   "category": "gateway",
+   "title": "observation without a world",
+   "script": "sys.adapter.observe(#{name: \"rate\"})",
+   "expect": {
+    "error": "LOGIC.CONNECTOR_UNAVAILABLE"
+   }
+  },
+  {
+   "id": "L2E-145",
+   "category": "gateway",
+   "title": "instruction-call limit",
+   "script": "for i in 0..10 { sys.read.get(#{target: self_id}); } 1",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   },
+   "limits": {
+    "instruction_calls": 3
+   }
+  },
+  {
+   "id": "L2E-146",
+   "category": "gateway",
+   "title": "change limit",
+   "script": "for i in 0..5 { sys.commit.create(#{class: \"Invoice\", fields: #{number: \"I\"}}); } 1",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   },
+   "limits": {
+    "changes": 2
+   }
+  },
+  {
+   "id": "L2E-147",
+   "category": "gateway",
+   "title": "raising a limit is refused",
+   "script": "1",
+   "expect": {
+    "error": "IAM.DENIED"
+   },
+   "limits": {
+    "units": 10000000000
+   }
+  },
+  {
+   "id": "L2E-148",
+   "category": "gateway",
+   "title": "unknown limit is refused",
+   "script": "1",
+   "expect": {
+    "error": "MODEL.INVALID_VALUE"
+   },
+   "limits": {
+    "fuel": 1
+   }
+  },
+  {
+   "id": "L2E-149",
+   "category": "gateway",
+   "title": "assigning the gateway",
+   "script": "sys = 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-150",
+   "category": "gateway",
+   "title": "assigning a family",
+   "script": "sys.commit = 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-151",
+   "category": "gateway",
+   "title": "assigning an operation",
+   "script": "sys.commit.create = 1",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-152",
+   "category": "gateway",
+   "title": "indexing the gateway",
+   "script": "sys[\"shell\"]",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-153",
+   "category": "gateway",
+   "title": "the gateway cannot leave the script",
+   "script": "sys",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-154",
+   "category": "gateway",
+   "title": "a family cannot leave the script",
+   "script": "sys.commit",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-155",
+   "category": "gateway",
+   "title": "the gateway in a map cannot leave",
+   "script": "#{g: sys}",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-156",
+   "category": "gateway",
+   "title": "logic that is not imported",
+   "script": "sys.run.logic(#{asset: \"acme.l2e\", function: \"run\", args: []})",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-157",
+   "category": "gateway",
+   "title": "unknown logic asset",
+   "script": "sys.run.logic(#{asset: \"acme.other\", function: \"run\", args: []})",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-158",
+   "category": "gateway",
+   "title": "super outside an implementation chain (reserved word, spelled super_)",
+   "script": "sys.run.super_(#{})",
+   "expect": {
+    "error": "MODEL.PORT_NOT_IMPLEMENTED"
+   }
+  },
+  {
+   "id": "L2E-159",
+   "category": "gateway",
+   "title": "unknown port",
+   "script": "sys.run.port(#{target: self_id, port: \"nope\", params: #{}})",
+   "expect": {
+    "error": "MODEL.PORT_NOT_IMPLEMENTED"
+   }
+  },
+  {
+   "id": "L2E-160",
+   "category": "gateway",
+   "title": "recursion through run.port hits the depth limit",
+   "script": "sys.run.port(#{target: self_id, port: \"run\", params: #{}})",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-161",
+   "category": "gateway",
+   "title": "async job is an effect (reserved word, spelled async_)",
+   "script": "sys.run.async_(#{target: self_id, port: \"run\"}).job_id.len()",
+   "expect": {
+    "value": 36
+   }
+  },
+  {
+   "id": "L2E-162",
+   "category": "gateway",
+   "title": "uuid is deterministic",
+   "script": "sys.uuid()",
+   "expect": {
+    "deterministic": true
+   }
+  },
+  {
+   "id": "L2E-163",
+   "category": "gateway",
+   "title": "random bytes of the largest size",
+   "script": "sys.random_bytes(1024).len()",
+   "expect": {
+    "value": 2048
+   }
+  },
+  {
+   "id": "L2E-164",
+   "category": "gateway",
+   "title": "random bytes beyond the size",
+   "script": "sys.random_bytes(1025)",
+   "expect": {
+    "error": "MODEL.INVALID_VALUE"
+   }
+  },
+  {
+   "id": "L2E-165",
+   "category": "gateway",
+   "title": "random bytes with a text argument",
+   "script": "sys.random_bytes(\"8\")",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-166",
+   "category": "gateway",
+   "title": "uuid with an argument",
+   "script": "sys.uuid(1)",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-167",
+   "category": "context",
+   "title": "assigning ctx.principal",
+   "script": "ctx.principal = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-168",
+   "category": "context",
+   "title": "assigning ctx.principal_kind",
+   "script": "ctx.principal_kind = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-169",
+   "category": "context",
+   "title": "assigning ctx.auth_level",
+   "script": "ctx.auth_level = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-170",
+   "category": "context",
+   "title": "assigning ctx.tenant",
+   "script": "ctx.tenant = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-171",
+   "category": "context",
+   "title": "assigning ctx.vae",
+   "script": "ctx.vae = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-172",
+   "category": "context",
+   "title": "assigning ctx.branch",
+   "script": "ctx.branch = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-173",
+   "category": "context",
+   "title": "assigning ctx.asof",
+   "script": "ctx.asof = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-174",
+   "category": "context",
+   "title": "assigning ctx.time",
+   "script": "ctx.time = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-175",
+   "category": "context",
+   "title": "assigning ctx.now",
+   "script": "ctx.now = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-176",
+   "category": "context",
+   "title": "assigning ctx.locale",
+   "script": "ctx.locale = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-177",
+   "category": "context",
+   "title": "assigning ctx.time_zone",
+   "script": "ctx.time_zone = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-178",
+   "category": "context",
+   "title": "assigning ctx.process_id",
+   "script": "ctx.process_id = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-179",
+   "category": "context",
+   "title": "assigning ctx.channel",
+   "script": "ctx.channel = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-180",
+   "category": "context",
+   "title": "assigning ctx.profile",
+   "script": "ctx.profile = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-181",
+   "category": "context",
+   "title": "assigning ctx.replay",
+   "script": "ctx.replay = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-182",
+   "category": "context",
+   "title": "assigning a member of a nested context value",
+   "script": "ctx.budget_remaining.units = 1000000000; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-183",
+   "category": "context",
+   "title": "assigning through the indexer",
+   "script": "ctx[\"now\"] = 1; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-184",
+   "category": "context",
+   "title": "assigning through a copy",
+   "script": "let c = ctx; c.now = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-185",
+   "category": "context",
+   "title": "unknown context member",
+   "script": "ctx.secret",
+   "expect": {
+    "error": "LOGIC.UNKNOWN_FIELD"
+   }
+  },
+  {
+   "id": "L2E-186",
+   "category": "context",
+   "title": "removing a member",
+   "script": "ctx.remove(\"now\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-187",
+   "category": "context",
+   "title": "the context cannot leave the script",
+   "script": "ctx",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-188",
+   "category": "context",
+   "title": "profile is the strict profile",
+   "script": "ctx.profile",
+   "expect": {
+    "value": "strict"
+   }
+  },
+  {
+   "id": "L2E-189",
+   "category": "context",
+   "title": "tenant is the authority",
+   "script": "ctx.tenant",
+   "expect": {
+    "value": "acme"
+   }
+  },
+  {
+   "id": "L2E-190",
+   "category": "context",
+   "title": "replay is false",
+   "script": "ctx.replay",
+   "expect": {
+    "value": false
+   }
+  },
+  {
+   "id": "L2E-191",
+   "category": "context",
+   "title": "budget is the profile budget",
+   "script": "ctx.budget_remaining.units",
+   "expect": {
+    "value": 1000000
+   }
+  },
+  {
+   "id": "L2E-192",
+   "category": "context",
+   "title": "the branch",
+   "script": "ctx.branch",
+   "expect": {
+    "value": "feature/l2e"
+   }
+  },
+  {
+   "id": "L2E-193",
+   "category": "context",
+   "title": "the clock is fixed",
+   "script": "ctx.now == \"2026-01-01T00:00:00.000000Z\"",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "id": "L2E-194",
+   "category": "handle",
+   "title": "unknown field",
+   "script": "this.secret",
+   "expect": {
+    "error": "LOGIC.UNKNOWN_FIELD"
+   }
+  },
+  {
+   "id": "L2E-195",
+   "category": "handle",
+   "title": "unknown field through the indexer",
+   "script": "this[\"password\"]",
+   "expect": {
+    "error": "LOGIC.UNKNOWN_FIELD"
+   }
+  },
+  {
+   "id": "L2E-196",
+   "category": "handle",
+   "title": "integer field given text",
+   "script": "this.qty = \"ten\"; 1",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-197",
+   "category": "handle",
+   "title": "boolean field given an integer",
+   "script": "this.paid = 1; 1",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-198",
+   "category": "handle",
+   "title": "decimal field given text",
+   "script": "this.amount = \"1.5\"; 1",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-199",
+   "category": "handle",
+   "title": "text field given a map",
+   "script": "this.number = #{}; 1",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-200",
+   "category": "handle",
+   "title": "integer promotes to decimal",
+   "script": "this.amount = 3; this.amount",
+   "expect": {
+    "value": "3"
+   }
+  },
+  {
+   "id": "L2E-201",
+   "category": "handle",
+   "title": "a local change does not reach the store",
+   "script": "this.qty = 9; sys.read.get(#{target: self_id}).fields.qty",
+   "expect": {
+    "value": 2
+   }
+  },
+  {
+   "id": "L2E-202",
+   "category": "handle",
+   "title": "the handle cannot leave the script",
+   "script": "this",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-203",
+   "category": "handle",
+   "title": "the handle in a list cannot leave",
+   "script": "[this]",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-204",
+   "category": "handle",
+   "title": "the handle in a map cannot leave",
+   "script": "#{h: this}",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-205",
+   "category": "handle",
+   "title": "decimal field arithmetic",
+   "script": "this.amount * 2",
+   "expect": {
+    "value": "21"
+   }
+  },
+  {
+   "id": "L2E-206",
+   "category": "handle",
+   "title": "decimal field comparison",
+   "script": "this.amount > 10",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "id": "L2E-207",
+   "category": "handle",
+   "title": "text field length",
+   "script": "this.number.len()",
+   "expect": {
+    "value": 5
+   }
+  },
+  {
+   "id": "L2E-208",
+   "category": "handle",
+   "title": "self_id is the object",
+   "script": "self_id",
+   "expect": {
+    "value": "01890a5d-ac96-7001-8000-000000000001"
+   }
+  },
+  {
+   "id": "L2E-209",
+   "category": "handle",
+   "title": "params are empty",
+   "script": "params.len()",
+   "expect": {
+    "value": 0
+   }
+  },
+  {
+   "id": "L2E-210",
+   "category": "handle",
+   "title": "assigning self_id",
+   "script": "self_id = \"x\"; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-211",
+   "category": "handle",
+   "title": "assigning params",
+   "script": "params = #{a: 1}; 1",
+   "expect": {
+    "error": "LOGIC.CONTEXT_IMMUTABLE"
+   }
+  },
+  {
+   "id": "L2E-212",
+   "category": "host-abuse",
+   "title": "eval",
+   "script": "eval(\"1\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-213",
+   "category": "host-abuse",
+   "title": "print",
+   "script": "print(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-214",
+   "category": "host-abuse",
+   "title": "debug",
+   "script": "debug(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-215",
+   "category": "host-abuse",
+   "title": "import",
+   "script": "import \"fs\";",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-216",
+   "category": "host-abuse",
+   "title": "export",
+   "script": "export let x = 1;",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-217",
+   "category": "host-abuse",
+   "title": "Fn",
+   "script": "Fn(\"run\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-218",
+   "category": "host-abuse",
+   "title": "call",
+   "script": "let f = Fn(\"run\"); f.call()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-219",
+   "category": "host-abuse",
+   "title": "curry",
+   "script": "let f = Fn(\"run\"); f.curry(1)",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-220",
+   "category": "host-abuse",
+   "title": "is_def_fn",
+   "script": "is_def_fn(\"run\", 0)",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-221",
+   "category": "host-abuse",
+   "title": "is_def_var",
+   "script": "is_def_var(\"sys\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-222",
+   "category": "host-abuse",
+   "title": "sleep",
+   "script": "sleep(1)",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-223",
+   "category": "host-abuse",
+   "title": "exit",
+   "script": "exit()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-224",
+   "category": "host-abuse",
+   "title": "parse_json",
+   "script": "parse_json(\"{}\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-225",
+   "category": "host-abuse",
+   "title": "closure",
+   "script": "let f = |x| sys.uuid(); f(1)",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-226",
+   "category": "host-abuse",
+   "title": "global namespace",
+   "script": "global::sys.uuid()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-227",
+   "category": "host-abuse",
+   "title": "root namespace",
+   "script": "::sys.uuid()",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-228",
+   "category": "host-abuse",
+   "title": "rebinding this locally changes nothing",
+   "script": "this = 1; sys.read.get(#{target: self_id}).fields.qty",
+   "expect": {
+    "value": 2
+   }
+  },
+  {
+   "id": "L2E-229",
+   "category": "host-abuse",
+   "title": "a script function shadowing a gateway method cannot leak the gateway",
+   "script": "fn uuid() { this } sys.uuid()",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-230",
+   "category": "host-abuse",
+   "title": "type_of the gateway",
+   "script": "type_of(sys)",
+   "expect": {
+    "value": "Gateway"
+   }
+  },
+  {
+   "id": "L2E-231",
+   "category": "host-abuse",
+   "title": "type_of as method",
+   "script": "sys.type_of()",
+   "expect": {
+    "value": "Gateway"
+   }
+  },
+  {
+   "id": "L2E-232",
+   "category": "host-abuse",
+   "title": "a thrown value is a script error",
+   "script": "throw \"x\"",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-233",
+   "category": "host-abuse",
+   "title": "script errors are catchable",
+   "script": "let r = 0; try { throw 1 } catch { r = 2 } r",
+   "expect": {
+    "value": 2
+   }
+  },
+  {
+   "id": "L2E-234",
+   "category": "host-abuse",
+   "title": "integer division by zero is catchable",
+   "script": "let r = 0; try { 1 / 0 } catch { r = 7 } r",
+   "expect": {
+    "value": 7
+   }
+  },
+  {
+   "id": "L2E-235",
+   "category": "host-abuse",
+   "title": "a host error is not catchable",
+   "script": "try { sys.fs.open(\"x\") } catch { 1 }",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-236",
+   "category": "host-abuse",
+   "title": "an unknown field is not catchable",
+   "script": "try { this.nope } catch { 1 }",
+   "expect": {
+    "error": "LOGIC.UNKNOWN_FIELD"
+   }
+  },
+  {
+   "id": "L2E-237",
+   "category": "host-abuse",
+   "title": "a caught context write changes nothing",
+   "script": "try { ctx.now = 1 } catch { } ctx.now",
+   "expect": {
+    "value": "2026-01-01T00:00:00.000000Z"
+   }
+  },
+  {
+   "id": "L2E-238",
+   "category": "host-abuse",
+   "title": "a decimal division is not catchable",
+   "script": "try { dec(\"1\") / 2 } catch { 1 }",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-239",
+   "category": "host-abuse",
+   "title": "a gateway error is not catchable",
+   "script": "try { sys.read.get(#{target: \"ubos://acme/Invoice/nope\"}) } catch { 1 }",
+   "expect": {
+    "error": "IAM.NOT_FOUND"
+   }
+  },
+  {
+   "id": "L2E-240",
+   "category": "host-abuse",
+   "title": "a limit is not catchable",
+   "script": "try { loop {} } catch { 1 }",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-241",
+   "category": "host-abuse",
+   "title": "a parameter error is not catchable",
+   "script": "try { sys.read.get(#{target: self_id, tenant: \"x\"}) } catch { 1 }",
+   "expect": {
+    "error": "LOGIC.PARAMETER_FORBIDDEN"
+   }
+  },
+  {
+   "id": "L2E-242",
+   "category": "host-abuse",
+   "title": "shadowing the gateway does not reach it",
+   "script": "let sys = 1; sys",
+   "expect": {
+    "value": 1
+   }
+  },
+  {
+   "id": "L2E-243",
+   "category": "host-abuse",
+   "title": "shadowing the context",
+   "script": "let ctx = #{now: \"x\"}; ctx.now",
+   "expect": {
+    "value": "x"
+   }
+  },
+  {
+   "id": "L2E-244",
+   "category": "host-abuse",
+   "title": "string repetition beyond the size limit",
+   "script": "let s = \"x\"; s.pad(1000000000, 'x'); s.len()",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-245",
+   "category": "host-abuse",
+   "title": "array padding beyond the size limit",
+   "script": "[0].pad(1000000000, 0)",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-246",
+   "category": "host-abuse",
+   "title": "integer overflow",
+   "script": "(1 << 62) * 4",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-247",
+   "category": "host-abuse",
+   "title": "shift beyond the width saturates",
+   "script": "1 << 100",
+   "expect": {
+    "value": 0
+   }
+  },
+  {
+   "id": "L2E-248",
+   "category": "host-abuse",
+   "title": "integer division by zero",
+   "script": "1 / 0",
+   "expect": {
+    "error": "LOGIC.DIVISION_BY_ZERO"
+   }
+  },
+  {
+   "id": "L2E-249",
+   "category": "host-abuse",
+   "title": "modulo by zero",
+   "script": "1 % 0",
+   "expect": {
+    "error": "LOGIC.DIVISION_BY_ZERO"
+   }
+  },
+  {
+   "id": "L2E-250",
+   "category": "float",
+   "title": "float function sin",
+   "script": "sin(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-251",
+   "category": "float",
+   "title": "float function cos",
+   "script": "cos(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-252",
+   "category": "float",
+   "title": "float function tan",
+   "script": "tan(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-253",
+   "category": "float",
+   "title": "float function sqrt",
+   "script": "sqrt(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-254",
+   "category": "float",
+   "title": "float function exp",
+   "script": "exp(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-255",
+   "category": "float",
+   "title": "float function ln",
+   "script": "ln(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-256",
+   "category": "float",
+   "title": "float function log",
+   "script": "log(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-257",
+   "category": "float",
+   "title": "float function log10",
+   "script": "log10(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-258",
+   "category": "float",
+   "title": "float function hypot",
+   "script": "hypot(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-259",
+   "category": "float",
+   "title": "float function atan2",
+   "script": "atan2(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-260",
+   "category": "float",
+   "title": "float function to_float",
+   "script": "to_float(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-261",
+   "category": "float",
+   "title": "float function parse_float",
+   "script": "parse_float(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-262",
+   "category": "float",
+   "title": "float function is_nan",
+   "script": "is_nan(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-263",
+   "category": "float",
+   "title": "float function is_finite",
+   "script": "is_finite(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-264",
+   "category": "float",
+   "title": "float function pi",
+   "script": "pi()",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-265",
+   "category": "float",
+   "title": "float function e",
+   "script": "e()",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-266",
+   "category": "float",
+   "title": "float function to_radians",
+   "script": "to_radians(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-267",
+   "category": "float",
+   "title": "float function to_degrees",
+   "script": "to_degrees(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-268",
+   "category": "float",
+   "title": "float function sinh",
+   "script": "sinh(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-269",
+   "category": "float",
+   "title": "float function asin",
+   "script": "asin(1)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-270",
+   "category": "float",
+   "title": "float literal 1.5",
+   "script": "1.5",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-271",
+   "category": "float",
+   "title": "float literal 0.1 + 0.2",
+   "script": "0.1 + 0.2",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-272",
+   "category": "float",
+   "title": "float literal 1e9",
+   "script": "1e9",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-273",
+   "category": "float",
+   "title": "float literal 2.5e-3",
+   "script": "2.5e-3",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-274",
+   "category": "float",
+   "title": "float literal 1_000.5",
+   "script": "1_000.5",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-275",
+   "category": "float",
+   "title": "float literal 3.0 / 2",
+   "script": "3.0 / 2",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-276",
+   "category": "float",
+   "title": "float literal [1.0]",
+   "script": "[1.0]",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-277",
+   "category": "float",
+   "title": "float literal #{a: 0.5}",
+   "script": "#{a: 0.5}",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-278",
+   "category": "float",
+   "title": "float literal \"a\" + 1.5",
+   "script": "\"a\" + 1.5",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-279",
+   "category": "float",
+   "title": "float in a string is text",
+   "script": "\"1.5\".len()",
+   "expect": {
+    "value": 3
+   }
+  },
+  {
+   "id": "L2E-280",
+   "category": "float",
+   "title": "decimal division needs a scale",
+   "script": "dec(\"1\") / dec(\"3\")",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-281",
+   "category": "float",
+   "title": "decimal by integer needs a scale",
+   "script": "dec(\"1\") / 3",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-282",
+   "category": "float",
+   "title": "integer by decimal needs a scale",
+   "script": "1 / dec(\"3\")",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-283",
+   "category": "float",
+   "title": "division with a scale",
+   "script": "div(1, 3, 4, \"floor\")",
+   "expect": {
+    "value": "0.3333"
+   }
+  },
+  {
+   "id": "L2E-284",
+   "category": "float",
+   "title": "division by zero with a scale",
+   "script": "div(1, 0, 2, \"half_even\")",
+   "expect": {
+    "error": "LOGIC.DIVISION_BY_ZERO"
+   }
+  },
+  {
+   "id": "L2E-285",
+   "category": "float",
+   "title": "unknown rounding mode",
+   "script": "div(1, 3, 2, \"nearest\")",
+   "expect": {
+    "error": "MODEL.INVALID_VALUE"
+   }
+  },
+  {
+   "id": "L2E-286",
+   "category": "float",
+   "title": "negative scale",
+   "script": "div(1, 3, -1, \"floor\")",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-287",
+   "category": "float",
+   "title": "half even rounding",
+   "script": "round(dec(\"2.5\"), 0, \"half_even\")",
+   "expect": {
+    "value": "2"
+   }
+  },
+  {
+   "id": "L2E-288",
+   "category": "float",
+   "title": "half up rounding",
+   "script": "round(dec(\"2.5\"), 0, \"half_up\")",
+   "expect": {
+    "value": "3"
+   }
+  },
+  {
+   "id": "L2E-289",
+   "category": "float",
+   "title": "exact sum",
+   "script": "dec(\"0.1\") + dec(\"0.2\") == dec(\"0.3\")",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "id": "L2E-290",
+   "category": "float",
+   "title": "exact product",
+   "script": "dec(\"1.1\") * dec(\"1.1\")",
+   "expect": {
+    "value": "1.21"
+   }
+  },
+  {
+   "id": "L2E-291",
+   "category": "float",
+   "title": "decimal from text with exponent",
+   "script": "dec(\"1e5\")",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-292",
+   "category": "float",
+   "title": "decimal from garbage",
+   "script": "dec(\"abc\")",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-293",
+   "category": "float",
+   "title": "decimal from a float literal",
+   "script": "dec(1.5)",
+   "expect": {
+    "error": "LOGIC.FLOAT_TO_DECIMAL"
+   }
+  },
+  {
+   "id": "L2E-294",
+   "category": "float",
+   "title": "decimal comparison with an integer",
+   "script": "dec(\"2\") == 2",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "id": "L2E-295",
+   "category": "float",
+   "title": "negative decimal",
+   "script": "-dec(\"1.5\")",
+   "expect": {
+    "value": "-1.5"
+   }
+  },
+  {
+   "id": "L2E-296",
+   "category": "float",
+   "title": "absolute value",
+   "script": "abs(dec(\"-1.5\"))",
+   "expect": {
+    "value": "1.5"
+   }
+  },
+  {
+   "id": "L2E-297",
+   "category": "float",
+   "title": "money sum",
+   "script": "money(\"10.5\", \"USD\") + money(2, \"USD\")",
+   "expect": {
+    "value": {
+     "amount": "12.50",
+     "currency": "USD"
+    }
+   }
+  },
+  {
+   "id": "L2E-298",
+   "category": "float",
+   "title": "money of different currencies",
+   "script": "money(1, \"USD\") + money(1, \"EUR\")",
+   "expect": {
+    "error": "MODEL.CURRENCY_MISMATCH"
+   }
+  },
+  {
+   "id": "L2E-299",
+   "category": "float",
+   "title": "money comparison across currencies",
+   "script": "money(1, \"USD\") < money(2, \"EUR\")",
+   "expect": {
+    "error": "MODEL.CURRENCY_MISMATCH"
+   }
+  },
+  {
+   "id": "L2E-300",
+   "category": "float",
+   "title": "unknown currency",
+   "script": "money(1, \"XXX\")",
+   "expect": {
+    "error": "MODEL.INVALID_VALUE"
+   }
+  },
+  {
+   "id": "L2E-301",
+   "category": "float",
+   "title": "money rounds to the minor unit on output",
+   "script": "money(\"1.005\", \"USD\")",
+   "expect": {
+    "value": {
+     "amount": "1.00",
+     "currency": "USD"
+    }
+   }
+  },
+  {
+   "id": "L2E-302",
+   "category": "float",
+   "title": "money times a decimal",
+   "script": "money(10, \"USD\") * dec(\"0.5\")",
+   "expect": {
+    "value": {
+     "amount": "5.00",
+     "currency": "USD"
+    }
+   }
+  },
+  {
+   "id": "L2E-303",
+   "category": "float",
+   "title": "money amount",
+   "script": "amount(money(\"3.25\", \"USD\"))",
+   "expect": {
+    "value": "3.25"
+   }
+  },
+  {
+   "id": "L2E-304",
+   "category": "float",
+   "title": "money currency",
+   "script": "currency(money(1, \"EUR\"))",
+   "expect": {
+    "value": "EUR"
+   }
+  },
+  {
+   "id": "L2E-305",
+   "category": "float",
+   "title": "money division is not defined",
+   "script": "money(1, \"USD\") / 2",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-306",
+   "category": "resource-exhaustion",
+   "title": "string doubling",
+   "script": "let s = \"x\"; loop { s += s; }",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-307",
+   "category": "resource-exhaustion",
+   "title": "array doubling",
+   "script": "let a = [1]; loop { a += a; }",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-308",
+   "category": "resource-exhaustion",
+   "title": "array growth beyond the memory of the execution",
+   "script": "let big = \"x\"; big.pad(1024, 'x'); let a = []; for i in 0..100000 { a.push(big + i.to_string()); } a.len()",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   },
+   "profile": "strict"
+  },
+  {
+   "id": "L2E-309",
+   "category": "resource-exhaustion",
+   "title": "map growth beyond the memory of the execution",
+   "script": "let big = \"x\"; big.pad(1024, 'x'); let m = #{}; for i in 0..100000 { m[i.to_string()] = big + i.to_string(); } m.len()",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-310",
+   "category": "resource-exhaustion",
+   "title": "nested arrays",
+   "script": "let a = [1]; for i in 0..100000 { a = [a, a]; } 1",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-311",
+   "category": "resource-exhaustion",
+   "title": "recursion without a base case",
+   "script": "fn f() { f() } f()",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-312",
+   "category": "resource-exhaustion",
+   "title": "exponential recursion",
+   "script": "fn f(n) { if n == 0 { 1 } else { f(n - 1) + f(n - 1) } } f(40)",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-313",
+   "category": "resource-exhaustion",
+   "title": "mutual recursion",
+   "script": "fn a(n) { b(n + 1) } fn b(n) { a(n + 1) } a(0)",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-314",
+   "category": "resource-exhaustion",
+   "title": "deep expression",
+   "script": "{{R:200:[}}1{{R:200:]}}",
+   "expect": {
+    "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+   }
+  },
+  {
+   "id": "L2E-315",
+   "category": "resource-exhaustion",
+   "title": "deep nesting of blocks",
+   "script": "{{R:100:{}}1{{R:100:}}}",
+   "expect": {
+    "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+   }
+  },
+  {
+   "id": "L2E-316",
+   "category": "resource-exhaustion",
+   "title": "too many variables",
+   "script": "{{N:2000:let v$i = $i;}}1",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-317",
+   "category": "resource-exhaustion",
+   "title": "too many functions",
+   "script": "{{N:300:fn g$i() { $i }\n}}1",
+   "expect": {
+    "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+   }
+  },
+  {
+   "id": "L2E-318",
+   "category": "resource-exhaustion",
+   "title": "source beyond the size",
+   "script": "{{R:70000:/**/}}1",
+   "expect": {
+    "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+   }
+  },
+  {
+   "id": "L2E-319",
+   "category": "resource-exhaustion",
+   "title": "a long literal string",
+   "script": "{{R:70000:x}}",
+   "expect": {
+    "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+   }
+  },
+  {
+   "id": "L2E-320",
+   "category": "resource-exhaustion",
+   "title": "infinite loop under the standard budget",
+   "script": "loop {}",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   },
+   "profile": "standard"
+  },
+  {
+   "id": "L2E-321",
+   "category": "resource-exhaustion",
+   "title": "infinite while",
+   "script": "while true {}",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-322",
+   "category": "resource-exhaustion",
+   "title": "cancellation after units",
+   "script": "loop {}",
+   "expect": {
+    "error": "LOGIC.CANCELLED"
+   },
+   "cancel_after_units": 1000
+  },
+  {
+   "id": "L2E-323",
+   "category": "resource-exhaustion",
+   "title": "a small budget",
+   "script": "for i in 0..1000 { }",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   },
+   "limits": {
+    "units": 100
+   }
+  },
+  {
+   "id": "L2E-324",
+   "category": "resource-exhaustion",
+   "title": "budget spent by gateway calls counts",
+   "script": "for i in 0..100 { sys.read.get(#{target: self_id}); }",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   },
+   "limits": {
+    "units": 500
+   }
+  },
+  {
+   "id": "L2E-325",
+   "category": "resource-exhaustion",
+   "title": "large read result is charged",
+   "script": "let r = sys.read.get(#{target: self_id}); r.fields.number.len()",
+   "expect": {
+    "value": 5
+   }
+  },
+  {
+   "id": "L2E-326",
+   "category": "resource-exhaustion",
+   "title": "string of the maximal size",
+   "script": "let s = \"x\"; s.pad(1048576, 'x'); s.len()",
+   "expect": {
+    "value": 1048576
+   }
+  },
+  {
+   "id": "L2E-327",
+   "category": "resource-exhaustion",
+   "title": "string beyond the maximal size",
+   "script": "let s = \"x\"; s.pad(1048577, 'x'); s.len()",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-328",
+   "category": "resource-exhaustion",
+   "title": "array of the maximal size",
+   "script": "let a = [0]; a.pad(65536, 0); a.len()",
+   "expect": {
+    "value": 65536
+   }
+  },
+  {
+   "id": "L2E-329",
+   "category": "resource-exhaustion",
+   "title": "array beyond the maximal size",
+   "script": "let a = [0]; a.pad(65537, 0); a.len()",
+   "expect": {
+    "error": "LOGIC.LIMIT_EXCEEDED"
+   }
+  },
+  {
+   "id": "L2E-330",
+   "category": "resource-exhaustion",
+   "title": "sorting a large array",
+   "script": "let a = []; for i in 0..60000 { a.push(60000 - i); } a.sort(); a[0]",
+   "expect": {
+    "value": 1
+   },
+   "profile": "standard"
+  },
+  {
+   "id": "L2E-331",
+   "category": "resource-exhaustion",
+   "title": "string in a loop within the budget",
+   "script": "let s = \"\"; for i in 0..1000 { s += \"x\"; } s.len()",
+   "expect": {
+    "value": 1000
+   }
+  },
+  {
+   "id": "L2E-332",
+   "category": "determinism",
+   "title": "two uuids differ and are deterministic",
+   "script": "[sys.uuid(), sys.uuid()]",
+   "expect": {
+    "deterministic": true
+   }
+  },
+  {
+   "id": "L2E-333",
+   "category": "determinism",
+   "title": "uuid is version 4",
+   "script": "sys.uuid()[14]",
+   "expect": {
+    "value": "4"
+   }
+  },
+  {
+   "id": "L2E-334",
+   "category": "determinism",
+   "title": "random bytes are deterministic",
+   "script": "sys.random_bytes(8)",
+   "expect": {
+    "deterministic": true
+   }
+  },
+  {
+   "id": "L2E-335",
+   "category": "determinism",
+   "title": "random bytes differ per call",
+   "script": "sys.random_bytes(4) != sys.random_bytes(4)",
+   "expect": {
+    "value": true
+   }
+  },
+  {
+   "id": "L2E-336",
+   "category": "determinism",
+   "title": "map keys are ordered",
+   "script": "let m = #{}; m.z = 1; m.a = 2; m.m = 3; m.keys()",
+   "expect": {
+    "value": [
+     "a",
+     "m",
+     "z"
+    ]
+   }
+  },
+  {
+   "id": "L2E-337",
+   "category": "determinism",
+   "title": "map iteration follows key order",
+   "script": "let m = #{b: 1, a: 2}; let k = []; for x in m.keys() { k.push(x); } k",
+   "expect": {
+    "value": [
+     "a",
+     "b"
+    ]
+   }
+  },
+  {
+   "id": "L2E-338",
+   "category": "determinism",
+   "title": "map to JSON is canonical",
+   "script": "let m = #{}; m.b = 1; m.a = 2; m.to_json()",
+   "expect": {
+    "value": "{\"a\":2,\"b\":1}"
+   }
+  },
+  {
+   "id": "L2E-339",
+   "category": "determinism",
+   "title": "the clock is the context clock",
+   "script": "ctx.now",
+   "expect": {
+    "value": "2026-01-01T00:00:00.000000Z"
+   }
+  },
+  {
+   "id": "L2E-340",
+   "category": "determinism",
+   "title": "hash of a string is stable",
+   "script": "\"abc\".hash()",
+   "expect": {
+    "deterministic": true
+   }
+  },
+  {
+   "id": "L2E-341",
+   "category": "determinism",
+   "title": "timestamp is unavailable",
+   "script": "timestamp()",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-342",
+   "category": "file",
+   "title": "host function open",
+   "script": "open(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-343",
+   "category": "file",
+   "title": "host function read_file",
+   "script": "read_file(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-344",
+   "category": "file",
+   "title": "host function write_file",
+   "script": "write_file(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-345",
+   "category": "file",
+   "title": "host function remove_file",
+   "script": "remove_file(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-346",
+   "category": "file",
+   "title": "host function create_dir",
+   "script": "create_dir(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-347",
+   "category": "file",
+   "title": "host function read_dir",
+   "script": "read_dir(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-348",
+   "category": "file",
+   "title": "host function file_exists",
+   "script": "file_exists(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-349",
+   "category": "file",
+   "title": "host function std::fs::read",
+   "script": "std::fs::read(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-350",
+   "category": "host-abuse",
+   "title": "host function getenv",
+   "script": "getenv(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-351",
+   "category": "host-abuse",
+   "title": "host function env",
+   "script": "env(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-352",
+   "category": "host-abuse",
+   "title": "host function spawn",
+   "script": "spawn(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-353",
+   "category": "host-abuse",
+   "title": "host function exec",
+   "script": "exec(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-354",
+   "category": "host-abuse",
+   "title": "host function system",
+   "script": "system(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-355",
+   "category": "host-abuse",
+   "title": "host function popen",
+   "script": "popen(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-356",
+   "category": "host-abuse",
+   "title": "host function fork",
+   "script": "fork(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-357",
+   "category": "network",
+   "title": "host function socket",
+   "script": "socket(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-358",
+   "category": "network",
+   "title": "host function connect",
+   "script": "connect(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-359",
+   "category": "network",
+   "title": "host function http_get",
+   "script": "http_get(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-360",
+   "category": "network",
+   "title": "host function fetch",
+   "script": "fetch(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-361",
+   "category": "network",
+   "title": "host function curl",
+   "script": "curl(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-362",
+   "category": "network",
+   "title": "host function dns_lookup",
+   "script": "dns_lookup(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-363",
+   "category": "network",
+   "title": "host function listen",
+   "script": "listen(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-364",
+   "category": "time",
+   "title": "host function now",
+   "script": "now(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-365",
+   "category": "time",
+   "title": "host function instant",
+   "script": "instant(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-366",
+   "category": "time",
+   "title": "host function elapsed",
+   "script": "elapsed(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-367",
+   "category": "time",
+   "title": "host function date",
+   "script": "date(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-368",
+   "category": "entropy",
+   "title": "host function rand",
+   "script": "rand(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-369",
+   "category": "entropy",
+   "title": "host function random",
+   "script": "random(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-370",
+   "category": "entropy",
+   "title": "host function getrandom",
+   "script": "getrandom(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-371",
+   "category": "entropy",
+   "title": "host function urandom",
+   "script": "urandom(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-372",
+   "category": "entropy",
+   "title": "host function seed",
+   "script": "seed(\"x\")",
+   "expect": {
+    "error": "LOGIC.FORBIDDEN_CAPABILITY"
+   }
+  },
+  {
+   "id": "L2E-373",
+   "category": "parsing",
+   "title": "unterminated string",
+   "script": "\"abc",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-374",
+   "category": "parsing",
+   "title": "unicode escape in a string",
+   "script": "\"a\\u00e9b\".len()",
+   "expect": {
+    "value": 3
+   }
+  },
+  {
+   "id": "L2E-375",
+   "category": "parsing",
+   "title": "zero-width character in an identifier",
+   "script": "let a​b = 1; 1",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-376",
+   "category": "parsing",
+   "title": "full-width identifier is not an identifier",
+   "script": "let ｓｙｓ = 1; ｓｙｓ",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-377",
+   "category": "parsing",
+   "title": "byte order mark",
+   "script": "﻿1",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-378",
+   "category": "parsing",
+   "title": "prototype key in a map",
+   "script": "#{\"__proto__\": 1}.__proto__",
+   "expect": {
+    "value": 1
+   }
+  },
+  {
+   "id": "L2E-379",
+   "category": "parsing",
+   "title": "very long identifier",
+   "script": "let {{R:5000:a}} = 1; 1",
+   "expect": {
+    "value": 1
+   }
+  },
+  {
+   "id": "L2E-380",
+   "category": "parsing",
+   "title": "comment that never closes",
+   "script": "/* x",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-381",
+   "category": "parsing",
+   "title": "reserved word as a name",
+   "script": "let fn = 1;",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-382",
+   "category": "parsing",
+   "title": "empty script",
+   "script": "",
+   "expect": {
+    "value": null
+   }
+  }
+ ],
+ "notes": "Version 0.2 (PH-1 step 5d-2, DEC-058) runs on the production L2 host: the typed handle is `this` (the PH-0 `rec`), decimals are `dec(...)`, float literals are refused (W-5), `sys.random_bytes` argument errors carry the gateway code MODEL.INVALID_VALUE, raising a limit above the profile is refused, so L2E-096 runs under the standard profile and L2E-097 cancels after units; `journaled` expectations became `deterministic`."
 }
