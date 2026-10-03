@@ -7,5 +7,10 @@
 //! executes BPA vectors (STD-CONF-001) through the in-process adapter (STD-CONF-002,
 //! STD-CONF-005) and produces a signed `DAT-ConformanceReport` (STD-CONF-003).
 
+pub mod check;
 pub mod json;
+pub mod project;
+pub mod records;
 pub mod runner;
+pub mod test;
+pub mod types;

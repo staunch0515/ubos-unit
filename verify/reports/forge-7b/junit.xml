@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="4" failures="0" time="0.012">
+  <testsuite name="skeleton" tests="4" failures="0" time="0.012">
+    <testcase name="a seeded customer reads back" classname="tests/customers.yaml" time="0.000" />
+    <testcase name="describe returns the name" classname="tests/customers.yaml" time="0.001" />
+    <testcase name="greet builds a greeting" classname="tests/customers.yaml" time="0.000" />
+    <testcase name="double stays in range" classname="tests/customers.yaml" time="0.011" />
+  </testsuite>
+</testsuites>

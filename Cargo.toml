@@ -66,6 +66,9 @@ zstd = { version = "0.13", default-features = false }
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["alloc"] }
 aes-gcm = { version = "0.10", default-features = false, features = ["aes", "alloc"] }
 getrandom = "0.2"
+# Forge project sources (DSN-FRG-002): YAML sources and the TOML manifest
+serde_yaml_ng = "0.10"
+toml = "0.8"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

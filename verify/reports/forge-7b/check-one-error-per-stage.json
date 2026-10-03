@@ -1,0 +1,53 @@
+{
+  "command": "check",
+  "counts": {
+    "assets": 2,
+    "classes": 2,
+    "seed": 2,
+    "tests": 4
+  },
+  "errors": 4,
+  "findings": [
+    {
+      "file": "tests/syntax.yaml",
+      "line": 3,
+      "message": "did not find expected ',' or ']' at line 3 column 1, while parsing a flow sequence at line 2 column 11",
+      "rule": "parse",
+      "severity": "error",
+      "stage": "parse"
+    },
+    {
+      "file": "model/broken.yaml",
+      "line": null,
+      "message": "unknown class NoSuchParent",
+      "rule": "MODEL.REFERENCE_INVALID",
+      "severity": "error",
+      "stage": "model"
+    },
+    {
+      "file": "sheets/a.yaml",
+      "line": null,
+      "message": "governance sheets are compiled from gate 1b; the file is not checked",
+      "rule": "later_gate",
+      "severity": "warning",
+      "stage": "sheets"
+    },
+    {
+      "file": "logic/bad-script.yaml",
+      "line": null,
+      "message": "asset acme.bad: undeclared_instruction function \"main\", instruction \"commit.create\"",
+      "rule": "undeclared_instruction",
+      "severity": "error",
+      "stage": "static_analysis"
+    },
+    {
+      "file": "seed/bad.yaml",
+      "line": null,
+      "message": "required field name",
+      "rule": "MODEL.CONSTRAINT_VIOLATED",
+      "severity": "error",
+      "stage": "seed"
+    }
+  ],
+  "project": "bad"
+}

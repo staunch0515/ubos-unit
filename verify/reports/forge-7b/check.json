@@ -1,0 +1,12 @@
+{
+  "command": "check",
+  "counts": {
+    "assets": 1,
+    "classes": 1,
+    "seed": 1,
+    "tests": 4
+  },
+  "errors": 0,
+  "findings": [],
+  "project": "skeleton"
+}

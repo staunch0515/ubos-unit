@@ -169,9 +169,12 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    parts 7a–7c (DEC-060): 7a done (host boundary `ubos-dvm::host` with the CTR-002 service
    traits and the `Vae` host API; crate `ubos-node` with the PostgreSQL services: tenant
    registry, key hierarchy, node signer, blobs, secrets, journaled connectors, event log,
-   jobs, telemetry; SUITE-NOD-HOST 12/12, `verify/reports/suite-nod-host/`). Next 7b (Forge
-   project model, `check`, `types`, `test` with the deterministic services), then 7c (the
-   ten gate-1a scenarios, EXIT-1-13 report, final EXIT-1-02 report). W-1
+   jobs, telemetry; SUITE-NOD-HOST 12/12, `verify/reports/suite-nod-host/`); 7b done (Forge
+   project model and `forge init`, `check` with every stage in one run, `types`, `test`
+   with scenario, unit, port and property tests under the deterministic services, JSON and
+   JUnit reports, signed verification records; `verify/reports/forge-7b/`). Next 7c (the
+   ten gate-1a scenarios as Forge scenario tests, EXIT-1-13 report, final EXIT-1-02
+   report). W-1
    may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
