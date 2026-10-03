@@ -506,6 +506,24 @@ impl Repo<'_> {
         Ok(out)
     }
 
+    /// The signed commit record of a commit in its portable form (STD-PROOF-011): `{vae,
+    /// branch, parents (commit IDs), cseq, tx_time, root, signatures}` plus `commit_id`. The
+    /// content ID of the record without `signatures` and `commit_id` is the commit ID.
+    pub fn commit_record(&mut self, cid: u64) -> Result<Value, BpaError> {
+        let c = self.commit(cid)?;
+        let parents: Vec<String> = c
+            .parents
+            .iter()
+            .map(|p| self.commit(*p).map(|x| x.commit_id))
+            .collect::<Result<_, _>>()?;
+        Ok(json!({
+            "vae": self.store.authority(), "branch": c.branch, "parents": parents, "cseq": c.cseq,
+            "tx_time": c.tx_time, "root": c.root,
+            "signatures": c.extra.get("signatures").cloned().unwrap_or_else(|| json!([])),
+            "commit_id": c.commit_id,
+        }))
+    }
+
     /// Entries of the state tree whose values differ between two views (STD-VER-031).
     pub fn tree_keys_diff(&mut self, a: &State, b: &State) -> Result<Vec<String>, BpaError> {
         let ea: BTreeMap<String, String> = self.state_entries(a)?.into_iter().collect();

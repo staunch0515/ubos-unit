@@ -9,6 +9,7 @@
 pub mod adapter;
 pub mod execution;
 pub mod expressions;
+pub mod proofs;
 pub mod relations;
 pub mod stateful;
 pub mod transactions;

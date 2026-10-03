@@ -243,3 +243,19 @@ pub fn parse_did(did: &Value) -> Result<Value, BpaError> {
     }
     Ok(out)
 }
+
+/// The DID document derived from a key-form DID (STD-ADDR-010): one key whose identifier is
+/// the DID followed by `#` and its multibase key.
+pub fn key_document(did: &Value) -> Result<Value, BpaError> {
+    let p = parse_did(did)?;
+    if p["form"] != "key" {
+        return Err(bad(
+            "only key-form documents are derived from the identifier",
+        ));
+    }
+    let text = did.as_str().unwrap_or_default();
+    let mb = text.strip_prefix("did:ubos:k:").unwrap_or_default();
+    Ok(
+        json!({"id": text, "keys": [{"key_id": format!("{text}#{mb}"), "public_key": p["public_key"]}]}),
+    )
+}

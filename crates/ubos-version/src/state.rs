@@ -332,6 +332,10 @@ impl<'a> Repo<'a> {
             extra: Map::new(),
         };
         rec.commit_id = commit_identity(&rec, &[], &self.store.authority())?;
+        rec.extra.insert(
+            "signatures".into(),
+            json!([ubos_store::node::sign(self.store, &rec.commit_id, "node")?]),
+        );
         let r = BranchRef {
             head: 0,
             head_cseq: 0,
@@ -781,6 +785,11 @@ impl<'a> Repo<'a> {
             extra,
         };
         rec.commit_id = commit_identity(&rec, &parent_ids, &self.store.authority())?;
+        // STD-PROOF-011: every commit record carries the node signature over its ID.
+        rec.extra.insert(
+            "signatures".into(),
+            json!([ubos_store::node::sign(self.store, &rec.commit_id, "node")?]),
+        );
         let idempotency = tx.idempotency.map(|(scope, key, hash, mut result)| {
             result["commit_id"] = json!(rec.commit_id);
             result["tx_time"] = json!(rec.tx_time);

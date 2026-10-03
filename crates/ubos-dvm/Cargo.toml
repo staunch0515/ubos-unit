@@ -23,6 +23,7 @@ path = "src/bin/ubos-props.rs"
 [dependencies]
 ubos-types.workspace = true
 ubos-tree.workspace = true
+ubos-proof.workspace = true
 ubos-model.workspace = true
 ubos-expr.workspace = true
 ubos-runtime.workspace = true

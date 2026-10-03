@@ -55,6 +55,9 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "ack",
     "bulk",
     "resolve",
+    "did_document",
+    "rotate_node_key",
+    "commit_record",
 ];
 
 const ENVELOPE_REQUIRED: &[&str] = &[
@@ -280,6 +283,44 @@ impl Adapter {
                 .engine
                 .verify_bpu(s_or(i, "branch", "main"), text(i, "class")?)?,
             "node_did" => self.engine.node_did()?,
+            "did_document" => self.engine.did_document(field(i, "did")?)?,
+            "rotate_node_key" => self.engine.rotate_node_key(field(i, "seed")?)?,
+            "commit_record" => self.engine.commit_record(i)?,
+            "sign" => ubos_crypto::sign(
+                &ubos_crypto::unhex32(field(i, "seed")?, "seed")?,
+                field(i, "content_id")?
+                    .as_str()
+                    .ok_or_else(|| invalid("the signed content is a content ID"))?,
+                text(i, "signer")?,
+                text(i, "key_id")?,
+                s_or(i, "role", "signer"),
+            )?,
+            "public_key" => Value::String(ubos_types::addr::b64u(&ubos_crypto::ed25519_public(
+                &ubos_crypto::unhex32(field(i, "seed")?, "seed")?,
+            ))),
+            "verify_signature" => Value::Bool(ubos_crypto::verify(
+                field(i, "signature")?,
+                field(i, "content_id")?
+                    .as_str()
+                    .ok_or_else(|| invalid("the signed content is a content ID"))?,
+                field(i, "did")?,
+                opt_text(i, "at"),
+            )?),
+            "inclusion_proof" => ubos_proof::inclusion_proof(
+                &ubos_proof::entries(field(i, "entries")?)?,
+                text(i, "key")?,
+            )?,
+            "verify_inclusion" => Value::Bool(ubos_proof::verify_inclusion(
+                field(i, "proof")?,
+                opt_text(i, "root"),
+                &opt_list(i, "dids"),
+            )?),
+            "verify_consistency" => Value::Bool(ubos_proof::verify_consistency(
+                field(i, "commits")?,
+                opt_text(i, "from"),
+                opt_text(i, "to"),
+                &opt_list(i, "dids"),
+            )?),
             "linearize" => json!(ubos_model::linearize_raw(
                 &list(i, "classes")?,
                 text(i, "class")?

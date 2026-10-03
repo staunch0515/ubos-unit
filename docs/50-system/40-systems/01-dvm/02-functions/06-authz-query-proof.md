@@ -487,6 +487,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given proofs for 10,000 random keys, when verified by the standalone verifier, then all verify, and any single-bit change fails.
 - **Verification:** CONF, PROP
 - **Origin:** FR-PROOF-032, FR-PROOF-061, STD-PROOF-020
+- **Phase note:** PH-1 step 6a (DEC-059) implements `inclusion_proof` and `verify_inclusion` in `ubos-proof` (dependencies `ubos-tree`, `ubos-crypto` only, no store); the store-reading `prove` of the adapter follows in part 6b.
 
 ### DSN-DVM-932 — Non-inclusion proofs
 - **Statement:** For absent keys the DVM MUST return a proof of the two neighbouring keys, showing absence at the commit.
@@ -507,6 +508,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given commits 1,000,000 apart, when proven, then the proof has O(log n) headers and verifies.
 - **Verification:** CONF, BENCH
 - **Origin:** FR-PROOF-033, STD-PROOF-021
+- **Phase note:** BPA 1.0-rc1 (STD-PROOF-021) carries the plain first-parent chain; PH-1 step 6a (DEC-059) implements its verification (`verify_consistency` in `ubos-proof`) and part 6b the proof from the store. The skip links of this item stay in PH-2.
 
 ### DSN-DVM-934 — Tenant root
 - **Statement:** The DVM MUST compute a tenant root (STD-PROOF-030) over the heads of all VAEs and protected branches of a tenant, on request and at the anchoring cadence, for NTY to anchor.
@@ -547,6 +549,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given co-signing enabled, when a commit is verified, then both author and node signatures verify.
 - **Verification:** CONF
 - **Origin:** FR-PROOF-022
+- **Phase note:** Brought forward to PH-1 by DEC-059 (step 6a) as the signature every commit record of the conformance adapter carries: the version layer signs the commit ID with the node key of the store's node record at flush (STD-PROOF-011). Author signatures and the separate signature table of DSN-DVM-522 keep their phases.
 
 ### DSN-DVM-938 — Verification reports
 - **Statement:** The verifier MUST produce a structured report (FR-PROOF-062): each check, pass or fail, and for failures the exact object and reason in plain language.

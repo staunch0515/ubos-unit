@@ -38,10 +38,9 @@ const L2_FORBIDDEN: &[&str] = &[
 ];
 /// Imports an L3 component may declare.
 const L3_WORLD: &[&str] = &["ubos:isa/v1", "ubos:types/v1", "wasi:random"];
-/// The adapter's node DID (STD-CONF-005, convention 10).
-pub const NODE_DID: &str = "did:ubos:acme:01900000-0000-7000-8000-000000000001";
-/// The adapter's initial node seed.
-const NODE_SEED: [u8; 32] = [1u8; 32];
+/// The adapter's node DID (STD-CONF-005, convention 10); the record lives in the store
+/// (`ubos_store::node`, DEC-059).
+pub const NODE_DID: &str = ubos_store::node::NODE_DID;
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
     v.get(k).and_then(Value::as_str)
@@ -246,37 +245,21 @@ fn walk_host(
 }
 
 impl Engine {
-    // ---- node identity (STD-PROOF-010; the key history comes with step 6) ----
+    // ---- node identity (STD-PROOF-010): the store's node record (DEC-059) ----
 
-    /// The node record `{seed, n, keys}`; the adapter's convention until rotated.
+    /// The node record `{seed, n, keys}`.
     pub fn node_rec(&mut self) -> Result<Value, BpaError> {
-        if let Some(n) = self.store.meta("node")? {
-            return Ok(n);
-        }
-        let seed_hex: String = NODE_SEED.iter().map(|b| format!("{b:02x}")).collect();
-        Ok(
-            json!({"seed": seed_hex, "n": 1, "keys": [{"key_id": format!("{NODE_DID}#k1"),
-            "public_key": ubos_types::addr::b64u(&ubos_crypto::ed25519_public(&NODE_SEED))}]}),
-        )
+        ubos_store::node::record(self.store.as_mut())
     }
 
     /// Sign a content ID with the node's current key.
     pub fn node_sign(&mut self, cid: &str, role: &str) -> Result<Value, BpaError> {
-        let n = self.node_rec()?;
-        let seed = ubos_crypto::unhex32(&n["seed"], "seed")?;
-        let key_id = n["keys"]
-            .as_array()
-            .and_then(|k| k.last())
-            .and_then(|k| s(k, "key_id"))
-            .unwrap_or_default()
-            .to_string();
-        ubos_crypto::sign(&seed, cid, NODE_DID, &key_id, role)
+        ubos_store::node::sign(self.store.as_mut(), cid, role)
     }
 
     /// `node_did`: the node's DID document (STD-ADDR-010).
     pub fn node_did(&mut self) -> Result<Value, BpaError> {
-        let n = self.node_rec()?;
-        Ok(json!({"id": NODE_DID, "keys": n["keys"]}))
+        ubos_store::node::did(self.store.as_mut())
     }
 
     /// Whether an asset's verification record is known, passed and covers its code

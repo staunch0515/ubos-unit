@@ -23,6 +23,7 @@ use std::collections::{BTreeMap, HashMap};
 use ubos_types::BpaError;
 
 pub mod kernel;
+pub mod node;
 mod pg;
 pub mod physical;
 pub mod verify;
@@ -122,6 +123,8 @@ pub trait Store {
     fn next_commit_id(&mut self) -> Result<u64, BpaError>;
     /// A branch reference.
     fn branch(&mut self, name: &str) -> Result<Option<BranchRef>, BpaError>;
+    /// Names of every branch, sorted (tenant roots and key rotation, STD-PROOF-030).
+    fn branch_names(&mut self) -> Result<Vec<String>, BpaError>;
     /// Create a branch; false when the name exists.
     fn create_branch(&mut self, name: &str, r: &BranchRef) -> Result<bool, BpaError>;
     /// Write a flush atomically; false (nothing written) when the head moved.
@@ -468,6 +471,11 @@ impl Store for MemStore {
     fn branch(&mut self, name: &str) -> Result<Option<BranchRef>, BpaError> {
         Ok(self.branches.get(name).cloned())
     }
+    fn branch_names(&mut self) -> Result<Vec<String>, BpaError> {
+        let mut names: Vec<String> = self.branches.keys().cloned().collect();
+        names.sort();
+        Ok(names)
+    }
     fn create_branch(&mut self, name: &str, r: &BranchRef) -> Result<bool, BpaError> {
         if self.branches.contains_key(name) {
             return Ok(false);
@@ -713,6 +721,13 @@ impl Store for Group {
             Some(r) => Ok(Some(r.clone())),
             None => self.inner.branch(name),
         }
+    }
+    fn branch_names(&mut self) -> Result<Vec<String>, BpaError> {
+        let mut names = self.inner.branch_names()?;
+        names.extend(self.overlay.branches.keys().cloned());
+        names.sort();
+        names.dedup();
+        Ok(names)
     }
     fn create_branch(&mut self, _name: &str, _r: &BranchRef) -> Result<bool, BpaError> {
         Err(unsupported("create_branch"))
