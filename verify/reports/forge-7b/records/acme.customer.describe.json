@@ -1,0 +1,47 @@
+{
+  "abi": "1.0",
+  "analyzer_version": "1.0.0",
+  "asset": "sha256:51b2e5253af25af5d031de1ad9f541f0e80663630d726eb2bd161df62b9e1e42",
+  "at": "2026-01-01T00:00:00.000000Z",
+  "checks": [
+    {
+      "findings": [],
+      "name": "static_analysis",
+      "result": "pass"
+    },
+    {
+      "findings": [],
+      "name": "type_check",
+      "result": "pass"
+    },
+    {
+      "findings": [],
+      "name": "capabilities",
+      "result": "pass"
+    },
+    {
+      "failed": 0,
+      "findings": [],
+      "name": "tests",
+      "passed": 2,
+      "result": "pass"
+    }
+  ],
+  "coverage_permille": 667,
+  "declared_capabilities": [
+    "read"
+  ],
+  "inferred_capabilities": [
+    "read"
+  ],
+  "name": "acme.customer.describe",
+  "record_id": "sha256:9c64026186f5feb30ab1dc4a8f64999a9c985ae094844b500b11e3ab02d6a8fe",
+  "signature": {
+    "alg": "ed25519",
+    "key_id": "did:ubos:k:z6MkoJH1yX4DQQ51z4RzHhEmCk5e7MjEZpmf8RG2wxurezkn#z6MkoJH1yX4DQQ51z4RzHhEmCk5e7MjEZpmf8RG2wxurezkn",
+    "role": "signer",
+    "sig": "VdTyXKbeoSMia5IG_A8HkxDVfE_Y76mEZXZO1t4byu2sPlzydgV5KC0gR4fm-XZGjST5Y-42H5mE77SAZ_OrAw",
+    "signer": "did:ubos:k:z6MkoJH1yX4DQQ51z4RzHhEmCk5e7MjEZpmf8RG2wxurezkn"
+  },
+  "verified_by": "did:ubos:k:z6MkoJH1yX4DQQ51z4RzHhEmCk5e7MjEZpmf8RG2wxurezkn"
+}

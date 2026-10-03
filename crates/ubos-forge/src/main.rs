@@ -1,4 +1,6 @@
-//! `forge` command line (PH-0: `forge conform`).
+//! `forge` command line: `init`, `check`, `types`, `test` (PH-1 step 7b, DEC-060) and
+//! `conform` (PH-0). Every command takes `--json`; exit status 0 on success, 1 on findings
+//! or failures, 2 on usage (DSN-FRG-001).
 
 use ed25519_dalek::{Signer, SigningKey};
 use serde_json::{Map, Value, json};
@@ -12,8 +14,14 @@ use ubos_forge::runner::{Outcome, run_vector};
 #[global_allocator]
 static ALLOC: cap::Cap<std::alloc::System> = cap::Cap::new(std::alloc::System, usize::MAX);
 
-const USAGE: &str = "usage: forge conform --vectors <dir> [--tag <tag>] [--profiles <p1,p2>] \
-[--report <file>] [--key <file with 64 hex chars>] [--standard <version>] [--build <hash>] \
+const USAGE: &str = "usage:
+  forge init <dir> [--name <name>] [--json]
+  forge check [<project dir>] [--json]
+  forge types [<project dir>] [--out <dir>] [--json]
+  forge test [<project dir>] [--report <json file>] [--junit <xml file>] [--records <dir>] \
+[--key <file with 64 hex chars>] [--json]
+  forge conform --vectors <dir> [--tag <tag>] [--profiles <p1,p2>] [--report <file>] \
+[--key <file with 64 hex chars>] [--standard <version>] [--build <hash>] \
 [--backend memory|postgres] [--database <connection string>] [--l2] [--verbose]";
 
 fn files(dir: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
@@ -161,9 +169,209 @@ fn conform(args: &[String]) -> Result<bool, String> {
     Ok(failed == 0)
 }
 
+/// Options of a project command: the positional project directory and `--k v` pairs.
+fn options(args: &[String]) -> (PathBuf, BTreeMap<String, String>, bool) {
+    let mut dir = PathBuf::from(".");
+    let mut opts = BTreeMap::new();
+    let mut json_out = false;
+    let mut i = 0;
+    while i < args.len() {
+        let a = &args[i];
+        if a == "--json" {
+            json_out = true;
+        } else if let Some(k) = a.strip_prefix("--") {
+            if let Some(v) = args.get(i + 1) {
+                opts.insert(k.to_string(), v.clone());
+                i += 1;
+            }
+        } else {
+            dir = PathBuf::from(a);
+        }
+        i += 1;
+    }
+    (dir, opts, json_out)
+}
+
+fn load(dir: &Path) -> Result<ubos_forge::project::Project, String> {
+    ubos_forge::project::Project::load(dir)
+}
+
+fn emit(json_out: bool, v: &Value, text: &str) {
+    if json_out {
+        println!("{}", serde_json::to_string_pretty(v).unwrap_or_default());
+    } else {
+        println!("{text}");
+    }
+}
+
+fn init(args: &[String]) -> Result<bool, String> {
+    let (dir, opts, json_out) = options(args);
+    let name = opts
+        .get("name")
+        .cloned()
+        .or_else(|| dir.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .unwrap_or_else(|| "project".into());
+    let written = ubos_forge::project::Project::init(&dir, &name)?;
+    emit(
+        json_out,
+        &json!({"command": "init", "project": name, "dir": dir.display().to_string(), "written": written}),
+        &format!(
+            "forge init: {} files written to {}",
+            written.len(),
+            dir.display()
+        ),
+    );
+    Ok(true)
+}
+
+fn check(args: &[String]) -> Result<bool, String> {
+    let (dir, _, json_out) = options(args);
+    let project = load(&dir)?;
+    let findings = ubos_forge::check::check(&project);
+    let errors = findings.iter().filter(|f| f.severity == "error").count();
+    let list: Vec<Value> = findings.iter().map(|f| f.to_json()).collect();
+    let mut text = String::new();
+    for f in &findings {
+        text.push_str(&format!(
+            "{}{}: {} [{}] {}\n",
+            f.file,
+            f.line.map(|l| format!(":{l}")).unwrap_or_default(),
+            f.severity,
+            f.rule,
+            f.message
+        ));
+    }
+    text.push_str(&format!(
+        "forge check: {} classes, {} assets, {} seed changes, {} tests; {} findings, {errors} errors",
+        project.classes.len(), project.logic.len(), project.seed.len(), project.tests.len(), findings.len()
+    ));
+    emit(
+        json_out,
+        &json!({"command": "check", "project": project.manifest.name, "findings": list, "errors": errors,
+            "counts": {"classes": project.classes.len(), "assets": project.logic.len(), "seed": project.seed.len(), "tests": project.tests.len()}}),
+        &text,
+    );
+    Ok(errors == 0)
+}
+
+fn types(args: &[String]) -> Result<bool, String> {
+    let (dir, opts, json_out) = options(args);
+    let project = load(&dir)?;
+    let (ts, rs, header) = ubos_forge::types::generate(&project).map_err(|e| e.to_string())?;
+    let out = opts
+        .get("out")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| dir.join("generated"));
+    std::fs::create_dir_all(&out).map_err(|e| e.to_string())?;
+    std::fs::write(out.join("types.ts"), ts).map_err(|e| e.to_string())?;
+    std::fs::write(out.join("types.rs"), rs).map_err(|e| e.to_string())?;
+    emit(
+        json_out,
+        &json!({"command": "types", "header": header, "files": [out.join("types.ts").display().to_string(), out.join("types.rs").display().to_string()]}),
+        &format!(
+            "forge types: types.ts and types.rs written to {} (model {})",
+            out.display(),
+            header["model_hash"]
+        ),
+    );
+    Ok(true)
+}
+
+fn test(args: &[String]) -> Result<bool, String> {
+    let (dir, opts, json_out) = options(args);
+    let project = load(&dir)?;
+    let report = ubos_forge::test::run(&project).map_err(|e| e.to_string())?;
+    let mut out = report.to_json(&project);
+    // verification records of the assets (DSN-FRG-103), signed with the verifier key
+    let key = ubos_forge::records::VerifierKey::new(seed(opts.get("key").map(String::as_str))?)
+        .map_err(|e| e.to_string())?;
+    let mut records = Vec::new();
+    for item in &project.logic {
+        let name = item
+            .value
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or("?")
+            .to_string();
+        let tests_of = |pass: bool| {
+            report
+                .results
+                .iter()
+                .filter(|r| r.pass == pass && matches!(r.kind.as_str(), "unit" | "property"))
+                .count() as u64
+        };
+        let coverage = out["coverage"][&name]["fraction"].as_f64().unwrap_or(0.0);
+        let rec = ubos_forge::records::record(
+            &key,
+            &item.value,
+            (tests_of(true), tests_of(false)),
+            coverage,
+            ubos_forge::check::CLOCK,
+        )
+        .map_err(|e| e.to_string())?;
+        if let Some(d) = opts.get("records") {
+            std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
+            std::fs::write(
+                Path::new(d).join(format!("{name}.json")),
+                serde_json::to_string_pretty(&rec).unwrap_or_default(),
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        records.push(json!({"asset": name, "record_id": rec["record_id"], "result": if rec["checks"].as_array().is_some_and(|c| c.iter().all(|x| x["result"] == json!("pass"))) { "pass" } else { "fail" }}));
+    }
+    out["verifier"] = json!(key.did);
+    out["records"] = json!(records);
+    if let Some(p) = opts.get("report") {
+        std::fs::write(p, serde_json::to_string_pretty(&out).unwrap_or_default())
+            .map_err(|e| e.to_string())?;
+    }
+    if let Some(p) = opts.get("junit") {
+        std::fs::write(p, report.to_junit(&project)).map_err(|e| e.to_string())?;
+    }
+    let mut text = String::new();
+    for r in &report.results {
+        text.push_str(&format!(
+            "{} {} ({}, {} ms){}\n",
+            if r.pass { "ok  " } else { "FAIL" },
+            r.name,
+            r.kind,
+            r.ms,
+            r.failure
+                .as_ref()
+                .map(|f| format!(": {f}"))
+                .unwrap_or_default()
+        ));
+    }
+    for f in &report.findings {
+        text.push_str(&format!(
+            "{}: {} [{}] {}\n",
+            f.file, f.severity, f.rule, f.message
+        ));
+    }
+    text.push_str(&format!(
+        "forge test: {} of {} tests passed; roots genesis {} seed {}",
+        out["passed"], out["tests"], report.roots["genesis"], report.roots["seed"]
+    ));
+    let ok = out["failed"] == json!(0) && report.findings.is_empty();
+    emit(json_out, &out, &text);
+    Ok(ok)
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    let project_cmd = |r: Result<bool, String>| match r {
+        Ok(true) => ExitCode::SUCCESS,
+        Ok(false) => ExitCode::FAILURE,
+        Err(e) => {
+            eprintln!("{e}");
+            ExitCode::from(2)
+        }
+    };
     match args.first().map(String::as_str) {
+        Some("init") => project_cmd(init(&args[1..])),
+        Some("check") => project_cmd(check(&args[1..])),
+        Some("types") => project_cmd(types(&args[1..])),
+        Some("test") => project_cmd(test(&args[1..])),
         Some("conform") => match conform(&args[1..]) {
             Ok(true) => ExitCode::SUCCESS,
             Ok(false) => ExitCode::FAILURE,

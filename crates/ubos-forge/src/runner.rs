@@ -87,7 +87,8 @@ pub fn subset(expected: &Value, actual: &Value) -> bool {
     }
 }
 
-fn pointer<'a>(results: &'a HashMap<String, Value>, reference: &str) -> Option<&'a Value> {
+/// A `label/path` reference into earlier results.
+pub fn pointer<'a>(results: &'a HashMap<String, Value>, reference: &str) -> Option<&'a Value> {
     let (label, ptr) = reference.split_once('/').unwrap_or((reference, ""));
     let doc = results.get(label)?;
     if ptr.is_empty() {
@@ -97,7 +98,8 @@ fn pointer<'a>(results: &'a HashMap<String, Value>, reference: &str) -> Option<&
     }
 }
 
-fn resolve(v: &Value, results: &HashMap<String, Value>) -> Result<Value, String> {
+/// Replace `{"$ref": "label/path"}` members by earlier results.
+pub fn resolve(v: &Value, results: &HashMap<String, Value>) -> Result<Value, String> {
     match v {
         Value::Object(o) if o.len() == 1 && o.contains_key("$ref") => {
             let r = o["$ref"].as_str().unwrap_or_default();

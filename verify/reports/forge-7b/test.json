@@ -1,0 +1,64 @@
+{
+  "coverage": {
+    "acme.customer.describe": {
+      "fraction": 0.6666666666666666,
+      "functions": 3,
+      "invoked": 2
+    }
+  },
+  "failed": 0,
+  "fixture_findings": [],
+  "passed": 4,
+  "project": "skeleton",
+  "records": [
+    {
+      "asset": "acme.customer.describe",
+      "record_id": "sha256:9c64026186f5feb30ab1dc4a8f64999a9c985ae094844b500b11e3ab02d6a8fe",
+      "result": "pass"
+    }
+  ],
+  "results": [
+    {
+      "failure": null,
+      "file": "tests/customers.yaml",
+      "kind": "scenario",
+      "ms": 0,
+      "name": "a seeded customer reads back",
+      "result": "pass",
+      "steps": 3
+    },
+    {
+      "failure": null,
+      "file": "tests/customers.yaml",
+      "kind": "port",
+      "ms": 1,
+      "name": "describe returns the name",
+      "result": "pass",
+      "steps": 1
+    },
+    {
+      "failure": null,
+      "file": "tests/customers.yaml",
+      "kind": "unit",
+      "ms": 0,
+      "name": "greet builds a greeting",
+      "result": "pass",
+      "steps": 1
+    },
+    {
+      "failure": null,
+      "file": "tests/customers.yaml",
+      "kind": "property",
+      "ms": 11,
+      "name": "double stays in range",
+      "result": "pass",
+      "steps": 20
+    }
+  ],
+  "roots": {
+    "genesis": "sha256:c6ef035a6deaf94f21940c7147b0b423ea3abb18598abd038285c8daed170715",
+    "seed": "sha256:0c960a3f0be13b53f7852e281343f7f918311d790eb3ca6a0bdb06a15fdb41c9"
+  },
+  "tests": 4,
+  "verifier": "did:ubos:k:z6MkoJH1yX4DQQ51z4RzHhEmCk5e7MjEZpmf8RG2wxurezkn"
+}

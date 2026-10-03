@@ -28,6 +28,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given every command with `--json`, when output is validated against its schema, then it conforms.
 - **Verification:** CONF
 - **Origin:** FR-DEV-011, FR-DEV-012
+- **Phase note:** PH-1 step 7b (DEC-060): `init`, `check`, `types`, `test` and `conform` exist, each with `--json` and exit status 0, 1 or 2; `dev` follows at gate 1b, the others with their phases.
 
 ### DSN-FRG-002 — Project model
 - **Statement:** A Forge project MUST be a directory with `forge.toml` and source folders `model/`, `sheets/`, `logic/`, `components/`, `views/`, `seed/`, `tests/`, `docs/`. Sources MUST be text formats (YAML or the textual grammars) so that they diff and merge in Git.
@@ -38,6 +39,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given `forge init`, when run, then the skeleton passes `forge check`.
 - **Verification:** CONF
 - **Origin:** FR-DEV-011, FR-PKG-011
+- **Phase note:** PH-1 step 7b (DEC-060): `forge.toml` and YAML (or JSON) sources under `model/`, `logic/`, `seed/`, `tests/`; `sheets/`, `components/`, `views/` and `docs/` are created by `forge init` and compiled from gate 1b. The skeleton passes `forge check` and `forge test`.
 
 ### DSN-FRG-003 — Incremental build graph
 - **Statement:** The build MUST compute a content-addressed dependency graph over sources and cache compiled outputs by input hash, so that a one-file change rebuilds only its dependants (FR-DEV-013).
@@ -48,6 +50,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given a 500-class project, when one script changes, then `forge check` completes within NR-PERF-016.
 - **Verification:** BENCH
 - **Origin:** FR-DEV-013, NR-PERF-016
+- **Phase note:** Not needed at gate 1a (DEC-060): one pass checks a project in milliseconds; the content-addressed cache follows with `forge dev` at gate 1b, where the developer loop of NR-PERF-016 is measured.
 
 ### DSN-FRG-004 — Same engine everywhere
 - **Statement:** The CLI, the NOD-linked service (CTR-012) and the EXC verification service MUST use the same `ubos-forge` library version pinned to the kernel ABI, and produce identical findings for identical inputs.
@@ -58,6 +61,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given the same project, when checked by CLI and by the Forge service, then findings are identical.
 - **Verification:** CONF
 - **Origin:** CTR-012, NR-DET-002
+- **Phase note:** PH-1 step 7b (DEC-060): `forge check` uses the class registry of `ubos-model` and the analyser of the verification gate of `ubos-dvm`, so its findings are the engine's; the NOD-linked service follows with gate 1b.
 
 ## Checks, types and verification records
 
@@ -70,6 +74,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given a project with one error per stage, when checked, then every error is reported in one run.
 - **Verification:** CONF
 - **Origin:** FR-LOGIC-042, FR-LOGIC-091, FR-RULE-042, FR-MODEL-086
+- **Phase note:** PH-1 step 7b (DEC-060): parse → model → sheets and tables (warning: gate 1b) → scripts and static analysis → port implementations → seed data, every stage in one run; a project with one error per stage reports all of them (`verify/reports/forge-7b/`). Lens totality and view resolution follow with their gates.
 
 ### DSN-FRG-102 — Type generation
 - **Statement:** `forge types` MUST generate TypeScript and Rust types (and Python from PH-3) for classes, value types, ports, events and queries from a snapshot (FR-DEV-031), versioned per branch and model hash (FR-DEV-032).
@@ -80,6 +85,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given generated TypeScript types, when an application uses a removed field, then the TypeScript compiler fails.
 - **Verification:** CONF
 - **Origin:** FR-DEV-031, FR-DEV-032
+- **Phase note:** PH-1 step 7b (DEC-060): `types.ts` and `types.rs` for classes, value types and ports, with the branch and model hash in the header; Python follows in PH-3.
 
 ### DSN-FRG-103 — Verification records
 - **Statement:** For each logic asset, Forge MUST produce a signed verification record (STD-CTX-023) binding the asset hash, ABI, passed checks, test results, coverage and inferred capabilities. Records MUST be signed with the verifier key (developer, CI or EXC service key).
@@ -90,6 +96,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given a verified asset, when the DVM activates it on `main`, then the record is accepted; with one byte changed, it is rejected.
 - **Verification:** CONF, SEC
 - **Origin:** FR-LOGIC-083, STD-CTX-023
+- **Phase note:** PH-1 step 7b (DEC-060): `forge test` signs one record per asset with the verifier key (asset hash, ABI, static analysis, type check, capability and test checks, coverage in permille, inferred and declared capabilities); the DVM accepts Forge-signed records at activation with the install path of gate 1b.
 
 ### DSN-FRG-104 — Coverage gates
 - **Statement:** Verification MUST enforce configurable coverage thresholds for scripts (branch coverage) and rules (rule and table-row coverage, FR-RULE-083), defaulting to 80% and 100% of decision-table rows for protected-branch activation.
@@ -122,6 +129,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given one test of each kind, when `forge test` runs, then all execute against an in-process DVM.
 - **Verification:** CONF
 - **Origin:** FR-DEV-051, FR-RULE-081
+- **Phase note:** PH-1 step 7b (DEC-060): `scenario`, `unit`, `port` and `property` tests in YAML against the in-memory VAE of the project; rule tests follow with the rules of gate 1b, conformance tests are `forge conform`.
 
 ### DSN-FRG-202 — Controlled time and randomness
 - **Statement:** Tests MUST run with a controlled clock (settable, advanceable) and seeded entropy through the host-service traits (FR-DEV-052), and with mocked connectors and models.
@@ -132,6 +140,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given a test that advances time by 30 days, when a schedule is due, then it fires deterministically.
 - **Verification:** CONF
 - **Origin:** FR-DEV-052
+- **Phase note:** PH-1 step 7b (DEC-060): the deterministic services of `ubos-dvm::host` (fixed clock set by the test and advanced by `advance` steps, seeded entropy, no connectors or models); mocked connectors follow with the connector runtime of gate 1b.
 
 ### DSN-FRG-203 — Reproducible test VAEs
 - **Statement:** Test fixtures MUST be built from seed data into in-memory VAEs whose genesis and seed roots are reproducible (FR-DEV-022).
@@ -142,6 +151,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given the same seed, when built twice, then roots are equal.
 - **Verification:** CONF
 - **Origin:** FR-DEV-022
+- **Phase note:** PH-1 step 7b (DEC-060): the fixture is built from the model and seed into an in-memory VAE; the report carries the genesis and seed roots, which repeat run after run.
 
 ### DSN-FRG-204 — Test reports
 - **Statement:** Test runs MUST produce JUnit XML and a JSON report with timings, coverage and failure diffs (FR-DEV-053).
@@ -152,6 +162,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given a CI run, when the report is uploaded, then standard CI systems display it.
 - **Verification:** CONF
 - **Origin:** FR-DEV-053
+- **Phase note:** PH-1 step 7b (DEC-060): JSON (timings, roots, coverage per asset, failure diffs) and JUnit XML.
 
 ### DSN-FRG-205 — Simulator
 - **Statement:** `forge simulate` MUST pull a history range from a VAE (with the user's permissions), replay its processes with changed logic or rules (FR-DEV-041), with external effects disabled (FR-DEV-042), and report changed outcomes (DSN-DVM-761).

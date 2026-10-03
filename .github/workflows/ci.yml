@@ -70,6 +70,14 @@ jobs:
         run: |
           cargo build --release --locked -p ubos-dvm --bin ubos-l2-suite
           ./target/release/ubos-l2-suite --cases verify/sandbox/l2-escape-cases.json
+      - name: forge init, check, types and test on the skeleton (DSN-FRG-002, -101, -102, -201…204, DEC-060)
+        run: |
+          cargo build --release --locked -p ubos-forge
+          rm -rf /tmp/forge-skeleton
+          ./target/release/forge init /tmp/forge-skeleton --name skeleton
+          ./target/release/forge check /tmp/forge-skeleton --json > /dev/null
+          ./target/release/forge types /tmp/forge-skeleton --json > /dev/null
+          ./target/release/forge test /tmp/forge-skeleton --junit /tmp/forge-skeleton/junit.xml --report /tmp/forge-skeleton/report.json
       - name: host services on PostgreSQL (SUITE-NOD-HOST, DEC-060)
         run: |
           cargo build --release --locked -p ubos-node --bin ubos-node-suite

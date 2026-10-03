@@ -217,6 +217,11 @@ impl Adapter {
         Adapter { engine }
     }
 
+    /// The engine, consuming the adapter (the host API builds a `Vae` over it).
+    pub fn into_engine(self) -> Engine {
+        self.engine
+    }
+
     /// The engine (storage suite and verifiers).
     pub fn engine_mut(&mut self) -> &mut Engine {
         &mut self.engine

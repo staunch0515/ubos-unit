@@ -1,7 +1,8 @@
 //! Dates, times, instants, durations and local-time conversion (STD-FND-024).
 
 use crate::error::{BpaError, invalid};
-use chrono::{DateTime, Duration, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
+pub use chrono::Duration;
+use chrono::{DateTime, LocalResult, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use chrono_tz::Tz;
 use regex::Regex;
 use std::sync::OnceLock;
