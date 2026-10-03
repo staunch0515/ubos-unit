@@ -70,7 +70,7 @@ impl Hierarchy {
         )
     }
 
-    /// Rotate the data key (FR-IAM-095): new writes use the next generation; old
+    /// Rotate the data key (FR-IAM-033): new writes use the next generation; old
     /// generations stay readable.
     pub fn rotate_data_key(&self) -> Result<u32, BpaError> {
         let next = *self.current.lock().map_err(|_| err("lock"))? + 1;
