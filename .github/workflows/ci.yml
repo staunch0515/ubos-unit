@@ -70,6 +70,12 @@ jobs:
         run: |
           cargo build --release --locked -p ubos-dvm --bin ubos-l2-suite
           ./target/release/ubos-l2-suite --cases verify/sandbox/l2-escape-cases.json
+      - name: export/import round trip with the independent verifier (VER-CONF-8403, EXIT-1-12, DEC-059)
+        run: |
+          cargo build --release --locked -p ubos-verify
+          cargo build --release --locked -p ubos-dvm --bin ubos-roundtrip
+          ./target/release/ubos-roundtrip --database "host=127.0.0.1 user=postgres dbname=bpa" \
+            --vaes 2 --objects 60 --entries 60 --months 2 --verifier ./target/release/ubos-verify
 
   models:
     name: formal models (reduced bounds)

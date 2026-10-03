@@ -1935,6 +1935,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ubos-verify"
+version = "0.0.0"
+dependencies = [
+ "serde_json",
+ "ubos-crypto",
+ "ubos-proof",
+]
+
+[[package]]
 name = "ubos-version"
 version = "0.0.0"
 dependencies = [

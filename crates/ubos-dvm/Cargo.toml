@@ -17,6 +17,10 @@ name = "ubos-l2-suite"
 path = "src/bin/ubos-l2-suite.rs"
 
 [[bin]]
+name = "ubos-roundtrip"
+path = "src/bin/ubos-roundtrip.rs"
+
+[[bin]]
 name = "ubos-props"
 path = "src/bin/ubos-props.rs"
 
