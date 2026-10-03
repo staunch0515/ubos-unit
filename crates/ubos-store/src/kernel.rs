@@ -544,6 +544,8 @@ pub trait StoreTx {
 pub trait StoreRead {
     /// A branch by name.
     async fn branch(&self, name: &str) -> Result<Option<BranchRow>, BpaError>;
+    /// Names of every branch of the VAE, sorted.
+    async fn branch_names(&self) -> Result<Vec<String>, BpaError>;
     /// A commit by engine identifier: `(branch_id, cseq, body)`.
     async fn commit(&self, commit_no: u64) -> Result<Option<(i64, u64, Vec<u8>)>, BpaError>;
     /// The commit of a branch with the given ordinal.

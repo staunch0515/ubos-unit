@@ -8,6 +8,7 @@ members = [
     "crates/ubos-store",
     "crates/ubos-tree",
     "crates/ubos-version",
+    "crates/ubos-proof",
     "crates/ubos-time",
     "crates/ubos-model",
     "crates/ubos-expr",
@@ -30,6 +31,7 @@ ubos-crypto = { path = "crates/ubos-crypto" }
 ubos-store = { path = "crates/ubos-store" }
 ubos-tree = { path = "crates/ubos-tree" }
 ubos-version = { path = "crates/ubos-version" }
+ubos-proof = { path = "crates/ubos-proof" }
 ubos-time = { path = "crates/ubos-time" }
 ubos-dvm = { path = "crates/ubos-dvm" }
 ubos-model = { path = "crates/ubos-model" }

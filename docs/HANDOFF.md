@@ -155,8 +155,14 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    `ubos-runtime::l2` on a worker thread with the step-5b gateway, typed handles, kernel
    decimal and money, memory, CPU and wall limits; the escape suite of 382 cases all
    blocked, `verify/reports/exit-1-10/`, EXIT-1-10 met; W-2…W-5 and W-12 closed). Step 5 is
-   complete. Next step 6 (proofs: signatures, inclusion and consistency proofs, portable
-   export and import, verifier library; EXIT-1-12; the 62 remaining vectors). W-12). W-1
+   complete. Step 6 (proofs, EXIT-1-12) in parts 6a–6c: 6a done (DEC-059: every commit
+   record node-signed at flush through the store's node record, signature verification
+   against DID documents with key histories in `ubos-crypto`, crate `ubos-proof` with the
+   storage-free inclusion, commit-record and consistency checks, `rotate_node_key`,
+   `did_document`, `commit_record`; 1,203 of 1,227 vectors pass in memory and on
+   PostgreSQL). Next 6b (`prove`, `consistency_proof`, `tenant_root`, `export_archive`,
+   `import_archive`; the 24 remaining vectors), then 6c (`ubos-verify` CLI and library under
+   `verify/`, EXIT-1-12 round trip between two VAE scopes of one PostgreSQL database). W-1
    may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
