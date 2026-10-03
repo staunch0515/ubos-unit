@@ -1,34 +1,29 @@
-# EXIT-1-02 — Engine vectors on PostgreSQL (interim report after PH-1 step 4)
+# EXIT-1-02 — Engine vectors on PostgreSQL (final report, PH-1 step 7c)
 
 | Item | Value |
 |---|---|
 | Criterion | EXIT-1-02: 100% of the engine-profile vectors pass on PostgreSQL through the runner (signed runner reports) |
-| Standard | BPA 1.0.0-rc1 (`standard/release/1.0-rc1/manifest.json`, DEC-045) |
-| Build | commit `b8a90d1a19cb8600db09c71a48177ed207d7e8a1` (`cargo build --release -p ubos-forge`) |
-| Database | PostgreSQL 16.13, development workstation (4 vCPU, 15 GB RAM); the ENV-REF-SERVER run is made at gate-1a acceptance (DEC-047) |
-| Status | **interim** (DEC-054): the areas implemented through step 4 pass completely; the areas of steps 5 and 6 are outside the claimed scope and reported as `not_applicable`. EXIT-1-02 is met when the full set passes at step 9. |
-| Result | 869 of 1,227 vectors pass (Core 740, Bitemporal 61, Ledger 52, Proof 16); 0 fail; 358 not applicable |
-| Reports | `conformance-postgres.json`, `conformance-memory.json` (DAT-ConformanceReport, STD-CONF-003), identical outcomes on both backends |
+| Standard | BPA 1.0.0-rc1 (`standard/release/1.0-rc1/manifest.json`, DEC-045): 1,227 vectors of the profiles Core, Bitemporal, Ledger and Proof |
+| Build | PH-1 step 7c (`cargo build --release --locked -p ubos-forge`), DEC-060 |
+| Database | PostgreSQL 16.13, development workstation (4 vCPU, 15 GB RAM); the ENV-REF-SERVER run is made at gate-1a acceptance (step 9, DEC-047) |
+| Status | **met on the workstation**: every vector passes on PostgreSQL and in memory with identical outcomes; the interim report of step 4 (DEC-054: 869 of 1,227) is replaced |
+| Result | 1227 of 1,227 pass (Core 1038, Bitemporal 61, Ledger 55, Proof 73); 0 fail; 0 not applicable |
+| Reports | `conformance-postgres.json`, `conformance-memory.json` (DAT-ConformanceReport, STD-CONF-003), signed by an ephemeral runner key |
 
-## Scope of this report
+## History
 
-| Area | Vectors | Outcome |
+| Step | Passing | Note |
 |---|---|---|
-| Foundations, object model, class system, kinds, versioning, bitemporal, ledger, transactions, addressing (STD-FND, -OBJ, -CLS, -KIND, -VER, -TIME, -TXN, -ADDR, -ERR), AEAD of STD-CONF-011 | 869 | pass |
-| Runtime: `execute`, `eval_expr`, `check_expr`, `query`, `profile_limits`, `instructions`, custom value types (STD-CTX, -ISA, -EXPR, -BPU, STD-FND-026, STD-TXN-023) | step 5 | not applicable |
-| Proofs and signatures: `sign`, `verify_signature`, `commit_record`, `prove`, `verify_inclusion`, `verify_consistency`, `tenant_root`, archives, node and key DIDs (STD-PROOF, parts of STD-CONF-011, STD-ADDR-010 node documents) | step 6 | not applicable |
-| BPU and sync operations (`bpu_descriptor`, `bpu_state`, `verify_bpu`, `verify_asset`) | later steps | not applicable |
-
-Each report is signed with an ephemeral ed25519 runner key; the public key is in
-`signature.key`, and the signature covers the canonical JSON (STD-FND-001) of the report
-without its `signature` member.
+| 4d-2 (DEC-054) | 869 | interim: steps 5 and 6 not applicable |
+| 5a–5c (DEC-055…057) | 1,009 → 1,127 → 1,165 | runtime |
+| 6a–6b (DEC-059) | 1,203 → 1,227 | proofs and archive |
+| 7c (DEC-060) | 1,227 | final report after the host, Forge and the scenarios |
 
 ## Reproduce
 
-```sh
-cargo build --release -p ubos-forge
-./target/release/forge conform --vectors standard/vectors --standard 1.0.0-rc1 --build <commit> \
-    --backend postgres --database "host=127.0.0.1 user=postgres dbname=bpa" --report conformance-postgres.json
-./target/release/forge conform --vectors standard/vectors --standard 1.0.0-rc1 --build <commit> \
-    --report conformance-memory.json
+```
+cargo build --release --locked -p ubos-forge
+./target/release/forge conform --vectors standard/vectors --report conformance-memory.json
+./target/release/forge conform --vectors standard/vectors --backend postgres \
+    --database "host=127.0.0.1 user=postgres dbname=bpa" --report conformance-postgres.json
 ```

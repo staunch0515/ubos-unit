@@ -1014,12 +1014,25 @@ impl Engine {
                 .store
                 .process_rec(pid)?
                 .ok_or_else(|| not_found("unknown process"))?;
+            // the process's own commits (STD-VER-071; dependents are reported, not
+            // reverted), and for a bulk process the chunk commits of its children
+            // (STD-TXN-033), which are its own work
+            let mut commits: Vec<Value> = rec["commits"].as_array().cloned().unwrap_or_default();
+            for child in rec["bulk_state"]["children"]
+                .as_array()
+                .into_iter()
+                .flatten()
+            {
+                commits.push(json!([child["branch"], child["cseq"]]));
+            }
             let mut repo = Repo::new(self.store.as_mut(), &self.registry);
             let mut targets = Vec::new();
-            for c in rec["commits"].as_array().into_iter().flatten() {
+            for c in &commits {
                 let b = c[0].as_str().unwrap_or_default().to_string();
                 let cid = repo.commit_at(&b, c[1].as_u64())?;
-                targets.push((b, cid));
+                if !targets.contains(&(b.clone(), cid)) {
+                    targets.push((b, cid));
+                }
             }
             return Ok((targets, vec![pid.to_string()]));
         }
@@ -1094,6 +1107,12 @@ impl Engine {
         if i.get("dry_run") == Some(&json!(true)) {
             return Ok(json!({"reverted": reverted_json, "dependents": dependents}));
         }
+        let revert_resolutions: Vec<Value> = i
+            .get("resolutions")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let mut resolutions_used: Vec<Value> = Vec::new();
         let rev_ids = i
             .get("reversal_ids")
             .and_then(Value::as_object)
@@ -1145,6 +1164,9 @@ impl Engine {
                 let pstate = repo.commit_state(parent)?;
                 let current = tx.state.clone();
                 let cseq = tx.cseq;
+                // resolutions as in a merge (STD-VER-058): `source` keeps the reverted value,
+                // `target` the later change (SCN-018 step 2)
+                let mut res = Some(ubos_version::Resolver::new(&revert_resolutions)?);
                 let (mut st, conflicts) = repo.merge_states(
                     &cstate,
                     &pstate,
@@ -1153,7 +1175,7 @@ impl Engine {
                     Some(cseq),
                     Some(branch),
                     false,
-                    &mut None,
+                    &mut res,
                     &mut tx,
                 )?;
                 if !conflicts.is_empty() {
@@ -1161,6 +1183,9 @@ impl Engine {
                         "VER.MERGE_CONFLICT",
                         json!({"conflicts": unique(conflicts)}),
                     ));
+                }
+                if let Some(r) = res {
+                    resolutions_used.extend(r.used.values().cloned());
                 }
                 // objects created by C are ended from the start of their timeline
                 let missing: Vec<String> = current
@@ -1272,6 +1297,10 @@ impl Engine {
                         .unwrap_or_default()
                 ),
             );
+            if !resolutions_used.is_empty() {
+                tx.extra
+                    .insert("resolutions".into(), json!(resolutions_used));
+            }
             let cseq = tx.cseq;
             let head = tx.head;
             Repo::new(self.store.as_mut(), &self.registry).write(tx, vec![head])?;
@@ -1287,7 +1316,11 @@ impl Engine {
             out.push(json!({"branch": branch, "cseq": cseq, "versions": result["versions"], "entries": result["entries"]}));
         }
         self.instances.extend(touched);
-        Ok(json!({"reverted": reverted_json, "dependents": dependents, "commits": out}))
+        let mut out = json!({"reverted": reverted_json, "dependents": dependents, "commits": out});
+        if !resolutions_used.is_empty() {
+            out["resolutions"] = json!(resolutions_used);
+        }
+        Ok(out)
     }
 }
 

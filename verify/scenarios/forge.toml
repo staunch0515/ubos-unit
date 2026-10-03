@@ -1,0 +1,6 @@
+[project]
+name = "gate-1a-scenarios"
+version = "0.1.0"
+vae = "acme"
+abi = "1.0"
+branch = "main"

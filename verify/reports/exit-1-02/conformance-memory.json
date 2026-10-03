@@ -7,7 +7,7 @@
     "backends": [
       "memory"
     ],
-    "build_hash": "b8a90d1a19cb8600db09c71a48177ed207d7e8a1",
+    "build_hash": "",
     "name": "ubos-dvm prototype",
     "vendor": "UBOS",
     "version": "0.0.0"
@@ -1080,48 +1080,39 @@
       "vector": "VER-CONF-0247"
     },
     {
-      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-0260"
     },
     {
-      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-0261"
     },
     {
-      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-0262"
     },
     {
-      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-0263"
     },
     {
-      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-0264"
     },
     {
-      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-0265"
     },
     {
-      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-0266"
     },
     {
-      "detail": "a: custom value types need the L1 evaluator (PH-1 step 5)",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-0267"
     },
     {
-      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-0268"
     },
     {
@@ -2929,23 +2920,19 @@
       "vector": "VER-CONF-2092"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2100"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2101"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2102"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2103"
     },
     {
@@ -3085,48 +3072,39 @@
       "vector": "VER-CONF-2220"
     },
     {
-      "detail": "s3: operation bpu_state is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2600"
     },
     {
-      "detail": "s1: operation bpu_descriptor is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2601"
     },
     {
-      "detail": "s1: operation bpu_descriptor is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2602"
     },
     {
-      "detail": "s1: operation bpu_descriptor is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2603"
     },
     {
-      "detail": "s1: operation bpu_descriptor is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2610"
     },
     {
-      "detail": "a: operation bpu_descriptor is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2611"
     },
     {
-      "detail": "x: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2612"
     },
     {
-      "detail": "s3: operation bpu_descriptor is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2613"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2635"
     },
     {
@@ -3134,593 +3112,475 @@
       "vector": "VER-CONF-2636"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2637"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2650"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2651"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2652"
     },
     {
-      "detail": "s3: operation verify_bpu is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2660"
     },
     {
-      "detail": "s2: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2661"
     },
     {
-      "detail": "s2: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2662"
     },
     {
-      "detail": "s1: operation verify_bpu is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2663"
     },
     {
-      "detail": "s1: operation instructions is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3000"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3001"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3010"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3011"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3012"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3013"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3014"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3030"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3031"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3032"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3040"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3041"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3042"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3043"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3044"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3045"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3050"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3051"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3052"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3053"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3054"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3060"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3061"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3100"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3101"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3102"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3103"
     },
     {
-      "detail": "s2: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3104"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3105"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3120"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3121"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3122"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3123"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3124"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3150"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3165"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3215"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3216"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3300"
     },
     {
-      "detail": "s5: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3301"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3302"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3303"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3330"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3340"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3350"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3360"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3361"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3400"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3401"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3402"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3403"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3430"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3431"
     },
     {
-      "detail": "s4: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3440"
     },
     {
-      "detail": "s4: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3441"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3480"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4000"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4001"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4002"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4003"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4004"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4005"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4020"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4021"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4022"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4030"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4031"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4032"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4033"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4034"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4035"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4036"
     },
     {
-      "detail": "s1: operation profile_limits is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4050"
     },
     {
-      "detail": "s1: operation profile_limits is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4051"
     },
     {
-      "detail": "s1: operation profile_limits is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4052"
     },
     {
-      "detail": "s1: operation profile_limits is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4053"
     },
     {
-      "detail": "s1: operation profile_limits is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4054"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4055"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4056"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4057"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4058"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4059"
     },
     {
-      "detail": "s4: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4060"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4080"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4081"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4082"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4083"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4100"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4101"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4102"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4120"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4121"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4122"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4123"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4124"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4150"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4151"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4152"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4165"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4166"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4167"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4168"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4169"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4200"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4201"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4202"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4203"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4204"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4205"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4206"
     },
     {
@@ -3736,763 +3596,611 @@
       "vector": "VER-CONF-4272"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4273"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4274"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4275"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4276"
     },
     {
-      "detail": "s2: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4285"
     },
     {
-      "detail": "s2: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4286"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4287"
     },
     {
-      "detail": "s2: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4288"
     },
     {
-      "detail": "s2: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4289"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4290"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4291"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4292"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4305"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4306"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4307"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4308"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4309"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4310"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4311"
     },
     {
-      "detail": "s3: operation verify_asset is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4312"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4345"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4346"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4400"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4401"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4402"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4403"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4404"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4405"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4406"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4407"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4408"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4409"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4410"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4411"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4412"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4413"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4414"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4415"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4416"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4417"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4418"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4419"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4420"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4421"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4422"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4460"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4461"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4462"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4463"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4464"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4465"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4466"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4467"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4468"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4469"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4470"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4471"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4472"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4473"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4474"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4475"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4476"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4477"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4478"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4479"
     },
     {
-      "detail": "s1: operation check_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4480"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4500"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4501"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4502"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4503"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4504"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4505"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4506"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4507"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4508"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4509"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4510"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4511"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4512"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4513"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4514"
     },
     {
-      "detail": "s1: custom value types need the L1 evaluator (PH-1 step 5)",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4515"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4520"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4521"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4522"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4523"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4524"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4525"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4526"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4527"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4528"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4529"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4530"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4540"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4541"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4542"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4543"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4544"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4545"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4546"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4547"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4548"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4549"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4550"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4551"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4552"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4553"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4554"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4555"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4556"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4557"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4558"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4559"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4560"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4561"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4562"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4563"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4564"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4565"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4566"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4567"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4568"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4569"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4570"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4571"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4572"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4573"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4574"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4575"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4576"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4577"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4578"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4579"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4580"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4581"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4582"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4583"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4584"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4585"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4586"
     },
     {
-      "detail": "s1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4587"
     },
     {
-      "detail": "s2: operation query is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4750"
     },
     {
-      "detail": "s2: operation query is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4751"
     },
     {
-      "detail": "s2: operation query is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4752"
     },
     {
-      "detail": "s2: operation query is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4753"
     },
     {
-      "detail": "p1: operation query is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4754"
     },
     {
-      "detail": "p1: operation query is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4755"
     },
     {
-      "detail": "s4: operation query is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4756"
     },
     {
-      "detail": "s3: operation query is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4757"
     },
     {
-      "detail": "s2: operation query is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4758"
     },
     {
-      "detail": "s2: operation query is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4759"
     },
     {
-      "detail": "s2: operation query is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-4760"
     },
     {
@@ -4576,8 +4284,7 @@
       "vector": "VER-CONF-5243"
     },
     {
-      "detail": "u1: operation eval_expr is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-5244"
     },
     {
@@ -4617,23 +4324,19 @@
       "vector": "VER-CONF-5286"
     },
     {
-      "detail": "s2: operation did_document is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-5287"
     },
     {
-      "detail": "n: operation node_did is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-5288"
     },
     {
-      "detail": "s2: operation rotate_node_key is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-5289"
     },
     {
-      "detail": "s1: operation did_document is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-5290"
     },
     {
@@ -4705,8 +4408,7 @@
       "vector": "VER-CONF-6206"
     },
     {
-      "detail": "s1: operation verify_signature is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-6207"
     },
     {
@@ -4922,18 +4624,15 @@
       "vector": "VER-CONF-2111"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3170"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3195"
     },
     {
-      "detail": "s3: operation execute is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-3196"
     },
     {
@@ -5001,312 +4700,252 @@
       "vector": "VER-CONF-2351"
     },
     {
-      "detail": "s1: operation public_key is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2360"
     },
     {
-      "detail": "s1: operation sign is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2361"
     },
     {
-      "detail": "s1: operation verify_signature is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2362"
     },
     {
-      "detail": "s1: operation verify_signature is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2363"
     },
     {
-      "detail": "s1: operation verify_signature is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2364"
     },
     {
-      "detail": "s1: operation verify_signature is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2365"
     },
     {
-      "detail": "s1: operation verify_signature is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2366"
     },
     {
-      "detail": "s1: operation sign is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2367"
     },
     {
-      "detail": "s1: operation verify_signature is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2368"
     },
     {
-      "detail": "r: operation commit_record is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2369"
     },
     {
-      "detail": "s: operation sign is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2370"
     },
     {
-      "detail": "s1: operation verify_signature is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2375"
     },
     {
-      "detail": "s1: operation verify_signature is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2376"
     },
     {
-      "detail": "s1: operation verify_signature is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2377"
     },
     {
-      "detail": "s1: operation verify_signature is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2378"
     },
     {
-      "detail": "s1: operation verify_signature is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2379"
     },
     {
-      "detail": "s1: operation verify_signature is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2380"
     },
     {
-      "detail": "r1: operation commit_record is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2381"
     },
     {
-      "detail": "r1: operation commit_record is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2382"
     },
     {
-      "detail": "s3: operation rotate_node_key is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2383"
     },
     {
-      "detail": "s1: operation inclusion_proof is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2390"
     },
     {
-      "detail": "s1: operation inclusion_proof is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2391"
     },
     {
-      "detail": "p: operation inclusion_proof is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2392"
     },
     {
-      "detail": "s1: operation inclusion_proof is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2393"
     },
     {
-      "detail": "s1: operation verify_inclusion is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2394"
     },
     {
-      "detail": "s1: operation verify_inclusion is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2395"
     },
     {
-      "detail": "s1: operation verify_inclusion is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2396"
     },
     {
-      "detail": "s1: operation verify_inclusion is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2397"
     },
     {
-      "detail": "p: operation prove is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2398"
     },
     {
-      "detail": "n: operation node_did is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2399"
     },
     {
-      "detail": "n: operation node_did is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2400"
     },
     {
-      "detail": "p: operation prove is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2401"
     },
     {
-      "detail": "s2: operation prove is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2402"
     },
     {
-      "detail": "n: operation node_did is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2410"
     },
     {
-      "detail": "n: operation node_did is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2411"
     },
     {
-      "detail": "s4: operation consistency_proof is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2412"
     },
     {
-      "detail": "n: operation node_did is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2413"
     },
     {
-      "detail": "s1: operation verify_consistency is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2414"
     },
     {
-      "detail": "s1: operation verify_consistency is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2415"
     },
     {
-      "detail": "s1: operation verify_consistency is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2416"
     },
     {
-      "detail": "s1: operation verify_consistency is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2417"
     },
     {
-      "detail": "s1: operation verify_consistency is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2418"
     },
     {
-      "detail": "t: operation tenant_root is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2420"
     },
     {
-      "detail": "t: operation tenant_root is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2421"
     },
     {
-      "detail": "t: operation tenant_root is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2422"
     },
     {
-      "detail": "t: operation tenant_root is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2423"
     },
     {
-      "detail": "a: operation export_archive is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2510"
     },
     {
-      "detail": "a: operation export_archive is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2511"
     },
     {
-      "detail": "s6: operation export_archive is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2512"
     },
     {
-      "detail": "a: operation export_archive is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2513"
     },
     {
-      "detail": "a: operation export_archive is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2514"
     },
     {
-      "detail": "s2: operation import_archive is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2515"
     },
     {
-      "detail": "s1: operation import_archive is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2516"
     },
     {
-      "detail": "s1: operation import_archive is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2517"
     },
     {
-      "detail": "s1: operation import_archive is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2518"
     },
     {
-      "detail": "s1: operation import_archive is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2519"
     },
     {
-      "detail": "s1: operation import_archive is not implemented",
-      "outcome": "not_applicable",
+      "outcome": "pass",
       "vector": "VER-CONF-2520"
     }
   ],
   "signature": {
     "alg": "ed25519",
-    "key": "eb0870a708d71ea8ecd4f8e40cef48a9b9697af613271ebd073fc8eaa44d4bc3",
-    "sig": "a499824ab592b56c7dac2143f541ba6d7522b8fcc713d0fd29f0e313e9940cdd73b2864a668de7172404b258db12ef3f215d69e34f1145673c26eb8eacb4400f"
+    "key": "113b2fdf66bad8df0a947495530550e78c05dd2088a35a4b6d503ab5e1fde57e",
+    "sig": "8fb33a66e9385fba8e46102c66ece5dbee285e299c29cb94c6d3d75740f46eb2ef22459d31d149657599a29298f6e32dd039d1d6042643d2974887cb53b02008"
   },
-  "standard_version": "1.0.0-rc1",
+  "standard_version": "0.1.0",
   "summary": {
     "Bitemporal": {
       "pass": 61
     },
     "Core": {
-      "not_applicable": 298,
-      "pass": 740
+      "pass": 1038
     },
     "Ledger": {
-      "not_applicable": 3,
-      "pass": 52
+      "pass": 55
     },
     "Proof": {
-      "not_applicable": 57,
-      "pass": 16
+      "pass": 73
     }
   }
 }

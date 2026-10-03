@@ -176,28 +176,46 @@ pub fn check(project: &Project) -> Vec<Finding> {
     // seed data: loaded into an in-memory VAE with the deterministic services (the
     // declarations that load, when some do not)
     if let Some(reg) = &registry {
-        match seed_vae_with(project, &reg.declarations()) {
-            Ok((_, findings)) => out.extend(findings),
+        match seed_vae_with(project, &reg.declarations(), &Backend::default()) {
+            Ok((_, findings, _)) => out.extend(findings),
             Err(e) => out.push(finding("seed/", e.code, "error", e.message, "seed")),
         }
     }
     out
 }
 
-/// An in-memory VAE with the project's model and seed loaded under the deterministic
-/// services; the findings of the seed load name the seed file of a failing change.
-pub fn seed_vae(project: &Project) -> Result<(Vae, Vec<Finding>), ubos_dvm::BpaError> {
-    seed_vae_with(project, &project.declarations())
+/// The store a fixture is built on: in memory, or a fresh VAE of a PostgreSQL database.
+#[derive(Debug, Clone, Default)]
+pub struct Backend {
+    /// `postgres` connection string; in memory when `None`.
+    pub database: Option<String>,
 }
 
-/// `seed_vae` over the given declarations.
+/// The fixture of a project: the VAE, the findings of the seed load and the recorder of the
+/// deterministic services (released effects, jobs, telemetry).
+pub type Fixture = (Vae, Vec<Finding>, std::sync::Arc<ubos_dvm::host::Recorder>);
+
+/// An in-memory VAE with the project's model and seed loaded under the deterministic
+/// services; the findings of the seed load name the seed file of a failing change.
+pub fn seed_vae(project: &Project) -> Result<Fixture, ubos_dvm::BpaError> {
+    seed_vae_with(project, &project.declarations(), &Backend::default())
+}
+
+/// `seed_vae` over the given declarations and backend. The L2 host is on, so that `l2`
+/// assets of the project run (STD-CTX-020).
 pub fn seed_vae_with(
     project: &Project,
     decls: &[Value],
-) -> Result<(Vae, Vec<Finding>), ubos_dvm::BpaError> {
-    let (services, _) = Services::deterministic(CLOCK, [1u8; 32]);
-    let adapter = Adapter::new()?;
-    let mut vae = Vae::open(adapter.into_engine(), services);
+    backend: &Backend,
+) -> Result<Fixture, ubos_dvm::BpaError> {
+    let (services, recorder) = Services::deterministic(CLOCK, [1u8; 32]);
+    let adapter = match &backend.database {
+        Some(url) => Adapter::postgres(url)?,
+        None => Adapter::new()?,
+    };
+    let mut engine = adapter.into_engine();
+    engine.l2 = true;
+    let mut vae = Vae::open(engine, services);
     let vts = project.value_type_decls();
     let mut genesis = json!({"classes": decls});
     if !vts.is_empty() {
@@ -257,7 +275,7 @@ pub fn seed_vae_with(
             }
         }
     }
-    Ok((vae, findings))
+    Ok((vae, findings, recorder))
 }
 
 /// A stable object identifier for a logic asset of a project (from its name).

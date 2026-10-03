@@ -1,0 +1,246 @@
+{
+  "coverage": {
+    "acme.agreements": {
+      "fraction": 0.0,
+      "functions": 2,
+      "invoked": 0
+    },
+    "acme.fee": {
+      "fraction": 1.0,
+      "functions": 1,
+      "invoked": 1
+    },
+    "acme.runaway": {
+      "fraction": 0.0,
+      "functions": 2,
+      "invoked": 0
+    }
+  },
+  "failed": 0,
+  "fixture_findings": [],
+  "passed": 22,
+  "project": "gate-1a-scenarios",
+  "records": [
+    {
+      "asset": "acme.agreements",
+      "record_id": "sha256:02231a4feebf09d47776a525ba8d30cfd9f7a34e4c169983a09dc0aebfa6adfa",
+      "result": "pass"
+    },
+    {
+      "asset": "acme.runaway",
+      "record_id": "sha256:2a33d85f757636995063eba9a9db4009dc75faf37c2e006b3dd172d1b5d9b49e",
+      "result": "pass"
+    },
+    {
+      "asset": "acme.fee",
+      "record_id": "sha256:f7cc4ee73948764da693e27944c4967f1f46a43fd8228403a1c14c324fd2e806",
+      "result": "pass"
+    }
+  ],
+  "results": [
+    {
+      "failure": null,
+      "file": "tests/scn-002.yaml",
+      "kind": "scenario",
+      "ms": 7,
+      "name": "SCN-002 main: the subclass narrows title and a 150-character title is rejected",
+      "result": "pass",
+      "steps": 6
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-002.yaml",
+      "kind": "scenario",
+      "ms": 13,
+      "name": "SCN-002 A1: widening title in the subclass is a narrowing violation",
+      "result": "pass",
+      "steps": 1
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-002.yaml",
+      "kind": "scenario",
+      "ms": 19,
+      "name": "SCN-002 post: querying Agreement includes the ServiceAgreement instance",
+      "result": "pass",
+      "steps": 4
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-003.yaml",
+      "kind": "scenario",
+      "ms": 27,
+      "name": "SCN-003 main: the override guard fails inside the notice period; the base logic terminates a plain agreement",
+      "result": "pass",
+      "steps": 7
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-003.yaml",
+      "kind": "scenario",
+      "ms": 19,
+      "name": "SCN-003 A1: an override narrowing a parameter type is rejected",
+      "result": "pass",
+      "steps": 1
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-004.yaml",
+      "kind": "scenario",
+      "ms": 89,
+      "name": "SCN-004 main: a draft branch, 15 changes, the diff, the approved change set merged in one commit",
+      "result": "pass",
+      "steps": 29
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-004.yaml",
+      "kind": "scenario",
+      "ms": 26,
+      "name": "SCN-004 A1: the same field changed on main and the draft is a conflict; nothing merges",
+      "result": "pass",
+      "steps": 6
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-004.yaml",
+      "kind": "scenario",
+      "ms": 25,
+      "name": "SCN-004 A2: a different field of the same product merges automatically",
+      "result": "pass",
+      "steps": 6
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-005.yaml",
+      "kind": "scenario",
+      "ms": 22,
+      "name": "SCN-005 main: a stale base is rejected with TXN.HEAD_MOVED and the chain stays linear",
+      "result": "pass",
+      "steps": 7
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-005.yaml",
+      "kind": "scenario",
+      "ms": 47,
+      "name": "SCN-005 A1: 100 concurrent writers on one base version, exactly one succeeds",
+      "result": "pass",
+      "steps": 3
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-006.yaml",
+      "kind": "scenario",
+      "ms": 18,
+      "name": "SCN-006 main: a future-dated price is read by asof and becomes effective on its day without a job",
+      "result": "pass",
+      "steps": 8
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-006.yaml",
+      "kind": "scenario",
+      "ms": 20,
+      "name": "SCN-006 A1: a second future version; every date resolves to one version",
+      "result": "pass",
+      "steps": 7
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-007.yaml",
+      "kind": "scenario",
+      "ms": 24,
+      "name": "SCN-007 main: what did we believe on March 1 and March 11 about February 15",
+      "result": "pass",
+      "steps": 9
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-007.yaml",
+      "kind": "scenario",
+      "ms": 16,
+      "name": "SCN-007 A1: a time before the creation is not found at that time",
+      "result": "pass",
+      "steps": 2
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-008.yaml",
+      "kind": "scenario",
+      "ms": 21,
+      "name": "SCN-008 main: a wrong posting is reversed and re-posted; history stays",
+      "result": "pass",
+      "steps": 4
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-008.yaml",
+      "kind": "scenario",
+      "ms": 18,
+      "name": "SCN-008 A1: a ledger entry cannot be updated",
+      "result": "pass",
+      "steps": 2
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-008.yaml",
+      "kind": "scenario",
+      "ms": 27,
+      "name": "SCN-008 A2: a branch with ledger entries merges by appending in branch order",
+      "result": "pass",
+      "steps": 6
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-010.yaml",
+      "kind": "scenario",
+      "ms": 447,
+      "name": "SCN-010 main: runaway L2 logic is stopped, nothing is committed or released, the run is metered",
+      "result": "pass",
+      "steps": 4
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-010.yaml",
+      "kind": "scenario",
+      "ms": 21,
+      "name": "SCN-010 A1: a script that opens a network connection is refused",
+      "result": "pass",
+      "steps": 1
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-011.yaml",
+      "kind": "scenario",
+      "ms": 23,
+      "name": "SCN-011 main: a process with the clock, entropy and a connector replays identically",
+      "result": "pass",
+      "steps": 4
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-011.yaml",
+      "kind": "scenario",
+      "ms": 21,
+      "name": "SCN-011 A1: a missing journal record stops the replay without calling the connector",
+      "result": "pass",
+      "steps": 2
+    },
+    {
+      "failure": null,
+      "file": "tests/scn-018.yaml",
+      "kind": "scenario",
+      "ms": 91,
+      "name": "SCN-018 main: a bulk process is reverted; the 5 objects changed since are conflicts, resolved to keep the later change",
+      "result": "pass",
+      "steps": 59
+    }
+  ],
+  "roots": {
+    "genesis": "sha256:c6ef035a6deaf94f21940c7147b0b423ea3abb18598abd038285c8daed170715",
+    "seed": "sha256:c83b96221b11ca568793e7b49490382f8de2dea0b1b5793a047503c523f41ffa"
+  },
+  "tests": 22,
+  "verifier": "did:ubos:k:z6MkjeKwa9MHLjwwKYKgC3at5HKTJiYaY7cD8G8AdAgwSdyr"
+}

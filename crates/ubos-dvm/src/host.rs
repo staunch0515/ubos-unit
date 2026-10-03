@@ -282,6 +282,12 @@ impl Vae {
         &self.services
     }
 
+    /// Replace the services (a test host swapping its clock or connectors).
+    pub fn set_services(&mut self, services: Services) {
+        self.adapter.engine_mut().services = Some(services.clone());
+        self.services = services;
+    }
+
     /// The engine (verifiers and suites).
     pub fn engine_mut(&mut self) -> &mut Engine {
         self.adapter.engine_mut()

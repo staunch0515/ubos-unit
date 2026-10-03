@@ -19,7 +19,7 @@ const USAGE: &str = "usage:
   forge check [<project dir>] [--json]
   forge types [<project dir>] [--out <dir>] [--json]
   forge test [<project dir>] [--report <json file>] [--junit <xml file>] [--records <dir>] \
-[--key <file with 64 hex chars>] [--json]
+[--key <file with 64 hex chars>] [--backend memory|postgres] [--database <connection string>] [--json]
   forge conform --vectors <dir> [--tag <tag>] [--profiles <p1,p2>] [--report <file>] \
 [--key <file with 64 hex chars>] [--standard <version>] [--build <hash>] \
 [--backend memory|postgres] [--database <connection string>] [--l2] [--verbose]";
@@ -280,7 +280,18 @@ fn types(args: &[String]) -> Result<bool, String> {
 fn test(args: &[String]) -> Result<bool, String> {
     let (dir, opts, json_out) = options(args);
     let project = load(&dir)?;
-    let report = ubos_forge::test::run(&project).map_err(|e| e.to_string())?;
+    let backend = ubos_forge::check::Backend {
+        database: match opts.get("backend").map(String::as_str) {
+            Some("postgres") => Some(
+                opts.get("database")
+                    .cloned()
+                    .ok_or("--database is required with --backend postgres")?,
+            ),
+            Some("memory") | None => None,
+            Some(other) => return Err(format!("unknown backend {other}")),
+        },
+    };
+    let report = ubos_forge::test::run(&project, &backend).map_err(|e| e.to_string())?;
     let mut out = report.to_json(&project);
     // verification records of the assets (DSN-FRG-103), signed with the verifier key
     let key = ubos_forge::records::VerifierKey::new(seed(opts.get("key").map(String::as_str))?)
@@ -349,9 +360,22 @@ fn test(args: &[String]) -> Result<bool, String> {
         ));
     }
     text.push_str(&format!(
-        "forge test: {} of {} tests passed; roots genesis {} seed {}",
-        out["passed"], out["tests"], report.roots["genesis"], report.roots["seed"]
+        "forge test: {} of {} tests passed on {}; roots genesis {} seed {}",
+        out["passed"],
+        out["tests"],
+        if backend.database.is_some() {
+            "postgres"
+        } else {
+            "memory"
+        },
+        report.roots["genesis"],
+        report.roots["seed"]
     ));
+    out["backend"] = json!(if backend.database.is_some() {
+        "postgres"
+    } else {
+        "memory"
+    });
     let ok = out["failed"] == json!(0) && report.findings.is_empty();
     emit(json_out, &out, &text);
     Ok(ok)

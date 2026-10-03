@@ -172,9 +172,13 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    jobs, telemetry; SUITE-NOD-HOST 12/12, `verify/reports/suite-nod-host/`); 7b done (Forge
    project model and `forge init`, `check` with every stage in one run, `types`, `test`
    with scenario, unit, port and property tests under the deterministic services, JSON and
-   JUnit reports, signed verification records; `verify/reports/forge-7b/`). Next 7c (the
-   ten gate-1a scenarios as Forge scenario tests, EXIT-1-13 report, final EXIT-1-02
-   report). W-1
+   JUnit reports, signed verification records; `verify/reports/forge-7b/`); 7c done (the
+   ten gate-1a scenarios as the Forge project `verify/scenarios/`, 22 of 22 tests on
+   PostgreSQL and in memory, `verify/reports/exit-1-13/`; final EXIT-1-02 reports with
+   1,227 of 1,227 on both backends, `verify/reports/exit-1-02/`). Step 7 is complete. Next
+   step 8 (verification close-out: properties at a million cases, simulation nights,
+   fault injection, replay on three platforms, coverage and mutation score; EXIT-1-04,
+   -05, -06, -08, -11). W-1
    may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
