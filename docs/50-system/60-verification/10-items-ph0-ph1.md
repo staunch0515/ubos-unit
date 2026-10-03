@@ -284,7 +284,7 @@ Numbers follow UBS-VER-00 §3.
 - **Procedure:**
   1. Run each scenario's main and alternate flows as Forge scenario tests.
 - **Pass criterion:** all steps and acceptance statements pass.
-- **Evidence:** scenario report.
+- **Evidence:** scenario report `verify/reports/exit-1-13/` (PH-1 step 7c, DEC-060: 22 of 22 scenario tests of the ten scenarios, main and alternate flows, on PostgreSQL and in memory on the workstation; SCN-003 step 3, SCN-002 postcondition 2 and SCN-018 A1 belong to gate 1b); the ENV-REF-SMALL run follows at step 9.
 - **Supports:** EXIT-1-13
 
 ### VER-INSP-9001 — BPA 1.0-rc1 coverage

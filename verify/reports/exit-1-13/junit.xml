@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="22" failures="0" time="7.139">
+  <testsuite name="gate-1a-scenarios" tests="22" failures="0" time="7.139">
+    <testcase name="SCN-002 main: the subclass narrows title and a 150-character title is rejected" classname="tests/scn-002.yaml" time="0.050" />
+    <testcase name="SCN-002 A1: widening title in the subclass is a narrowing violation" classname="tests/scn-002.yaml" time="0.206" />
+    <testcase name="SCN-002 post: querying Agreement includes the ServiceAgreement instance" classname="tests/scn-002.yaml" time="0.226" />
+    <testcase name="SCN-003 main: the override guard fails inside the notice period; the base logic terminates a plain agreement" classname="tests/scn-003.yaml" time="0.247" />
+    <testcase name="SCN-003 A1: an override narrowing a parameter type is rejected" classname="tests/scn-003.yaml" time="0.197" />
+    <testcase name="SCN-004 main: a draft branch, 15 changes, the diff, the approved change set merged in one commit" classname="tests/scn-004.yaml" time="0.500" />
+    <testcase name="SCN-004 A1: the same field changed on main and the draft is a conflict; nothing merges" classname="tests/scn-004.yaml" time="0.227" />
+    <testcase name="SCN-004 A2: a different field of the same product merges automatically" classname="tests/scn-004.yaml" time="0.224" />
+    <testcase name="SCN-005 main: a stale base is rejected with TXN.HEAD_MOVED and the chain stays linear" classname="tests/scn-005.yaml" time="0.232" />
+    <testcase name="SCN-005 A1: 100 concurrent writers on one base version, exactly one succeeds" classname="tests/scn-005.yaml" time="1.468" />
+    <testcase name="SCN-006 main: a future-dated price is read by asof and becomes effective on its day without a job" classname="tests/scn-006.yaml" time="0.273" />
+    <testcase name="SCN-006 A1: a second future version; every date resolves to one version" classname="tests/scn-006.yaml" time="0.215" />
+    <testcase name="SCN-007 main: what did we believe on March 1 and March 11 about February 15" classname="tests/scn-007.yaml" time="0.228" />
+    <testcase name="SCN-007 A1: a time before the creation is not found at that time" classname="tests/scn-007.yaml" time="0.187" />
+    <testcase name="SCN-008 main: a wrong posting is reversed and re-posted; history stays" classname="tests/scn-008.yaml" time="0.201" />
+    <testcase name="SCN-008 A1: a ledger entry cannot be updated" classname="tests/scn-008.yaml" time="0.242" />
+    <testcase name="SCN-008 A2: a branch with ledger entries merges by appending in branch order" classname="tests/scn-008.yaml" time="0.261" />
+    <testcase name="SCN-010 main: runaway L2 logic is stopped, nothing is committed or released, the run is metered" classname="tests/scn-010.yaml" time="0.652" />
+    <testcase name="SCN-010 A1: a script that opens a network connection is refused" classname="tests/scn-010.yaml" time="0.232" />
+    <testcase name="SCN-011 main: a process with the clock, entropy and a connector replays identically" classname="tests/scn-011.yaml" time="0.221" />
+    <testcase name="SCN-011 A1: a missing journal record stops the replay without calling the connector" classname="tests/scn-011.yaml" time="0.209" />
+    <testcase name="SCN-018 main: a bulk process is reverted; the 5 objects changed since are conflicts, resolved to keep the later change" classname="tests/scn-018.yaml" time="0.641" />
+  </testsuite>
+</testsuites>

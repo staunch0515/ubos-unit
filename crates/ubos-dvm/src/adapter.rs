@@ -212,6 +212,24 @@ impl Adapter {
         })
     }
 
+    /// An adapter over an existing VAE of a PostgreSQL database without resetting it: a
+    /// second writer on the same VAE (concurrency tests, SCN-005 A1).
+    pub fn postgres_existing(
+        url: &str,
+        tenant: &str,
+        vae: &str,
+        authority: &str,
+    ) -> Result<Self, BpaError> {
+        let scope = ubos_store::kernel::Scope {
+            tenant: tenant.into(),
+            vae: vae.into(),
+            authority: authority.into(),
+        };
+        Ok(Adapter {
+            engine: Engine::open_existing(Box::new(PgStore::connect_scope(url, scope)?))?,
+        })
+    }
+
     /// An adapter over an engine a host built (the host API, CTR-001).
     pub fn from_engine(engine: Engine) -> Self {
         Adapter { engine }

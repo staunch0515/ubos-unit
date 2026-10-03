@@ -665,6 +665,7 @@ AI implementer:
   1. Given a merged change set of 5 commits, when reverted, then one revert commit restores the pre-merge state for all affected objects.
 - **Verification:** CONF
 - **Origin:** FR-VER-072, FR-VER-073, STD-VER-071
+- **Phase note:** PH-1 step 7c (DEC-060): `revert` of a process takes `resolutions` like a merge (`source` keeps the reverted value, `target` the later change) and reverts the chunk commits of a bulk process with it (STD-TXN-070); dependents are reported, not reverted (STD-VER-071). Exercised by SCN-018 in `verify/reports/exit-1-13/`.
 
 ### DSN-DVM-252 — Dependent process report
 - **Statement:** Before reverting, the DVM MUST list later processes that read or derived from the changes being reverted, using `derivation_edge` and read-set records (DSN-DVM-512).
