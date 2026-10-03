@@ -404,6 +404,10 @@ pub struct ProcessRow {
     pub commits: Vec<(String, u64)>,
     /// Bulk-job state as canonical JSON (STD-TXN-070), if the process is a bulk job.
     pub bulk_state: Option<Vec<u8>>,
+    /// Content ID of the journal chunk (STD-CTX-011), once the process ran logic.
+    pub journal_id: Option<Hash>,
+    /// Content ID of the metering record chunk (STD-CTX-005).
+    pub metering: Option<Hash>,
 }
 
 /// A change-set row (`change_set`).

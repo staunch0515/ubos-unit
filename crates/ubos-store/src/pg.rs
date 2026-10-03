@@ -779,7 +779,7 @@ impl StoreRead for PgBackend {
     async fn process(&self, process_id: &str) -> Result<Option<ProcessRow>, BpaError> {
         let r = self
             .opt(
-                sqlx::query("SELECT kind, state, initiator, trigger_kind, trigger_ref, parent_process::text, bulk::text, idempotency_key, effects, commits::text, bulk_state::text FROM process_record WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND process_id = $3::uuid")
+                sqlx::query("SELECT kind, state, initiator, trigger_kind, trigger_ref, parent_process::text, bulk::text, idempotency_key, effects, commits::text, bulk_state::text, journal_id, metering FROM process_record WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND process_id = $3::uuid")
                     .bind(&self.scope.tenant)
                     .bind(&self.scope.vae)
                     .bind(process_id),
@@ -805,6 +805,16 @@ impl StoreRead for PgBackend {
                     .try_get::<Option<String>, _>(10)
                     .map_err(db)?
                     .map(String::into_bytes),
+                journal_id: r
+                    .try_get::<Option<Vec<u8>>, _>(11)
+                    .map_err(db)?
+                    .map(hash_col)
+                    .transpose()?,
+                metering: r
+                    .try_get::<Option<Vec<u8>>, _>(12)
+                    .map_err(db)?
+                    .map(hash_col)
+                    .transpose()?,
             })
         })
         .transpose()
@@ -1459,7 +1469,7 @@ impl StoreTx for PgTx {
             .bulk_state
             .as_ref()
             .map(|b| String::from_utf8_lossy(b).into_owned());
-        sqlx::query("INSERT INTO process_record (tenant_id, process_id, vae_id, kind, state, initiator, trigger_kind, trigger_ref, parent_process, bulk, idempotency_key, effects, commits, bulk_state) VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9::uuid, $10::uuid, $11, $12, $13::jsonb, $14::jsonb) ON CONFLICT (tenant_id, vae_id, process_id) DO UPDATE SET state = EXCLUDED.state, effects = EXCLUDED.effects, commits = EXCLUDED.commits, bulk_state = EXCLUDED.bulk_state")
+        sqlx::query("INSERT INTO process_record (tenant_id, process_id, vae_id, kind, state, initiator, trigger_kind, trigger_ref, parent_process, bulk, idempotency_key, effects, commits, bulk_state, journal_id, metering) VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, $7, $8, $9::uuid, $10::uuid, $11, $12, $13::jsonb, $14::jsonb, $15, $16) ON CONFLICT (tenant_id, vae_id, process_id) DO UPDATE SET state = EXCLUDED.state, effects = EXCLUDED.effects, commits = EXCLUDED.commits, bulk_state = EXCLUDED.bulk_state, journal_id = EXCLUDED.journal_id, metering = EXCLUDED.metering")
             .bind(&self.scope.tenant)
             .bind(&row.process_id)
             .bind(&self.scope.vae)
@@ -1474,6 +1484,8 @@ impl StoreTx for PgTx {
             .bind(i32::try_from(row.effects).unwrap_or(i32::MAX))
             .bind(commits)
             .bind(bulk_state)
+            .bind(row.journal_id.as_ref().map(|h| h.to_vec()))
+            .bind(row.metering.as_ref().map(|h| h.to_vec()))
             .execute(&mut *self.tx)
             .await
             .map_err(db)?;
@@ -2626,6 +2638,12 @@ impl Store for PgStore {
         if let Some(b) = &p.bulk_state {
             out["bulk_state"] = json(b)?;
         }
+        if let Some(h) = &p.journal_id {
+            out["journal_id"] = Value::String(hash_text(h));
+        }
+        if let Some(h) = &p.metering {
+            out["metering"] = Value::String(hash_text(h));
+        }
         Ok(Some(out))
     }
     fn put_process_rec(&mut self, id: &str, rec: &Value) -> Result<(), BpaError> {
@@ -2670,6 +2688,8 @@ impl Store for PgStore {
                 .and_then(|n| u32::try_from(n).ok())
                 .unwrap_or_default(),
             commits,
+            journal_id: text("journal_id").map(|t| hash_of(&t)).transpose()?,
+            metering: text("metering").map(|t| hash_of(&t)).transpose()?,
             bulk_state: rec
                 .get("bulk_state")
                 .filter(|v| !v.is_null())
@@ -2718,6 +2738,24 @@ impl Store for PgStore {
             tx.put_change_set(&row).await?;
             tx.commit().await
         })
+    }
+    fn record(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
+        let rid = hash_of(id)?;
+        let Some(row) = self.rt.block_on(self.backend.chunk(&rid))? else {
+            return Ok(None);
+        };
+        json(&self.chunks.read(&row)?).map(Some)
+    }
+    fn put_record(&mut self, value: &Value) -> Result<String, BpaError> {
+        let row = self.chunks.prepare(canonical(value)?.as_bytes())?;
+        let id = hash_text(&row.content_id);
+        let backend = self.backend.clone();
+        self.rt.block_on(async move {
+            let mut tx = backend.begin().await?;
+            tx.put_chunks(&[row]).await?;
+            tx.commit().await
+        })?;
+        Ok(id)
     }
     fn derivation_rec(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
         let rid = hash_of(id)?;

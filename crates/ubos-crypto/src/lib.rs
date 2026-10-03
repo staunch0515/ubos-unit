@@ -3,8 +3,9 @@
 //! PH-1 step 3b (DEC-048) provides what the store needs for the physical form of stored
 //! bytes (DSN-DVM-002): XChaCha20-Poly1305 (STD-CONF-011) under tenant data keys, and a
 //! local key provider for development and CI until the key service of the node host (PH-1
-//! step 7, DSN-NOD key hierarchy) replaces it. Signing moves here from the prototype crates
-//! with PH-1 step 6.
+//! step 7, DSN-NOD key hierarchy) replaces it. PH-1 step 5c (DEC-057) adds Ed25519
+//! signatures over content IDs (STD-PROOF-011, DAT-Signature) for the node key of the
+//! verification gate; signature verification and key histories follow with step 6.
 
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
@@ -224,4 +225,66 @@ pub fn aead_decrypt(
         }
     };
     out.map(|p| hex(&p)).map_err(|_| failed())
+}
+
+/// Signature roles of DAT-Signature.
+pub const ROLES: &[&str] = &["author", "node", "approver", "signer", "notary", "tagger"];
+
+/// The Ed25519 public key of a 32-byte seed.
+pub fn ed25519_public(seed: &[u8; 32]) -> [u8; 32] {
+    ed25519_dalek::SigningKey::from_bytes(seed)
+        .verifying_key()
+        .to_bytes()
+}
+
+/// An Ed25519 signature over `msg` with the key of `seed`.
+pub fn ed25519_sign(seed: &[u8; 32], msg: &[u8]) -> [u8; 64] {
+    use ed25519_dalek::Signer;
+    ed25519_dalek::SigningKey::from_bytes(seed)
+        .sign(msg)
+        .to_bytes()
+}
+
+/// A DAT-Signature of a content ID: the key of `seed` signs the UTF-8 bytes of the content
+/// ID (STD-PROOF-011).
+pub fn sign(
+    seed: &[u8; 32],
+    content_id: &str,
+    signer: &str,
+    key_id: &str,
+    role: &str,
+) -> Result<serde_json::Value, BpaError> {
+    if !ROLES.contains(&role) {
+        return Err(BpaError::new(
+            "MODEL.INVALID_VALUE",
+            "unknown signature role",
+        ));
+    }
+    Ok(
+        json!({"role": role, "signer": signer, "key_id": key_id, "alg": "ed25519",
+        "sig": ubos_types::addr::b64u(&ed25519_sign(seed, content_id.as_bytes()))}),
+    )
+}
+
+/// 32 bytes from lowercase hexadecimal (`what` names the value in the error).
+pub fn unhex32(v: &serde_json::Value, what: &str) -> Result<[u8; 32], BpaError> {
+    let bad = || {
+        BpaError::new(
+            "MODEL.INVALID_VALUE",
+            format!("{what} is 32 bytes of lowercase hexadecimal"),
+        )
+    };
+    let s = v.as_str().ok_or_else(bad)?;
+    if s.len() != 64
+        || !s
+            .bytes()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+    {
+        return Err(bad());
+    }
+    let mut out = [0u8; 32];
+    for (i, b) in out.iter_mut().enumerate() {
+        *b = u8::from_str_radix(&s[2 * i..2 * i + 2], 16).map_err(|_| bad())?;
+    }
+    Ok(out)
 }

@@ -16,7 +16,7 @@ use ubos_expr::{Ty, Val, from_json};
 use ubos_model::Registry;
 use ubos_runtime::isa;
 use ubos_runtime::program::{self, PROTECTED};
-use ubos_runtime::{Core, Frame, Host, Instruction, Pending};
+use ubos_runtime::{Core, Frame, Host, Instruction, Pending, Replay};
 use ubos_types::{BpaError, canonical, content_id, names};
 use ubos_version::{Repo, Segment, State, at};
 
@@ -65,7 +65,7 @@ pub struct EngineHost<'a> {
 }
 
 impl<'a> EngineHost<'a> {
-    fn new(e: &'a mut Engine) -> EngineHost<'a> {
+    pub(crate) fn new(e: &'a mut Engine) -> EngineHost<'a> {
         EngineHost { e, view: None }
     }
 
@@ -215,7 +215,11 @@ impl<'a> EngineHost<'a> {
     // ---- assets (STD-CTX-022, -023, -030) ----
 
     /// `(body, version hash)` of a logic asset by object id or name, pinned for the process.
-    fn asset(&mut self, core: &mut Core, key: &str) -> Result<(Value, String), BpaError> {
+    pub(crate) fn asset(
+        &mut self,
+        core: &mut Core,
+        key: &str,
+    ) -> Result<(Value, String), BpaError> {
         let objects: Vec<(String, String, String)> = self
             .state(core)?
             .objects
@@ -277,7 +281,7 @@ impl<'a> EngineHost<'a> {
         let kind = self.e.branch_meta(&core.branch)?.kind;
         if PROTECTED.contains(&kind.as_str()) {
             let ok = matches!(s(body, "state"), Some("verified" | "deprecated"))
-                && self.verified(body)?;
+                && self.e.asset_verified(body)?;
             if !ok {
                 return Err(BpaError::new("LOGIC.UNVERIFIED_ASSET", "unverified asset"));
             }
@@ -285,21 +289,6 @@ impl<'a> EngineHost<'a> {
             return Err(BpaError::new("LOGIC.UNVERIFIED_ASSET", "retired"));
         }
         Ok(())
-    }
-
-    /// Whether the asset's verification record is known and passed (STD-CTX-023); the
-    /// records come with the verification gate of step 5c.
-    fn verified(&mut self, body: &Value) -> Result<bool, BpaError> {
-        let Some(rid) = s(body, "verification") else {
-            return Ok(false);
-        };
-        let Some(rec) = self.e.store.meta(&format!("verification/{rid}"))? else {
-            return Ok(false);
-        };
-        let passed = rec["record"]["checks"]
-            .as_array()
-            .is_some_and(|cs| cs.iter().all(|c| c["result"] == json!("pass")));
-        Ok(passed && rec["code"] == json!(code_identity(body)?))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -780,10 +769,10 @@ impl<'a> EngineHost<'a> {
                 }
                 self.e.other("class_at", &i)
             }
-            Some("descriptor") => Err(BpaError::new(
-                crate::adapter::UNSUPPORTED,
-                "BPU descriptors come with step 5c",
-            )),
+            Some("descriptor") => {
+                let branch = core.branch.clone();
+                self.e.bpu_descriptor(&branch, &cls)
+            }
             _ => Err(BpaError::new(
                 "LOGIC.NOT_AVAILABLE",
                 "effective declarations come with the Governance profile",
@@ -1023,7 +1012,7 @@ fn seed_of(i: &Value, pid: &str) -> Result<[u8; 32], BpaError> {
     Ok(h.finalize().into())
 }
 
-fn changes_hash(uow: &[Value]) -> Result<String, BpaError> {
+pub(crate) fn changes_hash(uow: &[Value]) -> Result<String, BpaError> {
     let list: Vec<Value> = uow
         .iter()
         .map(|c| {
@@ -1040,6 +1029,12 @@ impl Engine {
     /// its unit of work; retried on head movement or read-set change when the function is
     /// retryable (STD-TXN-023).
     pub fn execute(&mut self, i: &Value) -> Result<Value, BpaError> {
+        self.run(i, None)
+    }
+
+    /// One invocation, or its replay from journal records (STD-CTX-012): a replay stops
+    /// after the run and compares the outputs; nothing is committed or recorded.
+    pub(crate) fn run(&mut self, i: &Value, replay: Option<Replay>) -> Result<Value, BpaError> {
         let branch = s(i, "branch").unwrap_or("main").to_string();
         let now = self.now.clone();
         Repo::new(self.store.as_mut(), &self.registry).check_active(&branch, &now)?;
@@ -1080,6 +1075,7 @@ impl Engine {
                 h.finalize().into()
             };
             let mut core = Core::new(i, seed, &p.id, s(&p.p, "kind").unwrap_or("action"))?;
+            core.replay = replay.clone();
             let today = self.now[..10].to_string();
             core.build_context(
                 i,
@@ -1094,6 +1090,9 @@ impl Engine {
                 let mut host = EngineHost::new(self);
                 let (result, rt) = start(&mut core, &mut host, i)?;
                 retryable = rt;
+                if replay.is_some() {
+                    return Ok((result, None));
+                }
                 if let Some(changes) = interfere.get(&attempt) {
                     self.commit(&json!({"branch": branch, "changes": changes}))?;
                 }
@@ -1137,9 +1136,16 @@ impl Engine {
             })();
             match r {
                 Ok((result, cseq)) => {
+                    if replay.is_some() {
+                        let j = self.journal_full(&p.id)?;
+                        return Engine::compare_replay(&core, &result, &j);
+                    }
                     return self.finish(&core, i, &p, Some(result), cseq, "ok", attempt);
                 }
                 Err(e) => {
+                    if replay.is_some() {
+                        return Err(e);
+                    }
                     if RETRY_CODES.contains(&e.code) && retryable && attempt < max_attempts {
                         continue;
                     }
@@ -1223,19 +1229,29 @@ impl Engine {
             .filter(|(k, _)| !matches!(k.as_str(), "interfere" | "process" | "world"))
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
-        self.store.put_meta(&format!("journal/{pid}"), &journal)?;
-        self.store.put_meta(&format!("metering/{pid}"), &m)?;
-        self.store
-            .put_meta(&format!("invocation/{pid}"), &Value::Object(invocation))?;
-        let mut index = self
-            .store
-            .meta("metering/_index")?
-            .and_then(|v| v.as_array().cloned())
-            .unwrap_or_default();
-        if !index.iter().any(|x| x.as_str() == Some(pid.as_str())) {
-            index.push(json!(pid));
-            self.store
-                .put_meta("metering/_index", &Value::Array(index))?;
+        let mut journal = journal;
+        journal["invocation"] = Value::Object(invocation);
+        let journal_id = self.store.put_record(&journal)?;
+        let metering_id = self.store.put_record(&m)?;
+        let refs = json!({"journal_id": journal_id, "metering": metering_id});
+        match self.store.process_rec(&pid)? {
+            Some(mut rec) => {
+                rec["journal_id"] = refs["journal_id"].clone();
+                rec["metering"] = refs["metering"].clone();
+                self.store.put_process_rec(&pid, &rec)?;
+            }
+            None => {
+                self.store.put_meta(&format!("run:{pid}"), &refs)?;
+                let mut runs = self
+                    .store
+                    .meta("runs")?
+                    .and_then(|v| v.as_array().cloned())
+                    .unwrap_or_default();
+                if !runs.iter().any(|x| x.as_str() == Some(pid.as_str())) {
+                    runs.push(json!(pid));
+                    self.store.put_meta("runs", &Value::Array(runs))?;
+                }
+            }
         }
         if outcome != "ok" {
             return Ok(Value::Null);
@@ -1251,46 +1267,81 @@ impl Engine {
         Ok(out)
     }
 
+    /// The journal and metering references of a process, from its record or, for a
+    /// process that was not named, from the run index.
+    fn run_refs(&mut self, process_id: &str) -> Result<Option<Value>, BpaError> {
+        if let Some(rec) = self.store.process_rec(process_id)?
+            && rec.get("journal_id").is_some_and(|v| v.is_string())
+        {
+            return Ok(Some(rec));
+        }
+        self.store.meta(&format!("run:{process_id}"))
+    }
+
+    /// The stored journal of a process, with the observed results and the invocation.
+    pub(crate) fn journal_full(&mut self, process_id: &str) -> Result<Value, BpaError> {
+        let id = self
+            .run_refs(process_id)?
+            .and_then(|r| s(&r, "journal_id").map(str::to_string))
+            .ok_or_else(|| not_found("no journal for the process"))?;
+        self.store
+            .record(&id)?
+            .ok_or_else(|| not_found("no journal for the process"))
+    }
+
     /// `journal` (STD-CTX-011): the journal of a process, without the observed results.
     pub fn journal(&mut self, process_id: &str) -> Result<Value, BpaError> {
-        let Some(mut j) = self.store.meta(&format!("journal/{process_id}"))? else {
-            return Err(not_found("no journal for the process"));
-        };
+        let mut j = self.journal_full(process_id)?;
         if let Some(recs) = j["records"].as_array_mut() {
             for r in recs {
                 r.as_object_mut().map(|m| m.remove("result"));
             }
         }
         let logic = j["logic"].take();
-        j.as_object_mut().map(|m| m.remove("logic"));
+        if let Some(m) = j.as_object_mut() {
+            m.remove("logic");
+            m.remove("invocation");
+        }
         j["logic_versions"] = logic;
         Ok(j)
     }
 
     /// `metering` (STD-CTX-005): the metering record of a process.
     pub fn metering_record(&mut self, process_id: &str) -> Result<Value, BpaError> {
+        let id = self
+            .run_refs(process_id)?
+            .and_then(|r| s(&r, "metering").map(str::to_string))
+            .ok_or_else(|| not_found("no metering record for the process"))?;
         self.store
-            .meta(&format!("metering/{process_id}"))?
+            .record(&id)?
             .ok_or_else(|| not_found("no metering record for the process"))
     }
 
     /// `metering_total` (STD-CTX-006): units and processes per tenant.
     pub fn metering_total(&mut self) -> Result<Value, BpaError> {
-        let ids = self
-            .store
-            .meta("metering/_index")?
-            .and_then(|v| v.as_array().cloned())
-            .unwrap_or_default();
-        let mut units = 0u64;
+        let mut ids: Vec<String> = self.store.process_ids()?;
+        ids.extend(
+            self.store
+                .meta("runs")?
+                .and_then(|v| v.as_array().cloned())
+                .unwrap_or_default()
+                .iter()
+                .filter_map(|v| v.as_str().map(str::to_string)),
+        );
+        let (mut units, mut n) = (0u64, 0usize);
         for id in &ids {
-            if let Some(m) = self
-                .store
-                .meta(&format!("metering/{}", id.as_str().unwrap_or_default()))?
-            {
+            let Some(mid) = self
+                .run_refs(id)?
+                .and_then(|r| s(&r, "metering").map(str::to_string))
+            else {
+                continue;
+            };
+            if let Some(m) = self.store.record(&mid)? {
                 units += m["units"].as_u64().unwrap_or_default();
+                n += 1;
             }
         }
-        Ok(json!({"tenants": {self.store.authority(): {"units": units, "processes": ids.len()}}}))
+        Ok(json!({"tenants": {self.store.authority(): {"units": units, "processes": n}}}))
     }
 }
 

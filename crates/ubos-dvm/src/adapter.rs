@@ -26,6 +26,12 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "journal",
     "metering",
     "metering_total",
+    "replay",
+    "verify_asset",
+    "bpu_descriptor",
+    "bpu_state",
+    "verify_bpu",
+    "node_did",
     "traverse",
     "class_at",
     "merge_preview",
@@ -145,6 +151,10 @@ fn tree_entries(v: &Value) -> Result<Vec<(String, String)>, BpaError> {
         .collect()
 }
 
+fn s_or<'a>(i: &'a Value, k: &str, default: &'a str) -> &'a str {
+    i.get(k).and_then(Value::as_str).unwrap_or(default)
+}
+
 fn list(i: &Value, k: &str) -> Result<Vec<Value>, BpaError> {
     field(i, k)?
         .as_array()
@@ -244,6 +254,27 @@ impl Adapter {
             "metering_total" => self.engine.metering_total()?,
             "instructions" => ubos_runtime::isa::instructions_op(),
             "profile_limits" => ubos_runtime::isa::profile_limits_op(i)?,
+            "replay" => self.engine.replay_process(
+                text(i, "process_id")?,
+                i.get("tamper").filter(|v| !v.is_null()),
+                i.get("drop").and_then(Value::as_u64),
+            )?,
+            "verify_asset" => self.engine.verify_asset(
+                s_or(i, "branch", "main"),
+                text(i, "object_id")?,
+                i.get("verifier").and_then(Value::as_str),
+            )?,
+            "bpu_descriptor" => self
+                .engine
+                .bpu_descriptor(s_or(i, "branch", "main"), text(i, "class")?)?,
+            "bpu_state" => {
+                self.engine
+                    .bpu_state(s_or(i, "branch", "main"), text(i, "object_id")?, i)?
+            }
+            "verify_bpu" => self
+                .engine
+                .verify_bpu(s_or(i, "branch", "main"), text(i, "class")?)?,
+            "node_did" => self.engine.node_did()?,
             "linearize" => json!(ubos_model::linearize_raw(
                 &list(i, "classes")?,
                 text(i, "class")?
