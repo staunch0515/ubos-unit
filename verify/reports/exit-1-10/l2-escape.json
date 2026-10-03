@@ -1,0 +1,5912 @@
+{
+  "bench": {
+    "growth": {
+      "array:1000": {
+        "ms": 1.7,
+        "outcome": "ok"
+      },
+      "array:10000": {
+        "ms": 7.9,
+        "outcome": "ok"
+      },
+      "array:65536": {
+        "ms": 45.27,
+        "outcome": "ok"
+      },
+      "string:1000": {
+        "ms": 1.41,
+        "outcome": "ok"
+      },
+      "string:10000": {
+        "ms": 4.48,
+        "outcome": "ok"
+      },
+      "string:100000": {
+        "ms": 26.24,
+        "outcome": "ok"
+      }
+    },
+    "l1_cached_median_us": 1.28,
+    "l1_median_us": 5.53,
+    "l2_median_us": 661.7,
+    "l2_p95_us": 848.8
+  },
+  "blocked": 382,
+  "cases": 382,
+  "categories": {
+    "context": {
+      "blocked": 27,
+      "cases": 27
+    },
+    "determinism": {
+      "blocked": 10,
+      "cases": 10
+    },
+    "entropy": {
+      "blocked": 17,
+      "cases": 17
+    },
+    "file": {
+      "blocked": 20,
+      "cases": 20
+    },
+    "float": {
+      "blocked": 70,
+      "cases": 70
+    },
+    "gateway": {
+      "blocked": 66,
+      "cases": 66
+    },
+    "handle": {
+      "blocked": 18,
+      "cases": 18
+    },
+    "host-abuse": {
+      "blocked": 65,
+      "cases": 65
+    },
+    "network": {
+      "blocked": 19,
+      "cases": 19
+    },
+    "parsing": {
+      "blocked": 10,
+      "cases": 10
+    },
+    "resource-exhaustion": {
+      "blocked": 44,
+      "cases": 44
+    },
+    "time": {
+      "blocked": 16,
+      "cases": 16
+    }
+  },
+  "engine": "rhai 1.26.1",
+  "environment": {
+    "arch": "x86_64",
+    "cpus": 4,
+    "os": "linux"
+  },
+  "host": "ubos-runtime::l2 (DEC-058)",
+  "implementation": {
+    "name": "ubos-dvm",
+    "version": "0.0.0"
+  },
+  "outcomes": {
+    "EVT.UNKNOWN_EVENT_TYPE": 1,
+    "IAM.DENIED": 1,
+    "IAM.NOT_FOUND": 4,
+    "LOGIC.CANCELLED": 2,
+    "LOGIC.CONNECTOR_UNAVAILABLE": 1,
+    "LOGIC.CONTEXT_IMMUTABLE": 28,
+    "LOGIC.DIVISION_BY_ZERO": 5,
+    "LOGIC.FLOAT_TO_DECIMAL": 41,
+    "LOGIC.FORBIDDEN_CAPABILITY": 118,
+    "LOGIC.LIMIT_EXCEEDED": 35,
+    "LOGIC.PARAMETER_FORBIDDEN": 9,
+    "LOGIC.SCRIPT_TOO_COMPLEX": 8,
+    "LOGIC.TYPE_ERROR": 38,
+    "LOGIC.UNKNOWN_FIELD": 7,
+    "MODEL.ABSTRACT_INSTANTIATION": 1,
+    "MODEL.CONSTRAINT_VIOLATED": 1,
+    "MODEL.CURRENCY_MISMATCH": 2,
+    "MODEL.DECLARATION_INCOMPLETE": 3,
+    "MODEL.INVALID_VALUE": 11,
+    "MODEL.PORT_NOT_IMPLEMENTED": 2,
+    "value": 64
+  },
+  "profile_default": "strict",
+  "results": [
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-001",
+      "ms": 1.8,
+      "title": "open a host file",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-002",
+      "ms": 0.5,
+      "title": "read a file by a free function",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-003",
+      "ms": 0.4,
+      "title": "write a file",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-004",
+      "ms": 0.4,
+      "title": "import a module from a file",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-005",
+      "ms": 0.4,
+      "title": "namespaced std file API",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-006",
+      "ms": 0.4,
+      "title": "eval of a script string",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-007",
+      "ms": 0.5,
+      "title": "file access through a function pointer",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-008",
+      "ms": 0.4,
+      "title": "file access as a string method",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-009",
+      "ms": 0.4,
+      "title": "run another script file",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-010",
+      "ms": 0.4,
+      "title": "load or include a script",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-011",
+      "ms": 0.4,
+      "title": "file capability on the gateway",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-012",
+      "ms": 0.4,
+      "title": "file capability by gateway index",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-013",
+      "ms": 0.4,
+      "title": "HTTP GET",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-014",
+      "ms": 0.4,
+      "title": "fetch",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-015",
+      "ms": 0.4,
+      "title": "raw socket connect",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-016",
+      "ms": 0.4,
+      "title": "socket constructor",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-017",
+      "ms": 0.4,
+      "title": "DNS lookup",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-018",
+      "ms": 0.4,
+      "title": "import an HTTP module",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-019",
+      "ms": 0.4,
+      "title": "HTTP through a function pointer",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-020",
+      "ms": 0.4,
+      "title": "HTTP as a string method",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-021",
+      "ms": 0.3,
+      "title": "connector method on the gateway",
+      "units": 7
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-022",
+      "ms": 0.4,
+      "title": "network capability by gateway index",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-023",
+      "ms": 0.4,
+      "title": "send mail",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "id": "L2E-024",
+      "ms": 0.4,
+      "title": "connector field on the context",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-025",
+      "ms": 0.3,
+      "title": "host timestamp",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-026",
+      "ms": 0.4,
+      "title": "host clock now()",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-027",
+      "ms": 0.3,
+      "title": "sleep (language core package)",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-028",
+      "ms": 0.4,
+      "title": "elapsed time of a timestamp",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-029",
+      "ms": 0.3,
+      "title": "clock method on the gateway",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-030",
+      "ms": 0.3,
+      "title": "environment variable TZ",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-031",
+      "ms": 0.4,
+      "title": "system time",
+      "units": 4
+    },
+    {
+      "actual": {
+        "value": "2026-01-01T00:00:00.000000Z"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "value": "2026-01-01T00:00:00.000000Z"
+      },
+      "id": "L2E-032",
+      "ms": 0.5,
+      "title": "ctx.now is the fixed execution time",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-033",
+      "ms": 0.4,
+      "title": "assign ctx.now",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-034",
+      "ms": 0.4,
+      "title": "assign ctx by index",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-035",
+      "ms": 0.4,
+      "title": "replace the ctx object",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-036",
+      "ms": 0.4,
+      "title": "mutate ctx through a method with this",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-037",
+      "ms": 0.3,
+      "title": "rand()",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-038",
+      "ms": 0.3,
+      "title": "random()",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-039",
+      "ms": 0.3,
+      "title": "rand_int",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-040",
+      "ms": 0.3,
+      "title": "random method on the gateway",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-041",
+      "ms": 0.5,
+      "title": "shuffle",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-042",
+      "ms": 0.4,
+      "title": "hash of a value",
+      "units": 5
+    },
+    {
+      "actual": {
+        "value": "28af34275c50ded5"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "deterministic": true
+      },
+      "id": "L2E-043",
+      "ms": 0.6,
+      "title": "sys.random_bytes is journaled and replayable",
+      "units": 7
+    },
+    {
+      "actual": {
+        "value": [
+          "28af3427-5c50-4ed5-8d92-19cf2395a2a3",
+          "306fa2a0-93a3-473c-8a7c-1c0c9887ed6a"
+        ]
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "deterministic": true
+      },
+      "id": "L2E-044",
+      "ms": 0.6,
+      "title": "sys.uuid is journaled and replayable",
+      "units": 9
+    },
+    {
+      "actual": {
+        "value": [
+          "a",
+          "m",
+          "z"
+        ]
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "value": [
+          "a",
+          "m",
+          "z"
+        ]
+      },
+      "id": "L2E-045",
+      "ms": 0.5,
+      "title": "map iteration follows key order",
+      "units": 19
+    },
+    {
+      "actual": {
+        "value": "{\"a\":2,\"b\":1}"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "value": "{\"a\":2,\"b\":1}"
+      },
+      "id": "L2E-046",
+      "ms": 0.5,
+      "title": "map JSON output follows key order",
+      "units": 15
+    },
+    {
+      "actual": {
+        "value": "Gateway"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "deterministic": true
+      },
+      "id": "L2E-047",
+      "ms": 0.5,
+      "title": "textual form of the gateway leaks no address",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "id": "L2E-048",
+      "ms": 0.4,
+      "title": "random_bytes above the per-call maximum",
+      "units": 7
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-049",
+      "ms": 0.3,
+      "title": "decimal literal addition is exact",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-050",
+      "ms": 0.3,
+      "title": "0.1 + 0.2 == 0.3 (exact decimals)",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-051",
+      "ms": 0.4,
+      "title": "to_float",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-052",
+      "ms": 0.4,
+      "title": "to_float as a method",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-053",
+      "ms": 0.5,
+      "title": "parse_float",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-054",
+      "ms": 0.5,
+      "title": "sqrt",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-055",
+      "ms": 0.5,
+      "title": "sin",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-056",
+      "ms": 0.5,
+      "title": "exp",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-057",
+      "ms": 0.5,
+      "title": "pi",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-058",
+      "ms": 0.8,
+      "title": "f32_to_f64",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-059",
+      "ms": 0.4,
+      "title": "decimal division is exact to 28 digits",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "id": "L2E-060",
+      "ms": 0.4,
+      "title": "integer division by zero",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "id": "L2E-061",
+      "ms": 0.5,
+      "title": "decimal division by zero",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-062",
+      "ms": 0.4,
+      "title": "string to a decimal field",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "id": "L2E-063",
+      "ms": 0.4,
+      "title": "unknown field on a handle",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "id": "L2E-064",
+      "ms": 0.4,
+      "title": "unknown field by index",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-065",
+      "ms": 0.3,
+      "title": "string into an integer field",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-066",
+      "ms": 0.3,
+      "title": "integer into a boolean field",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-067",
+      "ms": 0.3,
+      "title": "return the object handle",
+      "units": 3
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-068",
+      "ms": 0.4,
+      "title": "return the gateway",
+      "units": 3
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-069",
+      "ms": 0.3,
+      "title": "return the gateway inside an array",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-070",
+      "ms": 0.4,
+      "title": "return the context inside a map",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-071",
+      "ms": 0.4,
+      "title": "return a function pointer",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-072",
+      "ms": 0.4,
+      "title": "closure capturing the gateway",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-073",
+      "ms": 0.4,
+      "title": "script function reaching the gateway",
+      "units": 7
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-074",
+      "ms": 0.4,
+      "title": "assign ctx.tenant",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-075",
+      "ms": 0.4,
+      "title": "overwrite a gateway member",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "id": "L2E-076",
+      "ms": 0.5,
+      "title": "negative random_bytes length",
+      "units": 7
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-077",
+      "ms": 0.4,
+      "title": "wrong argument type to a gateway call",
+      "units": 7
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-078",
+      "ms": 0.4,
+      "title": "print to the host console",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-079",
+      "ms": 0.5,
+      "title": "debug to the host console",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-080",
+      "ms": 0.5,
+      "title": "exit the host",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-081",
+      "ms": 0.4,
+      "title": "host JSON parser",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "id": "L2E-082",
+      "ms": 0.4,
+      "title": "host errors cannot be caught",
+      "units": 8
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-083",
+      "ms": 47.3,
+      "title": "infinite loop",
+      "units": 1000000
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-084",
+      "ms": 85.4,
+      "title": "memory across 1,000 arrays of 65,536 elements",
+      "units": 578
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-085",
+      "ms": 0.5,
+      "title": "unbounded recursion",
+      "units": 101
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-086",
+      "ms": 71.1,
+      "title": "string doubling",
+      "units": 83
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-087",
+      "ms": 113.3,
+      "title": "array growth",
+      "units": 1000000
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-088",
+      "ms": 182.0,
+      "title": "map growth",
+      "units": 1000000
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-089",
+      "ms": 0.5,
+      "title": "array pad to 10^8",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-090",
+      "ms": 0.4,
+      "title": "string pad to 10^8",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-091",
+      "ms": 404.1,
+      "title": "nested array doubling",
+      "units": 100
+    },
+    {
+      "actual": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "id": "L2E-092",
+      "ms": 0.6,
+      "title": "expression nesting of 200 levels",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "id": "L2E-093",
+      "ms": 0.3,
+      "title": "source above 64 KiB",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "id": "L2E-094",
+      "ms": 2.6,
+      "title": "300 script functions",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-095",
+      "ms": 15.2,
+      "title": "2,000 variables",
+      "units": 2042
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-096",
+      "ms": 419.4,
+      "title": "time budget without an operation budget",
+      "units": 10000000
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CANCELLED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CANCELLED"
+      },
+      "id": "L2E-097",
+      "ms": 0.6,
+      "title": "cancellation",
+      "units": 5001
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-098",
+      "ms": 43.8,
+      "title": "limit termination cannot be caught",
+      "units": 1000000
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-099",
+      "ms": 28.5,
+      "title": "instruction call budget",
+      "units": 4007
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-100",
+      "ms": 500.9,
+      "title": "repeated sort of a large array",
+      "units": 18384
+    },
+    {
+      "actual": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "id": "L2E-101",
+      "ms": 0.6,
+      "title": "identity parameter tenant on commit.create",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "id": "L2E-102",
+      "ms": 0.4,
+      "title": "identity parameter tenant on read.get",
+      "units": 12
+    },
+    {
+      "actual": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "id": "L2E-103",
+      "ms": 0.4,
+      "title": "identity parameter vae on commit.create",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "id": "L2E-104",
+      "ms": 0.4,
+      "title": "identity parameter vae on read.get",
+      "units": 12
+    },
+    {
+      "actual": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "id": "L2E-105",
+      "ms": 0.4,
+      "title": "identity parameter principal on commit.create",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "id": "L2E-106",
+      "ms": 0.5,
+      "title": "identity parameter principal on read.get",
+      "units": 12
+    },
+    {
+      "actual": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "id": "L2E-107",
+      "ms": 0.4,
+      "title": "identity parameter on_behalf_of on commit.create",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "id": "L2E-108",
+      "ms": 0.4,
+      "title": "identity parameter on_behalf_of on read.get",
+      "units": 12
+    },
+    {
+      "actual": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "id": "L2E-109",
+      "ms": 0.4,
+      "title": "unknown parameter",
+      "units": 12
+    },
+    {
+      "actual": {
+        "error": "MODEL.DECLARATION_INCOMPLETE"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.DECLARATION_INCOMPLETE"
+      },
+      "id": "L2E-110",
+      "ms": 0.4,
+      "title": "missing parameter",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "MODEL.DECLARATION_INCOMPLETE"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.DECLARATION_INCOMPLETE"
+      },
+      "id": "L2E-111",
+      "ms": 0.4,
+      "title": "missing target",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-112",
+      "ms": 0.8,
+      "title": "undeclared family search",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-113",
+      "ms": 0.5,
+      "title": "undeclared family call",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-114",
+      "ms": 0.6,
+      "title": "undeclared family ask",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-115",
+      "ms": 0.4,
+      "title": "unknown family fs",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-116",
+      "ms": 0.4,
+      "title": "unknown family net",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-117",
+      "ms": 0.5,
+      "title": "unknown family os",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-118",
+      "ms": 0.4,
+      "title": "unknown family env",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-119",
+      "ms": 0.4,
+      "title": "unknown family time",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-120",
+      "ms": 0.4,
+      "title": "unknown family random",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-121",
+      "ms": 0.4,
+      "title": "unknown family process",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-122",
+      "ms": 0.3,
+      "title": "unknown family ffi",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-123",
+      "ms": 0.4,
+      "title": "unknown family db",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-124",
+      "ms": 0.3,
+      "title": "unknown family shell",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-125",
+      "ms": 0.3,
+      "title": "unknown operation commit.drop_table",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-126",
+      "ms": 0.4,
+      "title": "unknown operation commit.shell",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-127",
+      "ms": 0.4,
+      "title": "unknown operation commit.raw_sql",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-128",
+      "ms": 0.4,
+      "title": "unknown operation commit.delete_all",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-129",
+      "ms": 0.3,
+      "title": "unknown operation commit.eval",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-130",
+      "ms": 0.3,
+      "title": "arguments that are not a map",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-131",
+      "ms": 0.3,
+      "title": "arguments as a string",
+      "units": 10
+    },
+    {
+      "actual": {
+        "value": "INV-1"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "value": "INV-1"
+      },
+      "id": "L2E-132",
+      "ms": 0.5,
+      "title": "read of the object",
+      "units": 26
+    },
+    {
+      "actual": {
+        "value": {
+          "qty": 2
+        }
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "value": {
+          "qty": 2
+        }
+      },
+      "id": "L2E-133",
+      "ms": 0.5,
+      "title": "read with field selection",
+      "units": 26
+    },
+    {
+      "actual": {
+        "error": "IAM.NOT_FOUND"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "IAM.NOT_FOUND"
+      },
+      "id": "L2E-134",
+      "ms": 0.4,
+      "title": "read of another tenant",
+      "units": 20
+    },
+    {
+      "actual": {
+        "error": "IAM.NOT_FOUND"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "IAM.NOT_FOUND"
+      },
+      "id": "L2E-135",
+      "ms": 0.4,
+      "title": "read of an unknown object",
+      "units": 20
+    },
+    {
+      "actual": {
+        "error": "IAM.NOT_FOUND"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "IAM.NOT_FOUND"
+      },
+      "id": "L2E-136",
+      "ms": 0.5,
+      "title": "update of an unknown object",
+      "units": 50
+    },
+    {
+      "actual": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "id": "L2E-137",
+      "ms": 0.6,
+      "title": "update that violates the model is refused at commit",
+      "units": 77
+    },
+    {
+      "actual": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "id": "L2E-138",
+      "ms": 0.6,
+      "title": "undeclared field in an update",
+      "units": 77
+    },
+    {
+      "actual": {
+        "error": "MODEL.DECLARATION_INCOMPLETE"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.DECLARATION_INCOMPLETE"
+      },
+      "id": "L2E-139",
+      "ms": 0.5,
+      "title": "update without a read needs a base",
+      "units": 54
+    },
+    {
+      "actual": {
+        "error": "MODEL.ABSTRACT_INSTANTIATION"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.ABSTRACT_INSTANTIATION"
+      },
+      "id": "L2E-140",
+      "ms": 0.6,
+      "title": "create of an abstract class",
+      "units": 60
+    },
+    {
+      "actual": {
+        "error": "MODEL.CONSTRAINT_VIOLATED"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.CONSTRAINT_VIOLATED"
+      },
+      "id": "L2E-141",
+      "ms": 0.6,
+      "title": "create of a system class",
+      "units": 61
+    },
+    {
+      "actual": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "id": "L2E-142",
+      "ms": 0.4,
+      "title": "object_id is for import processes only",
+      "units": 61
+    },
+    {
+      "actual": {
+        "error": "EVT.UNKNOWN_EVENT_TYPE"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "EVT.UNKNOWN_EVENT_TYPE"
+      },
+      "id": "L2E-143",
+      "ms": 0.4,
+      "title": "unknown event type",
+      "units": 33
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONNECTOR_UNAVAILABLE"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONNECTOR_UNAVAILABLE"
+      },
+      "id": "L2E-144",
+      "ms": 0.4,
+      "title": "observation without a world",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-145",
+      "ms": 0.6,
+      "title": "instruction-call limit",
+      "units": 78
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-146",
+      "ms": 0.5,
+      "title": "change limit",
+      "units": 185
+    },
+    {
+      "actual": {
+        "error": "IAM.DENIED"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "IAM.DENIED"
+      },
+      "id": "L2E-147",
+      "ms": 0.0,
+      "title": "raising a limit is refused",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "id": "L2E-148",
+      "ms": 0.0,
+      "title": "unknown limit is refused",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-149",
+      "ms": 0.4,
+      "title": "assigning the gateway",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-150",
+      "ms": 0.4,
+      "title": "assigning a family",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-151",
+      "ms": 0.4,
+      "title": "assigning an operation",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-152",
+      "ms": 0.3,
+      "title": "indexing the gateway",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-153",
+      "ms": 0.3,
+      "title": "the gateway cannot leave the script",
+      "units": 3
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-154",
+      "ms": 0.4,
+      "title": "a family cannot leave the script",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-155",
+      "ms": 0.3,
+      "title": "the gateway in a map cannot leave",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-156",
+      "ms": 0.5,
+      "title": "logic that is not imported",
+      "units": 20
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-157",
+      "ms": 0.4,
+      "title": "unknown logic asset",
+      "units": 20
+    },
+    {
+      "actual": {
+        "error": "MODEL.PORT_NOT_IMPLEMENTED"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.PORT_NOT_IMPLEMENTED"
+      },
+      "id": "L2E-158",
+      "ms": 0.5,
+      "title": "super outside an implementation chain (reserved word, spelled super_)",
+      "units": 20
+    },
+    {
+      "actual": {
+        "error": "MODEL.PORT_NOT_IMPLEMENTED"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.PORT_NOT_IMPLEMENTED"
+      },
+      "id": "L2E-159",
+      "ms": 0.5,
+      "title": "unknown port",
+      "units": 33
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-160",
+      "ms": 11.5,
+      "title": "recursion through run.port hits the depth limit",
+      "units": 495
+    },
+    {
+      "actual": {
+        "value": 36
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "value": 36
+      },
+      "id": "L2E-161",
+      "ms": 0.7,
+      "title": "async job is an effect (reserved word, spelled async_)",
+      "units": 36
+    },
+    {
+      "actual": {
+        "value": "28af3427-5c50-4ed5-8d92-19cf2395a2a3"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "deterministic": true
+      },
+      "id": "L2E-162",
+      "ms": 0.6,
+      "title": "uuid is deterministic",
+      "units": 5
+    },
+    {
+      "actual": {
+        "value": 2048
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "value": 2048
+      },
+      "id": "L2E-163",
+      "ms": 0.7,
+      "title": "random bytes of the largest size",
+      "units": 11
+    },
+    {
+      "actual": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "id": "L2E-164",
+      "ms": 0.4,
+      "title": "random bytes beyond the size",
+      "units": 7
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-165",
+      "ms": 0.3,
+      "title": "random bytes with a text argument",
+      "units": 7
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "gateway",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-166",
+      "ms": 0.3,
+      "title": "uuid with an argument",
+      "units": 7
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-167",
+      "ms": 0.3,
+      "title": "assigning ctx.principal",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-168",
+      "ms": 0.3,
+      "title": "assigning ctx.principal_kind",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-169",
+      "ms": 0.4,
+      "title": "assigning ctx.auth_level",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-170",
+      "ms": 0.3,
+      "title": "assigning ctx.tenant",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-171",
+      "ms": 0.4,
+      "title": "assigning ctx.vae",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-172",
+      "ms": 0.3,
+      "title": "assigning ctx.branch",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-173",
+      "ms": 0.3,
+      "title": "assigning ctx.asof",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-174",
+      "ms": 0.4,
+      "title": "assigning ctx.time",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-175",
+      "ms": 0.4,
+      "title": "assigning ctx.now",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-176",
+      "ms": 0.6,
+      "title": "assigning ctx.locale",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-177",
+      "ms": 0.4,
+      "title": "assigning ctx.time_zone",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-178",
+      "ms": 0.4,
+      "title": "assigning ctx.process_id",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-179",
+      "ms": 0.5,
+      "title": "assigning ctx.channel",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-180",
+      "ms": 0.4,
+      "title": "assigning ctx.profile",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-181",
+      "ms": 0.4,
+      "title": "assigning ctx.replay",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-182",
+      "ms": 0.4,
+      "title": "assigning a member of a nested context value",
+      "units": 11
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-183",
+      "ms": 0.3,
+      "title": "assigning through the indexer",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-184",
+      "ms": 0.3,
+      "title": "assigning through a copy",
+      "units": 8
+    },
+    {
+      "actual": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "id": "L2E-185",
+      "ms": 0.3,
+      "title": "unknown context member",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-186",
+      "ms": 0.3,
+      "title": "removing a member",
+      "units": 7
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-187",
+      "ms": 0.3,
+      "title": "the context cannot leave the script",
+      "units": 3
+    },
+    {
+      "actual": {
+        "value": "strict"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "value": "strict"
+      },
+      "id": "L2E-188",
+      "ms": 0.4,
+      "title": "profile is the strict profile",
+      "units": 6
+    },
+    {
+      "actual": {
+        "value": "acme"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "value": "acme"
+      },
+      "id": "L2E-189",
+      "ms": 0.5,
+      "title": "tenant is the authority",
+      "units": 6
+    },
+    {
+      "actual": {
+        "value": false
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "value": false
+      },
+      "id": "L2E-190",
+      "ms": 0.5,
+      "title": "replay is false",
+      "units": 6
+    },
+    {
+      "actual": {
+        "value": 1000000
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "value": 1000000
+      },
+      "id": "L2E-191",
+      "ms": 0.4,
+      "title": "budget is the profile budget",
+      "units": 9
+    },
+    {
+      "actual": {
+        "value": "feature/l2e"
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "value": "feature/l2e"
+      },
+      "id": "L2E-192",
+      "ms": 0.5,
+      "title": "the branch",
+      "units": 6
+    },
+    {
+      "actual": {
+        "value": true
+      },
+      "blocked": true,
+      "category": "context",
+      "deterministic": true,
+      "expect": {
+        "value": true
+      },
+      "id": "L2E-193",
+      "ms": 0.4,
+      "title": "the clock is fixed",
+      "units": 8
+    },
+    {
+      "actual": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "id": "L2E-194",
+      "ms": 0.3,
+      "title": "unknown field",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "id": "L2E-195",
+      "ms": 0.3,
+      "title": "unknown field through the indexer",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-196",
+      "ms": 0.4,
+      "title": "integer field given text",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-197",
+      "ms": 0.3,
+      "title": "boolean field given an integer",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-198",
+      "ms": 0.4,
+      "title": "decimal field given text",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-199",
+      "ms": 0.3,
+      "title": "text field given a map",
+      "units": 6
+    },
+    {
+      "actual": {
+        "value": "3"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "value": "3"
+      },
+      "id": "L2E-200",
+      "ms": 0.4,
+      "title": "integer promotes to decimal",
+      "units": 11
+    },
+    {
+      "actual": {
+        "value": 2
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "value": 2
+      },
+      "id": "L2E-201",
+      "ms": 0.5,
+      "title": "a local change does not reach the store",
+      "units": 31
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-202",
+      "ms": 0.4,
+      "title": "the handle cannot leave the script",
+      "units": 3
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-203",
+      "ms": 0.3,
+      "title": "the handle in a list cannot leave",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-204",
+      "ms": 0.3,
+      "title": "the handle in a map cannot leave",
+      "units": 4
+    },
+    {
+      "actual": {
+        "value": "21"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "value": "21"
+      },
+      "id": "L2E-205",
+      "ms": 0.5,
+      "title": "decimal field arithmetic",
+      "units": 9
+    },
+    {
+      "actual": {
+        "value": true
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "value": true
+      },
+      "id": "L2E-206",
+      "ms": 0.4,
+      "title": "decimal field comparison",
+      "units": 9
+    },
+    {
+      "actual": {
+        "value": 5
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "value": 5
+      },
+      "id": "L2E-207",
+      "ms": 0.4,
+      "title": "text field length",
+      "units": 9
+    },
+    {
+      "actual": {
+        "value": "01890a5d-ac96-7001-8000-000000000001"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "value": "01890a5d-ac96-7001-8000-000000000001"
+      },
+      "id": "L2E-208",
+      "ms": 0.4,
+      "title": "self_id is the object",
+      "units": 3
+    },
+    {
+      "actual": {
+        "value": 0
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "value": 0
+      },
+      "id": "L2E-209",
+      "ms": 0.4,
+      "title": "params are empty",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-210",
+      "ms": 0.3,
+      "title": "assigning self_id",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "blocked": true,
+      "category": "handle",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CONTEXT_IMMUTABLE"
+      },
+      "id": "L2E-211",
+      "ms": 0.3,
+      "title": "assigning params",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-212",
+      "ms": 0.4,
+      "title": "eval",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-213",
+      "ms": 0.4,
+      "title": "print",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-214",
+      "ms": 0.3,
+      "title": "debug",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-215",
+      "ms": 0.3,
+      "title": "import",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-216",
+      "ms": 0.3,
+      "title": "export",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-217",
+      "ms": 0.3,
+      "title": "Fn",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-218",
+      "ms": 0.3,
+      "title": "call",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-219",
+      "ms": 0.3,
+      "title": "curry",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-220",
+      "ms": 0.4,
+      "title": "is_def_fn",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-221",
+      "ms": 0.3,
+      "title": "is_def_var",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-222",
+      "ms": 0.4,
+      "title": "sleep",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-223",
+      "ms": 0.4,
+      "title": "exit",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-224",
+      "ms": 0.4,
+      "title": "parse_json",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-225",
+      "ms": 0.4,
+      "title": "closure",
+      "units": 7
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-226",
+      "ms": 0.3,
+      "title": "global namespace",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-227",
+      "ms": 0.4,
+      "title": "root namespace",
+      "units": 0
+    },
+    {
+      "actual": {
+        "value": 2
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "value": 2
+      },
+      "id": "L2E-228",
+      "ms": 0.5,
+      "title": "rebinding this locally changes nothing",
+      "units": 29
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-229",
+      "ms": 0.3,
+      "title": "a script function shadowing a gateway method cannot leak the gateway",
+      "units": 7
+    },
+    {
+      "actual": {
+        "value": "Gateway"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "value": "Gateway"
+      },
+      "id": "L2E-230",
+      "ms": 0.4,
+      "title": "type_of the gateway",
+      "units": 4
+    },
+    {
+      "actual": {
+        "value": "Gateway"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "value": "Gateway"
+      },
+      "id": "L2E-231",
+      "ms": 0.4,
+      "title": "type_of as method",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-232",
+      "ms": 0.3,
+      "title": "a thrown value is a script error",
+      "units": 3
+    },
+    {
+      "actual": {
+        "value": 2
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "value": 2
+      },
+      "id": "L2E-233",
+      "ms": 0.4,
+      "title": "script errors are catchable",
+      "units": 11
+    },
+    {
+      "actual": {
+        "value": 7
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "value": 7
+      },
+      "id": "L2E-234",
+      "ms": 0.5,
+      "title": "integer division by zero is catchable",
+      "units": 13
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-235",
+      "ms": 0.3,
+      "title": "a host error is not catchable",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.UNKNOWN_FIELD"
+      },
+      "id": "L2E-236",
+      "ms": 0.4,
+      "title": "an unknown field is not catchable",
+      "units": 7
+    },
+    {
+      "actual": {
+        "value": "2026-01-01T00:00:00.000000Z"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "value": "2026-01-01T00:00:00.000000Z"
+      },
+      "id": "L2E-237",
+      "ms": 0.4,
+      "title": "a caught context write changes nothing",
+      "units": 12
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-238",
+      "ms": 0.3,
+      "title": "a decimal division is not catchable",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "IAM.NOT_FOUND"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "IAM.NOT_FOUND"
+      },
+      "id": "L2E-239",
+      "ms": 0.4,
+      "title": "a gateway error is not catchable",
+      "units": 21
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-240",
+      "ms": 41.2,
+      "title": "a limit is not catchable",
+      "units": 1000000
+    },
+    {
+      "actual": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.PARAMETER_FORBIDDEN"
+      },
+      "id": "L2E-241",
+      "ms": 0.7,
+      "title": "a parameter error is not catchable",
+      "units": 13
+    },
+    {
+      "actual": {
+        "value": 1
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "value": 1
+      },
+      "id": "L2E-242",
+      "ms": 0.5,
+      "title": "shadowing the gateway does not reach it",
+      "units": 5
+    },
+    {
+      "actual": {
+        "value": "x"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "value": "x"
+      },
+      "id": "L2E-243",
+      "ms": 0.5,
+      "title": "shadowing the context",
+      "units": 8
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-244",
+      "ms": 0.4,
+      "title": "string repetition beyond the size limit",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-245",
+      "ms": 0.3,
+      "title": "array padding beyond the size limit",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-246",
+      "ms": 0.4,
+      "title": "integer overflow",
+      "units": 7
+    },
+    {
+      "actual": {
+        "value": 0
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "value": 0
+      },
+      "id": "L2E-247",
+      "ms": 0.5,
+      "title": "shift beyond the width saturates",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "id": "L2E-248",
+      "ms": 0.3,
+      "title": "integer division by zero",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "id": "L2E-249",
+      "ms": 0.3,
+      "title": "modulo by zero",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-250",
+      "ms": 0.3,
+      "title": "float function sin",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-251",
+      "ms": 0.3,
+      "title": "float function cos",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-252",
+      "ms": 0.4,
+      "title": "float function tan",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-253",
+      "ms": 0.3,
+      "title": "float function sqrt",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-254",
+      "ms": 0.3,
+      "title": "float function exp",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-255",
+      "ms": 0.3,
+      "title": "float function ln",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-256",
+      "ms": 0.4,
+      "title": "float function log",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-257",
+      "ms": 0.3,
+      "title": "float function log10",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-258",
+      "ms": 0.4,
+      "title": "float function hypot",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-259",
+      "ms": 0.3,
+      "title": "float function atan2",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-260",
+      "ms": 0.3,
+      "title": "float function to_float",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-261",
+      "ms": 0.3,
+      "title": "float function parse_float",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-262",
+      "ms": 0.3,
+      "title": "float function is_nan",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-263",
+      "ms": 0.3,
+      "title": "float function is_finite",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-264",
+      "ms": 0.4,
+      "title": "float function pi",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-265",
+      "ms": 0.4,
+      "title": "float function e",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-266",
+      "ms": 0.4,
+      "title": "float function to_radians",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-267",
+      "ms": 0.3,
+      "title": "float function to_degrees",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-268",
+      "ms": 0.3,
+      "title": "float function sinh",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-269",
+      "ms": 0.3,
+      "title": "float function asin",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-270",
+      "ms": 0.3,
+      "title": "float literal 1.5",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-271",
+      "ms": 0.3,
+      "title": "float literal 0.1 + 0.2",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-272",
+      "ms": 0.3,
+      "title": "float literal 1e9",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-273",
+      "ms": 0.3,
+      "title": "float literal 2.5e-3",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-274",
+      "ms": 0.3,
+      "title": "float literal 1_000.5",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-275",
+      "ms": 0.3,
+      "title": "float literal 3.0 / 2",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-276",
+      "ms": 0.3,
+      "title": "float literal [1.0]",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-277",
+      "ms": 0.3,
+      "title": "float literal #{a: 0.5}",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-278",
+      "ms": 0.4,
+      "title": "float literal \"a\" + 1.5",
+      "units": 0
+    },
+    {
+      "actual": {
+        "value": 3
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": 3
+      },
+      "id": "L2E-279",
+      "ms": 0.5,
+      "title": "float in a string is text",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-280",
+      "ms": 0.4,
+      "title": "decimal division needs a scale",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-281",
+      "ms": 0.3,
+      "title": "decimal by integer needs a scale",
+      "units": 8
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-282",
+      "ms": 0.4,
+      "title": "integer by decimal needs a scale",
+      "units": 8
+    },
+    {
+      "actual": {
+        "value": "0.3333"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": "0.3333"
+      },
+      "id": "L2E-283",
+      "ms": 0.5,
+      "title": "division with a scale",
+      "units": 8
+    },
+    {
+      "actual": {
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.DIVISION_BY_ZERO"
+      },
+      "id": "L2E-284",
+      "ms": 0.3,
+      "title": "division by zero with a scale",
+      "units": 8
+    },
+    {
+      "actual": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "id": "L2E-285",
+      "ms": 0.4,
+      "title": "unknown rounding mode",
+      "units": 8
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-286",
+      "ms": 0.4,
+      "title": "negative scale",
+      "units": 8
+    },
+    {
+      "actual": {
+        "value": "2"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": "2"
+      },
+      "id": "L2E-287",
+      "ms": 0.4,
+      "title": "half even rounding",
+      "units": 9
+    },
+    {
+      "actual": {
+        "value": "3"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": "3"
+      },
+      "id": "L2E-288",
+      "ms": 0.4,
+      "title": "half up rounding",
+      "units": 9
+    },
+    {
+      "actual": {
+        "value": true
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": true
+      },
+      "id": "L2E-289",
+      "ms": 0.4,
+      "title": "exact sum",
+      "units": 15
+    },
+    {
+      "actual": {
+        "value": "1.21"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": "1.21"
+      },
+      "id": "L2E-290",
+      "ms": 0.5,
+      "title": "exact product",
+      "units": 10
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-291",
+      "ms": 0.4,
+      "title": "decimal from text with exponent",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-292",
+      "ms": 0.4,
+      "title": "decimal from garbage",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FLOAT_TO_DECIMAL"
+      },
+      "id": "L2E-293",
+      "ms": 0.4,
+      "title": "decimal from a float literal",
+      "units": 0
+    },
+    {
+      "actual": {
+        "value": true
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": true
+      },
+      "id": "L2E-294",
+      "ms": 0.5,
+      "title": "decimal comparison with an integer",
+      "units": 8
+    },
+    {
+      "actual": {
+        "value": "-1.5"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": "-1.5"
+      },
+      "id": "L2E-295",
+      "ms": 0.5,
+      "title": "negative decimal",
+      "units": 7
+    },
+    {
+      "actual": {
+        "value": "1.5"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": "1.5"
+      },
+      "id": "L2E-296",
+      "ms": 0.5,
+      "title": "absolute value",
+      "units": 7
+    },
+    {
+      "actual": {
+        "value": {
+          "amount": "12.50",
+          "currency": "USD"
+        }
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": {
+          "amount": "12.50",
+          "currency": "USD"
+        }
+      },
+      "id": "L2E-297",
+      "ms": 0.5,
+      "title": "money sum",
+      "units": 12
+    },
+    {
+      "actual": {
+        "error": "MODEL.CURRENCY_MISMATCH"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.CURRENCY_MISMATCH"
+      },
+      "id": "L2E-298",
+      "ms": 0.4,
+      "title": "money of different currencies",
+      "units": 12
+    },
+    {
+      "actual": {
+        "error": "MODEL.CURRENCY_MISMATCH"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.CURRENCY_MISMATCH"
+      },
+      "id": "L2E-299",
+      "ms": 0.5,
+      "title": "money comparison across currencies",
+      "units": 12
+    },
+    {
+      "actual": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "MODEL.INVALID_VALUE"
+      },
+      "id": "L2E-300",
+      "ms": 0.4,
+      "title": "unknown currency",
+      "units": 6
+    },
+    {
+      "actual": {
+        "value": {
+          "amount": "1.00",
+          "currency": "USD"
+        }
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": {
+          "amount": "1.00",
+          "currency": "USD"
+        }
+      },
+      "id": "L2E-301",
+      "ms": 0.5,
+      "title": "money rounds to the minor unit on output",
+      "units": 6
+    },
+    {
+      "actual": {
+        "value": {
+          "amount": "5.00",
+          "currency": "USD"
+        }
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": {
+          "amount": "5.00",
+          "currency": "USD"
+        }
+      },
+      "id": "L2E-302",
+      "ms": 0.6,
+      "title": "money times a decimal",
+      "units": 11
+    },
+    {
+      "actual": {
+        "value": "3.25"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": "3.25"
+      },
+      "id": "L2E-303",
+      "ms": 0.5,
+      "title": "money amount",
+      "units": 8
+    },
+    {
+      "actual": {
+        "value": "EUR"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "value": "EUR"
+      },
+      "id": "L2E-304",
+      "ms": 0.6,
+      "title": "money currency",
+      "units": 8
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "float",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-305",
+      "ms": 0.4,
+      "title": "money division is not defined",
+      "units": 9
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-306",
+      "ms": 68.5,
+      "title": "string doubling",
+      "units": 83
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-307",
+      "ms": 58.2,
+      "title": "array doubling",
+      "units": 71
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-308",
+      "ms": 59.3,
+      "title": "array growth beyond the memory of the execution",
+      "units": 318905
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-309",
+      "ms": 103.8,
+      "title": "map growth beyond the memory of the execution",
+      "units": 372755
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-310",
+      "ms": 374.3,
+      "title": "nested arrays",
+      "units": 103
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-311",
+      "ms": 0.6,
+      "title": "recursion without a base case",
+      "units": 52
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-312",
+      "ms": 0.6,
+      "title": "exponential recursion",
+      "units": 181
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-313",
+      "ms": 0.4,
+      "title": "mutual recursion",
+      "units": 101
+    },
+    {
+      "actual": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "id": "L2E-314",
+      "ms": 0.4,
+      "title": "deep expression",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "id": "L2E-315",
+      "ms": 0.4,
+      "title": "deep nesting of blocks",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-316",
+      "ms": 15.0,
+      "title": "too many variables",
+      "units": 2042
+    },
+    {
+      "actual": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "id": "L2E-317",
+      "ms": 0.7,
+      "title": "too many functions",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "id": "L2E-318",
+      "ms": 0.4,
+      "title": "source beyond the size",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.SCRIPT_TOO_COMPLEX"
+      },
+      "id": "L2E-319",
+      "ms": 0.4,
+      "title": "a long literal string",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-320",
+      "ms": 407.2,
+      "title": "infinite loop under the standard budget",
+      "units": 10000000
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-321",
+      "ms": 41.4,
+      "title": "infinite while",
+      "units": 1000000
+    },
+    {
+      "actual": {
+        "error": "LOGIC.CANCELLED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.CANCELLED"
+      },
+      "id": "L2E-322",
+      "ms": 0.6,
+      "title": "cancellation after units",
+      "units": 1001
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-323",
+      "ms": 0.6,
+      "title": "a small budget",
+      "units": 101
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-324",
+      "ms": 4.2,
+      "title": "budget spent by gateway calls counts",
+      "units": 956
+    },
+    {
+      "actual": {
+        "value": 5
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "value": 5
+      },
+      "id": "L2E-325",
+      "ms": 0.8,
+      "title": "large read result is charged",
+      "units": 31
+    },
+    {
+      "actual": {
+        "value": 1048576
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "value": 1048576
+      },
+      "id": "L2E-326",
+      "ms": 3.8,
+      "title": "string of the maximal size",
+      "units": 14
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-327",
+      "ms": 0.6,
+      "title": "string beyond the maximal size",
+      "units": 10
+    },
+    {
+      "actual": {
+        "value": 65536
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "value": 65536
+      },
+      "id": "L2E-328",
+      "ms": 1.5,
+      "title": "array of the maximal size",
+      "units": 15
+    },
+    {
+      "actual": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.LIMIT_EXCEEDED"
+      },
+      "id": "L2E-329",
+      "ms": 0.5,
+      "title": "array beyond the maximal size",
+      "units": 11
+    },
+    {
+      "actual": {
+        "value": 1
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "value": 1
+      },
+      "id": "L2E-330",
+      "ms": 53.5,
+      "title": "sorting a large array",
+      "units": 480015
+    },
+    {
+      "actual": {
+        "value": 1000
+      },
+      "blocked": true,
+      "category": "resource-exhaustion",
+      "deterministic": true,
+      "expect": {
+        "value": 1000
+      },
+      "id": "L2E-331",
+      "ms": 1.0,
+      "title": "string in a loop within the budget",
+      "units": 3011
+    },
+    {
+      "actual": {
+        "value": [
+          "28af3427-5c50-4ed5-8d92-19cf2395a2a3",
+          "306fa2a0-93a3-473c-8a7c-1c0c9887ed6a"
+        ]
+      },
+      "blocked": true,
+      "category": "determinism",
+      "deterministic": true,
+      "expect": {
+        "deterministic": true
+      },
+      "id": "L2E-332",
+      "ms": 0.8,
+      "title": "two uuids differ and are deterministic",
+      "units": 9
+    },
+    {
+      "actual": {
+        "value": "4"
+      },
+      "blocked": true,
+      "category": "determinism",
+      "deterministic": true,
+      "expect": {
+        "value": "4"
+      },
+      "id": "L2E-333",
+      "ms": 0.8,
+      "title": "uuid is version 4",
+      "units": 9
+    },
+    {
+      "actual": {
+        "value": "28af34275c50ded5"
+      },
+      "blocked": true,
+      "category": "determinism",
+      "deterministic": true,
+      "expect": {
+        "deterministic": true
+      },
+      "id": "L2E-334",
+      "ms": 0.8,
+      "title": "random bytes are deterministic",
+      "units": 7
+    },
+    {
+      "actual": {
+        "value": true
+      },
+      "blocked": true,
+      "category": "determinism",
+      "deterministic": true,
+      "expect": {
+        "value": true
+      },
+      "id": "L2E-335",
+      "ms": 0.9,
+      "title": "random bytes differ per call",
+      "units": 13
+    },
+    {
+      "actual": {
+        "value": [
+          "a",
+          "m",
+          "z"
+        ]
+      },
+      "blocked": true,
+      "category": "determinism",
+      "deterministic": true,
+      "expect": {
+        "value": [
+          "a",
+          "m",
+          "z"
+        ]
+      },
+      "id": "L2E-336",
+      "ms": 0.7,
+      "title": "map keys are ordered",
+      "units": 19
+    },
+    {
+      "actual": {
+        "value": [
+          "a",
+          "b"
+        ]
+      },
+      "blocked": true,
+      "category": "determinism",
+      "deterministic": true,
+      "expect": {
+        "value": [
+          "a",
+          "b"
+        ]
+      },
+      "id": "L2E-337",
+      "ms": 0.8,
+      "title": "map iteration follows key order",
+      "units": 25
+    },
+    {
+      "actual": {
+        "value": "{\"a\":2,\"b\":1}"
+      },
+      "blocked": true,
+      "category": "determinism",
+      "deterministic": true,
+      "expect": {
+        "value": "{\"a\":2,\"b\":1}"
+      },
+      "id": "L2E-338",
+      "ms": 0.7,
+      "title": "map to JSON is canonical",
+      "units": 15
+    },
+    {
+      "actual": {
+        "value": "2026-01-01T00:00:00.000000Z"
+      },
+      "blocked": true,
+      "category": "determinism",
+      "deterministic": true,
+      "expect": {
+        "value": "2026-01-01T00:00:00.000000Z"
+      },
+      "id": "L2E-339",
+      "ms": 0.8,
+      "title": "the clock is the context clock",
+      "units": 6
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "determinism",
+      "deterministic": true,
+      "expect": {
+        "deterministic": true
+      },
+      "id": "L2E-340",
+      "ms": 0.6,
+      "title": "hash of a string is stable",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "determinism",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-341",
+      "ms": 0.5,
+      "title": "timestamp is unavailable",
+      "units": 4
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-342",
+      "ms": 0.5,
+      "title": "host function open",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-343",
+      "ms": 0.6,
+      "title": "host function read_file",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-344",
+      "ms": 0.5,
+      "title": "host function write_file",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-345",
+      "ms": 0.5,
+      "title": "host function remove_file",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-346",
+      "ms": 0.5,
+      "title": "host function create_dir",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-347",
+      "ms": 0.3,
+      "title": "host function read_dir",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-348",
+      "ms": 1.0,
+      "title": "host function file_exists",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "file",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-349",
+      "ms": 0.5,
+      "title": "host function std::fs::read",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-350",
+      "ms": 0.5,
+      "title": "host function getenv",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-351",
+      "ms": 0.5,
+      "title": "host function env",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-352",
+      "ms": 0.5,
+      "title": "host function spawn",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-353",
+      "ms": 0.6,
+      "title": "host function exec",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-354",
+      "ms": 0.5,
+      "title": "host function system",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-355",
+      "ms": 0.5,
+      "title": "host function popen",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "host-abuse",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-356",
+      "ms": 0.5,
+      "title": "host function fork",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-357",
+      "ms": 0.5,
+      "title": "host function socket",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-358",
+      "ms": 0.4,
+      "title": "host function connect",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-359",
+      "ms": 0.4,
+      "title": "host function http_get",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-360",
+      "ms": 0.4,
+      "title": "host function fetch",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-361",
+      "ms": 0.4,
+      "title": "host function curl",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-362",
+      "ms": 0.3,
+      "title": "host function dns_lookup",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "network",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-363",
+      "ms": 0.3,
+      "title": "host function listen",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-364",
+      "ms": 0.3,
+      "title": "host function now",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-365",
+      "ms": 0.4,
+      "title": "host function instant",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-366",
+      "ms": 0.3,
+      "title": "host function elapsed",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "time",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-367",
+      "ms": 0.3,
+      "title": "host function date",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-368",
+      "ms": 0.3,
+      "title": "host function rand",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-369",
+      "ms": 0.3,
+      "title": "host function random",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-370",
+      "ms": 0.3,
+      "title": "host function getrandom",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-371",
+      "ms": 0.4,
+      "title": "host function urandom",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "blocked": true,
+      "category": "entropy",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.FORBIDDEN_CAPABILITY"
+      },
+      "id": "L2E-372",
+      "ms": 0.3,
+      "title": "host function seed",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "parsing",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-373",
+      "ms": 0.4,
+      "title": "unterminated string",
+      "units": 0
+    },
+    {
+      "actual": {
+        "value": 3
+      },
+      "blocked": true,
+      "category": "parsing",
+      "deterministic": true,
+      "expect": {
+        "value": 3
+      },
+      "id": "L2E-374",
+      "ms": 0.6,
+      "title": "unicode escape in a string",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "parsing",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-375",
+      "ms": 0.6,
+      "title": "zero-width character in an identifier",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "parsing",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-376",
+      "ms": 0.5,
+      "title": "full-width identifier is not an identifier",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "parsing",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-377",
+      "ms": 0.4,
+      "title": "byte order mark",
+      "units": 0
+    },
+    {
+      "actual": {
+        "value": 1
+      },
+      "blocked": true,
+      "category": "parsing",
+      "deterministic": true,
+      "expect": {
+        "value": 1
+      },
+      "id": "L2E-378",
+      "ms": 0.5,
+      "title": "prototype key in a map",
+      "units": 6
+    },
+    {
+      "actual": {
+        "value": 1
+      },
+      "blocked": true,
+      "category": "parsing",
+      "deterministic": true,
+      "expect": {
+        "value": 1
+      },
+      "id": "L2E-379",
+      "ms": 0.9,
+      "title": "very long identifier",
+      "units": 5
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "parsing",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-380",
+      "ms": 0.5,
+      "title": "comment that never closes",
+      "units": 0
+    },
+    {
+      "actual": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "blocked": true,
+      "category": "parsing",
+      "deterministic": true,
+      "expect": {
+        "error": "LOGIC.TYPE_ERROR"
+      },
+      "id": "L2E-381",
+      "ms": 0.5,
+      "title": "reserved word as a name",
+      "units": 0
+    },
+    {
+      "actual": {
+        "value": null
+      },
+      "blocked": true,
+      "category": "parsing",
+      "deterministic": true,
+      "expect": {
+        "value": null
+      },
+      "id": "L2E-382",
+      "ms": 0.6,
+      "title": "empty script",
+      "units": 1
+    }
+  ],
+  "seconds": 44.0,
+  "signature": {
+    "alg": "ed25519",
+    "key": "1b48d0af897bbe8664af5ef7b26600cf9d6ff5ee417dced855272ed0f56677dc",
+    "sig": "4c8b611e0bb41a867a37771ac5c7fb63dc44c7bd4da4c9e9f3063dd54b40f9b50d28be4f22cee0c991ce3c6da7d633176b28a02cdd63cf3ea1b5a3b3907ee901"
+  },
+  "suite": "UBOS L2 escape suite (initial)",
+  "verifies": "VER-SEC-0100",
+  "version": "0.2"
+}

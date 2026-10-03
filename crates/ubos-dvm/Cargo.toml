@@ -13,6 +13,10 @@ name = "ubos-store-suite"
 path = "src/bin/ubos-store-suite.rs"
 
 [[bin]]
+name = "ubos-l2-suite"
+path = "src/bin/ubos-l2-suite.rs"
+
+[[bin]]
 name = "ubos-props"
 path = "src/bin/ubos-props.rs"
 
@@ -31,6 +35,7 @@ sha2.workspace = true
 regex.workspace = true
 sqlx.workspace = true
 tokio.workspace = true
+cap.workspace = true
 
 [lints]
 workspace = true

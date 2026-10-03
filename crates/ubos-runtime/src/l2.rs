@@ -1,5 +1,5 @@
 //! The L2 host (STD-CTX-020, DSN-DVM-612; PH-1 step 5d, DEC-058): a Rhai engine
-//! hardened per profile, the instruction gateway bound as `sys.<family>.<op>(#{…})` over
+//! hardened per profile (no function pointers, reflection, closures or modules), the instruction gateway bound as `sys.<family>.<op>(#{…})` over
 //! the same checks and budget as host programs ([`crate::program::instruction`]), the
 //! read-only `ctx`, typed object handles generated from the effective definition, the
 //! kernel decimal and money as the script number types (W-5), metering by operations,
@@ -15,7 +15,7 @@
 use crate::program::{self, Host};
 use crate::{Core, Frame};
 use rhai::packages::{
-    ArithmeticPackage, BasicArrayPackage, BasicFnPackage, BasicIteratorPackage, BasicMapPackage,
+    ArithmeticPackage, BasicArrayPackage, BasicIteratorPackage, BasicMapPackage,
     BasicStringPackage, BitFieldPackage, LogicPackage, MoreStringPackage, Package,
 };
 use rhai::{AST, Dynamic, Engine, EvalAltResult, ParseErrorType, Scope};
@@ -97,8 +97,19 @@ const HOST_FUNCTIONS: &[&str] = &[
     "random_bytes",
 ];
 
-/// Reserved words disabled in the L2 profile (STD-CTX-020).
-const DISABLED_SYMBOLS: &[&str] = &["eval", "print", "debug"];
+/// Reserved words and built-in function-pointer and reflection keywords disabled in the L2
+/// profile (STD-CTX-020).
+const DISABLED_SYMBOLS: &[&str] = &[
+    "eval",
+    "print",
+    "debug",
+    "Fn",
+    "call",
+    "curry",
+    "is_def_fn",
+    "is_def_var",
+    "is_shared",
+];
 
 /// Instruction families reachable as `sys.<family>`.
 const FAMILIES: &[&str] = &[
@@ -734,7 +745,6 @@ fn build_engine(profile: &str, sizes: Sizes) -> Engine {
         BasicIteratorPackage::new().as_shared_module(),
         BasicArrayPackage::new().as_shared_module(),
         BasicMapPackage::new().as_shared_module(),
-        BasicFnPackage::new().as_shared_module(),
     ] {
         engine.register_global_module(module);
     }
@@ -742,18 +752,89 @@ fn build_engine(profile: &str, sizes: Sizes) -> Engine {
         engine.disable_symbol(*symbol);
     }
     let limits = crate::isa::limits(profile);
+    // The engine's string, array and map size checks walk the value on every change,
+    // which makes element-wise growth quadratic (W-4); with memory accounted per
+    // execution (W-2) they are redundant, so they stay on only without a memory probe.
+    let (string_size, array_size, map_size) = if crate::memory::current().is_some() {
+        (0, 0, 0)
+    } else {
+        (sizes.string_size, sizes.array_size, sizes.map_size)
+    };
     engine
         .set_optimization_level(rhai::OptimizationLevel::None)
         .set_strict_variables(true)
         .set_max_operations(limits.map(|l| l.units).unwrap_or(1_000_000))
         .set_max_call_levels(limits.map(|l| l.depth as usize).unwrap_or(16))
         .set_max_expr_depths(sizes.expr_depth.0, sizes.expr_depth.1)
-        .set_max_string_size(sizes.string_size)
-        .set_max_array_size(sizes.array_size)
-        .set_max_map_size(sizes.map_size)
+        .set_max_string_size(string_size)
+        .set_max_array_size(array_size)
+        .set_max_map_size(map_size)
         .set_max_variables(sizes.variables)
         .set_max_functions(sizes.functions);
     engine.on_progress(progress);
+
+    // The functions that allocate in proportion to an integer argument (`pad`) are bound
+    // by the profile sizes per call, so that no single operation can outrun the memory
+    // check of the next metering point; growth across operations is bounded by the
+    // memory accounting (W-2, W-4).
+    let (max_array, max_string) = (sizes.array_size, sizes.string_size);
+    engine.register_fn(
+        "pad",
+        move |a: &mut rhai::Array, len: i64, value: Dynamic| -> Result<(), Box<EvalAltResult>> {
+            let len = usize::try_from(len).unwrap_or(0);
+            if len > max_array {
+                return Err(host_error(codes::LIMIT_EXCEEDED, "array size"));
+            }
+            while a.len() < len {
+                a.push(value.clone());
+            }
+            Ok(())
+        },
+    );
+    engine.register_fn(
+        "pad",
+        move |s: &mut rhai::ImmutableString,
+              len: i64,
+              ch: char|
+              -> Result<(), Box<EvalAltResult>> {
+            let len = usize::try_from(len).unwrap_or(0);
+            if len > max_string {
+                return Err(host_error(codes::LIMIT_EXCEEDED, "string size"));
+            }
+            let n = s.chars().count();
+            if n < len {
+                let mut out = s.to_string();
+                out.extend(std::iter::repeat_n(ch, len - n));
+                *s = out.into();
+            }
+            Ok(())
+        },
+    );
+    engine.register_fn(
+        "pad",
+        move |s: &mut rhai::ImmutableString,
+              len: i64,
+              fill: &str|
+              -> Result<(), Box<EvalAltResult>> {
+            let len = usize::try_from(len).unwrap_or(0);
+            if len > max_string || fill.is_empty() {
+                return Err(host_error(codes::LIMIT_EXCEEDED, "string size"));
+            }
+            let mut out = s.to_string();
+            let mut n = out.chars().count();
+            while n < len {
+                for c in fill.chars() {
+                    if n >= len {
+                        break;
+                    }
+                    out.push(c);
+                    n += 1;
+                }
+            }
+            *s = out.into();
+            Ok(())
+        },
+    );
 
     for name in FLOAT_FUNCTIONS {
         let f0 = move || -> Result<Dynamic, Box<EvalAltResult>> {
@@ -975,12 +1056,16 @@ fn build_engine(profile: &str, sizes: Sizes) -> Engine {
     }
     ops.push("observe");
     for op in ops {
-        engine.register_fn(op, move |f: Family, args: rhai::Map| {
-            gateway(&format!("{}.{op}", f.0), Dynamic::from(args))
-        });
-        engine.register_fn(op, move |f: Family| {
-            gateway(&format!("{}.{op}", f.0), Dynamic::UNIT)
-        });
+        // Operation names that are reserved words of the script language (`super`,
+        // `async`) are also bound with a trailing underscore.
+        for name in [op.to_string(), format!("{op}_")] {
+            engine.register_fn(&name, move |f: Family, args: rhai::Map| {
+                gateway(&format!("{}.{op}", f.0), Dynamic::from(args))
+            });
+            engine.register_fn(&name, move |f: Family| {
+                gateway(&format!("{}.{op}", f.0), Dynamic::UNIT)
+            });
+        }
     }
     engine.register_indexer_get(
         |f: &mut Family, k: &str| -> Result<Dynamic, Box<EvalAltResult>> {
@@ -1046,7 +1131,9 @@ fn map_error(e: &EvalAltResult) -> BpaError {
             ParseErrorType::ExprTooDeep
             | ParseErrorType::TooManyFunctions
             | ParseErrorType::LiteralTooLarge(..) => codes::SCRIPT_TOO_COMPLEX,
-            ParseErrorType::Reserved(_)
+            // a disabled keyword after a dot (`.call`, `.eval`) reads as a missing property
+            ParseErrorType::PropertyExpected
+            | ParseErrorType::Reserved(_)
             | ParseErrorType::VariableUndefined(_)
             | ParseErrorType::ModuleUndefined(_)
             | ParseErrorType::ForbiddenVariable(_) => codes::FORBIDDEN_CAPABILITY,

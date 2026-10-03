@@ -458,8 +458,7 @@ pub fn eval(
     for k in scope.keys() {
         env.vars.insert(k.clone(), Ty::Any);
     }
-    let ast = parse(text)?;
-    check(&ast, &mut env)?;
+    let ast = checked(text, &mut env)?;
     let ctx = from_json(&ubos_expr::check::ctx_type(), &core.context);
     let budget = core.limits.units.saturating_sub(core.units);
     let this = match (&this_t, &f.this) {
@@ -476,12 +475,43 @@ pub fn eval(
     ev.params = Some(Val::Map(f.params.clone()));
     ev.vars = scope.clone();
     ev.resolver = Some(&resolver);
-    let r = ev.eval(&ast);
+    let r = ev.eval(&ast.0);
     let used = ev.units();
     drop(ev);
     let (core, _) = resolver.inner.into_inner();
     core.charge(used)?;
     r
+}
+
+thread_local! {
+    static L1: RefCell<std::collections::HashMap<String, std::rc::Rc<crate::program::NodeBox>>> =
+        RefCell::new(std::collections::HashMap::new());
+}
+
+/// A checked syntax tree in the cache.
+pub struct NodeBox(pub ubos_expr::Node);
+
+/// The parsed and type-checked tree of an expression, cached by the expression text and
+/// the static environment it was checked in (DSN-DVM-610: by expression and model).
+fn checked(text: &Value, env: &mut Env) -> Result<std::rc::Rc<NodeBox>, BpaError> {
+    let key = format!(
+        "{:?}|{:?}|{:?}|{:?}|{:?}",
+        text, env.this, env.params, env.vars, env.target
+    );
+    if let Some(n) = L1.with(|c| c.borrow().get(&key).cloned()) {
+        return Ok(n);
+    }
+    let ast = parse(text)?;
+    check(&ast, env)?;
+    let n = std::rc::Rc::new(NodeBox(ast));
+    L1.with(|c| {
+        let mut c = c.borrow_mut();
+        if c.len() > 8192 {
+            c.clear();
+        }
+        c.insert(key, n.clone());
+    });
+    Ok(n)
 }
 
 /// Instantiate a template: strings are L1 expressions.
