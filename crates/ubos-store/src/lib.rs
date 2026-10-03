@@ -232,6 +232,17 @@ pub trait Store {
     fn derivation_rec(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
         self.meta(&format!("derivation:{id}"))
     }
+    /// A record stored as a chunk under its content ID (journals, metering and
+    /// verification records; DSN-DVM-630).
+    fn record(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
+        self.meta(&format!("record:{id}"))
+    }
+    /// Store a record as a chunk; returns its content ID.
+    fn put_record(&mut self, value: &Value) -> Result<String, BpaError> {
+        let id = ubos_types::content_id("ubos.chunk.v1", value)?;
+        self.put_meta(&format!("record:{id}"), value)?;
+        Ok(id)
+    }
     /// The released effects not yet acknowledged, in release order.
     fn outbox_pending(&mut self) -> Result<Vec<Value>, BpaError> {
         let acked: std::collections::HashSet<String> = self
@@ -797,6 +808,12 @@ impl Store for Group {
     }
     fn process_ids(&mut self) -> Result<Vec<String>, BpaError> {
         self.inner.process_ids()
+    }
+    fn record(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
+        self.inner.record(id)
+    }
+    fn put_record(&mut self, value: &Value) -> Result<String, BpaError> {
+        self.inner.put_record(value)
     }
     fn change_set_rec(&mut self, id: &str) -> Result<Option<Value>, BpaError> {
         self.inner.change_set_rec(id)

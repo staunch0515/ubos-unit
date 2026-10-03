@@ -268,6 +268,7 @@ Reading order:
   1. Given a process that reads the clock and calls a connector, when its journal is inspected, then both inputs are present.
 - **Verification:** CONF
 - **Origin:** FR-LOGIC-071, FR-LOGIC-072, STD-CTX-010, STD-CTX-011
+- **Phase note:** PH-1 step 5c (DEC-057) stores the journal and the metering record as chunks under their content IDs, referenced from the process record; the reference from the commit record follows with the signed commit records of step 6.
 
 ### DSN-DVM-631 — Replay
 - **Statement:** `replay(journal)` MUST re-execute the process against the recorded snapshot with recorded inputs substituted, without effects, and compare the outcome hash. Missing inputs MUST fail with `LOGIC.REPLAY_INPUT_MISSING`. Divergence MUST be reported with the first diverging instruction.

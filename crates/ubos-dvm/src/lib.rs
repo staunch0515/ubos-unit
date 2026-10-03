@@ -12,6 +12,7 @@ pub mod expressions;
 pub mod relations;
 pub mod stateful;
 pub mod transactions;
+pub mod verification;
 pub mod verify;
 pub mod versioning;
 

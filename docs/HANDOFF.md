@@ -148,9 +148,11 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    text, gateway, execution context, metering and entropy and the host-program interpreter
    in `ubos-runtime`, the store half of the instructions as the engine's `Host`, `execute`
    with automatic retry, journal and metering records; 1,127 of 1,227 vectors pass in memory
-   and on PostgreSQL). Next 5c (journal table and replay, verification gate with a
-   node-signed record and a minimal ed25519 node key in `ubos-crypto`, static analysis,
-   BPU views), then 5d (Rhai host W-2…W-5, escape suite, EXIT-1-10 report). W-1
+   and on PostgreSQL). 5c done (DEC-057: verification gate with
+   node-signed records and a minimal Ed25519 node key in `ubos-crypto`, journals and
+   metering records as chunks referenced from the process record, replay, BPU views,
+   `node_did`; 1,165 of 1,227 vectors pass in memory and on PostgreSQL). Next 5d (Rhai host
+   W-2…W-5, escape suite of 300 or more cases, EXIT-1-10 report). W-1
    may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that

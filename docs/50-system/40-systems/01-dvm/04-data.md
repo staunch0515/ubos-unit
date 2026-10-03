@@ -302,7 +302,9 @@ CREATE TABLE decision_log (
 ```
 
 Journals are stored as chunks. `process_record.journal_id` points to the journal's root
-chunk.
+chunk, and `process_record.metering` to the metering record's chunk (migration
+`0005_journal.sql`, DEC-057). The verification record of a logic asset (STD-CTX-023) is
+kept under its record ID and referenced by the asset's `verification` member.
 
 ## 6. Row structures of derived tables
 
