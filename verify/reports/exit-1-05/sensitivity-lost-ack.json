@@ -1,0 +1,106 @@
+{
+  "criterion": "EXIT-1-05",
+  "inject": "lost_ack",
+  "item": "VER-SIM-0001",
+  "seconds": 0.4,
+  "seeds": {
+    "count": 1000,
+    "from": 1,
+    "to": 1000
+  },
+  "suite": "SUITE-DVM-SIM",
+  "threads": 2,
+  "totals": {
+    "aborted_flushes": 0,
+    "clock_jumps": 0,
+    "commits": 0,
+    "crashes_after_apply": 0,
+    "head_moved": 0,
+    "read_set_changed": 0,
+    "restarts": 0,
+    "retries": 0,
+    "steps": 0
+  },
+  "violations": [
+    {
+      "error": "seed 1: main@7: acknowledged commit sha256:5ce1435f9808340d13ca9b7dcf79693e3be47295e9dbb102b0ca2b506ba2f8b9 but the store holds \"sha256:929e94ed0ea3d88e7a31463f8d441b9400491d421ede0144b43a7faad62db93b\"",
+      "seed": 1
+    },
+    {
+      "error": "seed 3: main@7: acknowledged commit sha256:865b51da7e91f6ac0af42136af72eb39f7dbe7e37ad0e3ca656ccdb05f7f7191 but the store holds \"sha256:011f182a08b62d80e09a803d916cc3f0dbe557f6f64e583695c4aed16c6fd59b\"",
+      "seed": 3
+    },
+    {
+      "error": "seed 5: lost acknowledged commit feature/a@7 (sha256:6ee626824cd08c957a0ab4e5d1bd24a60a8a8a7a11ceb7fe2a320e2e127affb3) of node 3",
+      "seed": 5
+    },
+    {
+      "error": "seed 7: lost acknowledged commit main@7 (sha256:fa75273b15b95378360b5bd92a9648a9ab2ba62fd513b9e53697ee1206d9c09a) of node 1",
+      "seed": 7
+    },
+    {
+      "error": "seed 9: lost acknowledged commit main@7 (sha256:683018068b959c69c3f1af2550044f8c74652def1a3f6254b272555eba71c97a) of node 0",
+      "seed": 9
+    },
+    {
+      "error": "seed 11: feature/a@7: acknowledged commit sha256:994ab938d4ad92a497d1a78dc4b930e95b2f9422f5ee06fe72d1af7e306733f1 but the store holds \"sha256:864904e64a24e9259a9f9db96092ccc04c7aab8ba69cf945f7be0274475e521e\"",
+      "seed": 11
+    },
+    {
+      "error": "seed 13: feature/b@7: acknowledged commit sha256:d8f441286d41178d72b2c71c608b06d95806c854d02ab5b49337e336d624c959 but the store holds \"sha256:17554b536ccb4c45642d71296fc1f2d4882c0ea09941410baac2d6a883406249\"",
+      "seed": 13
+    },
+    {
+      "error": "seed 15: feature/b@7: acknowledged commit sha256:6300c9ab0906eb2e676a60fa44267648056fb09588347f59b88e660a9a362784 but the store holds \"sha256:636a1464d23f43e00c7ccebf53584f8d803a0201f14f047743992dbbe5bbacec\"",
+      "seed": 15
+    },
+    {
+      "error": "seed 17: lost acknowledged commit main@7 (sha256:af8e7a1e06bfc043c40a73c2fd4fc045fe5f7a1161f021aec0ca6a8c15f9babf) of node 1",
+      "seed": 17
+    },
+    {
+      "error": "seed 19: main@7: acknowledged commit sha256:f4f0c4459d05511838920ca88501156042d847e9e8cc567ee3e12adf3cdd45e9 but the store holds \"sha256:9ef2b168314b6e3684863b130ea91bec863f7a05442563ef98d07dc781b8a010\"",
+      "seed": 19
+    },
+    {
+      "error": "seed 2: lost acknowledged commit feature/b@7 (sha256:36ae26e2e84dd00d611339bc3ec25d945545b407846a9ed74f81c2c6eee99bbf) of node 1",
+      "seed": 2
+    },
+    {
+      "error": "seed 4: feature/a@7: acknowledged commit sha256:0681ddbc9a9598cc13ef636b301cdf66b2900e8d1f206835719115f68556e843 but the store holds \"sha256:e726af32dfabf58e358abcefed0eaf4c73654afa281de283410bcad70ef9a16b\"",
+      "seed": 4
+    },
+    {
+      "error": "seed 6: main@7: acknowledged commit sha256:c23f1aeed4ef4f9a9e075003880574269315318d1ec6637e35c45ded1bb9f7f0 but the store holds \"sha256:2b4168e0d019a719c4b950cca8d660b42524e23ed2af18ea2e2caf7bd8feeb94\"",
+      "seed": 6
+    },
+    {
+      "error": "seed 8: lost acknowledged commit main@7 (sha256:b9540ad2a0813d11f7af350d8cfe878cdc67c598d1973211d697503a94816020) of node 0",
+      "seed": 8
+    },
+    {
+      "error": "seed 10: lost acknowledged commit main@7 (sha256:b9686eb68b10f2af6f0091f5309239170a1ba2bfae5f62e35842857bae22739f) of node 2",
+      "seed": 10
+    },
+    {
+      "error": "seed 12: main@7: acknowledged commit sha256:b111c0eb533efdfc53955f14a9549ad78c4f7790c1e435096d2f918884e8df04 but the store holds \"sha256:ac538846ebecfb8bf8f75a0d831f44b05192a11efb3e7ca61f0e570593fa003c\"",
+      "seed": 12
+    },
+    {
+      "error": "seed 14: lost acknowledged commit main@7 (sha256:82c6f398452ea9bff414b19c41dab48a4ae25cd0ab1ad40864c6037e1d799857) of node 0",
+      "seed": 14
+    },
+    {
+      "error": "seed 16: main@7: acknowledged commit sha256:67daf1d0d6a57a89f13d5dcb0e9acbcda23dccf4409da809cbe35257c94afc90 but the store holds \"sha256:b114c13076fda79d55668e6e4ec3dfb48ce3e4de9f45734e8bd9a4a0d126d5c3\"",
+      "seed": 16
+    },
+    {
+      "error": "seed 18: main@7: acknowledged commit sha256:4336c4eeccfbaacb1fead54c4d356af9568c1ae8b8cb04eab099436d08927bf6 but the store holds \"sha256:b274168b77913599db1b85cbdcb88ada1e67033c9dbe10c1fab42c3a72e899b4\"",
+      "seed": 18
+    },
+    {
+      "error": "seed 20: main@7: acknowledged commit sha256:9ed5319b66da58b38dd21a4e668851c785ec2e7822f6ba8a72756422ba058164 but the store holds \"sha256:f3279d7e513a5d00ddd4a3a788842b769baa3a4bb809b10f7ac924aff40a16e3\"",
+      "seed": 20
+    }
+  ]
+}

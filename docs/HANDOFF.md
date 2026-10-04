@@ -181,9 +181,11 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    VER-PROP-0100 at a million cases per property, `verify/reports/exit-1-04/`, EXIT-1-04
    met; coverage 90.1% of the kernel crates by the suites and a sampled mutation score
    89.9% on a workstation sample of 237 viable mutants (213 detected) with the vectors, scenarios and properties as test bodies,
-   `verify/reports/exit-1-11/`, `verify/tools/{coverage.sh,mutants.sh}`). Next 8b
-   (simulation suite and fault injection on PostgreSQL, EXIT-1-05, -06), then 8c (replay
-   corpus, nightly workflow with mutation shards and the three platforms, EXIT-1-08). W-1
+   `verify/reports/exit-1-11/`, `verify/tools/{coverage.sh,mutants.sh}`); 8b done (the
+   deterministic simulator `ubos-sim`, 1,000,000 seeds, 0 violations (54,305,916 commits, 6,274,491 aborted flushes, 3,137,413 crashes after apply, 7,453,874 clock jumps), `verify/reports/exit-1-05/`; the fault
+   suite `ubos-fault` on PostgreSQL, 10,000 events (5,000 node crashes by SIGKILL of every worker, 5,000 power losses of the server), 31,732 acknowledged commits, 0 lost, 0 partial, 0 verifier findings, `verify/reports/exit-1-06/`). Next 8c
+   (replay corpus on three platforms, nightly workflow with simulation seeds, long
+   properties, mutation shards and the night log; EXIT-1-08). W-1
    may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that

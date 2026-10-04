@@ -249,11 +249,23 @@ pub fn version_record(
 }
 
 /// Parsed tree nodes shared by the views of this thread, keyed by hash (the process-local
-/// node cache of DSN-DVM-007; nodes are immutable, so the cache is never stale, AR-028).
-const NODE_CACHE_LIMIT: usize = 500_000;
+/// node cache of DSN-DVM-007; nodes are immutable, so the cache is never stale, AR-028). The
+/// cache is bounded by an approximate byte budget, not a node count: a leaf holds up to
+/// hundreds of entries, and a count bound let long-lived writers grow to gigabytes (PH-1
+/// step 8b, DEC-061).
+const NODE_CACHE_BYTES: usize = 128 << 20;
 
 thread_local! {
-    static NODES: RefCell<HashMap<String, Rc<Node>>> = RefCell::new(HashMap::new());
+    static NODES: RefCell<(HashMap<String, Rc<Node>>, usize)> = RefCell::new((HashMap::new(), 0));
+}
+
+/// Approximate heap size of a cached node: its entries' keys and hashes.
+fn node_bytes(n: &Node) -> usize {
+    96 + n
+        .entries
+        .iter()
+        .map(|(k, h)| 48 + k.len() + h.len())
+        .sum::<usize>()
 }
 
 /// Tree nodes read from the store through the node cache.
@@ -261,16 +273,19 @@ pub(crate) struct StoreNodes<'s>(pub(crate) &'s mut dyn Store);
 
 impl NodeSource for StoreNodes<'_> {
     fn node(&mut self, hash: &str) -> Result<Rc<Node>, BpaError> {
-        if let Some(n) = NODES.with(|c| c.borrow().get(hash).cloned()) {
+        if let Some(n) = NODES.with(|c| c.borrow().0.get(hash).cloned()) {
             return Ok(n);
         }
         let n = Rc::new(Node::from_json(&self.0.node(hash)?)?);
+        let size = node_bytes(&n) + hash.len();
         NODES.with(|c| {
             let mut c = c.borrow_mut();
-            if c.len() >= NODE_CACHE_LIMIT {
-                c.clear();
+            if c.1 + size > NODE_CACHE_BYTES {
+                c.0.clear();
+                c.1 = 0;
             }
-            c.insert(hash.to_string(), n.clone());
+            c.0.insert(hash.to_string(), n.clone());
+            c.1 += size;
         });
         Ok(n)
     }

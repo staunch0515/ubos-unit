@@ -87,6 +87,14 @@ jobs:
           ./target/release/forge check verify/scenarios
           ./target/release/forge test verify/scenarios
           ./target/release/forge test verify/scenarios --backend postgres --database "host=127.0.0.1 user=postgres dbname=bpa"
+      - name: concurrency and crash simulation, 2,000 seeds (SUITE-DVM-SIM, VER-SIM-0001, DEC-061)
+        run: |
+          cargo build --release --locked -p ubos-dvm --bin ubos-sim
+          ./target/release/ubos-sim --seeds 2000 --threads 2
+      - name: durability under SIGKILL on PostgreSQL, 40 events (SUITE-DVM-FAULT, VER-FAULT-0001, DEC-061)
+        run: |
+          cargo build --release --locked -p ubos-dvm --bin ubos-fault
+          ./target/release/ubos-fault --database "host=127.0.0.1 user=postgres dbname=bpa" --events 40 --workers 3 --verify-every 10
       - name: host services on PostgreSQL (SUITE-NOD-HOST, DEC-060)
         run: |
           cargo build --release --locked -p ubos-node --bin ubos-node-suite
