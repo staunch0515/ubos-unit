@@ -1,0 +1,187 @@
+{
+  "tool": "cargo-mutants",
+  "test_bodies": [
+    "ubos-forge tests: every BPA 1.0-rc1 vector in memory",
+    "ubos-forge tests: gate-1a scenarios in memory and on PostgreSQL",
+    "ubos-props: sample of every property",
+    "ubos-node-suite: the host suite on PostgreSQL"
+  ],
+  "runs": [
+    {
+      "crates": [
+        "ubos-types",
+        "ubos-crypto",
+        "ubos-tree",
+        "ubos-model",
+        "ubos-proof"
+      ],
+      "shard": "0/8",
+      "found": 133,
+      "outcomes": {
+        "MISSED": 18,
+        "UNVIABLE": 8,
+        "CAUGHT": 107
+      }
+    },
+    {
+      "crates": [
+        "ubos-expr",
+        "ubos-version",
+        "ubos-store",
+        "ubos-runtime",
+        "ubos-dvm"
+      ],
+      "shard": "0/32",
+      "found": 120,
+      "outcomes": {
+        "CAUGHT": 105,
+        "MISSED": 6,
+        "UNVIABLE": 8,
+        "TIMEOUT": 1
+      }
+    }
+  ],
+  "by_crate": {
+    "ubos-crypto": {
+      "MISSED": 15,
+      "UNVIABLE": 7,
+      "CAUGHT": 77
+    },
+    "ubos-model": {
+      "CAUGHT": 30,
+      "MISSED": 3,
+      "UNVIABLE": 1
+    },
+    "ubos-dvm": {
+      "CAUGHT": 105,
+      "MISSED": 6,
+      "UNVIABLE": 8,
+      "TIMEOUT": 1
+    }
+  },
+  "viable": 237,
+  "detected": 213,
+  "score_percent": 89.9,
+  "missed": [
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 35,
+      "mutation": "replace <impl std::fmt::Debug for DataKey>::fmt -> std::fmt::Result with Ok(Default::default())"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 70,
+      "mutation": "replace != with == in LocalKeys::from_env"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 74,
+      "mutation": "replace * with + in LocalKeys::from_env"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 74,
+      "mutation": "replace * with / in LocalKeys::from_env"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 74,
+      "mutation": "replace + with - in LocalKeys::from_env"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 74,
+      "mutation": "replace + with * in LocalKeys::from_env"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 74,
+      "mutation": "replace * with + in LocalKeys::from_env"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 74,
+      "mutation": "replace * with / in LocalKeys::from_env"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 98,
+      "mutation": "replace || with && in <impl KeyService for LocalKeys>::by_id"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 98,
+      "mutation": "replace > with < in <impl KeyService for LocalKeys>::by_id"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 151,
+      "mutation": "replace > with == in hmac_sha256"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 151,
+      "mutation": "replace > with >= in hmac_sha256"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 171,
+      "mutation": "replace && with || in unhex"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 284,
+      "mutation": "replace || with && in unhex32"
+    },
+    {
+      "file": "crates/ubos-crypto/src/lib.rs",
+      "line": 286,
+      "mutation": "replace && with || in unhex32"
+    },
+    {
+      "file": "crates/ubos-model/src/lib.rs",
+      "line": 65,
+      "mutation": "replace * with +"
+    },
+    {
+      "file": "crates/ubos-model/src/lib.rs",
+      "line": 251,
+      "mutation": "replace && with || in is_reference_list"
+    },
+    {
+      "file": "crates/ubos-model/src/lib.rs",
+      "line": 258,
+      "mutation": "replace || with && in check_relationship"
+    },
+    {
+      "file": "crates/ubos-dvm/src/adapter.rs",
+      "line": 195,
+      "mutation": "replace Adapter::enable_l2 with ()"
+    },
+    {
+      "file": "crates/ubos-dvm/src/adapter.rs",
+      "line": 250,
+      "mutation": "replace Adapter::backend -> &'static str with \"\""
+    },
+    {
+      "file": "crates/ubos-dvm/src/adapter.rs",
+      "line": 250,
+      "mutation": "replace Adapter::backend -> &'static str with \"xyzzy\""
+    },
+    {
+      "file": "crates/ubos-dvm/src/adapter.rs",
+      "line": 397,
+      "mutation": "replace && with || in Adapter::execute"
+    },
+    {
+      "file": "crates/ubos-dvm/src/adapter.rs",
+      "line": 418,
+      "mutation": "delete ! in Adapter::execute"
+    },
+    {
+      "file": "crates/ubos-dvm/src/adapter.rs",
+      "line": 419,
+      "mutation": "replace && with || in Adapter::execute"
+    }
+  ]
+}

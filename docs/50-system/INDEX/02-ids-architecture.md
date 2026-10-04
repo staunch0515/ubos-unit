@@ -90,39 +90,39 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (60)
+## DEC (61)
 
 | ID | Title | Defined in |
 |---|---|---|
-| DEC-001 | Location and title of the volume | `90-decisions/000-index.md` |
-| DEC-002 | The enterprise-internal worker pool is kept; the public compute grid is excluded | `90-decisions/000-index.md` |
-| DEC-003 | US-first compliance, GDPR considered | `90-decisions/000-index.md` |
-| DEC-004 | First vertical: fund and asset-management back office plus contract management | `90-decisions/000-index.md` |
-| DEC-005 | Six phases, PH-0 … PH-5 | `90-decisions/000-index.md` |
-| DEC-006 | Reference durations with an explicit team assumption; phases gated by exit criteria | `90-decisions/000-index.md` |
-| DEC-007 | Technology stack of the reference implementation | `90-decisions/000-index.md` |
-| DEC-008 | The earlier volume `40-spec` is kept as history | `90-decisions/000-index.md` |
-| DEC-009 | Report per batch, in Chinese | `90-decisions/000-index.md` |
-| DEC-010 | Writing order, with a confirmation stop after the requirements volume | `90-decisions/000-index.md` |
-| DEC-011 | The "six tables only" rule is withdrawn | `90-decisions/000-index.md` |
-| DEC-012 | Long-term economic and social narratives are excluded | `90-decisions/000-index.md` |
-| DEC-013 | The system decomposition (thirteen systems) | `90-decisions/000-index.md` |
-| DEC-014 | PH-1 has two exit gates: PH-1a (engine core) and PH-1b (governance and services) | `90-decisions/000-index.md` |
-| DEC-015 | Both first-vertical Buks stay in PH-2 | `90-decisions/000-index.md` |
-| DEC-016 | The first commercial form is Server (on-premises and private cloud); hosted Cell follows in PH-4 | `90-decisions/000-index.md` |
-| DEC-017 | Architecture-level ID kinds AR (architecture rule) and CTR (inter-system contract) | `90-decisions/000-index.md` |
-| DEC-018 | Repository layout and reuse of the research repositories | `90-decisions/000-index.md` |
-| DEC-019 | Licensing of the standard, reference implementation and tools | `90-decisions/000-index.md` |
-| DEC-020 | Storage engine design: PostgreSQL/SQLite with kernel indexes and prolly trees | `90-decisions/000-index.md` |
-| DEC-021 | Policy engine: Cedar-class analysable policies plus relationship tuples | `90-decisions/000-index.md` |
-| DEC-022 | First business package: US standard basic finance | `90-decisions/000-index.md` |
-| DEC-023 | Purpose of PH-0…PH-3 is platform demonstration, not sale | `90-decisions/000-index.md` |
-| DEC-024 | PostgreSQL only until PH-4 | `90-decisions/000-index.md` |
-| DEC-025 | PH-2 user interface is Web only; Smart Grid moves to PH-2 | `90-decisions/000-index.md` |
-| DEC-026 | Implementation-neutral finance requirements shared for comparison | `90-decisions/000-index.md` |
-| DEC-027 | The specification moves to the repository `ubos-unit` | `90-decisions/000-index.md` |
-| DEC-028 | `ubos-unit` is the single implementation monorepo | `90-decisions/000-index.md` |
-| DEC-029 | Finance requirements frozen at version 1.0, distributed by copy | `90-decisions/000-index.md` |
+| DEC-001 | Location and title of the volume | `90-decisions/01-records-dec-001-029.md` |
+| DEC-002 | The enterprise-internal worker pool is kept; the public compute grid is excluded | `90-decisions/01-records-dec-001-029.md` |
+| DEC-003 | US-first compliance, GDPR considered | `90-decisions/01-records-dec-001-029.md` |
+| DEC-004 | First vertical: fund and asset-management back office plus contract management | `90-decisions/01-records-dec-001-029.md` |
+| DEC-005 | Six phases, PH-0 … PH-5 | `90-decisions/01-records-dec-001-029.md` |
+| DEC-006 | Reference durations with an explicit team assumption; phases gated by exit criteria | `90-decisions/01-records-dec-001-029.md` |
+| DEC-007 | Technology stack of the reference implementation | `90-decisions/01-records-dec-001-029.md` |
+| DEC-008 | The earlier volume `40-spec` is kept as history | `90-decisions/01-records-dec-001-029.md` |
+| DEC-009 | Report per batch, in Chinese | `90-decisions/01-records-dec-001-029.md` |
+| DEC-010 | Writing order, with a confirmation stop after the requirements volume | `90-decisions/01-records-dec-001-029.md` |
+| DEC-011 | The "six tables only" rule is withdrawn | `90-decisions/01-records-dec-001-029.md` |
+| DEC-012 | Long-term economic and social narratives are excluded | `90-decisions/01-records-dec-001-029.md` |
+| DEC-013 | The system decomposition (thirteen systems) | `90-decisions/01-records-dec-001-029.md` |
+| DEC-014 | PH-1 has two exit gates: PH-1a (engine core) and PH-1b (governance and services) | `90-decisions/01-records-dec-001-029.md` |
+| DEC-015 | Both first-vertical Buks stay in PH-2 | `90-decisions/01-records-dec-001-029.md` |
+| DEC-016 | The first commercial form is Server (on-premises and private cloud); hosted Cell follows in PH-4 | `90-decisions/01-records-dec-001-029.md` |
+| DEC-017 | Architecture-level ID kinds AR (architecture rule) and CTR (inter-system contract) | `90-decisions/01-records-dec-001-029.md` |
+| DEC-018 | Repository layout and reuse of the research repositories | `90-decisions/01-records-dec-001-029.md` |
+| DEC-019 | Licensing of the standard, reference implementation and tools | `90-decisions/01-records-dec-001-029.md` |
+| DEC-020 | Storage engine design: PostgreSQL/SQLite with kernel indexes and prolly trees | `90-decisions/01-records-dec-001-029.md` |
+| DEC-021 | Policy engine: Cedar-class analysable policies plus relationship tuples | `90-decisions/01-records-dec-001-029.md` |
+| DEC-022 | First business package: US standard basic finance | `90-decisions/01-records-dec-001-029.md` |
+| DEC-023 | Purpose of PH-0…PH-3 is platform demonstration, not sale | `90-decisions/01-records-dec-001-029.md` |
+| DEC-024 | PostgreSQL only until PH-4 | `90-decisions/01-records-dec-001-029.md` |
+| DEC-025 | PH-2 user interface is Web only; Smart Grid moves to PH-2 | `90-decisions/01-records-dec-001-029.md` |
+| DEC-026 | Implementation-neutral finance requirements shared for comparison | `90-decisions/01-records-dec-001-029.md` |
+| DEC-027 | The specification moves to the repository `ubos-unit` | `90-decisions/01-records-dec-001-029.md` |
+| DEC-028 | `ubos-unit` is the single implementation monorepo | `90-decisions/01-records-dec-001-029.md` |
+| DEC-029 | Finance requirements frozen at version 1.0, distributed by copy | `90-decisions/01-records-dec-001-029.md` |
 | DEC-030 | PH-0 execution model: owner with AI sessions, external review at acceptance | `90-decisions/000-index.md` |
 | DEC-031 | Model-checking bounds: exhaustive where feasible, simulation at the stated bound otherwise | `90-decisions/000-index.md` |
 | DEC-032 | BPA 0.1 release: scope, build, adapter operations, generated vectors, clarifications | `90-decisions/000-index.md` |
@@ -154,4 +154,5 @@ depends_on: [UBS-IDX-00]
 | DEC-058 | L2 host at production quality (PH-1 step 5, part 5d) | `90-decisions/000-index.md` |
 | DEC-059 | Proofs: signed commit records, node key history and the pure verification primitives (PH-1 step 6, part 6a) | `90-decisions/000-index.md` |
 | DEC-060 | In-process host and host services on PostgreSQL (PH-1 step 7, part 7a) | `90-decisions/000-index.md` |
+| DEC-061 | Verification close-out of gate 1a (PH-1 step 8, part 8a) | `90-decisions/000-index.md` |
 

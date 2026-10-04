@@ -183,7 +183,7 @@ Numbers follow UBS-VER-00 §3.
   1. Run properties: index rebuild equality; diff cost bound; merge determinism and ledger completeness; timeline non-overlap; balance = Σ entries at any `(asof, cseq)`; cursor completeness; roots history independence.
   2. Long mode: ≥ 1,000,000 cases per property.
 - **Pass criterion:** 0 failures.
-- **Evidence:** property report.
+- **Evidence:** property report `verify/reports/exit-1-04/` (PH-1 step 8a, DEC-061: nine properties, the five of VER-PROP-0100 and VER-PROP-0001…0003 at 1,000,000 cases each and VER-PROP-0004 at 100,000, 0 failures).
 - **Supports:** EXIT-1-04
 
 ### VER-SIM-0001 — Concurrency and crash simulation
@@ -263,7 +263,7 @@ Numbers follow UBS-VER-00 §3.
   1. Measure line coverage and mutation score (cargo-mutants) for core crates.
   2. Run the dependency-graph lint against the declared crate graph (UBS-ARC-07).
 - **Pass criterion:** coverage ≥ 85%; mutation score ≥ 70%; 0 violations.
-- **Evidence:** CI reports.
+- **Evidence:** `verify/reports/exit-1-11/` (PH-1 step 8a, DEC-061: line coverage of the eleven kernel crates 90.1% by the verification suites, `coverage-by-crate.json`; mutation score 89.9% on a workstation sample of 237 viable mutants (213 detected); `check_deps.py` 0 violations); CI runs the dependency check and the test bodies on every push, nightly CI (step 8c) the coverage and every mutation shard.
 - **Supports:** EXIT-1-11
 
 ### VER-CONF-8403 — Portable export and import round trip
