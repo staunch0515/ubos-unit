@@ -1,0 +1,25 @@
+{
+  "criterion": "EXIT-1-05",
+  "inject": null,
+  "item": "VER-SIM-0001",
+  "seconds": 24849.2,
+  "seeds": {
+    "count": 1000000,
+    "from": 1,
+    "to": 1000000
+  },
+  "suite": "SUITE-DVM-SIM",
+  "threads": 4,
+  "totals": {
+    "aborted_flushes": 6274491,
+    "clock_jumps": 7453874,
+    "commits": 54305916,
+    "crashes_after_apply": 3137413,
+    "head_moved": 50513548,
+    "read_set_changed": 40588129,
+    "restarts": 9411904,
+    "retries": 79324143,
+    "steps": 74495354
+  },
+  "violations": []
+}

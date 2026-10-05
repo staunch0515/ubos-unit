@@ -195,7 +195,7 @@ Numbers follow UBS-VER-00 §3.
   2. After each step check: linear history, dense `cseq`, no lost acknowledged commit, gap-free ledger sequences; run an Elle-style checker on serializable histories.
   3. Run 10,000 seeds nightly and 1,000,000 before the gate.
 - **Pass criterion:** 0 violations; 30 consecutive clean nights.
-- **Evidence:** simulation report with seed ranges.
+- **Evidence:** simulation report with seed ranges `verify/reports/exit-1-05/` (PH-1 step 8b, DEC-061: `ubos-sim`, 1,000,000 seeds, 0 violations (54,305,916 commits, 6,274,491 aborted flushes, 3,137,413 crashes after apply, 7,453,874 clock jumps); the sensitivity run with `--inject lost_ack` reports violations in every run); the 30 consecutive nights accumulate from the nightly workflow of step 8c (`nights.md` there).
 - **Supports:** EXIT-1-05
 
 ### VER-FAULT-0001 — Durability under real crashes
@@ -207,7 +207,7 @@ Numbers follow UBS-VER-00 §3.
   2. Inject 5,000 SIGKILL and 5,000 power-loss events at random times.
   3. After each recovery compare the acknowledgement log with the store; run `verify indexes`, `verify sequences` and `verify roots`.
 - **Pass criterion:** 0 acknowledged commits missing; 0 partial commits; 0 verifier findings.
-- **Evidence:** fault report.
+- **Evidence:** fault report `verify/reports/exit-1-06/` (PH-1 step 8b, DEC-061: `ubos-fault` on the workstation's PostgreSQL 16, 10,000 events (5,000 node crashes by SIGKILL of every worker, 5,000 power losses of the server), 31,732 acknowledged commits, 0 lost, 0 partial, 0 verifier findings); the ENV-REF-SERVER run follows at step 9.
 - **Supports:** EXIT-1-06
 
 ### VER-FORM-0004 — Group commit and ledger sequence model

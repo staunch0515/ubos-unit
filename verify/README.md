@@ -10,7 +10,7 @@ Open verifier, formal models and verification environments (DEC-028: component
 | `tools/` | `coverage.sh`, `coverage_by_crate.py` and `mutants.sh`: coverage and mutation score of the kernel crates by the suites (VER-INSP-0001, EXIT-1-11; PH-1 step 8a) |
 | `scenarios/` | the ten gate-1a scenarios as a Forge project (VER-SCN-1000, EXIT-1-13; PH-1 step 7c) |
 | `sandbox/` | L2 escape suite `l2-escape-cases.json` (VER-SEC-0001 PH-0 step 6; VER-SEC-0100 PH-1 step 5d) |
-| `reports/` | evidence of PH-0 exits: `exit-0-03/` conformance, `exit-0-04/` properties, `exit-0-06/` sandbox spike; PH-1:  `exit-1-03/` storage, `exit-1-10/` L2 escape suite, `exit-1-12/` export/import round trip, `suite-nod-host/` host services (PH-1 step 7a), `forge-7b/` Forge check and test evidence (PH-1 step 7b), `exit-1-13/` gate-1a scenarios, `exit-1-04/` kernel properties at a million cases, `exit-1-11/` coverage and mutation score, `exit-1-02/` final engine vectors on PostgreSQL |
+| `reports/` | evidence of PH-0 exits: `exit-0-03/` conformance, `exit-0-04/` properties, `exit-0-06/` sandbox spike; PH-1:  `exit-1-03/` storage, `exit-1-10/` L2 escape suite, `exit-1-12/` export/import round trip, `suite-nod-host/` host services (PH-1 step 7a), `forge-7b/` Forge check and test evidence (PH-1 step 7b), `exit-1-13/` gate-1a scenarios, `exit-1-04/` kernel properties at a million cases, `exit-1-05/` simulation seeds, `exit-1-06/` durability under crashes, `exit-1-11/` coverage and mutation score, `exit-1-02/` final engine vectors on PostgreSQL |
 | `envs/` | versioned definitions of the reference environments (UBS-VER-02): `ENV-REF-SERVER-ph0.md` for PH-0 step 5 |
 
 Code here may depend only on `ubos-types`, `ubos-crypto` and `ubos-proof` (DEC-028,

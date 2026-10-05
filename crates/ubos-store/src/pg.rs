@@ -1650,13 +1650,53 @@ pub struct BulkRows {
 }
 
 /// Entries kept per cache before it is cleared.
-const CACHE_LIMIT: usize = 200_000;
+/// Approximate byte budget of each in-process cache of immutable records (versions, commits,
+/// tree nodes); a count bound let long-lived writers grow to gigabytes (PH-1 step 8b,
+/// DEC-061).
+const CACHE_BYTES: usize = 64 << 20;
 
-fn remember<K: std::hash::Hash + Eq>(cache: &mut HashMap<K, Value>, k: K, v: &Value) {
-    if cache.len() >= CACHE_LIMIT {
+/// Approximate heap size of a cached JSON value.
+fn approx_size(v: &Value) -> usize {
+    match v {
+        Value::Null | Value::Bool(_) | Value::Number(_) => 16,
+        Value::String(s) => 24 + s.len(),
+        Value::Array(a) => 24 + a.iter().map(approx_size).sum::<usize>(),
+        Value::Object(m) => {
+            32 + m
+                .iter()
+                .map(|(k, x)| 40 + k.len() + approx_size(x))
+                .sum::<usize>()
+        }
+    }
+}
+
+/// A bounded cache of immutable records: cleared when its approximate size passes the budget.
+#[derive(Default)]
+struct Cache<K> {
+    map: HashMap<K, Value>,
+    bytes: usize,
+}
+
+impl<K: std::hash::Hash + Eq> Cache<K> {
+    fn get<Q: ?Sized + std::hash::Hash + Eq>(&self, k: &Q) -> Option<&Value>
+    where
+        K: std::borrow::Borrow<Q>,
+    {
+        self.map.get(k)
+    }
+    fn clear(&mut self) {
+        self.map.clear();
+        self.bytes = 0;
+    }
+}
+
+fn remember<K: std::hash::Hash + Eq>(cache: &mut Cache<K>, k: K, v: &Value) {
+    let size = 64 + approx_size(v);
+    if cache.bytes + size > CACHE_BYTES {
         cache.clear();
     }
-    cache.insert(k, v.clone());
+    cache.map.insert(k, v.clone());
+    cache.bytes += size;
 }
 
 /// The engine view of a PostgreSQL store ([`Store`]), synchronous over [`PgBackend`].
@@ -1673,9 +1713,9 @@ pub struct PgStore {
     branches: HashMap<String, i64>,
     names: HashMap<i64, String>,
     /// Immutable, content-addressed records (DSN-DVM-007 node cache, DSN-DVM-009).
-    nodes: HashMap<String, Value>,
-    versions: HashMap<String, Value>,
-    commits: HashMap<u64, Value>,
+    nodes: Cache<String>,
+    versions: Cache<String>,
+    commits: Cache<u64>,
 }
 
 impl PgStore {
@@ -1720,9 +1760,9 @@ impl PgStore {
             ids: Vec::new(),
             branches: HashMap::new(),
             names: HashMap::new(),
-            nodes: HashMap::new(),
-            versions: HashMap::new(),
-            commits: HashMap::new(),
+            nodes: Cache::default(),
+            versions: Cache::default(),
+            commits: Cache::default(),
         })
     }
 

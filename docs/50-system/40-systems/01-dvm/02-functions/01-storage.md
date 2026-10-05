@@ -90,6 +90,7 @@ depends_on: [UBS-SYS-DVM-02, UBS-ARC-04, UBS-STD-08]
 - **Statement:** `ubos-tree` MUST apply each commit's key changes to the previous root in batch, re-chunking only the affected paths (STD-PROOF-001). New nodes are written to `merkle_node` (content-addressed, deduplicated). A process-local node cache and a node-level shared LRU cache (default 256 MB) MUST be used.
 - **Rationale:** Root per commit at O(changes × log n).
 - **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
+- **Phase note:** PH-1 step 8b (DEC-061): the process-local node cache is bounded by an approximate byte budget (128 MB per thread), not an entry count; the long simulation and fault runs showed a count bound growing to gigabytes.
 - **Personas:** PER-KernelEngineer
 - **Acceptance:**
   1. Given 10 changes in a 10,000,000-key tree, when committed, then at most ~4 × 10 nodes are written, and the root matches a full rebuild.

@@ -1,0 +1,204 @@
+{
+  "acknowledged_commits": 31732,
+  "backend": "postgresql",
+  "commits_without_acknowledgement": 1268,
+  "criterion": "EXIT-1-06",
+  "decision": "DEC-061",
+  "environment": {
+    "arch": "x86_64",
+    "os": "linux"
+  },
+  "events": {
+    "postgres_restart_ms": 3358435,
+    "power_loss": 5000,
+    "sigkill": 5000,
+    "total": 10000
+  },
+  "final_check": {
+    "commits_checked": 0,
+    "ms": 1425,
+    "new_acks": 0
+  },
+  "findings": [],
+  "item": "VER-FAULT-0001",
+  "lost_acknowledged_commits": 0,
+  "ms": 7492301,
+  "partial_commits": 0,
+  "passed": true,
+  "samples": [
+    {
+      "acknowledged": 4696,
+      "check": {
+        "commits_checked": 11,
+        "ms": 510,
+        "new_acks": 10
+      },
+      "detail": {
+        "restart_ms": 737
+      },
+      "event": 1000,
+      "findings": 0,
+      "kind": "power_loss",
+      "respawned": 4,
+      "unacknowledged": 167
+    },
+    {
+      "acknowledged": 8632,
+      "check": {
+        "commits_checked": 6,
+        "ms": 775,
+        "new_acks": 5
+      },
+      "detail": {
+        "restart_ms": 685
+      },
+      "event": 2000,
+      "findings": 0,
+      "kind": "power_loss",
+      "respawned": 4,
+      "unacknowledged": 325
+    },
+    {
+      "acknowledged": 12340,
+      "check": {
+        "commits_checked": 7,
+        "ms": 914,
+        "new_acks": 6
+      },
+      "detail": {
+        "restart_ms": 688
+      },
+      "event": 3000,
+      "findings": 0,
+      "kind": "power_loss",
+      "respawned": 4,
+      "unacknowledged": 464
+    },
+    {
+      "acknowledged": 15712,
+      "check": {
+        "commits_checked": 4,
+        "ms": 1057,
+        "new_acks": 4
+      },
+      "detail": {
+        "restart_ms": 661
+      },
+      "event": 4000,
+      "findings": 0,
+      "kind": "power_loss",
+      "respawned": 4,
+      "unacknowledged": 608
+    },
+    {
+      "acknowledged": 18792,
+      "check": {
+        "commits_checked": 2,
+        "ms": 1090,
+        "new_acks": 2
+      },
+      "detail": {
+        "restart_ms": 584
+      },
+      "event": 5000,
+      "findings": 0,
+      "kind": "power_loss",
+      "respawned": 4,
+      "unacknowledged": 740
+    },
+    {
+      "acknowledged": 21812,
+      "check": {
+        "commits_checked": 4,
+        "ms": 1446,
+        "new_acks": 4
+      },
+      "detail": {
+        "restart_ms": 684
+      },
+      "event": 6000,
+      "findings": 0,
+      "kind": "power_loss",
+      "respawned": 4,
+      "unacknowledged": 855
+    },
+    {
+      "acknowledged": 24585,
+      "check": {
+        "commits_checked": 2,
+        "ms": 1338,
+        "new_acks": 2
+      },
+      "detail": {
+        "restart_ms": 645
+      },
+      "event": 7000,
+      "findings": 0,
+      "kind": "power_loss",
+      "respawned": 4,
+      "unacknowledged": 970
+    },
+    {
+      "acknowledged": 27211,
+      "check": {
+        "commits_checked": 2,
+        "ms": 1637,
+        "new_acks": 2
+      },
+      "detail": {
+        "restart_ms": 552
+      },
+      "event": 8000,
+      "findings": 0,
+      "kind": "power_loss",
+      "respawned": 4,
+      "unacknowledged": 1073
+    },
+    {
+      "acknowledged": 29466,
+      "check": {
+        "commits_checked": 3,
+        "ms": 2326,
+        "new_acks": 3
+      },
+      "detail": {
+        "restart_ms": 715
+      },
+      "event": 9000,
+      "findings": 0,
+      "kind": "power_loss",
+      "respawned": 4,
+      "unacknowledged": 1170
+    },
+    {
+      "acknowledged": 31732,
+      "check": {
+        "commits_checked": 3,
+        "ms": 1950,
+        "new_acks": 3
+      },
+      "detail": {
+        "restart_ms": 704
+      },
+      "event": 10000,
+      "findings": 0,
+      "kind": "power_loss",
+      "respawned": 4,
+      "unacknowledged": 1268
+    }
+  ],
+  "scope": {
+    "tenant": "01900000-0000-7000-8000-0000000000a1",
+    "vae": "2a423879-7568-4c83-8fc6-70af8557b880"
+  },
+  "server_version": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+  "signature": {
+    "alg": "ed25519",
+    "key": "c2fa785e1f875b0202a16907eb2355b9a16a5f99e813ada23dc3a4c48a935b35",
+    "sig": "c4bc62a8ed31e59a5abe4abd44c24b080d656d68c57327f27c108c306b29f054cae222488e3dd2246f22da65aea8ef7fa69534a932733d3b94a71200e189ec0f"
+  },
+  "suite": "SUITE-DVM-FAULT",
+  "verifier_findings": 0,
+  "workers": 4,
+  "workload": "WL-MIXED-OLTP (80% commits of 1–2 updates against the versions read, half with a ledger append; 20% reads)"
+}
