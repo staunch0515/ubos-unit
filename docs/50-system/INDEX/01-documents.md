@@ -226,6 +226,7 @@ depends_on: [UBS-IDX-00]
 | UBS-PHR-0 | PH-0 — Findings and Dispositions | draft | PH-0 | `50-phases/PH-0/02-findings.md` |
 | UBS-PH-1 | PH-1 — Kernel and Single-Node Server (gates PH-1a and PH-1b) | draft | PH-1 | `50-phases/PH-1/00-plan.md` |
 | UBS-PHF-1 | PH-1 — Feature List (generated) | draft | PH-1 | `50-phases/PH-1/01-features.md` |
+| UBS-PHA-1 | PH-1 — Gate 1a Acceptance Record | draft | PH-1 | `50-phases/PH-1/02-gate-1a-acceptance.md` |
 | UBS-PH-2 | PH-2 — First Business Package (Basic Finance) and Production Server | draft | PH-2 | `50-phases/PH-2/00-plan.md` |
 | UBS-PHF-2 | PH-2 — Feature List (generated) | draft | PH-2 | `50-phases/PH-2/01-features.md` |
 | UBS-PH-3 | PH-3 — CPA Audit Drill, Evidence and Governed AI | draft | PH-3 | `50-phases/PH-3/00-plan.md` |

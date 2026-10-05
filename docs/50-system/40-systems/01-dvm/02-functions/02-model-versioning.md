@@ -547,6 +547,7 @@ AI implementer:
   The engine MUST be a pure function of the three states and the resolutions.
 - **Rationale:** Deterministic, previewable merge.
 - **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
+- **Phase note:** PH-1 step 9a (DEC-062, finding 1): the merge preview of the kernel builds the full states of both branches and is linear in the objects of the VAE (36 s at 20,000 objects on the workstation); it is replaced by a walk of the tree diff of the two heads against the base (STD-VER-031) before the ENV-REF-SERVER benchmark (MET-PERF-014).
 - **Personas:** PER-KernelEngineer
 - **Acceptance:**
   1. Given the merge vectors, when merged, then results and conflict lists are byte-identical to the vectors.
