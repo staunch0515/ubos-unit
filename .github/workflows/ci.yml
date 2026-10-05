@@ -95,6 +95,10 @@ jobs:
         run: |
           cargo build --release --locked -p ubos-dvm --bin ubos-fault
           ./target/release/ubos-fault --database "host=127.0.0.1 user=postgres dbname=bpa" --events 40 --workers 3 --verify-every 10
+      - name: replay corpus on Linux x86-64 (SUITE-DVM-REPLAY, VER-CONF-8500, DEC-061)
+        run: |
+          cargo build --release --locked -p ubos-dvm --bin ubos-replay
+          ./target/release/ubos-replay check --expected verify/replay/expected.json
       - name: host services on PostgreSQL (SUITE-NOD-HOST, DEC-060)
         run: |
           cargo build --release --locked -p ubos-node --bin ubos-node-suite

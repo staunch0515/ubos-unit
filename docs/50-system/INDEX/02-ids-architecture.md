@@ -154,5 +154,5 @@ depends_on: [UBS-IDX-00]
 | DEC-058 | L2 host at production quality (PH-1 step 5, part 5d) | `90-decisions/000-index.md` |
 | DEC-059 | Proofs: signed commit records, node key history and the pure verification primitives (PH-1 step 6, part 6a) | `90-decisions/000-index.md` |
 | DEC-060 | In-process host and host services on PostgreSQL (PH-1 step 7, part 7a) | `90-decisions/000-index.md` |
-| DEC-061 | Verification close-out of gate 1a (PH-1 step 8, parts 8a–8b) | `90-decisions/000-index.md` |
+| DEC-061 | Verification close-out of gate 1a (PH-1 step 8, parts 8a–8c) | `90-decisions/000-index.md` |
 

@@ -1,0 +1,127 @@
+# Nightly verification (PH-1 step 8c, DEC-061): simulation seeds for the 30 clean nights
+# (EXIT-1-05), long property runs (EXIT-1-04), one mutation shard a night (EXIT-1-11) and the
+# replay corpus on three platforms (EXIT-1-08). Results are uploaded as artifacts and one
+# row per night is appended to verify/reports/exit-1-05/nights.md on the branch nightly-log.
+name: nightly
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  simulation:
+    name: simulation, 10,000 seeds (SUITE-DVM-SIM)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install || rustup show
+      - name: run
+        run: |
+          cargo build --release --locked -p ubos-dvm --bin ubos-sim
+          SEED_FROM=$(( ($(date +%s) / 86400) * 10000 ))
+          ./target/release/ubos-sim --seeds 10000 --from $SEED_FROM --threads 2 --report simulation.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simulation
+          path: simulation.json
+
+  properties:
+    name: properties, 100,000 cases each (SUITE-DVM-PROP long mode)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install || rustup show
+      - name: run
+        run: |
+          cargo build --release --locked -p ubos-dvm --bin ubos-props
+          ./target/release/ubos-props --cases 100000 --threads 2 --report properties.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: properties
+          path: properties.json
+
+  mutants:
+    name: mutation shard of the night (SUITE-DVM-CONF, VER-INSP-0001)
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: bpa
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install || rustup show
+      - name: shard of the night (one of 32, by the day)
+        env:
+          UBOS_TEST_DATABASE: "host=127.0.0.1 user=postgres dbname=bpa"
+        run: |
+          cargo install cargo-mutants --locked
+          SHARD=$(( ($(date +%s) / 86400) % 32 ))
+          sh verify/tools/mutants.sh mutants $SHARD/32 || true
+          python3 - <<'PY'
+          import json, collections
+          o = json.load(open('mutants/mutants.out/outcomes.json'))
+          c = collections.Counter(x['summary'] for x in o['outcomes'] if x['scenario'] != 'Baseline')
+          json.dump({'shard': o.get('shard'), 'outcomes': dict(c)}, open('mutants-summary.json', 'w'), indent=2)
+          print(c)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mutants
+          path: |
+            mutants-summary.json
+            mutants/mutants.out/outcomes.json
+            mutants/mutants.out/missed.txt
+
+  replay:
+    name: replay corpus on ${{ matrix.os }} (SUITE-DVM-REPLAY, EXIT-1-08)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install || rustup show
+      - name: check the corpus against the recorded hashes
+        run: |
+          cargo build --release --locked -p ubos-dvm --bin ubos-replay
+          ./target/release/ubos-replay check --expected verify/replay/expected.json \
+            --report replay-$(uname -s | tr A-Z a-z)-$(uname -m).json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: replay-${{ matrix.os }}
+          path: replay-*.json
+
+  night-log:
+    name: append the night to nights.md
+    needs: [simulation, properties, replay]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: results
+      - name: append the row and push it to the branch nightly-log
+        run: |
+          git fetch origin nightly-log:nightly-log 2>/dev/null || git branch nightly-log
+          git checkout nightly-log
+          git merge --no-edit origin/main || true
+          python3 verify/tools/night.py results verify/reports/exit-1-05/nights.md
+          git config user.name "nightly"
+          git config user.email "nightly@users.noreply.github.com"
+          git add verify/reports/exit-1-05/nights.md
+          git commit -m "nightly: $(date -u +%F)" || exit 0
+          git push origin nightly-log

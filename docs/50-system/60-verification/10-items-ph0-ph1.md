@@ -230,7 +230,7 @@ Numbers follow UBS-VER-00 §3.
   1. Replay the ≥ 10,000-process corpus on each platform.
   2. Compare outcome hashes with the recorded ones.
 - **Pass criterion:** 100% identical on all platforms.
-- **Evidence:** replay report.
+- **Evidence:** replay report `verify/reports/exit-1-08/` (PH-1 step 8c, DEC-061: `ubos-replay`, 10,000 generated processes, 10,000 of 10,000 outcomes identical and 1,000 of 1,000 journal replays identical on Linux x86-64; Linux ARM64 and macOS ARM64 from the nightly workflow, logged in `verify/reports/exit-1-05/nights.md`).
 - **Supports:** EXIT-1-08
 
 ### VER-BENCH-0100 — Kernel performance gate 1a
