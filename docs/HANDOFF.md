@@ -183,15 +183,23 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    89.9% on a workstation sample of 237 viable mutants (213 detected) with the vectors, scenarios and properties as test bodies,
    `verify/reports/exit-1-11/`, `verify/tools/{coverage.sh,mutants.sh}`); 8b done (the
    deterministic simulator `ubos-sim`, 1,000,000 seeds, 0 violations (54,305,916 commits, 6,274,491 aborted flushes, 3,137,413 crashes after apply, 7,453,874 clock jumps), `verify/reports/exit-1-05/`; the fault
-   suite `ubos-fault` on PostgreSQL, 10,000 events (5,000 node crashes by SIGKILL of every worker, 5,000 power losses of the server), 31,732 acknowledged commits, 0 lost, 0 partial, 0 verifier findings, `verify/reports/exit-1-06/`). Next 8c
-   (replay corpus on three platforms, nightly workflow with simulation seeds, long
-   properties, mutation shards and the night log; EXIT-1-08). W-1
+   suite `ubos-fault` on PostgreSQL, 10,000 events (5,000 node crashes by SIGKILL of every worker, 5,000 power losses of the server), 31,732 acknowledged commits, 0 lost, 0 partial, 0 verifier findings, `verify/reports/exit-1-06/`); 8c done (`ubos-replay`: 10,000 generated processes,
+   10,000 of 10,000 identical and 1,000 of 1,000 replays identical on Linux x86-64,
+   `verify/replay/expected.json`, `verify/reports/exit-1-08/`; the nightly workflow
+   `.github/workflows/nightly.yml` with the night log `verify/reports/exit-1-05/nights.md`
+   on the branch `nightly-log`). Step 8 is complete apart from what the nights accumulate:
+   30 consecutive clean nights (EXIT-1-05) and the ARM64 and macOS replay results
+   (EXIT-1-08). Next step 9: gate-1a acceptance — ENV-REF-SERVER runs (benchmark EXIT-1-09,
+   fault suite, storage suite, round trip), ENV-REF-SMALL scenarios, the night log, and the
+   Phase Acceptance Board. W-1
    may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
    occasion.
-3. **Owner, before step 8:** confirm the GitHub Actions minutes for nightly jobs and ARM64
-   and macOS runners.
+3. **Owner, now:** confirm the GitHub Actions minutes for the nightly workflow (about 1.5 h
+   of Linux minutes for simulation and properties, up to 3 h for the mutation shard, and
+   about 10 min each on Linux ARM64 and macOS for the replay corpus, every night) and
+   enable the `nightly-log` branch; merge `nightly-log` into `main` from time to time.
 4. **Java side** (owner): copy `fin-req-v1.0` into the Java repository
    (`docs/reports/finance-requirements-copy-guide-zh.md`) and start work-item records.
 5. **Accounting review** (external): chart of accounts and expected results of the sample

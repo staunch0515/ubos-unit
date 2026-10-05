@@ -1,0 +1,31 @@
+{
+  "criterion": "EXIT-1-08",
+  "expected": {
+    "count": 10000,
+    "recorded_on": {
+      "arch": "x86_64",
+      "os": "linux"
+    },
+    "seed": 20261005
+  },
+  "identical": 10000,
+  "item": "VER-CONF-8500",
+  "mismatches": [],
+  "ms": 16866,
+  "passed": true,
+  "platform": {
+    "arch": "x86_64",
+    "family": "unix",
+    "os": "linux"
+  },
+  "replays": {
+    "identical": 1000,
+    "sampled": 1000
+  },
+  "signature": {
+    "alg": "ed25519",
+    "key": "d963b9daa551b9874521c2866455d2de19981f8c4b16ef1b698b2f29039d8839",
+    "sig": "071cd589343cfceff93fbf0db7f91d195dc1af769cc86168d07aba17c208f5b7af80040641551586bbf12bb04f2de9db9f0bb69719b0ace3b2d08bcd0843b60f"
+  },
+  "suite": "SUITE-DVM-REPLAY"
+}
