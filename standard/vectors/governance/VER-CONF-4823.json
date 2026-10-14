@@ -1,0 +1,1 @@
+{"clauses":["STD-LGS-001"],"description":"a context condition with in needs a list of texts","id":"VER-CONF-4823","polarity":"negative","profile":"Governance","setup":[],"steps":[{"expect":{"error_code":"RULE.PARSE_ERROR"},"input":{"source":"Customer:ctx(role in \"cfo\") { read_only: true; }"},"op":"parse_sheet"}]}

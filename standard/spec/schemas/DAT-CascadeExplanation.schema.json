@@ -10,16 +10,21 @@
       "description": "effective value"
     },
     "object": {
-      "description": "URI and version",
+      "description": "canonical URI of the object",
       "type": "string"
     },
     "property": {
-      "description": "property",
+      "description": "property path",
+      "type": "string"
+    },
+    "version_hash": {
+      "description": "version explained",
       "type": "string"
     }
   },
   "required": [
     "object",
+    "version_hash",
     "property",
     "effective",
     "candidates"

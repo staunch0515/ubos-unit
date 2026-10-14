@@ -58,6 +58,22 @@ GENESIS = {
                          _f('state', 'enum', True, constraints={'allowed_values': [
                              'draft', 'committed', 'verified', 'deprecated', 'retired']}),
                          _f('verification', 'text'), _f('publisher_signature', 'json')]},
+    # STD-LGS-002, -010 (BPA 1.0-rc2, DEC-066): sheets and Buk property declarations are
+    # Definition objects below ConfigAsset; `ast` is derived from `source` at commit.
+    'GovernanceSheet': {'name': 'GovernanceSheet', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
+                        'fields': [_f('name', 'text', True),
+                                   _f('layer', 'enum', True, constraints={'allowed_values': [
+                                       'platform', 'industry', 'vendor', 'tenant', 'vae', 'unit', 'object']}),
+                                   _f('priority', 'integer'), _f('scope', 'json'), _f('source', 'text', True),
+                                   _f('ast', 'json'), _f('cascading', 'boolean'), _f('tests', 'json'),
+                                   _f('description', 'text', True)]},
+    'PropertyDecl': {'name': 'PropertyDecl', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
+                     'fields': [_f('name', 'text', True), _f('schema', 'json', True),
+                                _f('enforcement', 'enum', True, constraints={'allowed_values': [
+                                    'commit', 'action', 'read', 'view', 'retention', 'notify']}),
+                                _f('combine', 'enum', True, constraints={'allowed_values': [
+                                    'override', 'max', 'min', 'union', 'all_true', 'any_true']}),
+                                _f('owner', 'text', True), _f('handler', 'text'), _f('description', 'text', True)]},
     'Release': {'name': 'Release', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
                 'fields': [_f('version', 'text', True), _f('tag', 'text', True), _f('notes', 'text'),
                            _f('change_sets', 'json'), _f('approvals', 'json')]},

@@ -1,0 +1,1 @@
+{"clauses":["STD-LGS-001"],"description":"a declaration without its terminating semicolon is rejected","id":"VER-CONF-4821","polarity":"negative","profile":"Governance","setup":[],"steps":[{"expect":{"error_code":"RULE.PARSE_ERROR"},"input":{"source":"Customer { audit_level: \"strict\" }"},"op":"parse_sheet"}]}

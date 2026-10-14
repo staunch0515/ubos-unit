@@ -1,0 +1,1 @@
+{"clauses":["STD-LGS-001"],"description":"a property path needs a value","id":"VER-CONF-4827","polarity":"negative","profile":"Governance","setup":[],"steps":[{"expect":{"error_code":"RULE.PARSE_ERROR"},"input":{"source":"Customer { read_only; }"},"op":"parse_sheet"}]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-LGS-001"],"description":"a map literal with a duplicate member is rejected","id":"VER-CONF-4829","polarity":"negative","profile":"Governance","setup":[],"steps":[{"expect":{"error_code":"RULE.PARSE_ERROR"},"input":{"source":"Customer { approvals: {count: 1, count: 2}; }"},"op":"parse_sheet"}]}

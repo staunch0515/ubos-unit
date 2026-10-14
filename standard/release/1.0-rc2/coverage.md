@@ -10,9 +10,9 @@
 | Bitemporal | 10 | 10 | 100% | 61 | 30 |
 | Ledger | 9 | 9 | 100% | 55 | 52 |
 | Proof | 9 | 9 | 100% | 73 | 16 |
-| Governance | 9 | 0 | 0% | 0 | 0 |
+| Governance | 9 | 7 | 78% | 157 | 0 |
 | Protocol | 6 | 0 | 0% | 0 | 0 |
-| **All** | **165** | **146** | **88%** | **1227** | **453** |
+| **All** | **165** | **153** | **93%** | **1384** | **453** |
 
 ## Clauses
 
@@ -198,14 +198,14 @@
 | STD-CONF-010 | Core | yes | no range |
 | STD-CONF-011 | Core | yes | 9 (VER-CONF-6200…VER-CONF-6208) |
 | STD-CONF-030 | Core | yes | no range |
-| STD-LGS-001 | Governance | yes | **none** |
-| STD-LGS-002 | Governance | yes | **none** |
-| STD-LGS-010 | Governance | yes | **none** |
-| STD-LGS-011 | Governance | yes | **none** |
-| STD-LGS-020 | Governance | no | **none** |
-| STD-LGS-021 | Governance | yes | **none** |
-| STD-LGS-022 | Governance | yes | **none** |
-| STD-LGS-023 | Governance | yes | **none** |
+| STD-LGS-001 | Governance | yes | 31 (VER-CONF-4800…VER-CONF-4830) |
+| STD-LGS-002 | Governance | yes | 8 (VER-CONF-4850…VER-CONF-4857) |
+| STD-LGS-010 | Governance | yes | 10 (VER-CONF-4865…VER-CONF-4874) |
+| STD-LGS-011 | Governance | yes | 33 (VER-CONF-4880…VER-CONF-4912) |
+| STD-LGS-020 | Governance | no | 28 (VER-CONF-4940…VER-CONF-4967) |
+| STD-LGS-021 | Governance | yes | 12 (VER-CONF-4970…VER-CONF-4981) |
+| STD-LGS-022 | Governance | yes | 28 (VER-CONF-4985…VER-CONF-5012) |
+| STD-LGS-023 | Governance | yes | 7 (VER-CONF-5025…VER-CONF-5031) |
 | STD-LGS-030 | Governance | yes | **none** |
 | STD-LGS-031 | Governance | yes | **none** |
 | STD-PROTO-001 | Protocol | yes | **none** |

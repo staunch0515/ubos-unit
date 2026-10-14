@@ -1,0 +1,1 @@
+{"clauses":["STD-LGS-001"],"description":"an unknown context key is rejected","id":"VER-CONF-4822","polarity":"negative","profile":"Governance","setup":[],"steps":[{"expect":{"error_code":"RULE.PARSE_ERROR"},"input":{"source":"Customer:ctx(weather = \"rain\") { read_only: true; }"},"op":"parse_sheet"}]}

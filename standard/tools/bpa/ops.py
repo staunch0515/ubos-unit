@@ -7,7 +7,7 @@ import hmac
 
 from .classes import linearize, effective_class, public, dispatch, type_selector
 from .store import Store
-from . import crypto, proofs, expr, addr, isa
+from . import crypto, proofs, expr, addr, isa, sheets
 from .lang import custom_value, check_value_type
 from .tree import tree_root
 
@@ -100,6 +100,8 @@ PURE = {
     if i.get('profile') in isa.PROFILE_LIMITS else (_ for _ in ()).throw(BpaError('MODEL.INVALID_VALUE', 'unknown profile')),
     'verify_consistency': lambda i: proofs.verify_consistency(i['commits'], i.get('from'), i.get('to'), i.get('dids')),
 }
+# BPA 1.0-rc2, PH-1 step 10b (DEC-066)
+PURE.update(sheets.sheet_ops())
 
 STATEFUL = {
     'reset': lambda s, i: s.reset(),
@@ -160,6 +162,10 @@ STATEFUL = {
     'bpu_descriptor': lambda s, i: s.bpu_descriptor(i.get('branch', 'main'), i['class']),
     'bpu_state': lambda s, i: s.bpu_state(i.get('branch', 'main'), i['object_id'], i),
     'verify_bpu': lambda s, i: s.verify_bpu(i.get('branch', 'main'), i['class']),
+    # BPA 1.0-rc2, PH-1 step 10b (DEC-066)
+    'cascade': lambda s, i: s.cascade(i.get('branch', 'main'), i['object_id'], i.get('ctx'), i),
+    'explain_cascade': lambda s, i: s.explain_cascade(i.get('branch', 'main'), i['object_id'], i['property'],
+                                                      i.get('ctx'), i),
 }
 
 OPERATIONS = set(PURE) | set(STATEFUL)
@@ -175,7 +181,9 @@ IMPLEMENTATION_DEPENDENT = ('version_hash', 'entry_hash', 'root', 'head', 'versi
                             'cursor',
                             # since 1.0-rc1 (DEC-044): journals, metering and verification records
                             'snapshots', 'logic_versions', 'commit_ids', 'changes_hash', 'cpu_us', 'peak_memory',
-                            'wall_us', 'asset', 'record_id', 'json_schema')
+                            'wall_us', 'asset', 'record_id', 'json_schema',
+                            # since 1.0-rc2 (DEC-066): sheet versions bound by a cascade
+                            'sheet_version', 'bindings')
 
 
 def strip(value):

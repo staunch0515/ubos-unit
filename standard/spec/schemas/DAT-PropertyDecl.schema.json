@@ -43,8 +43,7 @@
       "type": "string"
     },
     "schema": {
-      "description": "value type",
-      "type": "string"
+      "description": "field declaration {type, constraints} of the value"
     }
   },
   "required": [

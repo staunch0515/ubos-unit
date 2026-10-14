@@ -88,6 +88,7 @@
   "RULE.LOCKED_OVERRIDE": true,
   "RULE.MULTIPLE_MATCH": true,
   "RULE.NO_MATCH": true,
+  "RULE.PARSE_ERROR": true,
   "RULE.TESTS_FAILED": true,
   "RULE.UNKNOWN_PROPERTY": true,
   "RULE.UNTYPED_ACCESS": true,
