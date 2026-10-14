@@ -86,6 +86,7 @@ DAT-Error:
   | `LOGIC.CLASSIFICATION_EGRESS_DENIED` | classified data to a connector | no | yes | 403 |
   | `LOGIC.EGRESS_NOT_ALLOWED` | host not on the allow-list | no | yes | 403 |
   | `LOGIC.NOT_AVAILABLE` | instruction not available in this phase or edition | no | yes | 501 |
+  | `RULE.PARSE_ERROR` | governance sheet syntax error (since 1.0-rc2) | no | yes | 422 |
   | `RULE.UNKNOWN_PROPERTY` | undeclared property | no | yes | 422 |
   | `RULE.AMBIGUOUS_CASCADE` | equal-rank conflict | no | yes | 422 |
   | `RULE.LOCKED_OVERRIDE` | override of a locked declaration | no | yes | 409 |

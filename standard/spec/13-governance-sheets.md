@@ -16,21 +16,25 @@
                / ":tag(" slug ")"
                / ":ctx(" ctx-cond ")"                  ; branch_kind, channel, role, principal_kind, vae
                / ":rel(" member-name ")" "[" expr "]"  ; one reference hop
-  ctx-cond     = ctx-key ( "=" / "!=" / "in" ) value
+  ctx-cond     = ctx-key ( "=" / "!=" ) string / ctx-key "in" "[" string *( "," string ) "]"
+  ctx-key      = "branch_kind" / "channel" / "role" / "principal_kind" / "vae"
   declaration  = property ":" value [ "!locked" ] ";"
-  property     = member-name *( "." member-name )
-  value        = expr                                  ; typed per property schema
+  property     = property-name [ "." member-name ]    ; the member names one key of a map property
+  property-name= member-name *( "." member-name )     ; kernel properties are plain, Buk properties namespaced
+  value        = literal / list-lit / map-lit          ; a constant, typed per property schema
+  map-lit      = "{" [ member-name ":" value *( "," member-name ":" value ) ] "}"
+  comment      = "//" *( %x20-10FFFF ) LF             ; comments and whitespace are not part of the sheet
   ```
 - **Conformance vectors:** VER-CONF-4800…4849
 - **Satisfies:** FR-RULE-012, FR-RULE-015
-- **Notes:** `DATA_TRANSACTION[amount > 10000] { audit_level: "strict"; }` from EXT-RFC maps to `Transaction[amount > 10000] { audit_level: "strict"; }`.
+- **Notes:** `DATA_TRANSACTION[amount > 10000] { audit_level: "strict"; }` from EXT-RFC maps to `Transaction[amount > 10000] { audit_level: "strict"; }`. Since 1.0-rc2 (DEC-066): `expr` in a `[…]` qualifier is an L1 boolean expression over `this` (STD-EXPR-001) and is type-checked at authoring against the class of the type selector (`*` gives `Object`, so only `ctx` is usable); `literal` and `list-lit` are those of STD-EXPR-001, and a map literal is added for map and composite values, since L1 has none. A syntax error is `RULE.PARSE_ERROR` with the position. A property path with a trailing member names one key of a map-typed property (`field_visibility.ssn`); the cascade runs per property path, so different keys never conflict. The canonical form of a sheet is one block per paragraph, selectors joined by `, `, one declaration per line indented by two spaces, values printed as literals; `source` holds this form (STD-LGS-002).
 
 ### STD-LGS-002 — Sheet object
-- **Clause:** A sheet MUST be an object of class `GovernanceSheet` (`DAT-Sheet`). Its `source` in textual form and its `ast` in JSON form MUST round-trip losslessly.
+- **Clause:** A sheet MUST be an object of class `GovernanceSheet` (`DAT-Sheet`), a genesis Definition class below `ConfigAsset`. Its `source` in textual form and its `ast` in JSON form MUST round-trip losslessly: the implementation derives `ast` from `source` at commit, stores `source` in its canonical form, and rejects an `ast` given with the source that differs from the derived one (`MODEL.INVALID_VALUE`). A sheet whose source does not parse (`RULE.PARSE_ERROR`), declares an unknown property (`RULE.UNKNOWN_PROPERTY`) or fails the checks of STD-LGS-020 and STD-LGS-022 MUST be rejected at commit.
 - **Grammar / Schema:** `DAT-Sheet`
 - **Conformance vectors:** VER-CONF-4850…4864
 - **Satisfies:** FR-RULE-011, FR-RULE-061, FR-RULE-063
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-066). The AST is `{blocks: [{selectors: [{type, qualifiers?: [{kind: attr | state | tag | ctx | rel, …}]}], declarations: [{property, value, locked?}]}]}`; qualifiers carry `expr` (text), `state`, `tag`, `key`, `op` and `value`, or `member` and `expr`; expressions stay text. `scope` is `{vaes?, branch_kinds?, classes?}`, each a list, an absent list meaning any (STD-LGS-020). As a `ConfigAsset` class, sheets on protected branches are written through change sets (STD-VER-012).
 
 ```yaml
 DAT-Sheet:
@@ -51,16 +55,16 @@ DAT-Sheet:
   - a combination rule, used when a property is declared by several winning blocks of different selectors at the same rank, or explicitly marked combinable;
   - the owner.
 
-  Declarations of unknown properties MUST be rejected (`RULE.UNKNOWN_PROPERTY`).
+  Declarations of unknown properties MUST be rejected (`RULE.UNKNOWN_PROPERTY`). The registry at a coordinate is the kernel properties (STD-LGS-011) plus the live objects of the genesis class `PropertyDecl` (`DAT-PropertyDecl`, below `ConfigAsset`), which register Buk properties; a Buk property name MUST be namespaced and MUST NOT shadow a kernel property. A declared value MUST validate against the property's schema (`MODEL.INVALID_VALUE`, `MODEL.CONSTRAINT_VIOLATED`).
 - **Grammar / Schema:** `DAT-PropertyDecl`
 - **Conformance vectors:** VER-CONF-4865…4879
 - **Satisfies:** FR-RULE-013, FR-RULE-014
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-066): `schema` is a field declaration `{type, constraints}` (STD-FND-020); a property of type `map` takes keyed declarations (STD-LGS-001). A combination rule other than `override` combines every matching candidate (STD-LGS-022).
 
 ```yaml
 DAT-PropertyDecl:
   name: { type: text, required: true, description: "property path" }
-  schema: { type: text, required: true, description: "value type" }
+  schema: { type: json, required: true, description: "field declaration {type, constraints} of the value" }
   enforcement: { type: enum, required: true, description: "commit | action | read | view | retention | notify" }
   combine: { type: enum, required: true, description: "override | max | min | union | all_true | any_true" }
   owner: { type: text, required: true, description: "kernel or Buk namespace" }
@@ -71,26 +75,26 @@ DAT-PropertyDecl:
 ### STD-LGS-011 — Kernel properties (ABI 1.0)
 - **Clause:** Implementations MUST provide these properties with the stated semantics:
 
-  | Property | Schema | Enforcement | Semantics |
-  |---|---|---|---|
-  | `audit_level` | enum `basic`, `standard`, `strict` | commit | `strict`: read logging on, commit message required, reason code required |
-  | `require_signature` | boolean | action | command ports require a signature step (`require: signature`) |
-  | `approvals` | integer or composite `{count, roles, order}` | action | approval requirement (STD-TXN-060) |
-  | `maker_checker` | boolean | action | the initiator cannot approve |
-  | `read_only` | boolean | commit | changes to matched objects are rejected |
-  | `field_required` | list of fields | commit | additional required fields |
-  | `field_default` | map | commit | defaults applied on create |
-  | `field_visibility` | map field → `visible`, `hidden`, `read_only` | view | view payload flags |
-  | `mask` | map field → `hide`, `partial`, `hash` | read | masking (FR-IAM-061) |
-  | `retention` | composite `{min, max, trigger}` | retention | FR-AUD-071 |
-  | `classification` | map field → level (raise only) | commit | FR-MODEL-047 |
-  | `notify` | list of notification rules | notify | FR-NTF-011 |
-  | `write_policy` | `direct` or `change_set` (raise only) | commit | FR-VER-024 |
-  | `rate_limit` | composite `{per, count}` | action | per principal and port |
+  | Property | Schema | Enforcement | Combine | Semantics |
+  |---|---|---|---|---|
+  | `audit_level` | enum `basic`, `standard`, `strict` | commit | override | `strict`: read logging on, commit message required, reason code required |
+  | `require_signature` | boolean | action | override | command ports require a signature step (`require: signature`) |
+  | `approvals` | integer or composite `{count, roles, order}` | action | max (by `count`) | approval requirement (STD-TXN-060) |
+  | `maker_checker` | boolean | action | override | the initiator cannot approve |
+  | `read_only` | boolean | commit | override | changes to matched objects are rejected |
+  | `field_required` | list of fields | commit | union | additional required fields |
+  | `field_default` | map | commit | override per key | defaults applied on create |
+  | `field_visibility` | map field → `visible`, `hidden`, `read_only` | view | override per key | view payload flags |
+  | `mask` | map field → `hide`, `partial`, `hash` | read | override per key | masking (FR-IAM-061) |
+  | `retention` | composite `{min, max, trigger}` | retention | override | FR-AUD-071 |
+  | `classification` | map field → level (raise only) | commit | max per key (raise only) | FR-MODEL-047 |
+  | `notify` | list of notification rules | notify | union | FR-NTF-011 |
+  | `write_policy` | `direct` or `change_set` (raise only) | commit | max (`direct` < `change_set`, raise only) | FR-VER-024 |
+  | `rate_limit` | composite `{per, count}` | action | override | per principal and port |
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4880…4939
 - **Satisfies:** FR-RULE-013, SCN-009, SCN-012
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-066): `approvals` accepts an integer as the shorthand of `{count}`; `retention` members are ISO 8601 durations and a trigger name; `notify` items are JSON rules. The vectors of this clause cover the value schemas and the combination rules; the enforcement of each property is verified where its enforcement point is implemented: `commit` properties with STD-LGS-030 (PH-1 step 10c), `action` properties with the flow of step 12, `read` and `view` properties with the queries and views of step 13, `retention` and `notify` in PH-2.
 
 ### STD-LGS-020 — Matching
 - **Clause:** A block matches object o in context c if any selector in its list matches:
@@ -101,7 +105,7 @@ DAT-PropertyDecl:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4940…4969
 - **Satisfies:** FR-RULE-012
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-066). The context is `{vae, branch_kind, channel, role, principal_kind}`; an absent key matches no `=` or `in` condition; `branch_kind` defaults to the kind of the branch evaluated. A sheet's `scope` lists are each optional and mean any when absent; `classes` applies when it intersects the object's linearization. A sheet is effective at a coordinate when the sheet object is live there, as a read of it would be (STD-TIME-013): its valid time covers `asof` and it exists at `time`. `:state` matches the object's `state` member (a field named `state`, or the lifecycle state once the class has a lifecycle); `:tag(x)` matches when the object's `tags` member (a list of texts) contains `x`; `:rel(m)[e]` resolves the reference member `m` at the same coordinate and evaluates `e` on the referenced object, any of them for a list, and does not match an empty or dangling reference. A qualifier whose evaluation fails (a null member, a type error at run time) does not match. At authoring, a qualifier is type-checked against the class of its type selector (`LOGIC.TYPE_ERROR`), `:rel` needs a reference member (`MODEL.INVALID_VALUE`), and an attribute or relation qualifier on a `RawDocument` class is `RULE.UNTYPED_ACCESS`.
 
 ### STD-LGS-021 — Specificity
 - **Clause:** The specificity of a selector MUST be the tuple `(d, a, s, x)`, compared lexicographically:
@@ -109,10 +113,12 @@ DAT-PropertyDecl:
   - `a` = number of attribute (`[…]`) and `:rel` qualifiers;
   - `s` = number of state and tag qualifiers;
   - `x` = number of `:ctx` qualifiers.
+
+  The specificity of a block for an object MUST be that of its most specific matching selector.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4970…4984
 - **Satisfies:** FR-RULE-021, FR-MODEL-035
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-066): `d` is the depth of STD-CLS-022 (`Object` 0, one more per parent step, a trait 1, `*` 0); the adapter operation `specificity` returns the tuple of one selector.
 
 ### STD-LGS-022 — Cascade order and ambiguity
 - **Clause:** For each property, the winning declaration MUST be the one with the highest rank, where rank compares in order:
@@ -122,23 +128,24 @@ DAT-PropertyDecl:
   4. sheet priority;
   5. position (later block wins, then later declaration).
 
-  Two candidates of equal rank from different sheets with different values MUST be rejected at authoring (`RULE.AMBIGUOUS_CASCADE`), unless the property's `combine` rule is not `override`, in which case the values are combined. A higher-layer declaration that tries to override a locked one MUST be rejected at authoring (`RULE.LOCKED_OVERRIDE`).
+  Two candidates of equal rank from different sheets with different values MUST be rejected at authoring (`RULE.AMBIGUOUS_CASCADE`), unless the property's `combine` rule is not `override`, in which case the values of every matching candidate are combined. A higher-layer declaration that tries to override a locked one MUST be rejected at authoring (`RULE.LOCKED_OVERRIDE`).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4985…5024
 - **Satisfies:** FR-RULE-021, FR-RULE-023, FR-TEN-042
-- **Notes:** Authoring-time ambiguity detection covers selectors that can match the same object. Implementations use a conservative overlap analysis.
+- **Notes:** Authoring-time ambiguity detection covers selectors that can match the same object. Implementations use a conservative overlap analysis. Since 1.0-rc2 (DEC-066): among locked declarations the lowest layer wins and among unlocked declarations the highest layer wins; position compares within one sheet only (a later block, then a later declaration). Equal-rank candidates from different sheets with the same value are not ambiguous. The checks run when a sheet or property declaration is committed, over the live sheets of the branch: two selectors may overlap unless their type selectors are disjoint (two non-trait classes, neither in the other's linearization, with no concrete class carrying both), or their `:state` qualifiers name different states, or a `:ctx` condition on the same key with `=` or `in` admits no common value; attribute, tag and relation qualifiers are assumed to overlap. The commit that creates an overlap of a locked declaration with a declaration of the same property path in a higher layer fails with `RULE.LOCKED_OVERRIDE`, whichever sheet it writes; an ambiguity met at evaluation that the analysis did not detect is `RULE.AMBIGUOUS_CASCADE` at evaluation.
 
 ### STD-LGS-023 — Explanation object
-- **Clause:** For any object and property, the implementation MUST produce `DAT-CascadeExplanation`.
+- **Clause:** For any object and property, the implementation MUST produce `DAT-CascadeExplanation`: the matching candidates in rank order, each with `won` and a `reason` among `won`, `combined`, `same_value`, `locked_elsewhere`, `lower_layer`, `less_specific`, `lower_priority` and `earlier_position`.
 - **Grammar / Schema:** `DAT-CascadeExplanation`
 - **Conformance vectors:** VER-CONF-5025…5034
 - **Satisfies:** FR-RULE-022
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-066): `object` is the canonical URI and `version_hash` the version explained; `sheet` is the sheet's URI and `sheet_version` its version hash; `effective` is `null` without candidates. The adapter operations are `cascade` (every effective property path with the sheet versions bound) and `explain_cascade` (STD-CONF-005).
 
 ```yaml
 DAT-CascadeExplanation:
-  object: { type: text, required: true, description: "URI and version" }
-  property: { type: text, required: true, description: "property" }
+  object: { type: text, required: true, description: "canonical URI of the object" }
+  version_hash: { type: text, required: true, description: "version explained" }
+  property: { type: text, required: true, description: "property path" }
   effective: { type: json, required: true, description: "effective value" }
   candidates: { type: list, required: true, description: "{sheet, sheet_version, block, selector, layer, specificity, priority, locked, value, won: boolean, reason}" }
 ```

@@ -22,6 +22,7 @@ from .workflow import Workflow
 from .proofs import Proofs
 from .lang import Lang, custom_value
 from .exec import Exec
+from .sheets import Sheets
 from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
@@ -118,7 +119,7 @@ def tl_at(tl, asof):
     return None
 
 
-class Store(Workflow, Proofs, Lang, Exec):
+class Store(Workflow, Proofs, Lang, Exec, Sheets):
     def __init__(self):
         self.reset()
 
@@ -210,7 +211,7 @@ class Store(Workflow, Proofs, Lang, Exec):
         for d in classes:
             decls[d['name']] = d
         eff = {}
-        for n in list(decls) + ['ChangeSet', 'Release', 'Logic']:
+        for n in list(decls) + ['ChangeSet', 'Release', 'Logic', 'GovernanceSheet', 'PropertyDecl']:
             eff[n] = effective_class(list(decls.values()), n)
         for n, e in eff.items():
             old = self.classes.get(n)
@@ -669,6 +670,7 @@ class Store(Workflow, Proofs, Lang, Exec):
         self._relationships(st, result)
         self._integrity(st, appended)
         self._check_extensions(st)
+        self._check_sheets(st)
         return [e['entry_id'] for e in appended]
 
     def _hide(self, st, ch, op):
@@ -742,7 +744,10 @@ class Store(Workflow, Proofs, Lang, Exec):
         if oid in st['objects'] or self._entry_owner(st, oid)[1]:
             raise BpaError('TXN.ALREADY_EXISTS')
         check_name('slug', ch['slug'])
-        body = self._check_body(cls, ch.get('body', {}))
+        body = ch.get('body', {})
+        if cls == 'GovernanceSheet':
+            body = self._sheet_body(body)
+        body = self._check_body(cls, body)
         valid = ch.get('valid') or {}
         a = valid.get('from') or self._default_valid(cls)
         rid = self._derivation(ch)
@@ -780,6 +785,10 @@ class Store(Workflow, Proofs, Lang, Exec):
         else:
             body = dict(base['body'])
             body.update(self._check_body(o['class'], ch.get('body', {}), partial=True))
+            if o['class'] == 'GovernanceSheet':
+                if 'source' in ch.get('body', {}) and 'ast' not in ch['body']:
+                    body.pop('ast', None)
+                body = self._sheet_body(body)
             self._check_body(o['class'], body)
             slug = ch.get('slug', o['slug'])
             check_name('slug', slug)

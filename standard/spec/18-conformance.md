@@ -116,6 +116,11 @@ DAT-ConformanceReport:
   | `branch_info` | `{branch}` | `{name, kind, state, expires_at, cseq, head, created_from, parent_line}` (STD-VER-010, -011). Since 1.0-rc1. |
   | `set_parent_line` | `{branch, parent_line}` | `true`; replaces the parent line (STD-VER-080). Since 1.0-rc1. |
   | `commit_info` | `{branch}` and a selector | `{branch, cseq, commit_id, tx_time, parents, rule_binding, process_id, change_set, resolutions, reverts}` of the selected commit; `rule_binding.classes` items are `{class, class_version}` or `{class: ClassExtension, object_id, class_version}` (STD-TIME-040). Since 1.0-rc1. |
+  | `parse_sheet` | `{source}` | `{ast, source}`, the AST and the canonical text of a governance sheet (STD-LGS-001, -002). Since 1.0-rc2. |
+  | `check_sheet` | `{source` or `ast, classes, properties}` | `true`; the selectors are checked against the classes and the declarations against the kernel properties plus the given `DAT-PropertyDecl` items (STD-LGS-010, -011, -020). Since 1.0-rc2. |
+  | `specificity` | `{classes, selector}` | `{specificity}`, the tuple `(d, a, s, x)` of one selector given as text (STD-LGS-021). Since 1.0-rc2. |
+  | `cascade` | `{branch, object_id, ctx}`, `asof` and a selector | `{properties, bindings, evaluated_at}`: the effective value of every property path and the versions of the sheets evaluated (STD-LGS-020, -022). Since 1.0-rc2. |
+  | `explain_cascade` | `{branch, object_id, property, ctx}`, `asof` and a selector | `DAT-CascadeExplanation` (STD-LGS-023). Since 1.0-rc2. |
   | `read_range` | `{branch, object_id, from, to}` and a selector | `{segments, evaluated_at}`, each segment as `read` clipped to `[from, to)` (STD-TIME-014). Since 1.0-rc1. |
   | `history` | `{branch, object_id, from, to}` | `{commits, evaluated_at}`, each `{cseq, commit_id, tx_time, ops}` for the first-parent commits with `from ≤ tx_time < to` that changed the object; `ops` are `{kind, from, to}` (STD-TIME-014). Since 1.0-rc1. |
   | `tree_diff` | `{from, to}`, each a branch with a selector | `{keys}`, the state-tree keys whose entries differ (STD-VER-031). Since 1.0-rc1. |

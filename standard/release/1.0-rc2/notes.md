@@ -17,6 +17,11 @@ range is covered. BPA 1.0-rc1 stays frozen as tagged (DEC-045).
 
 - Part 10a: the release is opened with its scope by rule (`gate: 1b`); vectors follow in parts
   10b–10d (governance sheets, validations and decisions, UBTP messages), the release in 10e.
+- Part 10b (DEC-066): governance sheets — the grammar (map literals, keyed map paths, comments,
+  canonical form), the genesis classes `GovernanceSheet` and `PropertyDecl`, the combine rules
+  of the kernel properties, matching, specificity, the cascade with its authoring checks, the
+  explanation; adapter operations `parse_sheet`, `check_sheet`, `specificity`, `cascade` and
+  `explain_cascade`; error code `RULE.PARSE_ERROR`; 157 vectors.
 
 ## Known limits
 
