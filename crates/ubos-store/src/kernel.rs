@@ -573,6 +573,13 @@ pub trait StoreRead {
         cseq: u64,
         class: Option<&str>,
     ) -> Result<Vec<(String, Option<ObjectFacts>)>, BpaError>;
+    /// The facts of the given objects of the branch visible at `cseq` (merge previews).
+    async fn objects_by_id(
+        &self,
+        branch_id: i64,
+        cseq: u64,
+        ids: &[String],
+    ) -> Result<Vec<(String, Option<ObjectFacts>)>, BpaError>;
     /// Ledger entries of the branch up to `cseq` in append order.
     async fn entries(
         &self,

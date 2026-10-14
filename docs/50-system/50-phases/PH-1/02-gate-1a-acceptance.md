@@ -45,7 +45,12 @@ with it.
    (≤ 2 s p95 at 10,000,000 objects) cannot be met by this implementation. Disposition: a
    tree-diff-based merge preview before the ENV-REF-SERVER run (step 9b), recorded under
    DSN-DVM-240/242 with a phase note; the diff benchmark (MET-PERF-013) already uses the
-   tree diff and is unaffected.
+   tree diff and is unaffected. **Resolved in step 9b (2026-10-14):** the preview loads
+   only the objects whose tree keys differ between the merge bases and the source head and
+   the ledger keys the source commits appended to, in bulk from the indexes; on the
+   workstation the same measurement gives p50 0.37 s and p95 0.40 s at 20,000 objects
+   (36 s before) and 0.12 s at 300 objects (0.4 s before), so the cost follows the changes
+   (`verify/reports/exit-1-09/workstation/`). MET-PERF-014 is measured on ENV-REF-SERVER.
 2. **The benchmark driver's remaining gaps.** `--background` runs the mixed commits on one
    connection; VER-BENCH-0100's "70% of the sustainable throughput" is chosen by the
    operator from the `commit` runs first (runbook §3). The dataset's bitemporal history gives

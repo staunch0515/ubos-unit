@@ -153,6 +153,22 @@ pub trait Store {
         cseq: u64,
         class: Option<&str>,
     ) -> Result<Vec<(String, Option<Value>)>, BpaError>;
+    /// The local rows of the given objects visible at `cseq`, in one round trip where the
+    /// backend allows it (objects without a local row are left out).
+    fn objects_by_id(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        ids: &[String],
+    ) -> Result<Vec<(String, Option<Value>)>, BpaError> {
+        let mut out = Vec::new();
+        for id in ids {
+            if let Some(row) = self.object(branch, cseq, id)? {
+                out.push((id.clone(), row));
+            }
+        }
+        Ok(out)
+    }
     /// Local ledger entries up to `cseq` in append order, optionally of one ledger key or
     /// with one entry identifier.
     fn entries(

@@ -3,7 +3,7 @@
 use crate::state::{Entry, ObjectState, Repo, Segment, State, Tx, at};
 use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, BTreeSet};
-use ubos_model::types::{BpaError, content_id};
+use ubos_model::types::{BpaError, canonical, content_id};
 
 /// Recorded resolutions supplied with a merge (STD-VER-058), keyed by object and path.
 #[derive(Debug, Default, Clone)]
@@ -155,18 +155,21 @@ impl Repo<'_> {
             .intersection(&self.ancestors_of(ys)?)
             .copied()
             .collect();
-        let mut best = Vec::new();
+        // A common ancestor is dominated when it is a strict ancestor of another one: one
+        // walk from the parents of every common commit marks them all (O(history)).
+        let mut dominated: BTreeSet<u64> = BTreeSet::new();
+        let mut stack: Vec<u64> = Vec::new();
         for c in &common {
-            let mut dominated = false;
-            for d in &common {
-                if c != d && self.ancestors(*d)?.contains(c) {
-                    dominated = true;
-                    break;
-                }
+            stack.extend(self.commit(*c)?.parents);
+        }
+        while let Some(c) = stack.pop() {
+            if dominated.insert(c) {
+                stack.extend(self.commit(c)?.parents);
             }
-            if !dominated {
-                best.push((self.commit(*c)?.commit_id, *c));
-            }
+        }
+        let mut best = Vec::new();
+        for c in common.difference(&dominated) {
+            best.push((self.commit(*c)?.commit_id, *c));
         }
         best.sort();
         Ok(best.into_iter().map(|(_, c)| c).collect())
@@ -179,12 +182,35 @@ impl Repo<'_> {
         ys: &BTreeSet<u64>,
         tx: &mut Tx,
     ) -> Result<State, BpaError> {
+        self.base_state_in(xs, ys, tx, None)
+    }
+
+    /// `base_state` restricted to the objects `ids` when given (merge previews): the
+    /// objects outside the set are equal on every side, so the virtual base needs none of
+    /// them (its ledger is never consulted by `merge_states`).
+    pub fn base_state_in(
+        &mut self,
+        xs: &BTreeSet<u64>,
+        ys: &BTreeSet<u64>,
+        tx: &mut Tx,
+        ids: Option<&BTreeSet<String>>,
+    ) -> Result<State, BpaError> {
         let best = self.best_ancestors(xs, ys)?;
-        let mut acc = self.commit_state(best[0])?;
+        self.base_state_of(&best, tx, ids)
+    }
+
+    /// `base_state_in` for best ancestors already found.
+    fn base_state_of(
+        &mut self,
+        best: &[u64],
+        tx: &mut Tx,
+        ids: Option<&BTreeSet<String>>,
+    ) -> Result<State, BpaError> {
+        let mut acc = self.state_of(best[0], ids)?;
         let mut tips: BTreeSet<u64> = [best[0]].into();
         for c in best.iter().skip(1) {
-            let b = self.base_state(&tips, &[*c].into(), tx)?;
-            let other = self.commit_state(*c)?;
+            let b = self.base_state_in(&tips, &[*c].into(), tx, ids)?;
+            let other = self.state_of(*c, ids)?;
             acc = self
                 .merge_states(&b, &other, &acc, true, None, None, false, &mut None, tx)?
                 .0;
@@ -588,6 +614,175 @@ impl Repo<'_> {
             resolutions: res.records(),
             appended,
         }))
+    }
+
+    /// The state after a commit, or only its objects `ids` (no ledger) when given.
+    fn state_of(&mut self, id: u64, ids: Option<&BTreeSet<String>>) -> Result<State, BpaError> {
+        match ids {
+            None => self.commit_state(id),
+            Some(ids) => {
+                let c = self.commit(id)?;
+                let ids: Vec<String> = ids.iter().cloned().collect();
+                Ok(State {
+                    objects: self.objects_in_ids(&c.branch, c.cseq, &ids)?,
+                    ledger: Vec::new(),
+                })
+            }
+        }
+    }
+
+    /// The objects a merge preview must look at (DSN-DVM-240 steps 3 and 4): the keys of
+    /// the state tree that differ between each merge base and the source head, and between
+    /// the merge bases themselves (STD-VER-031). Every other object is equal on the source
+    /// and on every base, so the merge keeps the target's version of it. `None` when a
+    /// branch involved has a parent line (STD-VER-080), whose tree does not hold the
+    /// inherited objects.
+    fn preview_objects(
+        &mut self,
+        bases: &[u64],
+        source_head: u64,
+        target_head: u64,
+    ) -> Result<Option<BTreeSet<String>>, BpaError> {
+        let mut branches: BTreeSet<String> = [self.commit(target_head)?.branch].into();
+        let mut roots = Vec::new();
+        for id in bases.iter().chain([&source_head]) {
+            let c = self.commit(*id)?;
+            branches.insert(c.branch.clone());
+            roots.push(c.root);
+        }
+        for b in &branches {
+            if self.branch_meta(b)?.parent_line.is_some() {
+                return Ok(None);
+            }
+        }
+        let source_root = roots.pop().expect("the source root");
+        let mut out = BTreeSet::new();
+        let collect = |keys: Vec<String>, out: &mut BTreeSet<String>| {
+            out.extend(
+                keys.into_iter()
+                    .filter(|k| k.starts_with("o/"))
+                    .map(|k| k[2..].to_string()),
+            );
+        };
+        for (i, root) in roots.iter().enumerate() {
+            collect(self.tree_diff(root, &source_root)?, &mut out);
+            if i > 0 {
+                collect(self.tree_diff(&roots[0], root)?, &mut out);
+            }
+        }
+        Ok(Some(out))
+    }
+
+    /// The ledger keys a merge preview must look at: those of the entries appended by the
+    /// commits reachable from the source head but not from the target head (their commit
+    /// records list them, DEC-041). Entries of other keys are on the target already.
+    /// `None` when a commit record does not list its appended entries.
+    fn preview_queues(
+        &mut self,
+        source: &str,
+        source_head: u64,
+        on_target: &BTreeSet<u64>,
+    ) -> Result<Option<BTreeSet<(String, String)>>, BpaError> {
+        let mut seen = BTreeSet::new();
+        let mut stack = vec![source_head];
+        let mut entry_ids: BTreeSet<String> = BTreeSet::new();
+        while let Some(c) = stack.pop() {
+            if on_target.contains(&c) || !seen.insert(c) {
+                continue;
+            }
+            let rec = self.commit(c)?;
+            let Some(appended) = rec.extra.get("appended").and_then(Value::as_array) else {
+                return Ok(None);
+            };
+            entry_ids.extend(
+                appended
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(str::to_string),
+            );
+            stack.extend(rec.parents);
+        }
+        let cseq = self.commit(source_head)?.cseq;
+        let mut out = BTreeSet::new();
+        for id in &entry_ids {
+            let Some(e) = self
+                .entries_in(source, cseq, None, Some(id))?
+                .into_iter()
+                .next()
+            else {
+                return Ok(None);
+            };
+            out.insert((e.class.clone(), canonical(&e.ledger_key)?));
+        }
+        Ok(Some(out))
+    }
+
+    /// The states a merge preview compares (STD-VER-057): the merge bases (STD-VER-040), the
+    /// target state, the merged state (conflicting objects as on the target) and the
+    /// conflicts. Only the objects and ledger keys the merge can change are loaded
+    /// (`preview_objects`, `preview_queues`), so the cost follows the size of the change and
+    /// not the size of the VAE (NR-PERF-005, MET-PERF-014); the full states are loaded when
+    /// a branch has a parent line or a commit record lacks its appended entries.
+    pub fn preview_states(
+        &mut self,
+        source: &str,
+        target: &str,
+        tx: &mut Tx,
+    ) -> Result<(Vec<u64>, State, State, Vec<Value>), BpaError> {
+        let (s, t) = (self.head(source)?, self.head(target)?);
+        let bases = self.best_ancestors(&[t].into(), &[s].into())?;
+        let on_target = self.ancestors(t)?;
+        if on_target.contains(&s) {
+            // Nothing to merge: the preview is empty whatever the states hold.
+            return Ok((bases, State::default(), State::default(), vec![]));
+        }
+        let (Some(ids), Some(queues)) = (
+            self.preview_objects(&bases, s, t)?,
+            self.preview_queues(source, s, &on_target)?,
+        ) else {
+            let tstate = self.commit_state(t)?;
+            for (id, o) in &tstate.objects {
+                tx.loaded.insert(id.clone(), Some(o.clone()));
+            }
+            for (c, k, q) in &tstate.ledger {
+                tx.loaded_queues.insert((c.clone(), k.clone()));
+                tx.loaded_entries
+                    .extend(q.iter().map(|e| e.entry_id.clone()));
+            }
+            let (st, conflicts) = self.merge_result(source, target, tx)?;
+            return Ok((bases, tstate, st, conflicts));
+        };
+        let (sc, tc) = (self.commit(s)?.cseq, self.commit(t)?.cseq);
+        let mut sstate = self.state_of(s, Some(&ids))?;
+        let mut tstate = self.state_of(t, Some(&ids))?;
+        for (class, key) in &queues {
+            let sq = self.entries_in(source, sc, Some((class, key)), None)?;
+            let tq = self.entries_in(target, tc, Some((class, key)), None)?;
+            tx.loaded_queues.insert((class.clone(), key.clone()));
+            tx.loaded_entries
+                .extend(tq.iter().map(|e| e.entry_id.clone()));
+            sstate.ledger.push((class.clone(), key.clone(), sq));
+            tstate.ledger.push((class.clone(), key.clone(), tq));
+        }
+        for oid in &ids {
+            tx.loaded
+                .insert(oid.clone(), tstate.objects.get(oid).cloned());
+        }
+        tx.state = tstate.clone();
+        let base = self.base_state_of(&bases, tx, Some(&ids))?;
+        let cseq = tx.cseq;
+        let (st, conflicts) = self.merge_states(
+            &base,
+            &sstate,
+            &tstate,
+            false,
+            Some(cseq),
+            Some(source),
+            true,
+            &mut None,
+            tx,
+        )?;
+        Ok((bases, tstate, st, unique(conflicts)))
     }
 
     /// The merged state of `source` into `target` for a preview (STD-VER-057): conflicting

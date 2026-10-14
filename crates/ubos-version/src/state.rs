@@ -478,8 +478,31 @@ impl<'a> Repo<'a> {
         Ok(out)
     }
 
+    /// The given objects of a branch at an ordinal, read from the index in bulk.
+    pub(crate) fn objects_in_ids(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        ids: &[String],
+    ) -> Result<BTreeMap<String, ObjectState>, BpaError> {
+        let mut out = BTreeMap::new();
+        for (b, c) in self.chain(branch, cseq)?.into_iter().rev() {
+            for (id, row) in self.store.objects_by_id(&b, c, ids)? {
+                match row {
+                    Some(v) => {
+                        out.insert(id, parse(v)?);
+                    }
+                    None => {
+                        out.remove(&id);
+                    }
+                }
+            }
+        }
+        Ok(out)
+    }
+
     /// Ledger entries of a branch at an ordinal, optionally of one key or one identifier.
-    fn entries_in(
+    pub(crate) fn entries_in(
         &mut self,
         branch: &str,
         cseq: u64,
