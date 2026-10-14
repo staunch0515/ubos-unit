@@ -205,10 +205,10 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    nightly workflow and the CI of the step-9a pull request, three attempts) fails with no
    runner assigned; the nights of 2026-10-06 and -07 ran and were clean on all three
    platforms. Check the Actions usage and spending limit of the account (Settings →
-   Billing), then re-run the failed jobs. Also confirm the GitHub Actions minutes for the nightly workflow (about 1.5 h
-   of Linux minutes for simulation and properties, up to 3 h for the mutation shard, and
-   about 10 min each on Linux ARM64 and macOS for the replay corpus, every night) and
-   enable the `nightly-log` branch; merge `nightly-log` into `main` from time to time.
+   Billing), then re-run the failed jobs. The nightly workflow now costs about 1.5 h of Linux minutes a night (simulation and
+   properties) and, on Sundays, up to 3 h for the mutation shard and about 10 min each on
+   Linux ARM64 and macOS for the replay corpus (the owner's choice of 2026-10-14); merge
+   `nightly-log` into `main` from time to time.
 4. **Java side** (owner): copy `fin-req-v1.0` into the Java repository
    (`docs/reports/finance-requirements-copy-guide-zh.md`) and start work-item records.
 5. **Accounting review** (external): chart of accounts and expected results of the sample
