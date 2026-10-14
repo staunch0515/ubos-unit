@@ -1,0 +1,70 @@
+{
+  "$id": "DAT-PortDecl",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "description": {
+      "description": "documentation",
+      "type": "string"
+    },
+    "errors": {
+      "description": "declared error codes",
+      "type": "array"
+    },
+    "guards": {
+      "description": "guard references (L1 or L2)",
+      "type": "array"
+    },
+    "idempotent": {
+      "description": "safe to retry without key (query ports are always)",
+      "type": "boolean"
+    },
+    "impl": {
+      "description": "logic asset URI; absent for abstract ports",
+      "type": "string"
+    },
+    "kind": {
+      "description": "query | command",
+      "enum": [
+        "query",
+        "command"
+      ],
+      "type": "string"
+    },
+    "name": {
+      "description": "snake_case port name",
+      "type": "string"
+    },
+    "params": {
+      "description": "DAT-FieldDecl-shaped parameter declarations",
+      "type": "array"
+    },
+    "permission": {
+      "description": "policy action name",
+      "type": "string"
+    },
+    "result": {
+      "description": "result type",
+      "type": "string"
+    },
+    "states": {
+      "description": "lifecycle states where available (default: all)",
+      "type": "array"
+    },
+    "transition": {
+      "description": "lifecycle transition triggered, if any",
+      "type": "string"
+    },
+    "ui": {
+      "description": "label, icon, confirmation text",
+      "type": "object"
+    }
+  },
+  "required": [
+    "name",
+    "kind",
+    "permission",
+    "description"
+  ],
+  "title": "DAT-PortDecl",
+  "type": "object"
+}

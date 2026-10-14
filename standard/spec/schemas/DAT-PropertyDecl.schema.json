@@ -1,0 +1,60 @@
+{
+  "$id": "DAT-PropertyDecl",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "combine": {
+      "description": "override | max | min | union | all_true | any_true",
+      "enum": [
+        "override",
+        "max",
+        "min",
+        "union",
+        "all_true",
+        "any_true"
+      ],
+      "type": "string"
+    },
+    "description": {
+      "description": "documentation",
+      "type": "string"
+    },
+    "enforcement": {
+      "description": "commit | action | read | view | retention | notify",
+      "enum": [
+        "commit",
+        "action",
+        "read",
+        "view",
+        "retention",
+        "notify"
+      ],
+      "type": "string"
+    },
+    "handler": {
+      "description": "L1/L2 handler for Buk properties",
+      "type": "string"
+    },
+    "name": {
+      "description": "property path",
+      "type": "string"
+    },
+    "owner": {
+      "description": "kernel or Buk namespace",
+      "type": "string"
+    },
+    "schema": {
+      "description": "value type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "schema",
+    "enforcement",
+    "combine",
+    "owner",
+    "description"
+  ],
+  "title": "DAT-PropertyDecl",
+  "type": "object"
+}
