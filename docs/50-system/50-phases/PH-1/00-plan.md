@@ -287,7 +287,26 @@ the figures below remain a reference only.
 | 9 | gate-1a acceptance: benchmarks on ENV-REF-SERVER, external review, acceptance decision | EXIT-1-09 |
 
 W-1 (carried benchmark, DEC-035) runs whenever the owner has the hosts, before the storage
-layout of step 3 is fixed. Gate 1b is planned in steps at the gate-1a acceptance.
+layout of step 3 is fixed. Gate-1b steps (DEC-063, planned at the gate-1a acceptance):
+
+| Step | Content | Exits |
+|---|---|---|
+| 10 | BPA 1.0-rc2: Governance (LGS) and Protocol (PROTO) clauses and vectors, 100% MUST coverage, standard before code (AR-033); release-scope rule for gate 1b; policy-engine library chosen (DEC-021) by its own decision | EXIT-1-14 (standard) |
+| 11 | governance sheets and rules: sheet parser and compiler, cascade and explanation, validation and invariants, policy decisions with veto (CAP-RULE-01, -02, -03, -05; DSN-DVM-701…) | EXIT-1-14 (kernel), NR-PERF-009 |
+| 12 | flow: lifecycles, ports, guards, process object (CAP-FLOW-01…03; DSN-DVM-106, -501, -730, -731) | — |
+| 13 | authorization and queries: policy engine (CAP-IAM-04; DSN-DVM-801…803), criteria and history queries, consistent pagination, view payloads and determinism, overlays, audit trail (CAP-QRY-01, -05, -07, CAP-TEN-03, CAP-AUD-01) | EXIT-1-17 (MET-PERF-016) |
+| 14 | single-node Server over UBTP: request pipeline, WebSocket, HTTP and in-process bindings, handshake, mutate, query and paging, subscriptions, resume, backpressure (CAP-INT-01; DSN-NOD-001…018); local identity: credentials, sessions, principals and keys, API keys, security event log, secret store (CAP-IAM-01; DSN-NOD-101…153); SUITE-NOD-PROTO, SUITE-NOD-AUTH | EXIT-1-15 (NOD) |
+| 15 | events, jobs and schedules: outbox releaser, event log, subscriptions, handlers as processes, became-effective scheduler, dead letters, leases, retries, schedules (CAP-EVT-01…05; DSN-NOD-201…230); SUITE-NOD-JOBS, SUITE-NOD-EVENTS | EXIT-1-17 (MET-PERF-017, NR-PERF-012), NR-DUR-006 |
+| 16 | operations and configuration: installable package and guide, bootstrap, versioned configuration with hot reload and validation, telemetry, health, self-checks, diagnostic bundle, degraded modes, backup and PITR, tenant registry and isolation enforcement, genesis Buks (CAP-OPS-04, -05, -09, CAP-TEN; DSN-NOD-401…633); SUITE-NOD-OPS on ENV-REF-SMALL | EXIT-1-18 |
+| 17 | Rust and TypeScript SDKs 0.2 (CAP-DEV-06; DSN-SDK-001…017), `forge dev`, engineering UI prototype for acceptance; SUITE-SDK-PROTO, SUITE-SDK-NET | EXIT-1-15 (SDK) |
+| 18 | the thirteen PH-1 scenarios over UBTP on the single-node Server (SCN-001, SCN-009, SCN-017 and the ten gate-1a scenarios), scenario run report | EXIT-1-19 |
+| 19 | security and verification close-out: isolation suite, secret scanning of logs and traces, security event coverage, privacy and classification (NR-PRIV, CR-GDPR), edge benchmarks (SUITE-NOD-BENCH), traceability report; security report | EXIT-1-16, EXIT-1-17, EXIT-1-20 |
+| 20 | gate-1b acceptance: scenario, security and operations reports, board with the operations lead, acceptance decision | all |
+
+The standard comes first, then the kernel capabilities (verified through the in-process
+binding), then the Server and its services, then the clients and the scenarios over UBTP,
+then the close-out. ENV-REF-SMALL (DEC-038) serves steps 16, 18 and 19; the second half of
+step 9 runs in parallel with step 10.
 
 Non-normative. 9 months: gate 1a after 5 months, gate 1b after 4 more. Team of 10–12
 engineers: 5 kernel (Rust), 1 formal methods, 2 node/host, 1 SDK/TypeScript, 1 quality and
