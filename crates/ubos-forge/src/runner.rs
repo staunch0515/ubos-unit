@@ -218,3 +218,14 @@ pub fn run_vector(adapter: &mut Adapter, vector: &Value, tag: Option<&str>) -> O
     }
     Outcome::Pass
 }
+
+/// The vectors of a released BPA version that the release in development supersedes
+/// (`superseded.txt` next to the vectors, DEC-067): kept as released, not run.
+pub fn superseded(dir: &std::path::Path) -> std::collections::BTreeSet<String> {
+    std::fs::read_to_string(dir.join("superseded.txt"))
+        .unwrap_or_default()
+        .lines()
+        .filter(|l| !l.starts_with('#'))
+        .filter_map(|l| l.split_whitespace().next().map(str::to_string))
+        .collect()
+}

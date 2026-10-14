@@ -35,6 +35,8 @@ DAT-Process:
   commits: { type: list, required: false, description: "commit ids produced" }
   journal: { type: text, required: false, description: "content-id of the execution journal" }
   idempotency_key: { type: text, required: false, description: "client key" }
+  message: { type: text, required: false, description: "commit message; required by audit_level strict (STD-LGS-011); since 1.0-rc2" }
+  reason: { type: text, required: false, description: "reason code; required by audit_level strict (STD-LGS-011); since 1.0-rc2" }
 ```
 
 ### STD-TXN-002 — Snapshot and unit of work

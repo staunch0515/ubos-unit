@@ -62,7 +62,7 @@ DAT-BpuDescriptor:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2625…2634
 - **Satisfies:** FR-FLOW-022, AR-004
-- **Notes:** This is the "pin-out" property of hardware-ization.
+- **Notes:** This is the "pin-out" property of hardware-ization. Since 1.0-rc2 (DEC-067) the vectors cover the paths of the clause: ports through `execute`, governed Definition edits under the class write policy, a write policy raised by a sheet (STD-LGS-011), ledger entries as governed postings, and a denied decision leaving the state untouched. The rejection of a direct write of the lifecycle state (`FLOW.STATE_DIRECT_WRITE`, DSN-DVM-730) follows with the lifecycles of PH-1 step 12.
 
 ### STD-BPU-004 — The commit cycle
 - **Clause:** The state of a BPU instance MUST change only at commit boundaries. Between two commits of its branch, its observable state MUST be constant for all readers (STD-TXN-002, STD-TXN-003).

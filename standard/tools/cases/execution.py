@@ -90,9 +90,12 @@ def cases(g):
         return {'main': fn(list(body), params, **extra)}
 
     def run1(clause, desc, body, caps=('commit', 'read', 'run', 'emit'), error=None, args=(), data=(), extra=(),
-             params=(), **kw):
+             params=(), frozen=None, **kw):
         a = asset(90, 'acme.app', prog(*body, params=params), caps=caps)
-        S(clause, desc, deploy(a, data=data) + [ex('acme.app', 'main', args, error=error, **kw)] + list(extra))
+        step = ex('acme.app', 'main', args, error=error, **kw)
+        if frozen:
+            step['frozen'] = frozen
+        S(clause, desc, deploy(a, data=data) + [step] + list(extra))
 
     acct = create(uid(1), 'Account', 'a-1', {'name': 'Acme', 'balance': '100'})
     prem = create(uid(2), 'PremiumAccount', 'p-1', {'name': 'Beta', 'tier': 'gold'})
@@ -145,7 +148,8 @@ def cases(g):
         {'try': [{'do': 'commit.create', 'args': {'class': '"Customer"', 'fields': {'name': '"X"'}}}],
          'catch': [{'return': '"caught"'}]}], caps=('read',), error='LOGIC.FORBIDDEN_CAPABILITY')
     run1('STD-CTX-003', 'an instruction of the ABI not available in this release', [
-        {'do': 'search.query', 'args': {'query': {}}}], caps=('search',), error='LOGIC.NOT_AVAILABLE')
+        {'do': 'search.query', 'args': {'query': {}}}], caps=('search',), error='LOGIC.NOT_AVAILABLE',
+         frozen='search.query is available since BPA 1.0-rc2 (STD-ISA-080, DEC-067)')
 
     # ---- STD-CTX-004 profiles ----
     for p in ('strict', 'standard', 'batch', 'simulation', 'agent'):
@@ -537,7 +541,7 @@ def cases(g):
         {'return': 'c.linearization'}])
     run1('STD-ISA-034', 'effective declarations come with the Governance profile', [
         {'do': 'read.effective', 'args': {'what': '"declarations"', 'target': '"Account"'}}],
-         error='LOGIC.NOT_AVAILABLE')
+         error='LOGIC.NOT_AVAILABLE', frozen='effective declarations are available since BPA 1.0-rc2 (DEC-067)')
 
     # ---- STD-ISA-050…055 run.* ----
     S('STD-ISA-050', 'run.port executes the implementation with this bound to the target', deploy(

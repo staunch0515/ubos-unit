@@ -2,19 +2,40 @@
 //!
 //! This is the test body of the mutation score (EXIT-1-11, DEC-061): every vector of the
 //! profiles the kernel claims must pass; the PostgreSQL run is `forge conform --backend
-//! postgres`. Vectors of the profiles BPA 1.0-rc2 adds (Governance, Protocol; DEC-064) are
-//! skipped until the steps that implement them (11–14) claim the profile.
+//! postgres`. The kernel claims BPA 1.0-rc1: the vectors that 1.0-rc2 adds (DEC-064) are
+//! skipped until the steps that implement them (11–14) claim the release, as are the vectors
+//! a later release supersedes (DEC-067).
 
 use std::path::{Path, PathBuf};
 use ubos_dvm::Adapter;
-use ubos_forge::runner::{Outcome, run_vector};
+use ubos_forge::runner::{Outcome, run_vector, superseded};
 
 /// The counting allocator behind the memory probe of the metering vectors.
 #[global_allocator]
 static ALLOC: cap::Cap<std::alloc::System> = cap::Cap::new(std::alloc::System, usize::MAX);
 
-/// Profiles the kernel claims (STD-CONF-001); Governance and Protocol follow in gate 1b.
-const CLAIMED: [&str; 4] = ["Core", "Bitemporal", "Ledger", "Proof"];
+/// The release the kernel claims (STD-CONF-004): its manifest lists the vectors to run.
+const CLAIMED_RELEASE: &str = "1.0-rc1";
+
+/// The vector identifiers of a release, from the `files` of its manifest.
+fn released(standard: &Path, version: &str) -> std::collections::BTreeSet<String> {
+    let text =
+        std::fs::read_to_string(standard.join("release").join(version).join("manifest.json"))
+            .expect("release manifest");
+    let m: serde_json::Value = serde_json::from_str(&text).expect("manifest json");
+    m["files"]
+        .as_array()
+        .expect("files")
+        .iter()
+        .filter_map(|f| f["path"].as_str())
+        .filter(|p| p.starts_with("vectors/") && p.ends_with(".json"))
+        .filter_map(|p| {
+            p.rsplit('/')
+                .next()
+                .map(|n| n.trim_end_matches(".json").to_string())
+        })
+        .collect()
+}
 
 fn files(dir: &Path, out: &mut Vec<PathBuf>) {
     for e in std::fs::read_dir(dir).expect("vectors directory") {
@@ -38,13 +59,17 @@ fn every_vector_passes_in_memory() {
     let mut adapter = Adapter::new().expect("adapter");
     let mut failures = Vec::new();
     let mut skipped = 0usize;
+    let superseded = superseded(&dir);
+    let claimed = released(&dir.join(".."), CLAIMED_RELEASE);
     for p in &paths {
         let v: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(p).expect("read")).expect("json");
         // every vector of a claimed profile must pass outright: a "not applicable" outcome
         // (an unsupported operation, STD-CONF-005) is a failure here, since 1,227 of 1,227
         // pass (EXIT-1-02); a vector of an unclaimed profile is skipped
-        if !CLAIMED.contains(&v["profile"].as_str().unwrap_or_default()) {
+        // a vector outside the claimed release, or one a later release supersedes, is skipped
+        let id = v["id"].as_str().unwrap_or_default();
+        if !claimed.contains(id) || superseded.contains(id) {
             skipped += 1;
             continue;
         }
@@ -56,7 +81,7 @@ fn every_vector_passes_in_memory() {
     }
     assert!(
         failures.is_empty(),
-        "{} of {} vectors fail ({skipped} of unclaimed profiles skipped):\n{}",
+        "{} of {} vectors fail ({skipped} outside the claimed release skipped):\n{}",
         failures.len(),
         paths.len(),
         failures.join("\n")

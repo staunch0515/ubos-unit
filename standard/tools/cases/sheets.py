@@ -253,33 +253,26 @@ def kernel_properties(S, P):
     # combination rules (DEC-066 item 8)
     c1 = create(uid(1), 'Customer', 'c-1', {'name': 'Acme'})
     S('STD-LGS-011', 'field_required combines by union over equal ranks', [
-        commit([sheet(SHEET, 'a', 'Customer { field_required: ["email"]; }'),
-                sheet(uid(902), 'b', 'Customer { field_required: ["country"]; }')]),
-        commit([c1]), cascade(uid(1))])
+        commit([c1]), commit([sheet(SHEET, 'a', 'Customer { field_required: ["email"]; }'),
+                sheet(uid(902), 'b', 'Customer { field_required: ["country"]; }')]), cascade(uid(1))])
     S('STD-LGS-011', 'approvals combines by the maximum count', [
-        commit([sheet(SHEET, 'a', 'Customer { approvals: 1; }'),
-                sheet(uid(902), 'b', 'Customer { approvals: {count: 3, roles: ["cfo"]}; }')]),
-        commit([c1]), cascade(uid(1))])
+        commit([c1]), commit([sheet(SHEET, 'a', 'Customer { approvals: 1; }'),
+                sheet(uid(902), 'b', 'Customer { approvals: {count: 3, roles: ["cfo"]}; }')]), cascade(uid(1))])
     S('STD-LGS-011', 'classification only rises: the higher level wins over a more specific lower one', [
-        commit([sheet(SHEET, 'a', 'Party { classification.email: "personal"; }'),
-                sheet(uid(902), 'b', 'Customer { classification.email: "internal"; }')]),
-        commit([c1]), cascade(uid(1))])
+        commit([c1]), commit([sheet(SHEET, 'a', 'Party { classification.email: "personal"; }'),
+                sheet(uid(902), 'b', 'Customer { classification.email: "internal"; }')]), cascade(uid(1))])
     S('STD-LGS-011', 'write_policy only rises: change_set wins over direct', [
-        commit([sheet(SHEET, 'a', 'Party { write_policy: "change_set"; }', layer='platform'),
-                sheet(uid(902), 'b', 'Customer { write_policy: "direct"; }')]),
-        commit([c1]), cascade(uid(1))])
+        commit([c1]), commit([sheet(SHEET, 'a', 'Party { write_policy: "change_set"; }', layer='platform'),
+                sheet(uid(902), 'b', 'Customer { write_policy: "direct"; }')]), cascade(uid(1))])
     S('STD-LGS-011', 'notify combines by union', [
-        commit([sheet(SHEET, 'a', 'Customer { notify: [{to: "sales"}]; }'),
-                sheet(uid(902), 'b', 'Customer { notify: [{to: "audit"}, {to: "sales"}]; }')]),
-        commit([c1]), cascade(uid(1))])
+        commit([c1]), commit([sheet(SHEET, 'a', 'Customer { notify: [{to: "sales"}]; }'),
+                sheet(uid(902), 'b', 'Customer { notify: [{to: "audit"}, {to: "sales"}]; }')]), cascade(uid(1))])
     S('STD-LGS-011', 'override properties take the winning declaration only', [
-        commit([sheet(SHEET, 'a', 'Party { audit_level: "basic"; mask.email: "hide"; }'),
-                sheet(uid(902), 'b', 'Customer { audit_level: "strict"; mask.email: "partial"; }')]),
-        commit([c1]), cascade(uid(1))])
+        commit([c1]), commit([sheet(SHEET, 'a', 'Party { audit_level: "basic"; mask.email: "hide"; }'),
+                sheet(uid(902), 'b', 'Customer { audit_level: "strict"; mask.email: "partial"; }')]), cascade(uid(1))])
     S('STD-LGS-011', 'a whole-map declaration and a keyed declaration cascade per key', [
-        commit([sheet(SHEET, 'a', 'Party { field_visibility: {email: "hidden", country: "read_only"}; }'),
-                sheet(uid(902), 'b', 'Customer { field_visibility.email: "visible"; }')]),
-        commit([c1]), cascade(uid(1))])
+        commit([c1]), commit([sheet(SHEET, 'a', 'Party { field_visibility: {email: "hidden", country: "read_only"}; }'),
+                sheet(uid(902), 'b', 'Customer { field_visibility.email: "visible"; }')]), cascade(uid(1))])
 
 
 def matching(S):

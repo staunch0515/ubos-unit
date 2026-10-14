@@ -51,6 +51,23 @@ KERNEL_PROPERTIES = {
     'rate_limit': ('action', 'override', {'type': 'composite', 'constraints': {'members': {
         'per': {'type': 'enum', 'required': True, 'constraints': {'allowed_values': ['second', 'minute', 'hour', 'day']}},
         'count': {'type': 'integer', 'required': True, 'constraints': {'min': 1}}}}}),
+    # STD-LGS-030, -031 (DEC-067): validations, invariants and decisions declared in sheets.
+    'validations': ('commit', 'union', {'type': 'list', 'constraints': {'item_type': {'type': 'composite', 'constraints': {'members': {
+        'name': {'type': 'text', 'required': True}, 'rule': {'type': 'text', 'required': True},
+        'severity': {'type': 'enum', 'required': True, 'constraints': {'allowed_values': ['error', 'warning', 'info']}},
+        'message': {'type': 'text'}}}}}}),
+    'invariants': ('commit', 'union', {'type': 'list', 'constraints': {'item_type': {'type': 'composite', 'constraints': {'members': {
+        'name': {'type': 'text', 'required': True},
+        'scope': {'type': 'list', 'required': True, 'constraints': {'item_type': {'type': 'text'}, 'min_items': 1}},
+        'rule': {'type': 'text', 'required': True},
+        'severity': {'type': 'enum', 'required': True, 'constraints': {'allowed_values': ['error', 'warning', 'info']}},
+        'message': {'type': 'text'}}}}}}),
+    'decisions': ('action', 'union', {'type': 'list', 'constraints': {'item_type': {'type': 'composite', 'constraints': {'members': {
+        'name': {'type': 'text', 'required': True}, 'when': {'type': 'text'},
+        'outcome': {'type': 'enum', 'required': True, 'constraints': {'allowed_values': ['allow', 'deny', 'require']}},
+        'steps': {'type': 'list', 'constraints': {'item_type': {'type': 'enum', 'constraints': {'allowed_values': [
+            'approval', 'signature', 'reason', 'step_up', 'second_person']}}}},
+        'message': {'type': 'text'}}}}}}),
 }
 # Orders of the `max` properties whose values are not numbers.
 ORDERS = {'classification': LEVELS, 'write_policy': ('direct', 'change_set')}
@@ -718,7 +735,7 @@ class Sheets:
     # -- cascade (STD-LGS-022, -023) --
 
     def _cascade(self, branch, object_id, ctx, sel):
-        from .store import tl_at, branch_kind
+        from .store import tl_at
         sel = sel or {}
         st, _, ev, _ = self._state(branch, sel)
         o = st['objects'].get(object_id)
@@ -729,6 +746,12 @@ class Sheets:
         if seg is None:
             raise BpaError('QRY.NOT_FOUND_AT_TIME')
         body = self.versions[seg[2]]['body']
+        out, bindings = self._cascade_in(st, branch, object_id, o, body, ctx, asof)
+        return out, ev, o, seg[2], st, bindings
+
+    def _cascade_in(self, st, branch, object_id, o, body, ctx, asof):
+        """The cascade over a state: `{path: (value, candidates)}` and the sheet versions bound."""
+        from .store import branch_kind
         ctx = dict(ctx or {})
         ctx.setdefault('branch_kind', branch_kind(branch))
         classes = list(self.decls.values())
@@ -779,7 +802,22 @@ class Sheets:
                     else:
                         c['won'], c['reason'] = False, self._reason(c, winner, key)
             out[path] = (value, cs)
-        return out, ev, o, seg[2], st, bindings
+        return out, bindings
+
+    def _effective(self, st, branch, object_id, ctx, asof, body=None, cls=None):
+        """Effective property paths of an object of the state, or of a provisional object
+        (`body` and `cls` given, for defaults before a create): `({path: value}, bindings)`."""
+        from .store import tl_at
+        o = st['objects'].get(object_id)
+        if o is None:
+            eff = self._cls(cls)
+            o = {'class': cls, 'kind': eff['kind'], 'slug': '', 'head': '', 'timeline': []}
+            st = {'objects': dict(st['objects'], **{object_id: o}), 'ledger': st['ledger']}
+        if body is None:
+            seg = tl_at(o['timeline'], asof)
+            body = self.versions[seg[2]]['body'] if seg else self.versions[o['head']]['body']
+        out, bindings = self._cascade_in(st, branch, object_id, o, body, ctx, asof)
+        return {p: v for p, (v, _) in out.items()}, bindings
 
     @staticmethod
     def _reason(c, w, key):

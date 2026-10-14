@@ -92,6 +92,7 @@ DAT-Error:
   | `RULE.LOCKED_OVERRIDE` | override of a locked declaration | no | yes | 409 |
   | `RULE.DECLARATION_UNSATISFIED` | a commit-enforced declaration failed | no | yes | 422 |
   | `RULE.INVARIANT_VIOLATED` | invariant failed | no | yes | 422 |
+  | `RULE.VALIDATION_FAILED` | error-level validation or invariant violations of a commit, all reported (since 1.0-rc2) | no | yes | 422 |
   | `RULE.DECISION_DENIED` | decision deny | no | yes | 403 |
   | `RULE.DECISION_REQUIRES` | decision requires steps | no | yes | 202 |
   | `RULE.NO_MATCH` | decision table without a match | no | yes | 422 |

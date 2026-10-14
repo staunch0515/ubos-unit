@@ -1,0 +1,1 @@
+{"clauses":["STD-EXPR-010"],"description":"only excludes subclasses","id":"VER-CONF-4701","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"from":"Customer","only":true}},"input":{"text":"from Customer only"},"op":"parse_query"}]}

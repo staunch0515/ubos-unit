@@ -2,6 +2,7 @@
 
 In adapter inputs a class is referenced by its name, and a trait is a declaration with
 `trait: true` and `applies_to` (a list of kinds) (STD-CONF-005)."""
+import re
 from decimal import Decimal
 
 from . import BpaError
@@ -37,7 +38,10 @@ GENESIS = {
                            {'name': 'fields', 'type': 'json', 'label': 'fields', 'description': 'fields'},
                            {'name': 'refinements', 'type': 'json', 'label': 'refinements', 'description': 'refinements'},
                            {'name': 'ports', 'type': 'json', 'label': 'ports', 'description': 'ports'},
-                           {'name': 'views', 'type': 'json', 'label': 'views', 'description': 'views'}]},
+                           {'name': 'views', 'type': 'json', 'label': 'views', 'description': 'views'},
+                           # since 1.0-rc2 (STD-LGS-030, DEC-067): validations added by the extension
+                           {'name': 'validations', 'type': 'json', 'label': 'validations',
+                            'description': 'validations'}]},
     # STD-VER-020, -061 (BPA 1.0-rc1, DEC-041): change sets and releases are Definition objects.
     'ChangeSet': {'name': 'ChangeSet', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
                   'fields': [_f('source', 'text', True), _f('target', 'text', True), _f('title', 'text', True),
@@ -133,16 +137,78 @@ def check_relationship(f, rel):
         raise BpaError('MODEL.INVALID_NAME', rel['inverse'])
 
 
+PORT_MEMBERS = ('name', 'kind', 'params', 'result', 'errors', 'states', 'transition', 'guards', 'impl', 'permission',
+                'idempotent', 'ui', 'description', 'emits')
+ERROR_CODE = re.compile(r'\A[A-Z]+\.[A-Z_]+\Z')
+
+
 def check_port(p):
+    """STD-CLS-003: a `DAT-PortDecl` (its optional members since 1.0-rc2, DEC-067)."""
     for k in PORT_REQUIRED:
         if k not in p:
             raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'port member %s' % k)
-    if not GRAMMARS['member-name'].match(p['name']):
-        raise BpaError('MODEL.INVALID_NAME', p['name'])
+    for k in p:
+        if k not in PORT_MEMBERS:
+            raise BpaError('MODEL.INVALID_VALUE', 'unknown port member %s' % k)
+    if not isinstance(p['name'], str) or not GRAMMARS['member-name'].match(p['name']):
+        raise BpaError('MODEL.INVALID_NAME', str(p['name']))
     if p['kind'] not in ('query', 'command'):
         raise BpaError('MODEL.INVALID_VALUE', 'port kind')
+    if not isinstance(p.get('params', []), list):
+        raise BpaError('MODEL.INVALID_VALUE', 'params is a list')
     for q in p.get('params', []):
         check_field(q)
+    if 'result' in p and (not isinstance(p['result'], str) or not p['result']):
+        raise BpaError('MODEL.INVALID_VALUE', 'result is a type name')
+    for e in p.get('errors') or []:
+        if not isinstance(e, str) or not ERROR_CODE.match(e):
+            raise BpaError('MODEL.INVALID_VALUE', 'an error is a registered code')
+    for st in p.get('states') or []:
+        if not isinstance(st, str) or not GRAMMARS['member-name'].match(st):
+            raise BpaError('MODEL.INVALID_NAME', 'state %s' % st)
+    if 'transition' in p and (not isinstance(p['transition'], str) or not GRAMMARS['member-name'].match(p['transition'])):
+        raise BpaError('MODEL.INVALID_NAME', 'transition')
+    if 'transition' in p and p['kind'] != 'command':
+        raise BpaError('MODEL.INVALID_VALUE', 'only a command port triggers a transition')
+    for g in p.get('guards') or []:
+        if not isinstance(g, str) or not g:
+            raise BpaError('MODEL.INVALID_VALUE', 'a guard is a reference')
+    if 'impl' in p and (not isinstance(p['impl'], str) or not p['impl'].strip()):
+        raise BpaError('MODEL.INVALID_VALUE', 'impl references a logic asset')
+    if not isinstance(p['permission'], str) or not p['permission']:
+        raise BpaError('MODEL.INVALID_VALUE', 'permission is a policy action name')
+    if 'idempotent' in p and not isinstance(p['idempotent'], bool):
+        raise BpaError('MODEL.INVALID_VALUE', 'idempotent is boolean')
+    if p['kind'] == 'query' and p.get('idempotent') is False:
+        raise BpaError('MODEL.INVALID_VALUE', 'a query port is always idempotent')
+    if 'ui' in p and not isinstance(p['ui'], dict):
+        raise BpaError('MODEL.INVALID_VALUE', 'ui is a map')
+    if not isinstance(p['description'], str) or not p['description']:
+        raise BpaError('MODEL.INVALID_VALUE', 'description')
+
+
+OVERLAY = ('overridable', 'extend_only', 'locked')
+SEVERITIES = ('error', 'warning', 'info')
+
+
+def check_validations(items):
+    """STD-LGS-030: `validations` of a class or an extension (1.0-rc2, DEC-067)."""
+    if not isinstance(items, list):
+        raise BpaError('MODEL.INVALID_VALUE', 'validations is a list')
+    for v in items:
+        if not isinstance(v, dict) or not isinstance(v.get('name'), str) or not isinstance(v.get('rule'), str) \
+                or v.get('severity') not in SEVERITIES:
+            raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'a validation has name, rule and severity')
+        from . import expr as _expr
+        _expr.parse(v['rule'])
+
+
+def check_overlay_policy(d):
+    pol = d.get('overlay_policy')
+    if pol is None:
+        return
+    if not isinstance(pol, dict) or any(v not in OVERLAY for v in pol.values()):
+        raise BpaError('MODEL.INVALID_VALUE', 'overlay_policy maps members to overridable, extend_only or locked')
 
 
 def check_decl(d):
@@ -166,6 +232,9 @@ def check_decl(d):
         check_port(p)
     if len(set(ports)) != len(ports):
         raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'duplicate port')
+    if 'validations' in d:
+        check_validations(d['validations'])
+    check_overlay_policy(d)
 
 
 def _registry(classes):
@@ -293,6 +362,8 @@ def check_extension(ext):
         check_field(f)
     for p in ext.get('ports') or []:
         check_port(p)
+    if 'validations' in ext:
+        check_validations(ext['validations'])
 
 
 def effective_class(classes, name, extensions=()):
@@ -308,8 +379,11 @@ def effective_class(classes, name, extensions=()):
         if d.get('trait') and kind is not None and kind not in d['applies_to']:
             raise BpaError('MODEL.KIND_MISMATCH', 'trait does not apply to the kind')
     fields, ports, policy = {}, {}, None
+    validations, overlay = [], {}
     for c in reversed(lin):
         d = reg[c]
+        validations += list(d.get('validations') or [])
+        overlay.update(d.get('overlay_policy') or {})
         wp = d.get('write_policy')
         if wp is not None:
             if policy == 'change_set' and wp == 'direct':
@@ -335,7 +409,19 @@ def effective_class(classes, name, extensions=()):
         for r in e.get('refinements') or []:
             if r.get('name') not in fields:
                 raise BpaError('MODEL.NARROWING_VIOLATION', 'refinement of an unknown member')
-            fields[r['name']] = refine(fields[r['name']], r)
+            # STD-CLS-031: the overlay policy of the member (1.0-rc2, DEC-067)
+            pol = overlay.get(r['name'], 'overridable')
+            if pol == 'locked':
+                raise BpaError('TEN.OVERRIDE_LOCKED', r['name'])
+            if pol == 'extend_only' and any(k not in ('name', 'constraints', 'validations') for k in r):
+                raise BpaError('TEN.OVERRIDE_LOCKED', '%s accepts additive refinements only' % r['name'])
+            fields[r['name']] = refine(fields[r['name']], {k: v for k, v in r.items() if k != 'validations'})
+            validations += list(r.get('validations') or [])
+        validations += list(e.get('validations') or [])
+        for v in e.get('views') or []:
+            if overlay.get('views', 'overridable') == 'locked' or \
+                    (isinstance(v, dict) and overlay.get('views.%s' % v.get('mode'), 'overridable') == 'locked'):
+                raise BpaError('TEN.OVERRIDE_LOCKED', 'views')
         for p in e.get('ports') or []:
             key = '%s.%s' % (e['namespace'], p['name'])
             if key in ports:
@@ -344,6 +430,10 @@ def effective_class(classes, name, extensions=()):
     if policy is None:
         policy = 'change_set' if 'ConfigAsset' in lin else 'direct'
     out = {'linearization': lin, 'kind': kind, 'write_policy': policy, 'fields': fields}
+    if validations:
+        out['validations'] = validations
+    if overlay:
+        out['overlay_policy'] = overlay
     if ports:
         out['ports'] = {k: {m: v for m, v in p.items() if m not in ('declared_by', 'impl_by')} for k, p in ports.items()}
     out['_ports'] = ports

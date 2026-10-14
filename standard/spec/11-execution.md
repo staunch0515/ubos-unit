@@ -9,7 +9,7 @@
 - **Grammar / Schema:** `DAT-ExecutionContext`
 - **Conformance vectors:** VER-CONF-4000…4019
 - **Satisfies:** FR-LOGIC-021, FR-LOGIC-022
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-067) the context MAY carry `role`, the role the caller acts in, which the decisions of STD-LGS-031 condition on.
 
 ```yaml
 DAT-ExecutionContext:
@@ -55,7 +55,7 @@ DAT-ExecutionContext:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4030…4049
 - **Satisfies:** FR-LOGIC-023, FR-LOGIC-092
-- **Notes:** —
+- **Notes:** The 1.0-rc1 vector VER-CONF-4036 used `search.query` as the example of an unavailable instruction; `search.query` is available since 1.0-rc2 (STD-ISA-080) and the vector is superseded (STD-CONF-030, DEC-067).
 
 ### STD-CTX-004 — Execution profiles
 - **Clause:** Implementations MUST provide the profiles below with at least these default limits. Tenants MAY lower limits. Raising them requires entitlements (FR-BILL-022).

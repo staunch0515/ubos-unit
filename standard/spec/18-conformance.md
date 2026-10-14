@@ -78,7 +78,7 @@ DAT-ConformanceReport:
   | `type_selector` | `{classes, class, selector, only}` | `{matches, specificity}` (STD-CLS-022). Since 1.0-rc1. |
   | `blind_index` | `{key, type, constraints, value}` | the blind index of the value under the 32-byte hexadecimal key (STD-OBJ-012). Since 1.0-rc1. |
   | `reset`, `set_now`, `load_genesis` | `{}`, `{now}`, `{classes}` | `true` (STD-CONF-002); since 1.0-rc1 `load_genesis` also takes `value_types` for fields of custom types (STD-FND-026) |
-  | `set_limits` | `{max_body_bytes, max_derivation_inputs}` | `true`; the configured body limit (STD-OBJ-009) and maximum of derivation inputs (STD-TXN-030) for the following operations; `reset` restores the defaults of 16 MiB and 10,000. Since BPA 1.0-rc1. |
+  | `set_limits` | `{max_body_bytes, max_derivation_inputs, max_violations}` | `true`; the configured body limit (STD-OBJ-009), the maximum of derivation inputs and, since 1.0-rc2, the maximum of reported violations (STD-LGS-030) (STD-TXN-030) for the following operations; `reset` restores the defaults of 16 MiB and 10,000. Since BPA 1.0-rc1. |
   | `create_branch` | `{name, from, parent_line}` | `{head}`, the cseq of the fork commit; since 1.0-rc1 `parent_line` `{branch, mode, pin}` (`pin` a cseq of the parent) creates an inheriting branch that starts empty at cseq 0 (STD-VER-080) |
   | `commit` | `{branch, changes, process}` | `{cseq, versions, entries, retroactive}` (`DAT-AdapterChange`); `process` is `{serializable, reads}` with `reads` mapping objects to the version hashes read; `retroactive` lists `{object_id, from, to}` per retroactive change (STD-TIME-030); a supplied `tx_time` fails with `TIME.RESERVED_FIELD`. Since 1.0-rc1 the result also has `commit_id` and `tx_time`, and `process` may give `process_id`, `kind`, `initiator`, `trigger`, `parent_process`, `idempotency_key`, `effects` (list of `{type, object_id, payload}`) and `abort` (the result is then `{state: aborted}`) (STD-TXN-030…050) |
   | `read` | `{branch, object_id, asof, time}` | `{version_hash, body, valid, tombstone}`; since 1.0-rc1 with the snapshot selectors of convention 9, `provenance` (adds `{branch, cseq, commit_id}`, STD-VER-081) and `follow` (a reference field; adds `targets` read at the same coordinates, STD-TIME-013); the result carries `evaluated_at` (STD-TIME-015) and, for derived versions, `provenance_ref` |
@@ -121,6 +121,9 @@ DAT-ConformanceReport:
   | `specificity` | `{classes, selector}` | `{specificity}`, the tuple `(d, a, s, x)` of one selector given as text (STD-LGS-021). Since 1.0-rc2. |
   | `cascade` | `{branch, object_id, ctx}`, `asof` and a selector | `{properties, bindings, evaluated_at}`: the effective value of every property path and the versions of the sheets evaluated (STD-LGS-020, -022). Since 1.0-rc2. |
   | `explain_cascade` | `{branch, object_id, property, ctx}`, `asof` and a selector | `DAT-CascadeExplanation` (STD-LGS-023). Since 1.0-rc2. |
+  | `validate` | `{branch, changes, process}` | `{violations, warnings}` of the commit the changes would make, without committing (STD-LGS-030, FR-RULE-035). Since 1.0-rc2. |
+  | `decide` | `{branch, object_id, port, params, ctx}` and a selector | `DAT-DecisionResult` of the port call (STD-LGS-031). Since 1.0-rc2. |
+  | `parse_query` | `{text}` | the `DAT-Query` of the textual form (STD-EXPR-010); `query` also takes `text` in place of the JSON members. Since 1.0-rc2. |
   | `read_range` | `{branch, object_id, from, to}` and a selector | `{segments, evaluated_at}`, each segment as `read` clipped to `[from, to)` (STD-TIME-014). Since 1.0-rc1. |
   | `history` | `{branch, object_id, from, to}` | `{commits, evaluated_at}`, each `{cseq, commit_id, tx_time, ops}` for the first-parent commits with `from ≤ tx_time < to` that changed the object; `ops` are `{kind, from, to}` (STD-TIME-014). Since 1.0-rc1. |
   | `tree_diff` | `{from, to}`, each a branch with a selector | `{keys}`, the state-tree keys whose entries differ (STD-VER-031). Since 1.0-rc1. |
@@ -189,4 +192,4 @@ DAT-AdapterChange:
 - **Grammar / Schema:** —
 - **Conformance vectors:** —
 - **Satisfies:** FR-STD-011, FR-STD-012, AR-033
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-067): a released vector that asserts a limit of its release (an instruction or operation not yet available) is superseded by the release that lifts the limit. The superseded vector keeps its identifier and content, stays in the released version's manifest, and is listed with its reason in `standard/vectors/superseded.txt`, which the release in development excludes from its manifest and coverage and which runners skip. A superseded vector is never replaced under its identifier.

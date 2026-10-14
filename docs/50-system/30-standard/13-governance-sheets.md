@@ -101,10 +101,13 @@ DAT-PropertyDecl:
   | `notify` | list of notification rules | notify | union | FR-NTF-011 |
   | `write_policy` | `direct` or `change_set` (raise only) | commit | max (`direct` < `change_set`, raise only) | FR-VER-024 |
   | `rate_limit` | composite `{per, count}` | action | override | per principal and port |
+  | `validations` | list of `{name, rule, severity, message}` | commit | union | validations of the matched objects (STD-LGS-030); since 1.0-rc2 |
+  | `invariants` | list of `{name, scope, rule, severity, message}` | commit | union | invariants over the objects of the scope classes (STD-LGS-030); since 1.0-rc2 |
+  | `decisions` | list of `{name, when, outcome, steps, message}` | action | union | decisions before a command port (STD-LGS-031); since 1.0-rc2 |
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4880…4939
 - **Satisfies:** FR-RULE-013, SCN-009, SCN-012
-- **Notes:** Since 1.0-rc2 (DEC-066): `approvals` accepts an integer as the shorthand of `{count}`; `retention` members are ISO 8601 durations and a trigger name; `notify` items are JSON rules. The vectors of this clause cover the value schemas and the combination rules; the enforcement of each property is verified where its enforcement point is implemented: `commit` properties with STD-LGS-030 (PH-1 step 10c), `action` properties with the flow of step 12, `read` and `view` properties with the queries and views of step 13, `retention` and `notify` in PH-2.
+- **Notes:** Since 1.0-rc2 (DEC-066): `approvals` accepts an integer as the shorthand of `{count}`; `retention` members are ISO 8601 durations and a trigger name; `notify` items are JSON rules. The vectors of this clause cover the value schemas and the combination rules; the enforcement of each property is verified where its enforcement point is implemented: the `commit` properties and the `action` properties `approvals`, `require_signature` and `maker_checker` with STD-LGS-030 and STD-LGS-031 (PH-1 step 10c, DEC-067), `rate_limit` with the Server of step 14 (it counts calls per principal and port), `read` and `view` properties with the queries and views of step 13, `retention` and `notify` in PH-2. Commit enforcement (DEC-067): `read_only` rejects an update or end of a matched object and `field_required` a matched object without the field, both with `RULE.DECLARATION_UNSATISFIED` naming the property; `field_default` fills the absent fields of a created object before validation; `audit_level: strict` requires the commit's process to carry `message` and `reason` (STD-TXN-001); `write_policy: change_set` requires a change set on a protected branch like the class policy (`VER.CHANGE_SET_REQUIRED`); `classification` raises the effective classification of the field. The objects of `ConfigAsset` and `LogicAsset` classes (sheets, extensions, logic) are not subject to the declarations they carry: write policy and change sets govern them.
 
 ## 3. Cascade
 
@@ -165,11 +168,11 @@ DAT-CascadeExplanation:
 ## 4. Validations and decisions
 
 ### STD-LGS-030 — Validations and invariants
-- **Clause:** Validations (object-scoped) and invariants (query-scoped with declared scope classes) MUST be evaluated at commit for the objects changed. Invariants MUST be evaluated for every object in their declared scope affected by the commit. Each evaluation yields `ok`, or a violation with severity and explanation. All error-severity violations up to the maximum MUST be reported together.
+- **Clause:** Validations (object-scoped) and invariants (query-scoped with declared scope classes) MUST be evaluated at commit for the objects changed. Invariants MUST be evaluated for every object in their declared scope affected by the commit. Each evaluation yields `ok`, or a violation with severity and explanation. All error-severity violations up to the maximum MUST be reported together (`RULE.VALIDATION_FAILED` with `violations`); warning and info violations are returned with the commit result as `warnings`. Validations are declared by the `validations` property of sheets (STD-LGS-011) and by the `validations` member of class declarations and extensions; invariants by the `invariants` property. A rule is an L1 boolean over `this` and `old`; a rule that cannot be evaluated counts as violated.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-5035…5064
 - **Satisfies:** FR-RULE-031 … FR-RULE-034, FR-LEDG-034
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-067). The validations of an object are those of its effective class (declarations and extensions along the linearization) plus the effective `validations` of its cascade in the commit's context (STD-LGS-020: `branch_kind`, `channel`, `principal_kind`, `role` of the process); `old` is the base version of the object, with every member null on a create. An invariant is evaluated for each object written by the commit whose linearization meets its `scope`, with `this` bound to that object; invariants over ledger balances (FR-LEDG-034) need the balance functions of the synchronous projections and follow with the kernel of PH-1 step 11. The maximum of reported violations is `set_limits.max_violations` (default 100). A violation item is `{code, object_id, name, severity, message}` with `code` `RULE.VALIDATION_FAILED` or `RULE.INVARIANT_VIOLATED`. The preview of FR-RULE-035 is the adapter operation `validate` and the instruction `run.validate` (STD-ISA-054): the same evaluation without a commit.
 
 ### STD-LGS-031 — Decision evaluation and combination
 - **Clause:** Before a command port executes, the implementation MUST evaluate all applicable decisions (action-enforcement properties and decision objects). Each yields `allow`, `deny(explanations)` or `require(steps)`. Decisions combine as follows:
@@ -177,11 +180,11 @@ DAT-CascadeExplanation:
   - otherwise the union of the steps gives `require`;
   - otherwise `allow`.
 
-  Decisions apply identically to all principal kinds, and MAY condition on `principal_kind`.
+  Decisions apply identically to all principal kinds, and MAY condition on `principal_kind`. Decisions are declared by the `decisions` property of sheets (STD-LGS-011): each item has an optional `when` (an L1 boolean over `this`, `params` and `ctx`), an `outcome` and, for `require`, its `steps`; the action properties `approvals`, `require_signature` and `maker_checker` require the steps `approval`, `signature` and `second_person`. A `deny` outcome fails the port call with `RULE.DECISION_DENIED` and a `require` outcome with `RULE.DECISION_REQUIRES`, both carrying the `DAT-DecisionResult`; query ports are not subject to decisions.
 - **Grammar / Schema:** `DAT-DecisionResult`
 - **Conformance vectors:** VER-CONF-5065…5089
 - **Satisfies:** FR-RULE-051, FR-RULE-052, FR-RULE-053
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-067). The context of a decision is `{principal_kind, channel, vae, branch_kind, role?}` (`role` is an optional member of the execution context since 1.0-rc2, STD-CTX-001); `explanations` lists the decisions that fired as `{name, outcome, message, steps}`, with `value` for an action property; `steps` is present for `require` in the order collected. The adapter operation `decide` evaluates the decisions of a port call without running it; `execute` evaluates them before a command port and before `run.port` (DSN-DVM-720). The deferred commit that a `require` outcome leads to, and the approval objects, belong to PH-2 (DSN-DVM-740); decision tables (STD-LGS-040) too.
 
 ```yaml
 DAT-DecisionResult:

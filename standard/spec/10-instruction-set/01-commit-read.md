@@ -138,7 +138,7 @@
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3230…3244
 - **Satisfies:** FR-FLOW-011, FR-FLOW-012, FR-FLOW-013
-- **Notes:** —
+- **Notes:** **Phase note:** PH-1 step 10c (DEC-067): the instruction is in BPA 1.0-rc2; its vectors are written with the lifecycles of step 12, which implement it.
 
 ### STD-ISA-030 — `read.get`
 - **Clause:** Reads an object at the process snapshot, or at explicit coordinates.
@@ -213,7 +213,7 @@
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3360…3369
 - **Satisfies:** FR-MODEL-101, FR-RULE-022
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-067) `declarations` returns the effective sheet declarations of an object, `{properties, bindings}` as the adapter operation `cascade`; the 1.0-rc1 vector VER-CONF-3361, which expected `LOGIC.NOT_AVAILABLE`, is superseded (STD-CONF-030).
 
 ### STD-ISA-035 — `read.explain`
 - **Clause:** Returns the explanation object for a declaration cascade, a validation outcome, a decision or a value's lineage.
@@ -227,4 +227,4 @@
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3370…3379
 - **Satisfies:** FR-RULE-022, FR-AUD-021, FR-AUD-031
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-067): `cascade` returns `DAT-CascadeExplanation` of `property`; `validation` the `{violations, warnings}` of the unit of work on the target (as `run.validate`); `decision` the `DAT-DecisionResult` of the port named by `property`; `lineage` follows in PH-2 (`LOGIC.NOT_AVAILABLE`).

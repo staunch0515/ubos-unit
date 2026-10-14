@@ -1,0 +1,1 @@
+{"clauses":["STD-EXPR-010"],"description":"text between the clauses is rejected","id":"VER-CONF-4712","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"QRY.INVALID_QUERY"},"input":{"text":"from Customer having this.x"},"op":"parse_query"}]}
