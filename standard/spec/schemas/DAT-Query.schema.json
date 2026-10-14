@@ -1,0 +1,54 @@
+{
+  "$id": "DAT-Query",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "aggregates": {
+      "description": "{fn, path, as}",
+      "type": "array"
+    },
+    "cursor": {
+      "description": "opaque; binds the snapshot",
+      "type": "string"
+    },
+    "from": {
+      "description": "class URI or name",
+      "type": "string"
+    },
+    "group_by": {
+      "description": "paths (aggregate queries)",
+      "type": "array"
+    },
+    "limit": {
+      "description": "page size (default 100, max 1000)",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "only": {
+      "description": "exclude subclasses",
+      "type": "boolean"
+    },
+    "order_by": {
+      "description": "{path, dir}; the object id is appended as a tie-breaker",
+      "type": "array"
+    },
+    "select": {
+      "description": "field paths to return (default all visible)",
+      "type": "array"
+    },
+    "states": {
+      "description": "lifecycle states",
+      "type": "array"
+    },
+    "where": {
+      "description": "L1 boolean expression over `this`",
+      "type": "string"
+    }
+  },
+  "required": [
+    "from"
+  ],
+  "title": "DAT-Query",
+  "type": "object"
+}

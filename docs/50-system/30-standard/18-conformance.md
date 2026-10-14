@@ -151,7 +151,7 @@ DAT-ConformanceReport:
 - **Grammar / Schema:** `DAT-AdapterChange`
 - **Conformance vectors:** —
 - **Satisfies:** FR-STD-021, FR-STD-022
-- **Notes:** The operations are test interfaces; STD-CONF-002 applies (disabled in production builds). Release 0.1 defined the operations up to `export_state`; rows marked with a release were added in that release (DEC-039).
+- **Notes:** The operations are test interfaces; STD-CONF-002 applies (disabled in production builds). Release 0.1 defined the operations up to `export_state`; rows marked with a release were added in that release (DEC-039). BPA 1.0-rc2 (gate 1b, DEC-064) adds the operations of the Governance profile (sheets, cascade, decisions) and the message vectors of the Protocol profile over the in-process binding (STD-PROTO-020).
 
 ```yaml
 DAT-AdapterChange:

@@ -1,0 +1,29 @@
+{
+  "$id": "DAT-CascadeExplanation",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "candidates": {
+      "description": "{sheet, sheet_version, block, selector, layer, specificity, priority, locked, value, won: boolean, reason}",
+      "type": "array"
+    },
+    "effective": {
+      "description": "effective value"
+    },
+    "object": {
+      "description": "URI and version",
+      "type": "string"
+    },
+    "property": {
+      "description": "property",
+      "type": "string"
+    }
+  },
+  "required": [
+    "object",
+    "property",
+    "effective",
+    "candidates"
+  ],
+  "title": "DAT-CascadeExplanation",
+  "type": "object"
+}

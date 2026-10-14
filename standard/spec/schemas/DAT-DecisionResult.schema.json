@@ -1,0 +1,34 @@
+{
+  "$id": "DAT-DecisionResult",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "bindings": {
+      "description": "content-ids of sheets and decision objects evaluated",
+      "type": "array"
+    },
+    "explanations": {
+      "description": "explanation objects",
+      "type": "array"
+    },
+    "outcome": {
+      "description": "allow | deny | require",
+      "enum": [
+        "allow",
+        "deny",
+        "require"
+      ],
+      "type": "string"
+    },
+    "steps": {
+      "description": "approval | signature | reason | step_up | second_person",
+      "type": "array"
+    }
+  },
+  "required": [
+    "outcome",
+    "explanations",
+    "bindings"
+  ],
+  "title": "DAT-DecisionResult",
+  "type": "object"
+}

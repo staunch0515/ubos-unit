@@ -1,0 +1,52 @@
+{
+  "$id": "DAT-UbtpEnvelope",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "body": {
+      "description": "type-specific body"
+    },
+    "id": {
+      "description": "client-unique message id",
+      "type": "string"
+    },
+    "reply_to": {
+      "description": "id of the request (responses and errors)",
+      "type": "string"
+    },
+    "trace": {
+      "description": "W3C traceparent",
+      "type": "string"
+    },
+    "type": {
+      "description": "handshake | mutate | query | subscribe | unsubscribe | emit | sync | ack | error | result | ping | pong | cancel",
+      "enum": [
+        "handshake",
+        "mutate",
+        "query",
+        "subscribe",
+        "unsubscribe",
+        "emit",
+        "sync",
+        "ack",
+        "error",
+        "result",
+        "ping",
+        "pong",
+        "cancel"
+      ],
+      "type": "string"
+    },
+    "v": {
+      "description": "protocol version M.m",
+      "type": "string"
+    }
+  },
+  "required": [
+    "v",
+    "id",
+    "type",
+    "body"
+  ],
+  "title": "DAT-UbtpEnvelope",
+  "type": "object"
+}

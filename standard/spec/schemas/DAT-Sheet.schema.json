@@ -1,0 +1,62 @@
+{
+  "$id": "DAT-Sheet",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "ast": {
+      "description": "parsed form"
+    },
+    "cascading": {
+      "description": "applies in child VAEs at this layer (FR-TEN-042)",
+      "type": "boolean"
+    },
+    "description": {
+      "description": "documentation",
+      "type": "string"
+    },
+    "layer": {
+      "description": "platform | industry | vendor | tenant | vae | unit | object",
+      "enum": [
+        "platform",
+        "industry",
+        "vendor",
+        "tenant",
+        "vae",
+        "unit",
+        "object"
+      ],
+      "type": "string"
+    },
+    "name": {
+      "description": "namespaced name",
+      "type": "string"
+    },
+    "priority": {
+      "description": "default 0; higher wins among equals",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "scope": {
+      "description": "{vaes, branch_kinds, classes}",
+      "type": "object"
+    },
+    "source": {
+      "description": "textual sheet",
+      "type": "string"
+    },
+    "tests": {
+      "description": "rule test URIs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "name",
+    "layer",
+    "source",
+    "ast",
+    "description"
+  ],
+  "title": "DAT-Sheet",
+  "type": "object"
+}

@@ -35,7 +35,7 @@ component names below are used throughout this volume; each maps to a top-level 
 | `ubos-ledger` | engine | ledger classes, sequencing, reversal, double entry, periods, balance projections | `ubos-version` |
 | `ubos-expr` | engine | L1 expression language: parser, type checker, evaluator | `ubos-model` |
 | `ubos-rules` | engine | governance sheets, cascade, validations, invariants, decision tables, decisions | `ubos-expr`, `ubos-model` |
-| `ubos-authz` | engine | policy engine integration (Cedar-class), relations, masking, row filters | `ubos-model` |
+| `ubos-authz` | engine | policy engine integration (the `cedar-policy` crate, DEC-065), relations, masking, row filters | `ubos-model` |
 | `ubos-runtime` | engine | instruction set, `ctx` and `sys`, Rhai host, WASM host, profiles, metering, journal, replay, static analysis | `ubos-expr`, `ubos-authz` |
 | `ubos-flow` | engine | lifecycles, ports, guards, approvals, tasks, workflows, sagas | `ubos-runtime`, `ubos-rules` |
 | `ubos-query` | engine | criteria queries, aggregation, traversal, history queries, pagination | `ubos-time`, `ubos-authz` |

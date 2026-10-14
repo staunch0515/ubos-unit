@@ -25,7 +25,7 @@ W-1（从 PH-0 结转的存储基准，DEC-035）：业主租到主机时随时�
 
 | 步骤 | 内容 | 退出标准 | 状态 |
 |---|---|---|---|
-| 10 | BPA 1.0-rc2：Governance（LGS）与 Protocol（PROTO）条款与向量，MUST 覆盖 100%，标准先于代码；发布范围规则扩到 gate 1b；用单独的 DEC 选定 Cedar 兼容策略库（DEC-021） | EXIT-1-14（标准部分） | 待做 |
+| 10 | BPA 1.0-rc2：Governance（LGS）与 Protocol（PROTO）条款与向量，MUST 覆盖 100%，标准先于代码；发布范围规则扩到 gate 1b；用单独的 DEC 选定 Cedar 兼容策略库（DEC-021） | EXIT-1-14（标准部分） | 进行中（DEC-064，分 10a–10e）：10a 已完成（rc2 按规则开启：197 条条款，新增 26 条——LGS 10、PROTO 7、Core 9；`regen_all.sh` 改为构建 rc2，rc1 保持冻结；覆盖率 146/165；策略库选型 DEC-065：`ubos-authz` 嵌入 `cedar-policy` crate）；10b（LGS 文法与级联向量）、10c（LGS 校验与决策、Core 补条款向量）、10d（PROTO 消息向量）、10e（发布与签标签）待做 |
 | 11 | 治理表与规则：表解析/编译、级联与解释、校验与不变量、带否决的策略决策（RULE-01/02/03/05）；NR-PERF-009 | EXIT-1-14（内核部分） | 待做 |
 | 12 | 流程：生命周期、端口、守卫、流程对象（FLOW-01…03） | — | 待做 |
 | 13 | 授权与查询：策略引擎（IAM-04）、条件查询、历史查询、一致分页、视图载荷与确定性、覆盖层、审计轨迹（QRY-01/05/07、TEN-03、AUD-01） | EXIT-1-17（MET-PERF-016） | 待做 |
@@ -46,7 +46,7 @@ W-1（从 PH-0 结转的存储基准，DEC-035）：业主租到主机时随时�
 | 第 8 步前 | 确认 GitHub Actions 额度够用（每晚任务、ARM64 Linux 和 macOS runner）；不够时由 AI 报告，业主决定加额度或自托管 |
 | 第 9 步 | 再次租用 ENV-REF-SERVER 做 gate 1a 基准；外部评审人参加验收 |
 | gate 1b 第 16 步前 | 租用 ENV-REF-SMALL（第 16、18、19 步使用）；第 19 步的边缘基准仍用 ENV-REF-SERVER |
-| 第 10 步开始时 | 确认 Cedar 兼容策略库的选型 DEC（AI 给候选与建议） |
+| 第 10e 步合并后 | 用自己的密钥创建带签名的标签 `bpa-v1.0.0-rc2`（做法同第 3 节，manifest 的 `content_id` 写入标签说明） |
 
 性能需求是 Must，不能结转（UBS-PH-00 §3.7）。如果到 gate 1a 仍租不到主机，只能用 DEC 重新分期。
 
