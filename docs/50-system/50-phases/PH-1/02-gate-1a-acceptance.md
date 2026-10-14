@@ -22,10 +22,10 @@ the decision is DEC-062.
 | 100% of engine-profile vectors on PostgreSQL | EXIT-1-02 | `verify/reports/exit-1-02/`: 1,227 of 1,227 (DEC-060) | `forge conform --backend postgres` on ENV-REF-SERVER | met on the workstation |
 | storage suite 100% on PostgreSQL; trait inspection | EXIT-1-03 | `verify/reports/exit-1-03/`: 20 of 20 (DEC-047) | storage suite on ENV-REF-SERVER | met on the workstation |
 | 0 property failures at ≥ 1,000,000 cases | EXIT-1-04 | `verify/reports/exit-1-04/`: nine properties, 0 failures (DEC-061) | — (platform-independent) | met |
-| 1,000,000 seeds, 0 violations; 30 clean nights | EXIT-1-05 | `verify/reports/exit-1-05/`: 1,000,000 seeds, 0 violations | nightly log `exit-1-05/nights.md`: streak ≥ 30 | seeds met; nights accumulating |
+| 1,000,000 seeds, 0 violations; 30 clean nights | EXIT-1-05 | `verify/reports/exit-1-05/`: 1,000,000 seeds, 0 violations | nightly log `exit-1-05/nights.md`: streak ≥ 30 (2 clean nights on 2026-10-06 and -07; the runs from 2026-10-08 on got no runner from GitHub Actions) | seeds met; nights accumulating |
 | 0 lost acknowledged commits in ≥ 10,000 crashes | EXIT-1-06 | `verify/reports/exit-1-06/`: 10,000 events, 0 lost, 0 partial | fault suite on ENV-REF-SERVER | met on the workstation |
 | extended formal models, 0 violations | EXIT-1-07 | `verify/models/reports/` (DEC-046) | — | met |
-| 100% replay fidelity on three platforms, ≥ 10,000 processes | EXIT-1-08 | `verify/reports/exit-1-08/`: Linux x86-64 10,000 of 10,000 | nightly log: Linux ARM64 and macOS ARM64 | x86-64 met; two platforms from the nightly log |
+| 100% replay fidelity on three platforms, ≥ 10,000 processes | EXIT-1-08 | `verify/reports/exit-1-08/`: Linux x86-64 10,000 of 10,000 | nightly log 2026-10-06 and 2026-10-07: Linux ARM64 and macOS ARM64 10,000 of 10,000, replays 1,000 of 1,000 | met (three platforms, two nights; every night since in the log) |
 | MET-PERF-010…015 on ENV-REF-SERVER | EXIT-1-09 | driver `ubos-bench` (read, commit, diff, branch, merge, asof, `--background`), small-dataset runs in CI | VER-BENCH-0100 on ENV-REF-SERVER, three runs each, median | open; finding 1 blocks MET-PERF-014 |
 | 100% of ≥ 300 L2 escape cases blocked | EXIT-1-10 | `verify/reports/exit-1-10/`: 382 of 382 (DEC-058) | — | met |
 | coverage ≥ 85%, mutation ≥ 70%, 0 dependency violations | EXIT-1-11 | `verify/reports/exit-1-11/`: 90.1%, 89.9% on a sample, 0 (DEC-061) | nightly mutation shards complete the score | met on the workstation |
