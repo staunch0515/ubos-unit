@@ -502,6 +502,87 @@ impl StoreRead for PgBackend {
         let rows = self.rows(q).await?;
         facts_of(&rows)
     }
+    async fn objects_by_id(
+        &self,
+        branch_id: i64,
+        cseq: u64,
+        ids: &[String],
+    ) -> Result<Vec<(String, Option<ObjectFacts>)>, BpaError> {
+        // Two lookups by identifier list rather than one join, as in `object` (DEC-053):
+        // the planner expects one head row and loops over the whole temporal index.
+        let heads = self
+            .rows(
+                sqlx::query("SELECT object_id::text, version_id, class_name, kind, slug, hidden FROM head_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND object_id = ANY($4::uuid[]) AND cseq_from <= $5 AND cseq_to > $5 ORDER BY object_id")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(branch_id)
+                    .bind(ids.to_vec())
+                    .bind(int(cseq)),
+            )
+            .await?;
+        if heads.is_empty() {
+            return Ok(Vec::new());
+        }
+        static SEGMENTS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            format!(
+                "SELECT object_id::text, {vf}, {vt}, version_id FROM temporal_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND object_id = ANY($4::uuid[]) AND cseq_from <= $5 AND cseq_to > $5 ORDER BY object_id, valid_from",
+                vf = time_text("valid_from", "granularity"),
+                vt = time_text("valid_to", "granularity"),
+            )
+        });
+        let segs = self
+            .rows(
+                sqlx::query(&SEGMENTS)
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(branch_id)
+                    .bind(ids.to_vec())
+                    .bind(int(cseq)),
+            )
+            .await?;
+        let mut out: Vec<(String, Option<ObjectFacts>)> = Vec::with_capacity(heads.len());
+        for h in &heads {
+            let id: String = h.try_get(0).map_err(db)?;
+            let facts = if h.try_get::<bool, _>(5).map_err(db)? {
+                None
+            } else {
+                Some(ObjectFacts {
+                    class: h.try_get(2).map_err(db)?,
+                    kind: kind_name(
+                        u16::try_from(h.try_get::<i16, _>(3).map_err(db)?).unwrap_or_default(),
+                    )
+                    .into(),
+                    slug: h.try_get(4).map_err(db)?,
+                    head: h
+                        .try_get::<Option<Vec<u8>>, _>(1)
+                        .map_err(db)?
+                        .map(hash_col)
+                        .transpose()?,
+                    segments: Vec::new(),
+                })
+            };
+            out.push((id, facts));
+        }
+        let mut i = 0;
+        for r in &segs {
+            let id: String = r.try_get(0).map_err(db)?;
+            while i < out.len() && out[i].0 < id {
+                i += 1;
+            }
+            if let Some((oid, Some(f))) = out.get_mut(i)
+                && *oid == id
+            {
+                f.segments.push((
+                    r.try_get::<Option<String>, _>(1)
+                        .map_err(db)?
+                        .unwrap_or_default(),
+                    r.try_get(2).map_err(db)?,
+                    hash_col(r.try_get(3).map_err(db)?)?,
+                ));
+            }
+        }
+        Ok(out)
+    }
     async fn entries(
         &self,
         branch_id: i64,
@@ -2578,6 +2659,23 @@ impl Store for PgStore {
             return Ok(Vec::new());
         };
         let rows = self.rt.block_on(self.backend.objects(bid, cseq, class))?;
+        Ok(rows
+            .into_iter()
+            .map(|(id, f)| (id, f.as_ref().and_then(crate::state_of)))
+            .collect())
+    }
+    fn objects_by_id(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        ids: &[String],
+    ) -> Result<Vec<(String, Option<Value>)>, BpaError> {
+        let Some(bid) = self.branch_id(branch)? else {
+            return Ok(Vec::new());
+        };
+        let rows = self
+            .rt
+            .block_on(self.backend.objects_by_id(bid, cseq, ids))?;
         Ok(rows
             .into_iter()
             .map(|(id, f)| (id, f.as_ref().and_then(crate::state_of)))

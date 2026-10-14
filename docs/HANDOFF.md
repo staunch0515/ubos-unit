@@ -38,7 +38,7 @@ the work without the earlier conversations. Read `CLAUDE.md` first for the worki
 | DEC-035 | EXIT-0-05 (storage benchmark) is carried over into PH-1 because hosts cannot be rented now; it is due before the PH-1 storage layout is fixed, at the latest at gate 1a. |
 | DEC-036 | PH-1 re-baselined after PH-0: every finding dispositioned (UBS-PHR-0), work items W-1…W-12, OQ-007 and OQ-008 resolved, RSK-004 closed, RSK-016 and RSK-017 added. |
 | DEC-037 | PH-0 accepted with EXIT-0-05 carried over; external review together with the carried benchmark. |
-| DEC-062 | Gate-1a acceptance in parts 9a–9c: acceptance record UBS-PHA-1, benchmark driver complete, finding 1 (merge preview linear in objects) fixed before the reference run; decision after the reference runs and the night log. |
+| DEC-062 | Gate-1a acceptance in parts 9a–9c: acceptance record UBS-PHA-1, benchmark driver complete, finding 1 (merge preview linear in objects) fixed in 9b before the reference run; decision after the reference runs and the night log. |
 | DEC-061 | Step 8 in parts 8a–8c; kernel property set VER-PROP-0100; coverage and mutation score of the eleven kernel crates measured by the suites themselves, shards on the workstation completed by nightly CI. |
 | DEC-038 | PH-1 executed by the owner with AI sessions: gate-1a steps 0–9, verification requested, ENV-REF-SERVER rented for W-1 and gate 1a, GitHub-hosted CI incl. nightly and ARM64/macOS runners. |
 | DEC-039 | BPA 1.0-rc1 scope by rule (0.1 plus Core, Bitemporal, Ledger, Proof clauses serving gate 1a), checked by the builder; BPA 0.1 frozen; regen builds rc1; step 1 in parts 1a–1f. |
@@ -193,10 +193,14 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    (EXIT-1-08). Step 9 (gate-1a acceptance, DEC-062) in parts 9a–9c: 9a done (acceptance record
    UBS-PHA-1 `50-phases/PH-1/02-gate-1a-acceptance.md`, Chinese package and runbook in
    `docs/reports/`, `ubos-bench` completed for VER-BENCH-0100 with `branch`, `merge`,
-   `asof` and `--background`; finding 1: the merge preview is linear in the objects of
-   the VAE and must walk the tree diff before the benchmark). Next 9b: the merge-preview
-   fix, then the rental (W-1 first), the reference runs, the external review (UBS-PHR-1)
-   and the acceptance decision; 9c: the step plan of gate 1b (DEC-063). W-1
+   `asof` and `--background`; finding 1: the merge preview was linear in the objects of
+   the VAE). 9b in progress: the merge-preview fix is done (`Repo::preview_states` walks
+   the tree diff of the merge bases against the source head and the appended entries of
+   the source commits, loads only those objects and ledger keys in bulk through the new
+   `Store::objects_by_id`; workstation p50 0.37 s / p95 0.40 s at 20,000 objects, 36 s
+   before, `verify/reports/exit-1-09/workstation/`). Next in 9b: the rental (W-1 first),
+   the reference runs per `docs/reports/ph1-gate1a-runbook-zh.md`, the external review
+   (UBS-PHR-1) and the acceptance decision; 9c: the step plan of gate 1b (DEC-063). W-1
    may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that

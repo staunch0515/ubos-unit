@@ -1,0 +1,76 @@
+{
+  "background": null,
+  "benchmark": "merge",
+  "environment": {
+    "facts": {
+      "build": "local",
+      "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+      "cpus": 4,
+      "kernel": "Linux version 6.18.44-fc-v70 (builder@sandboxing) (gcc (GCC) 15.3.0, GNU ld (GNU Binutils) 2.46) #1 SMP PREEMPT_DYNAMIC @0",
+      "memory": "MemTotal:       16480968 kB",
+      "postgresql": {
+        "fsync": "on",
+        "max_connections": "100",
+        "server_version": "16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)",
+        "shared_buffers": "128MB",
+        "synchronous_commit": "on",
+        "wal_level": "replica"
+      },
+      "sha_extensions": true
+    },
+    "hash": "sha256:b8649a0303d3500fc4de81641ee8034a8e278d697b08c5b8956e65cc8d205a33"
+  },
+  "item": "VER-BENCH-0100",
+  "options": {
+    "background": 0.0,
+    "group": 64,
+    "per_commit": 10,
+    "rate": 0.5,
+    "seconds": 10,
+    "workers": 8
+  },
+  "result": {
+    "achieved_rate": 0.5,
+    "errors": 0,
+    "latency": {
+      "count": 5,
+      "histogram": {
+        "<= 0.25 ms": 0,
+        "<= 0.5 ms": 0,
+        "<= 1 ms": 0,
+        "<= 10 ms": 0,
+        "<= 100 ms": 0,
+        "<= 1000 ms": 0,
+        "<= 15 ms": 0,
+        "<= 19 ms": 0,
+        "<= 2 ms": 0,
+        "<= 25 ms": 0,
+        "<= 250 ms": 0,
+        "<= 3 ms": 0,
+        "<= 4 ms": 0,
+        "<= 5 ms": 0,
+        "<= 50 ms": 0,
+        "<= 6.25 ms": 0,
+        "<= 62.5 ms": 0,
+        "<= 8 ms": 0,
+        "> 1000 ms": 5
+      },
+      "max_ms": 54946.004,
+      "p50_ms": 36267.194,
+      "p90_ms": 54946.004,
+      "p95_ms": 54946.004,
+      "p999_ms": 54946.004,
+      "p99_ms": 54946.004
+    },
+    "objects_on_branch": 1000,
+    "preview_size": 976
+  },
+  "spec": {
+    "classes": 200,
+    "monthly_change_percent": 10,
+    "months": 6,
+    "objects": 20000,
+    "seed": 20260930,
+    "workload": "WL-GENERIC"
+  }
+}

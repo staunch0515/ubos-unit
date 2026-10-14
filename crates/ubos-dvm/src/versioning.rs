@@ -572,21 +572,16 @@ impl Engine {
         let (base, source_head, target_head, t_state, merged, conflicts, validation) = {
             let mut repo = Repo::new(self.store.as_mut(), &self.registry);
             let (sh, th) = (repo.head(source)?, repo.head(target)?);
-            let best = repo.best_ancestors(&[th].into(), &[sh].into())?;
+            let mut tx = repo.begin(target)?;
+            let (best, t_state, st, conflicts) = repo.preview_states(source, target, &mut tx)?;
             let ids: Vec<String> = best
                 .iter()
                 .map(|c| repo.commit(*c).map(|x| x.commit_id))
                 .collect::<Result<_, _>>()?;
             let base = base_id(&ids)?;
-            let t_state = repo.commit_state(th)?;
-            let already = repo.ancestors_contains(th, sh)?;
-            let mut tx = repo.begin(target)?;
-            let (st, conflicts) = if already {
-                (t_state.clone(), vec![])
-            } else {
-                repo.merge_result(source, target, &mut tx)?
-            };
             tx.state = st.clone();
+            // The class extensions in force are read from the transaction (validation).
+            repo.load_class(&mut tx, "ClassExtension")?;
             (
                 base,
                 repo.commit(sh)?.commit_id,
