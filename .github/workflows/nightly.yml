@@ -1,12 +1,14 @@
-# Nightly verification (PH-1 step 8c, DEC-061): simulation seeds for the 30 clean nights
-# (EXIT-1-05), long property runs (EXIT-1-04), one mutation shard a night (EXIT-1-11) and the
-# replay corpus on three platforms (EXIT-1-08). Results are uploaded as artifacts and one
+# Nightly verification (PH-1 step 8c, DEC-061): every night the simulation seeds for the 30
+# clean nights (EXIT-1-05) and the long property runs (EXIT-1-04); on Sundays also one
+# mutation shard (EXIT-1-11) and the replay corpus on three platforms (EXIT-1-08), within
+# the Actions budget the owner set on 2026-10-14. Results are uploaded as artifacts and one
 # row per night is appended to verify/reports/exit-1-05/nights.md on the branch nightly-log.
 name: nightly
 
 on:
   schedule:
-    - cron: "17 2 * * *"
+    - cron: "17 2 * * 1-6"   # nightly: simulation and properties
+    - cron: "17 2 * * 0"     # Sunday: also the mutation shard and the replay corpus
   workflow_dispatch:
 
 permissions:
@@ -45,7 +47,8 @@ jobs:
           path: properties.json
 
   mutants:
-    name: mutation shard of the night (SUITE-DVM-CONF, VER-INSP-0001)
+    name: mutation shard of the week (SUITE-DVM-CONF, VER-INSP-0001)
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 2 * * 0'
     runs-on: ubuntu-latest
     timeout-minutes: 350
     services:
@@ -60,12 +63,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install || rustup show
-      - name: shard of the night (one of 32, by the day)
+      - name: shard of the week (one of 32, by the week)
         env:
           UBOS_TEST_DATABASE: "host=127.0.0.1 user=postgres dbname=bpa"
         run: |
           cargo install cargo-mutants --locked
-          SHARD=$(( ($(date +%s) / 86400) % 32 ))
+          SHARD=$(( ($(date +%s) / 604800) % 32 ))
           sh verify/tools/mutants.sh mutants $SHARD/32 || true
           python3 - <<'PY'
           import json, collections
@@ -84,6 +87,7 @@ jobs:
 
   replay:
     name: replay corpus on ${{ matrix.os }} (SUITE-DVM-REPLAY, EXIT-1-08)
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 2 * * 0'
     strategy:
       fail-fast: false
       matrix:
@@ -105,7 +109,7 @@ jobs:
   night-log:
     name: append the night to nights.md
     needs: [simulation, properties, replay]
-    if: always()
+    if: always() && needs.simulation.result != 'skipped'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

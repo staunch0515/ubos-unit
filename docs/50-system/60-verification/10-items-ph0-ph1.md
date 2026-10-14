@@ -241,7 +241,7 @@ Numbers follow UBS-VER-00 §3.
   1. Load WL-GENERIC-10M with 24 months of history; apply WL-MIXED-OLTP at 70% of maximum sustainable throughput.
   2. Measure each NR at its stated boundary per UBS-VER-01 BENCH procedure.
 - **Pass criterion:** MET-PERF-010…015 and NR-PERF-010 met in the median of three runs.
-- **Evidence:** benchmark report.
+- **Evidence:** benchmark report (`verify/reports/exit-1-09/`, after the ENV-REF-SERVER run of step 9b); the driver `ubos-bench run --what read|commit|diff|branch|merge|asof [--background R]` is complete (PH-1 step 9a, DEC-062) and runs on a small dataset in CI; the runbook is `docs/reports/ph1-gate1a-runbook-zh.md`.
 - **Supports:** EXIT-1-09
 
 ### VER-SEC-0100 — L2 escape suite

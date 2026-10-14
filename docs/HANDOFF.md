@@ -38,6 +38,7 @@ the work without the earlier conversations. Read `CLAUDE.md` first for the worki
 | DEC-035 | EXIT-0-05 (storage benchmark) is carried over into PH-1 because hosts cannot be rented now; it is due before the PH-1 storage layout is fixed, at the latest at gate 1a. |
 | DEC-036 | PH-1 re-baselined after PH-0: every finding dispositioned (UBS-PHR-0), work items W-1…W-12, OQ-007 and OQ-008 resolved, RSK-004 closed, RSK-016 and RSK-017 added. |
 | DEC-037 | PH-0 accepted with EXIT-0-05 carried over; external review together with the carried benchmark. |
+| DEC-062 | Gate-1a acceptance in parts 9a–9c: acceptance record UBS-PHA-1, benchmark driver complete, finding 1 (merge preview linear in objects) fixed before the reference run; decision after the reference runs and the night log. |
 | DEC-061 | Step 8 in parts 8a–8c; kernel property set VER-PROP-0100; coverage and mutation score of the eleven kernel crates measured by the suites themselves, shards on the workstation completed by nightly CI. |
 | DEC-038 | PH-1 executed by the owner with AI sessions: gate-1a steps 0–9, verification requested, ENV-REF-SERVER rented for W-1 and gate 1a, GitHub-hosted CI incl. nightly and ARM64/macOS runners. |
 | DEC-039 | BPA 1.0-rc1 scope by rule (0.1 plus Core, Bitemporal, Ledger, Proof clauses serving gate 1a), checked by the builder; BPA 0.1 frozen; regen builds rc1; step 1 in parts 1a–1f. |
@@ -189,17 +190,25 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    `.github/workflows/nightly.yml` with the night log `verify/reports/exit-1-05/nights.md`
    on the branch `nightly-log`). Step 8 is complete apart from what the nights accumulate:
    30 consecutive clean nights (EXIT-1-05) and the ARM64 and macOS replay results
-   (EXIT-1-08). Next step 9: gate-1a acceptance — ENV-REF-SERVER runs (benchmark EXIT-1-09,
-   fault suite, storage suite, round trip), ENV-REF-SMALL scenarios, the night log, and the
-   Phase Acceptance Board. W-1
+   (EXIT-1-08). Step 9 (gate-1a acceptance, DEC-062) in parts 9a–9c: 9a done (acceptance record
+   UBS-PHA-1 `50-phases/PH-1/02-gate-1a-acceptance.md`, Chinese package and runbook in
+   `docs/reports/`, `ubos-bench` completed for VER-BENCH-0100 with `branch`, `merge`,
+   `asof` and `--background`; finding 1: the merge preview is linear in the objects of
+   the VAE and must walk the tree diff before the benchmark). Next 9b: the merge-preview
+   fix, then the rental (W-1 first), the reference runs, the external review (UBS-PHR-1)
+   and the acceptance decision; 9c: the step plan of gate 1b (DEC-063). W-1
    may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
    occasion.
-3. **Owner, now:** confirm the GitHub Actions minutes for the nightly workflow (about 1.5 h
-   of Linux minutes for simulation and properties, up to 3 h for the mutation shard, and
-   about 10 min each on Linux ARM64 and macOS for the replay corpus, every night) and
-   enable the `nightly-log` branch; merge `nightly-log` into `main` from time to time.
+3. **Owner, now — Actions runners:** since 2026-10-08 every job of the repository (the
+   nightly workflow and the CI of the step-9a pull request, three attempts) fails with no
+   runner assigned; the nights of 2026-10-06 and -07 ran and were clean on all three
+   platforms. Check the Actions usage and spending limit of the account (Settings →
+   Billing), then re-run the failed jobs. The nightly workflow now costs about 1.5 h of Linux minutes a night (simulation and
+   properties) and, on Sundays, up to 3 h for the mutation shard and about 10 min each on
+   Linux ARM64 and macOS for the replay corpus (the owner's choice of 2026-10-14); merge
+   `nightly-log` into `main` from time to time.
 4. **Java side** (owner): copy `fin-req-v1.0` into the Java repository
    (`docs/reports/finance-requirements-copy-guide-zh.md`) and start work-item records.
 5. **Accounting review** (external): chart of accounts and expected results of the sample

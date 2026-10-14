@@ -4,9 +4,9 @@
 //! ubos-bench tree  [--keys N] [--changes C] [--rounds R] [--seed S]
 //! ubos-bench load  --database URL [--objects N] [--months M] [--seed S] [--threads T]
 //! ubos-bench check --database URL [--objects N] [--months M] [--seed S]
-//! ubos-bench run   --database URL --what read|commit|diff [--objects N] [--months M]
-//!                  [--seed S] [--seconds T] [--rate R] [--workers W] [--per-commit K]
-//!                  [--group G]
+//! ubos-bench run   --database URL --what read|commit|diff|branch|merge|asof [--objects N]
+//!                  [--months M] [--seed S] [--seconds T] [--rate R] [--workers W]
+//!                  [--per-commit K] [--group G] [--background R]
 //! ```
 //!
 //! Every command prints a JSON report (`--report FILE` also writes it). `--objects`,
@@ -52,6 +52,9 @@ fn main() {
                 workers: num("--workers", 8),
                 per_commit: num("--per-commit", 10),
                 group: num("--group", 64),
+                background: opt("--background")
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(0.0),
             };
             run::run(&url, spec, &o).map_err(|e| e.to_string())
         }

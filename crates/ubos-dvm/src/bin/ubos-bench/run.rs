@@ -9,6 +9,18 @@
 //!   included (MET-PERF-002).
 //! - `diff`: diffs between two commits ten single-object commits apart (MET-PERF-003); the
 //!   run first appends the single-object commits it needs.
+//! - `branch` (PH-1 step 9, MET-PERF-012): creation of a branch from `main` over the loaded
+//!   dataset, one per operation, at the given rate on one connection.
+//! - `merge` (MET-PERF-014): the run first forks `feature/merge-…` and updates 1,000 objects on
+//!   it; then `merge_preview` of that branch into `main` at the given rate.
+//! - `asof` (MET-PERF-015): point reads at a valid time in the loaded history (`asof` a
+//!   month of the dataset) against plain point reads of the same objects, in two phases of
+//!   equal length; the report carries both latencies and their p95 ratio (the bitemporal
+//!   read overhead).
+//!
+//! `--background R` runs WL-MIXED-OLTP commits (one to ten objects each) on `main` at R per
+//! second on a separate connection for the whole measured phase, as VER-BENCH-0100 asks
+//! (70% of the sustainable commit throughput measured by `commit` first).
 //!
 //! Latencies are measured from the scheduled start of each operation, so a slow system
 //! cannot hide queueing (no coordinated omission).
@@ -39,6 +51,167 @@ pub struct Opts {
     pub per_commit: u64,
     /// Largest commit group (DSN-DVM-006 default 64; 1 disables group commit).
     pub group: u64,
+    /// Background WL-MIXED-OLTP commits per second during the measured phase (0: none).
+    pub background: f64,
+}
+
+/// The background load: commits of 1–10 random objects on `main` at `rate` per second until
+/// `stop` is set; returns the commits made and the errors.
+fn background(
+    url: &str,
+    spec: &Spec,
+    rate: f64,
+    stop: &std::sync::atomic::AtomicBool,
+) -> Result<(u64, u64), BpaError> {
+    let mut e = attach(url, spec)?;
+    let start = Instant::now();
+    let (mut n, mut errors, mut k) = (0u64, 0u64, 0u64);
+    while !stop.load(std::sync::atomic::Ordering::Relaxed) {
+        let at = start + Duration::from_secs_f64(k as f64 / rate);
+        if let Some(d) = at.checked_duration_since(Instant::now()) {
+            std::thread::sleep(d.min(Duration::from_millis(50)));
+            if at > Instant::now() {
+                continue;
+            }
+        }
+        let m = 1 + workload::mix(spec.seed ^ 0xb6, k, 1) % 10;
+        let mut changes = Vec::new();
+        for j in 0..m {
+            let i = workload::mix(spec.seed ^ 0xb6, k, 2 + j) % spec.objects;
+            changes.push(change(&mut e, spec, i, 1_000_000 + k)?);
+        }
+        if e.commit(&json!({"branch": "main", "changes": changes}))
+            .is_err()
+        {
+            errors += 1;
+        } else {
+            n += 1;
+        }
+        k += 1;
+    }
+    Ok((n, errors))
+}
+
+/// One operation at the given rate on one connection, latencies from the scheduled start.
+fn paced(
+    url: &str,
+    spec: &Spec,
+    o: &Opts,
+    mut op: impl FnMut(&mut Engine, u64) -> Result<(), BpaError>,
+) -> Result<Value, BpaError> {
+    let mut e = attach(url, spec)?;
+    let start = Instant::now() + Duration::from_millis(500);
+    let end = start + Duration::from_secs(o.seconds);
+    let (mut lat, mut errors, mut k) = (Vec::new(), 0u64, 0u64);
+    loop {
+        let at = start + Duration::from_secs_f64(k as f64 / o.rate);
+        if at >= end {
+            break;
+        }
+        if let Some(d) = at.checked_duration_since(Instant::now()) {
+            std::thread::sleep(d);
+        }
+        if op(&mut e, k).is_err() {
+            errors += 1;
+        }
+        lat.push(at.elapsed().as_micros() as u64);
+        k += 1;
+    }
+    let n = lat.len();
+    Ok(
+        json!({"latency": summary(lat), "errors": errors, "achieved_rate": n as f64 / o.seconds as f64}),
+    )
+}
+
+/// Branch creation from `main` (MET-PERF-012).
+fn branches(url: &str, spec: &Spec, o: &Opts) -> Result<Value, BpaError> {
+    let stamp = Instant::now().elapsed().as_nanos() as u64 ^ spec.seed;
+    paced(url, spec, o, |e, k| {
+        e.other(
+            "create_branch",
+            &json!({"name": format!("feature/bench-{stamp:x}-{k}"), "from": "main"}),
+        )
+        .map(|_| ())
+    })
+}
+
+/// Merge preview of a branch with 1,000 changed objects into `main` (MET-PERF-014).
+fn merges(url: &str, spec: &Spec, o: &Opts) -> Result<Value, BpaError> {
+    let mut e = attach(url, spec)?;
+    let name = format!(
+        "feature/merge-{:x}",
+        Instant::now().elapsed().as_nanos() as u64 ^ spec.seed
+    );
+    e.other("create_branch", &json!({"name": name, "from": "main"}))?;
+    // 1,000 distinct objects (or every object of a smaller dataset), 10 per commit
+    let total = spec.objects.min(1000);
+    let offset = workload::mix(spec.seed ^ 0x3e76e, 0, 0) % spec.objects;
+    for batch in 0..total.div_ceil(10) {
+        let mut changes = Vec::new();
+        for j in 0..10u64.min(total - batch * 10) {
+            let i = (offset + batch * 10 + j) % spec.objects;
+            let oid = workload::object_id(spec.seed, i);
+            let mut repo = Repo::new(e.store.as_mut(), &e.registry);
+            let obj = repo
+                .object_at(&name, None, &oid)?
+                .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", oid.clone()))?;
+            let fields: Vec<(String, String)> = e
+                .registry
+                .class(&obj.class)?
+                .fields
+                .iter()
+                .map(|(k, d)| (k.clone(), d["type"].as_str().unwrap_or("text").to_string()))
+                .collect();
+            let b = workload::body(
+                spec.seed ^ 0x3e76e,
+                i,
+                200 + batch,
+                &fields,
+                Some(&Map::new()),
+            );
+            changes.push(json!({"op": "update", "object_id": oid, "base": obj.head, "body": b}));
+        }
+        e.commit(&json!({"branch": name, "changes": changes}))?;
+    }
+    let mut changed = 0u64;
+    let r = paced(url, spec, o, |e, _| {
+        let p = e.other("merge_preview", &json!({"source": name, "target": "main"}))?;
+        changed = p["changes"].as_array().map(|a| a.len() as u64).unwrap_or(0);
+        Ok(())
+    })?;
+    let mut r = r;
+    r["objects_on_branch"] = json!(total);
+    r["preview_size"] = json!(changed);
+    Ok(r)
+}
+
+/// Bitemporal read overhead (MET-PERF-015): `asof` reads of random objects at a random month
+/// of the history against plain reads of the same objects, one phase each.
+fn asof_reads(url: &str, spec: &Spec, o: &Opts) -> Result<Value, BpaError> {
+    let months = spec.months.max(1);
+    let plain = paced(url, spec, o, |e, k| {
+        let i = workload::mix(spec.seed ^ 0xa50f, k, 0) % spec.objects;
+        e.read(&json!({"object_id": workload::object_id(spec.seed, i)}))
+            .map(|_| ())
+    })?;
+    let asof = paced(url, spec, o, |e, k| {
+        let i = workload::mix(spec.seed ^ 0xa50f, k, 0) % spec.objects;
+        let m = workload::mix(spec.seed ^ 0xa50f, k, 1) % months;
+        e.read(&json!({"object_id": workload::object_id(spec.seed, i), "asof": workload::month_date(m)}))
+            .map(|_| ())
+    })?;
+    let ratio = |p: &str| {
+        let a = asof["latency"][p].as_f64().unwrap_or(0.0);
+        let b = plain["latency"][p].as_f64().unwrap_or(0.0);
+        if b > 0.0 {
+            (a / b * 100.0).round() / 100.0
+        } else {
+            0.0
+        }
+    };
+    Ok(
+        json!({"point": plain, "asof": asof, "overhead_p50": ratio("p50_ms"), "overhead_p95": ratio("p95_ms"), "overhead_p99": ratio("p99_ms")}),
+    )
 }
 
 fn attach(url: &str, spec: &Spec) -> Result<Engine, BpaError> {
@@ -359,20 +532,47 @@ fn diffs(url: &str, spec: &Spec, o: &Opts) -> Result<Value, BpaError> {
 
 /// Run one benchmark and return its report.
 pub fn run(url: &str, spec: Spec, o: &Opts) -> Result<Value, BpaError> {
-    let result = match o.what.as_str() {
-        "read" => reads(url, &spec, o)?,
-        "commit" => commits(url, &spec, o)?,
-        "diff" => diffs(url, &spec, o)?,
-        w => {
-            return Err(BpaError::new(
+    let stop = std::sync::atomic::AtomicBool::new(false);
+    let (result, bg) = std::thread::scope(|sc| {
+        let bg = (o.background > 0.0).then(|| {
+            let (stop, rate) = (&stop, o.background);
+            sc.spawn(move || background(url, &spec, rate, stop))
+        });
+        let result = match o.what.as_str() {
+            "read" => reads(url, &spec, o),
+            "commit" => commits(url, &spec, o),
+            "diff" => diffs(url, &spec, o),
+            "branch" => branches(url, &spec, o),
+            "merge" => merges(url, &spec, o),
+            "asof" => asof_reads(url, &spec, o),
+            w => Err(BpaError::new(
                 "ADAPTER.UNSUPPORTED",
                 format!("benchmark {w}"),
-            ));
+            )),
+        };
+        stop.store(true, std::sync::atomic::Ordering::Relaxed);
+        let bg = bg.map(|h| {
+            h.join().unwrap_or_else(|_| {
+                Err(BpaError::new(
+                    "NOD.STORAGE_UNAVAILABLE",
+                    "background panicked",
+                ))
+            })
+        });
+        (result, bg)
+    });
+    let result = result?;
+    let background = match bg {
+        Some(r) => {
+            let (n, errors) = r?;
+            json!({"rate": o.background, "commits": n, "errors": errors})
         }
+        None => Value::Null,
     };
     Ok(json!({
-        "item": "VER-BENCH-0001", "benchmark": o.what, "spec": spec.to_json(),
-        "options": {"seconds": o.seconds, "rate": o.rate, "workers": o.workers, "per_commit": o.per_commit, "group": o.group},
-        "environment": environment(url)?, "result": result,
+        "item": if matches!(o.what.as_str(), "branch" | "merge" | "asof") || o.background > 0.0 { "VER-BENCH-0100" } else { "VER-BENCH-0001" },
+        "benchmark": o.what, "spec": spec.to_json(),
+        "options": {"seconds": o.seconds, "rate": o.rate, "workers": o.workers, "per_commit": o.per_commit, "group": o.group, "background": o.background},
+        "environment": environment(url)?, "result": result, "background": background,
     }))
 }
