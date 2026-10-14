@@ -38,6 +38,7 @@ the work without the earlier conversations. Read `CLAUDE.md` first for the worki
 | DEC-035 | EXIT-0-05 (storage benchmark) is carried over into PH-1 because hosts cannot be rented now; it is due before the PH-1 storage layout is fixed, at the latest at gate 1a. |
 | DEC-036 | PH-1 re-baselined after PH-0: every finding dispositioned (UBS-PHR-0), work items W-1…W-12, OQ-007 and OQ-008 resolved, RSK-004 closed, RSK-016 and RSK-017 added. |
 | DEC-037 | PH-0 accepted with EXIT-0-05 carried over; external review together with the carried benchmark. |
+| DEC-063 | Gate-1b step plan: steps 10–20 (standard first, then the kernel capabilities, the Server and services, the clients and scenarios over UBTP, close-out and acceptance); policy-engine library chosen in step 10 by its own decision; ENV-REF-SMALL for steps 16, 18, 19. |
 | DEC-062 | Gate-1a acceptance in parts 9a–9c: acceptance record UBS-PHA-1, benchmark driver complete, finding 1 (merge preview linear in objects) fixed in 9b before the reference run; decision after the reference runs and the night log. |
 | DEC-061 | Step 8 in parts 8a–8c; kernel property set VER-PROP-0100; coverage and mutation score of the eleven kernel crates measured by the suites themselves, shards on the workstation completed by nightly CI. |
 | DEC-038 | PH-1 executed by the owner with AI sessions: gate-1a steps 0–9, verification requested, ENV-REF-SERVER rented for W-1 and gate 1a, GitHub-hosted CI incl. nightly and ARM64/macOS runners. |
@@ -200,7 +201,7 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
    `Store::objects_by_id`; workstation p50 0.37 s / p95 0.40 s at 20,000 objects, 36 s
    before, `verify/reports/exit-1-09/workstation/`). Next in 9b: the rental (W-1 first),
    the reference runs per `docs/reports/ph1-gate1a-runbook-zh.md`, the external review
-   (UBS-PHR-1) and the acceptance decision; 9c: the step plan of gate 1b (DEC-063). W-1
+   (UBS-PHR-1) and the acceptance decision. 9c done: the gate-1b step plan DEC-063 (steps 10–20 in UBS-PH-1 §11, status table in `docs/reports/ph1-plan-zh.md` §1b); step 10 (BPA 1.0-rc2 and the policy-engine library decision) can start while 9b waits for the hosts. W-1
    may still change partition counts and commit-path costs by a further migration (DEC-047).
 2. **Owner, when possible:** rent ENV-REF-SERVER and run `docs/reports/ph0-step5-runbook-zh.md`
    (W-1, before the storage layout of step 3 is fixed); name the external reviewer for that
