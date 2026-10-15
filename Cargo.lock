@@ -1896,6 +1896,7 @@ dependencies = [
  "ubos-expr",
  "ubos-model",
  "ubos-proof",
+ "ubos-rules",
  "ubos-runtime",
  "ubos-store",
  "ubos-time",
@@ -1954,6 +1955,15 @@ dependencies = [
  "serde_json",
  "ubos-crypto",
  "ubos-tree",
+]
+
+[[package]]
+name = "ubos-rules"
+version = "0.0.0"
+dependencies = [
+ "serde_json",
+ "ubos-expr",
+ "ubos-model",
 ]
 
 [[package]]

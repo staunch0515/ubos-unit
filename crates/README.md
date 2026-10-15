@@ -26,6 +26,10 @@ its parent at the fork point. Tables of the step-4 layout must be dropped before
 `ubos-bench load|check|run` generates and loads WL-GENERIC and drives VER-BENCH-0001;
 commits can be grouped (`Engine::commit_group`, DSN-DVM-006).
 
+PH-1 step 11 (DEC-070) adds `ubos-rules`, the pure engine of governance sheets (STD-LGS):
+grammar, AST, property registry, authoring checks, specificity, the rank and overlap
+analysis of the cascade; the sheet objects and the cascade over a state are the kernel's.
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh

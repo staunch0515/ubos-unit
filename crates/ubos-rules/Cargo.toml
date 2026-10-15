@@ -1,0 +1,17 @@
+[package]
+name = "ubos-rules"
+description = "Governance sheets: grammar, property registry, matching, specificity, cascade and explanation (STD-LGS)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+ubos-model.workspace = true
+ubos-expr.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
