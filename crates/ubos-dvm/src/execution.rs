@@ -783,9 +783,70 @@ impl<'a> EngineHost<'a> {
                 let branch = core.branch.clone();
                 self.e.bpu_descriptor(&branch, &cls)
             }
+            Some("declarations") => {
+                // since 1.0-rc2 (DEC-067): the effective sheet declarations of an object
+                let oid = self.target(core, &a["target"])?;
+                let mut i = json!({"branch": core.branch, "object_id": oid, "ctx": self.decision_ctx(core)?});
+                if !core.pins.is_empty() {
+                    i["evaluated_at"] = json!(core.pins);
+                }
+                let r = self.e.cascade(&i)?;
+                Ok(json!({"properties": r["properties"], "bindings": r["bindings"]}))
+            }
+            _ => Err(BpaError::new(
+                "MODEL.INVALID_VALUE",
+                "what is class, declarations or descriptor",
+            )),
+        }
+    }
+
+    /// The context the decisions and the cascade see (STD-LGS-020, -031; DEC-067).
+    fn decision_ctx(&mut self, core: &Core) -> Result<Value, BpaError> {
+        let c = &core.context;
+        let mut out = json!({
+            "principal_kind": c["principal_kind"], "channel": c["channel"], "vae": c["vae"],
+            "branch_kind": self.e.branch_meta(&core.branch)?.kind,
+        });
+        if let Some(r) = c.get("role").filter(|v| !v.is_null()) {
+            out["role"] = r.clone();
+        }
+        Ok(out)
+    }
+
+    /// STD-ISA-035: explanations of a cascade, a validation outcome or a decision.
+    fn read_explain(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let oid = self.target(core, &a["target"])?;
+        let cls = self.class_of(core, &oid)?;
+        core.authorize(&d.authorization, &cls)?;
+        match s(&Value::Object(a.clone()), "kind") {
+            Some("cascade") => {
+                let Some(property) = a.get("property").and_then(Value::as_str) else {
+                    return Err(BpaError::new(
+                        "MODEL.DECLARATION_INCOMPLETE",
+                        "a cascade explanation names the property",
+                    ));
+                };
+                let mut i = json!({"branch": core.branch, "object_id": oid, "property": property,
+                    "ctx": self.decision_ctx(core)?});
+                if !core.pins.is_empty() {
+                    i["evaluated_at"] = json!(core.pins);
+                }
+                let mut r = self.e.explain_cascade(&i)?;
+                r.as_object_mut().map(|m| m.remove("evaluated_at"));
+                Ok(r)
+            }
+            Some("validation" | "decision") => Err(BpaError::new(
+                "LOGIC.NOT_AVAILABLE",
+                "validation and decision explanations come with the rules of PH-1 step 11c",
+            )),
             _ => Err(BpaError::new(
                 "LOGIC.NOT_AVAILABLE",
-                "effective declarations come with the Governance profile",
+                "lineage explanations come with PH-2",
             )),
         }
     }
@@ -963,6 +1024,7 @@ impl Host for EngineHost<'_> {
             "read.timeline" => self.read_timeline(core, a, d),
             "read.diff" => self.read_diff(core, a, d),
             "read.effective" => self.read_effective(core, a, d),
+            "read.explain" => self.read_explain(core, a, d),
             "run.port" => self.run_port(core, a),
             "run.super" => self.run_super(core),
             "run.logic" => self.run_logic(core, a, d),

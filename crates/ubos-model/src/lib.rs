@@ -196,6 +196,51 @@ fn genesis() -> BTreeMap<String, Value> {
                 ext_json("publisher_signature"),
             ],
         ),
+        // STD-LGS-002, -010 (BPA 1.0-rc2, DEC-066): sheets and Buk property declarations are
+        // Definition objects below ConfigAsset; `ast` is derived from `source` at commit.
+        g(
+            "GovernanceSheet",
+            Some("definition"),
+            Some("ConfigAsset"),
+            false,
+            vec![
+                field("name", "text", true),
+                enum_field(
+                    "layer",
+                    &[
+                        "platform", "industry", "vendor", "tenant", "vae", "unit", "object",
+                    ],
+                ),
+                field("priority", "integer", false),
+                ext_json("scope"),
+                field("source", "text", true),
+                ext_json("ast"),
+                field("cascading", "boolean", false),
+                ext_json("tests"),
+                field("description", "text", true),
+            ],
+        ),
+        g(
+            "PropertyDecl",
+            Some("definition"),
+            Some("ConfigAsset"),
+            false,
+            vec![
+                field("name", "text", true),
+                field("schema", "json", true),
+                enum_field(
+                    "enforcement",
+                    &["commit", "action", "read", "view", "retention", "notify"],
+                ),
+                enum_field(
+                    "combine",
+                    &["override", "max", "min", "union", "all_true", "any_true"],
+                ),
+                field("owner", "text", true),
+                field("handler", "text", false),
+                field("description", "text", true),
+            ],
+        ),
         g(
             "Release",
             Some("definition"),
@@ -228,6 +273,8 @@ pub fn is_genesis(name: &str) -> bool {
             | "ClassExtension"
             | "ChangeSet"
             | "Logic"
+            | "GovernanceSheet"
+            | "PropertyDecl"
             | "Release"
     )
 }
