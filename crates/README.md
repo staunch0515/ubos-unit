@@ -91,6 +91,16 @@ first matching `variants` item) or generates one, and returns the data, the fiel
 staged edits and a `payload_hash`. `branch_info` of an overlay reports its local commits,
 versions and objects.
 
+Step 13d (DEC-074) bounds the index path: a query over one class that orders by the
+indexed field of its best bound, ascending, reads `offset + limit` index rows in key order
+and stops once that many rows pass the `where`, the temporal and state checks and the row
+filter of a policy set (four times more rows while rows are filtered, up to the scan
+budget); `declare_index` on a class with instances rebuilds the index over the heads of
+every branch (`Store::put_field_rows`) and the planner uses it from each branch's rebuild
+commit (`index_since`). `ubos-bench query` is the MET-PERF-016 suite (`eq`, `range`,
+`eq_filter`, `page2`, `key`; memory or PostgreSQL); the workstation report is
+`verify/reports/exit-1-17/workstation/`.
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh

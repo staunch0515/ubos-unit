@@ -2838,6 +2838,44 @@ impl Store for PgStore {
         self.rt
             .block_on(self.backend.count_objects(bid, cseq, class))
     }
+    fn put_field_rows(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        rows: &[(String, String, Vec<u8>, String)],
+    ) -> Result<(), BpaError> {
+        if rows.is_empty() {
+            return Ok(());
+        }
+        let Some(bid) = self.branch_id(branch)? else {
+            return Err(db(format!("unknown branch {branch}")));
+        };
+        let backend = self.backend.clone();
+        let classes: Vec<String> = rows.iter().map(|r| r.0.clone()).collect();
+        let fields: Vec<String> = rows.iter().map(|r| r.1.clone()).collect();
+        let keys: Vec<Vec<u8>> = rows.iter().map(|r| r.2.clone()).collect();
+        let ids: Vec<String> = rows.iter().map(|r| r.3.clone()).collect();
+        self.rt.block_on(async move {
+            let mut tx = backend.begin().await?;
+            for start in (0..ids.len()).step_by(10_000) {
+                let end = (start + 10_000).min(ids.len());
+                sqlx::query("INSERT INTO field_index (tenant_id, vae_id, branch_id, class_name, field, value_key, object_id, cseq_from, cseq_to) SELECT $1::uuid, $2::uuid, $3, t.c, t.f, t.k, t.o::uuid, $4, $5 FROM unnest($6::text[], $7::text[], $8::bytea[], $9::text[]) AS t(c, f, k, o)")
+                    .bind(&backend.scope.tenant)
+                    .bind(&backend.scope.vae)
+                    .bind(bid)
+                    .bind(int(cseq))
+                    .bind(int(OPEN))
+                    .bind(&classes[start..end])
+                    .bind(&fields[start..end])
+                    .bind(&keys[start..end])
+                    .bind(&ids[start..end])
+                    .execute(&mut *tx.tx)
+                    .await
+                    .map_err(db)?;
+            }
+            tx.commit().await
+        })
+    }
     fn field_scan(
         &mut self,
         branch: &str,

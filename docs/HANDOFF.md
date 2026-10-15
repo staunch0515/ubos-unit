@@ -39,6 +39,7 @@ the work without the earlier conversations. Read `CLAUDE.md` first for the worki
 | DEC-036 | PH-1 re-baselined after PH-0: every finding dispositioned (UBS-PHR-0), work items W-1…W-12, OQ-007 and OQ-008 resolved, RSK-004 closed, RSK-016 and RSK-017 added. |
 | DEC-037 | PH-0 accepted with EXIT-0-05 carried over; external review together with the carried benchmark. |
 | DEC-073 | PH-1 step 13 in parts 13a–13d: `ubos-query`, field indexes, the index path of `query`, `search.query` (13a); `ubos-authz` with Cedar (13b); history queries, audit trail, view payloads, overlays (13c); MET-PERF-016 benchmark (13d); the `ubos-query` dependency row of UBS-ARC-07 extended. |
+| DEC-074 | Row filters of list queries as a residual post-filter bounded by the order-by pushdown (13d); index rebuild with `index_since`; no merge base between branches without a common ancestor; `ubos-bench query` as the MET-PERF-016 suite. |
 | DEC-072 | Release of BPA 1.0-rc3 (12c): notes finalised, owner's signed tag `bpa-v1.0.0-rc3`, frozen once tagged; the process state machine of DSN-DVM-501 in the kernel with its property; VER-INSP-9005. |
 | DEC-071 | BPA 1.0-rc3 opened for step 12 (lifecycles) in parts 12a–12c: STD-CLS-004 `DAT-Lifecycle` and the genesis class `Lifecycle`, STD-ISA-017 clarified, STD-ISA-036 `read.actions`, port availability and guards, guards in the rule binding, the lifecycle check of STD-BPU-011; 12b `ubos-flow` in the kernel, 12c the process state machine and the release (DEC-072). |
 | DEC-070 | PH-1 step 11 in parts 11a–11d: `ubos-rules` pure engine and three operations (11a), sheet objects and cascade (11b), validations, decisions and the claim of the 1.0-rc2 clauses (11c), NR-PERF-009 benchmark (11d). |
@@ -242,7 +243,6 @@ PH-0 accepted (DEC-037). PH-1 started (DEC-038); gate-1a steps and status in
 | Accounting reviewer | to be named (ASM-002, PH-3 CPA). |
 | PH-0 external reviewer | database and formal-methods expert (DEC-030), to be named by the owner for the review at the carried benchmark (DEC-037). |
 | ENV-REF-SERVER | rented by the owner for the carried benchmark (DEC-035), CPU with SHA extensions. |
-| Merge base of overlays | a merge (or change-set merge) into an overlay from a branch created from `main` finds no common ancestor and panics in `Repo::base_state_of`; to fail with a merge error or use the overlay's `created_from` as the base (step 13d). |
 
 ## 6. Repositories
 

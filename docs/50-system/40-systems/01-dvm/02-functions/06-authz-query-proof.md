@@ -157,6 +157,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   2. Given random policies and data, when comparing the filtered list with per-object checks, then they are equal.
 - **Verification:** PROP, BENCH, SEC
 - **Origin:** FR-IAM-062, FR-QRY-012, NR-PERF-008
+- **Phase note:** PH-1 step 13d (DEC-074): in PH-1 the policy set is applied to the candidate rows as a residual post-filter after the index scan, its cost bounded by the order-by pushdown; partial evaluation and residual predicates pushed into the scan are revisited when `cedar-policy`'s partial evaluation stabilises or the ENV-REF-SERVER run of VER-BENCH-2000 fails MET-PERF-016.
 
 ### DSN-DVM-821 — Field masking
 - **Statement:** After authorization, results MUST be passed through a masking step driven by field classification and policy (FR-IAM-061): full, partial (declared pattern), hashed or removed. Masking MUST apply to reads, query results, diffs, explanations, events (FR-IAM-063) and exports.

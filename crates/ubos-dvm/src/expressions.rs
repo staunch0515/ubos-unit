@@ -139,6 +139,15 @@ impl Engine {
     /// every candidate. `states` filters by lifecycle state, `select` returns field
     /// values (`rows`), `group_by` and `aggregates` return `groups` (DSN-DVM-905).
     pub fn query(&mut self, i: &Value) -> Result<Value, BpaError> {
+        self.query_in(i, None)
+    }
+
+    /// `query` with the number of index rows the order-by pushdown reads (step 13d): when
+    /// the query orders by the indexed field of its best bound, ascending, over one class,
+    /// the index scan reads `chunk` rows in key order and the page is complete once
+    /// `offset + limit` rows pass the predicates; otherwise the scan is repeated with four
+    /// times the rows, up to the scan budget.
+    fn query_in(&mut self, i: &Value, chunk: Option<usize>) -> Result<Value, BpaError> {
         let spec = ubos_query::spec_of(i)?;
         let branch = s(i, "branch").unwrap_or("main").to_string();
         let key = self.cursor_key();
@@ -254,21 +263,34 @@ impl Engine {
         let mut denied_log: Vec<Value> = Vec::new();
         let now = self.now.clone();
         let now_text = self.now.clone();
+        // the view path (a parent line, a tag or transaction-time coordinate, or
+        // expressions reaching other objects) materialises the snapshot; the index path
+        // reads the candidates of the class or of a field index (DSN-DVM-902, -903)
+        let view_path = reaches
+            || ["tag", "tx_time"].iter().any(|k| sel.get(*k).is_some())
+            || self.branch_meta(&branch)?.parent_line.is_some();
+        // a rebuilt index serves the branch from its rebuild commit (step 13d)
+        let lineage = self.registry.class(&cls)?.linearization.clone();
+        let mut usable: BTreeSet<String> = BTreeSet::new();
+        if !view_path {
+            let snap_cseq = {
+                let mut r = Repo::new(self.store.as_mut(), &self.registry);
+                let snap = r.select(&branch, &sel)?;
+                r.commit(snap.commit)?.cseq
+            };
+            for (f, _) in self.registry.indexed_fields(&cls) {
+                if self.index_usable(&branch, snap_cseq, &lineage, &f)? {
+                    usable.insert(f);
+                }
+            }
+        }
+        let mut pushdown: Option<(usize, bool)> = None;
         let reg = &self.registry;
         let default_valid = move |c: &str| match reg.class(c).map(|c| c.valid_time.as_str()) {
             Ok("instant") => now.clone(),
             _ => now[..10].to_string(),
         };
         let authority = self.store.authority();
-        // the view path (a parent line, a tag or transaction-time coordinate, or
-        // expressions reaching other objects) materialises the snapshot; the index path
-        // reads the candidates of the class or of a field index (DSN-DVM-902, -903)
-        let view_path = reaches
-            || ["tag", "tx_time"].iter().any(|k| sel.get(*k).is_some())
-            || Repo::new(self.store.as_mut(), reg)
-                .branch_meta(&branch)?
-                .parent_line
-                .is_some();
         let mut repo = Repo::new(self.store.as_mut(), reg);
         let (st, commit_id, evaluated_at): (State, String, Value) = if view_path {
             let (view, snap) = repo.view(&branch, &sel)?;
@@ -283,12 +305,39 @@ impl Engine {
             } else {
                 reg.subclasses(&cls)
             };
-            let indexed = reg.indexed_fields(&cls);
+            let indexed: Vec<(String, String)> = reg
+                .indexed_fields(&cls)
+                .into_iter()
+                .filter(|(f, _)| usable.contains(f))
+                .collect();
             let bounds = where_
                 .as_ref()
                 .map(|w| ubos_query::bounds(w, &indexed))
                 .unwrap_or_default();
-            let scanned = match ubos_query::best_bound(&bounds) {
+            let best = ubos_query::best_bound(&bounds).cloned();
+            // order-by pushdown (step 13d): one class, ordered by the bound field
+            if let Some(b) = &best
+                && classes.len() == 1
+                && spec.aggregates.is_empty()
+                && spec.order_by.len() == 1
+                && !spec.order_by[0].desc
+                && spec.order_by[0]
+                    .path
+                    .strip_prefix("this.")
+                    .unwrap_or(&spec.order_by[0].path)
+                    == b.field
+            {
+                let want = (offset + limit) as usize;
+                let fetch = chunk
+                    .unwrap_or_else(|| want.max(64).saturating_mul(2))
+                    .min(budget as usize + 1);
+                pushdown = Some((fetch, false));
+            }
+            let fetch = match pushdown {
+                Some((f, _)) => f.saturating_add(1),
+                None => (budget as usize).saturating_add(1),
+            };
+            let scanned = match &best {
                 Some(b) => repo.field_scan(
                     &branch,
                     cseq,
@@ -296,14 +345,22 @@ impl Engine {
                     &b.field,
                     b.lo.as_deref(),
                     b.hi.as_deref(),
-                    (budget as usize).saturating_add(1),
+                    fetch,
                 )?,
                 None => None,
             };
             let objects = match scanned {
-                Some(rows) => {
-                    if rows.len() as u64 > budget {
-                        return Err(scan_limit(budget, rows.len() as u64, &cls, None));
+                Some(mut rows) => {
+                    match pushdown.as_mut() {
+                        Some((f, more)) => {
+                            *more = rows.len() > *f;
+                            rows.truncate(*f);
+                        }
+                        None => {
+                            if rows.len() as u64 > budget {
+                                return Err(scan_limit(budget, rows.len() as u64, &cls, None));
+                            }
+                        }
                     }
                     let ids: Vec<String> = rows.into_iter().map(|(id, _)| id).collect();
                     repo.objects_in_ids(&branch, cseq, &ids)?
@@ -419,6 +476,17 @@ impl Engine {
                 keys.push(ubos_query::sort_key(&eval(ast, &row.this)?)?);
             }
             rows.push((row, keys));
+        }
+        if let Some((fetch, more)) = pushdown
+            && more
+            && (rows.len() as u64) < offset + limit
+        {
+            if fetch as u64 > budget {
+                return Err(scan_limit(budget, fetch as u64, &cls, None));
+            }
+            drop(reader);
+            drop(repo);
+            return self.query_in(i, Some(fetch.saturating_mul(4)));
         }
         if !spec.aggregates.is_empty() {
             let mut grouped = Vec::with_capacity(rows.len());

@@ -208,6 +208,20 @@ pub trait Store {
     ) -> Result<Option<FieldRows>, BpaError> {
         Ok(None)
     }
+    /// Write field-index rows `(class, field, value key, object)` open from `cseq` for
+    /// objects whose heads exist (the rebuild of a declared index over existing objects,
+    /// DSN-DVM-902; PH-1 step 13d). No open row is closed: the rows of other fields stand.
+    fn put_field_rows(
+        &mut self,
+        _branch: &str,
+        _cseq: u64,
+        _rows: &[(String, String, Vec<u8>, String)],
+    ) -> Result<(), BpaError> {
+        Err(BpaError::new(
+            "NOD.STORAGE_UNAVAILABLE",
+            "the store cannot rebuild field indexes",
+        ))
+    }
     /// Local ledger entries up to `cseq` in append order, optionally of one ledger key or
     /// with one entry identifier.
     fn entries(
@@ -661,6 +675,24 @@ impl Store for MemStore {
         }
         apply_metadata(self, f)?;
         Ok(true)
+    }
+    fn put_field_rows(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        rows: &[(String, String, Vec<u8>, String)],
+    ) -> Result<(), BpaError> {
+        let fi = self.field_index.entry(branch.to_string()).or_default();
+        let open = self.open_fields.entry(branch.to_string()).or_default();
+        for (c, field, key, oid) in rows {
+            fi.entry((c.clone(), field.clone(), key.clone(), oid.clone()))
+                .or_default()
+                .push((cseq, None));
+            open.entry(oid.clone())
+                .or_default()
+                .push((c.clone(), field.clone(), key.clone()));
+        }
+        Ok(())
     }
     fn field_scan(
         &mut self,
