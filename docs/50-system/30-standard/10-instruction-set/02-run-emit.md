@@ -17,7 +17,7 @@ depends_on: [UBS-STD-10]
   |---|---|
   | Params | `target: uri`, `port: text`, `params: map` |
   | Result | the port's result type |
-  | Errors | the port's declared errors, plus `MODEL.PORT_NOT_IMPLEMENTED`, `FLOW.GUARD_FAILED`, `RULE.DECISION_DENIED`, `RULE.DECISION_REQUIRES`, `IAM.DENIED` |
+  | Errors | the port's declared errors, plus `MODEL.PORT_NOT_IMPLEMENTED`, `FLOW.PORT_UNAVAILABLE`, `FLOW.GUARD_FAILED`, `RULE.DECISION_DENIED`, `RULE.DECISION_REQUIRES`, `IAM.DENIED` |
   | Determinism | as the port's implementation |
   | Cost | 20 plus the callee's consumption (shared budget) |
   | Authorization | the port's `permission` |
@@ -28,7 +28,7 @@ depends_on: [UBS-STD-10]
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3400…3429
 - **Satisfies:** FR-MODEL-031, FR-FLOW-022, FR-RULE-051
-- **Notes:** Nesting depth is limited by the profile (default 32).
+- **Notes:** Nesting depth is limited by the profile (default 32). Since 1.0-rc3 (DEC-071): before the implementation runs, in this order, the port must be available in the object's lifecycle state (`states` of the declaration, and the transition it names must leave the state; `FLOW.PORT_UNAVAILABLE` with `{port, state}`), the permission is checked, the decisions of a command port are evaluated (STD-LGS-031), and the port's `guards` — L1 booleans over `this`, `params` and `ctx` given as text — are evaluated, every failing one reported in `FLOW.GUARD_FAILED` `{port, failed: [{guard}]}`; the guards evaluated are recorded in the rule binding of the commit (STD-TIME-040).
 
 ### STD-ISA-051 — `run.super`
 - **Clause:** Invokes the next implementation of the current port in the linearization (STD-CLS-020), with the same or refined parameters.

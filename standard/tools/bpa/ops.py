@@ -174,6 +174,8 @@ STATEFUL = {
                                     i.get('ctx'), i),
     # BPA 1.0-rc2, PH-1 step 10d (DEC-068): the in-process UBTP binding
     'ubtp': lambda s, i: s.ubtp(i['messages'], i.get('session', 's1')),
+    # BPA 1.0-rc3, PH-1 step 12a (DEC-071)
+    'actions': lambda s, i: s.actions(i.get('branch', 'main'), i['object_id'], i.get('ctx'), i),
 }
 
 # Members of `ubtp` frames an implementation assigns (process identifiers), stripped like the

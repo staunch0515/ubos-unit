@@ -10,6 +10,7 @@ as canonical JSON to standard/vectors/<profile>/VER-CONF-nnnn.json.
 Usage: python3 standard/tools/genvectors.py
 """
 import importlib
+import json
 import os
 import shutil
 import sys
@@ -23,11 +24,11 @@ from bpa.store import Store                              # noqa: E402
 
 OUT = os.path.join(REPO, 'standard', 'vectors')
 AREAS = ['fnd', 'obj', 'cls', 'kind', 'ver', 'time', 'txn', 'proof', 'err', 'model', 'history', 'proofs', 'language', 'execution',
-         'sheets', 'rules', 'core1b', 'ubtp']
+         'sheets', 'rules', 'core1b', 'ubtp', 'flow']
 # Stateful operations whose expected results are stripped of implementation-dependent members
 # and compared as subsets by default (STD-CONF-005, rule 6); the operations of step 1b keep
 # exact matching.
-STRIPPED = ('commit', 'read', 'read_ledger', 'merge', 'diff', 'export_state', 'create_branch',
+STRIPPED = ('commit', 'read', 'read_ledger', 'actions', 'merge', 'diff', 'export_state', 'create_branch',
             'branch_info', 'commit_info', 'read_range', 'history', 'tree_diff', 'merge_preview', 'change_set',
             'tag', 'tag_info', 'release', 'revert', 'process_info', 'lineage', 'derivation', 'impact', 'outbox',
             'bulk', 'commit_record', 'prove', 'consistency_proof', 'tenant_root', 'export_archive',
@@ -38,6 +39,13 @@ STRIPPED = ('commit', 'read', 'read_ledger', 'merge', 'diff', 'export_state', 'c
 # The time-zone vectors use only transitions that are stable in every tz database release
 # since 2024; this is the release they were generated and checked with.
 TZDB = '2025b'
+
+
+def released_expect(vec, phase, i):
+    """The expectation of step `i` of a vector as released (the file in `vectors/`, DEC-071)."""
+    path = os.path.join(OUT, vec['profile'].lower(), vec['id'] + '.json')
+    with open(path, encoding='utf-8') as fh:
+        return json.load(fh)[phase][i - 1]['expect']
 
 
 class Gen:
@@ -67,8 +75,9 @@ class Gen:
                     step['input'] = s.get('input', {})
                 if s.get('frozen'):
                     # A released vector that a later release supersedes (DEC-067): its
-                    # expectation is kept as released, the oracle is not consulted.
-                    step['expect'] = {'error_code': s['error']}
+                    # expectation is kept as released, the oracle is not consulted. A positive
+                    # step keeps the expectation of the released file (DEC-071).
+                    step['expect'] = {'error_code': s['error']} if s.get('error') else released_expect(vec, phase, i)
                     vec['steps'].append(step)
                     self.frozen[vec['id']] = s['frozen']
                     continue

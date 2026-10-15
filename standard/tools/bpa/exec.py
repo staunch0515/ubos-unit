@@ -18,6 +18,7 @@ import hashlib
 import re
 
 from . import BpaError, expr, isa, addr, crypto
+from .flow import guard_ok, eval_value, findings as flow_findings
 from .canon import canonical, content_id
 from .classes import dispatch, effective_class
 from .values import GRAMMARS
@@ -37,7 +38,9 @@ IMPLEMENTED = ('commit.create', 'commit.update', 'commit.end', 'commit.move', 'c
                'commit.adjust', 'commit.link', 'commit.unlink', 'read.get', 'read.history', 'read.timeline',
                'read.diff', 'read.effective', 'run.port', 'run.super', 'run.logic', 'run.async', 'emit.event',
                # BPA 1.0-rc2, PH-1 step 10c (DEC-067)
-               'read.explain', 'run.validate', 'search.query')
+               'read.explain', 'run.validate', 'search.query',
+               # BPA 1.0-rc3, PH-1 step 12a (DEC-071)
+               'commit.transition', 'read.actions')
 SYSTEM = {'sys.uuid': 'pure', 'sys.random_bytes': 'pure', 'adapter.observe': 'journaled'}
 READ_ACTIONS = ('read', 'read_history', 'reflect', 'explain')
 L2_FORBIDDEN = ('eval', 'print', 'debug', 'import', 'export', 'Fn', 'call', 'curry', 'is_def_fn', 'is_def_var',
@@ -90,6 +93,8 @@ class Run:
         self.uow, self.pending, self.reads, self.triples = [], {}, {}, []
         self.effects, self.records, self.pins, self.pinned, self.logic = [], [], {}, {}, []
         self.frames = []
+        # STD-ISA-017 (1.0-rc3): the transitions of this process by object and the guards passed
+        self.transitions, self.guards = {}, []
         self.cancel_after = i.get('cancel_after_units')
         self.context = self._context()
 
@@ -294,6 +299,7 @@ class Run:
         if frame.port is not None and frame.params is not None:
             for k, v in (args or {}).items():
                 frame.params.setdefault(k, v)
+        frame.args = dict(frame.params)
         frame.params = {k: expr.from_json('any', v) for k, v in frame.params.items()}
         self.frames.append(frame)
         try:
@@ -455,6 +461,10 @@ class Run:
         self.authorize(d['authorization'], self.class_of(oid))
         sets = a.get('set') or {}
         self.per_item(d, len(sets))
+        return self._stage_update(oid, sets, d, slug, a.get('base'), a.get('timeline'))
+
+    def _stage_update(self, oid, sets, d, slug=None, base=None, tl=None):
+        """Merge field sets into the pending change of an object, or stage an update."""
         if oid in self.pending:
             p = self.pending[oid]
             p['body'].update(sets)
@@ -467,10 +477,9 @@ class Run:
             if slug:
                 p['update']['slug'] = p['slug'] = slug
             return {'version': None}
-        ch = {'op': 'update', 'object_id': oid, 'base': self.base_of(oid, a.get('base')), 'body': dict(sets)}
+        ch = {'op': 'update', 'object_id': oid, 'base': self.base_of(oid, base), 'body': dict(sets)}
         if slug:
             ch['slug'] = slug
-        tl = a.get('timeline')
         if tl:
             ch['valid'] = {'kind': tl.get('op'), 'from': tl.get('from')}
             if tl.get('to') is not None:
@@ -592,6 +601,8 @@ class Run:
                 out = {'object_id': oid, 'class': cls, 'version': seg[2],
                        'fields': dict(self.s.versions[seg[2]]['body']), 'valid': {'from': seg[0], 'to': seg[1]},
                        'resolved_from': {'branch': self.branch, 'commit': self.pins[self.branch]}}
+                if self.s.versions[seg[2]].get('state') is not None:
+                    out['state'] = self.s.versions[seg[2]]['state']
         if a.get('fields') is not None:
             out['fields'] = {k: v for k, v in out['fields'].items() if k in a['fields']}
         self.per_item(d, -(-len(canonical(out['fields']).encode('utf-8')) // 1024))
@@ -645,6 +656,15 @@ class Run:
         port = (eff.get('_ports') or {}).get(a['port'])
         if port is None:
             raise BpaError('MODEL.PORT_NOT_IMPLEMENTED', 'no port %s' % a['port'])
+        # STD-ISA-050 (1.0-rc3): the port is available in the object's lifecycle state
+        state = self.object_state(oid)
+        lc = self.s._lifecycle(self.state(), cls)
+        if port.get('states') and state not in port['states']:
+            raise BpaError('FLOW.PORT_UNAVAILABLE', {'port': a['port'], 'state': state})
+        if port.get('transition') and lc:
+            tr = next((t for t in lc[0].get('transitions') or [] if t['name'] == port['transition']), None)
+            if tr and state not in tr['from']:
+                raise BpaError('FLOW.PORT_UNAVAILABLE', {'port': a['port'], 'state': state})
         self.authorize(port.get('permission', 'none'), cls)
         if oid not in self.pending:
             # STD-LGS-031: the decisions of a command port run before it (DSN-DVM-720)
@@ -652,7 +672,95 @@ class Run:
                                    self.decision_ctx())
         found = dispatch(list(self.s.decls.values()), cls, a['port'], None, self.s._extensions(self.state()))
         body = self.pending[oid]['body'] if oid in self.pending else self.s.versions[self.state()['objects'][oid]['head']]['body']
+        # STD-ISA-050 (1.0-rc3): the port's guards, L1 booleans over this, params and ctx
+        ptypes = {q['name']: q for q in port.get('params') or []}
+        failed = [g for g in port.get('guards') or []
+                  if not guard_ok(list(self.s.decls.values()), cls, g, body, ptypes, a.get('params') or {}, self.decision_ctx())]
+        if failed:
+            raise BpaError('FLOW.GUARD_FAILED', {'port': a['port'], 'failed': [{'guard': g} for g in failed]})
+        for i, g in enumerate(port.get('guards') or []):
+            self.guards.append({'guard': '%s/%d' % (a['port'], i), 'result': True})
         return self.call_impl(found, oid, cls, body, a['port'], a.get('params') or {})
+
+    def object_state(self, oid):
+        """The lifecycle state of an object as this process sees it (STD-CLS-004)."""
+        if oid in self.transitions:
+            return self.transitions[oid]['to']
+        if oid in self.pending and 'change' in self.pending[oid]:
+            lc = self.s._lifecycle(self.state(), self.pending[oid]['class'])
+            return lc[0]['initial'] if lc else None
+        o = self.state()['objects'][oid]
+        return self.s.versions[o['head']].get('state')
+
+    def i_commit_transition(self, a, d):
+        """STD-ISA-017: a lifecycle transition as the effect of the current port."""
+        oid = self.target_id(a['target'])
+        cls = self.class_of(oid)
+        name = a['transition']
+        frame = self.frames[-1] if self.frames else None
+        decl = (self.s._cls(cls).get('_ports') or {}).get(frame.port) if frame and frame.port else None
+        if decl is None or decl.get('transition') != name:
+            raise BpaError('FLOW.TRANSITION_NOT_ALLOWED', {'transition': name, 'message': 'the port does not name the transition'})
+        lc = self.s._lifecycle(self.state(), cls)
+        if lc is None:
+            raise BpaError('FLOW.TRANSITION_NOT_ALLOWED', {'transition': name, 'message': 'the class has no lifecycle'})
+        tr = next((t for t in lc[0].get('transitions') or [] if t['name'] == name), None)
+        current = self.object_state(oid)
+        if tr is None or current not in tr['from']:
+            raise BpaError('FLOW.TRANSITION_NOT_ALLOWED', {'transition': name, 'from': current})
+        effects = lc[0].get('effects') or {}
+        self.per_item(d, len(tr.get('guards') or []) + sum(len(v) for st_ in (current, tr['to'])
+                                                           for v in (effects.get(st_) or {}).values()))
+        body = dict(self.pending[oid]['body']) if oid in self.pending else dict(self.s.versions[self.state()['objects'][oid]['head']]['body'])
+        classes = list(self.s.decls.values())
+        ptypes = {q['name']: q for q in decl.get('params') or []}
+        params, ctx = frame.args or {}, self.decision_ctx()
+        failed = [{'name': g['name'], 'message': g.get('message', g['name'])} for g in tr.get('guards') or []
+                  if not guard_ok(classes, cls, g['rule'], body, ptypes, params, ctx)]
+        if failed:
+            raise BpaError('FLOW.GUARD_FAILED', {'transition': name, 'failed': failed})
+        sets = {}
+        for state, kind in ((current, 'exit'), (tr['to'], 'entry')):
+            for ef in (effects.get(state) or {}).get(kind) or []:
+                try:
+                    if 'set' in ef:
+                        for f, text in ef['set'].items():
+                            if f not in self.s._cls(cls)['fields']:
+                                raise BpaError('MODEL.INVALID_VALUE', 'undeclared field %s' % f)
+                            body[f] = sets[f] = eval_value(classes, cls, text, body, ptypes, params, ctx)
+                    else:
+                        asset_name, _, fname = ef['logic'].partition('#')
+                        asset, vh = self.asset(asset_name)
+                        self.run_function(Frame(asset, vh, fname, this=body, cls=cls, port=frame.port, oid=oid), params)
+                        if oid in self.pending:
+                            body = dict(self.pending[oid]['body'])
+                except BpaError as e:
+                    raise BpaError('FLOW.EFFECT_FAILED', {'state': state, 'effect': kind, 'code': e.code})
+        for f in ((lc[0].get('field_rules') or {}).get(tr['to']) or {}).get('required') or []:
+            if body.get(f) is None:
+                raise BpaError('FLOW.FIELD_RULE_VIOLATED', {'state': tr['to'], 'field': f, 'rule': 'required'})
+        self._stage_update(oid, sets, d)
+        self.transitions[oid] = {'from': current, 'to': tr['to'],
+                                 'fields': sorted(set(self.transitions.get(oid, {}).get('fields', ())) | set(sets))}
+        for g in tr.get('guards') or []:
+            self.guards.append({'guard': '%s/%s' % (name, g['name']), 'result': True})
+        return {'from': current, 'to': tr['to']}
+
+    def i_read_actions(self, a, d):
+        """STD-ISA-036: the ports of an object with their availability for this principal."""
+        oid = self.target_id(a['target'])
+        cls = self.class_of(oid)
+        self.authorize(d['authorization'], cls)
+
+        def permit(action, c):
+            try:
+                self.authorize(action, c)
+                return True
+            except BpaError:
+                return False
+        out = self.s._actions_in(self.state(), self.branch, oid, self.decision_ctx(), permit)
+        self.per_item(d, len(out['actions']))
+        return out
 
     def call_impl(self, found, oid, cls, body, port, params):
         impl = found.get('impl') or ''
@@ -835,7 +943,7 @@ class Exec:
                 if run.uow:
                     p['serializable'] = i.get('serializable', False)
                     p['reads'] = dict(run.reads)
-                    _, cid = self._do_commit(branch, run.uow, p)
+                    _, cid = self._do_commit(branch, run.uow, p, flow={'transitions': run.transitions, 'guards': run.guards})
             except BpaError as e:
                 if replay is not None:
                     raise
@@ -1158,8 +1266,13 @@ class Exec:
             undocumented.append({'item': cls})
         undocumented += [{'item': k} for k, f in sorted(eff['fields'].items()) if not f.get('description')]
         undocumented += [{'item': k} for k, p in sorted(ports.items()) if not p.get('description')]
+        # STD-BPU-011 item 2 (1.0-rc3): unreachable states and dead ends of the lifecycle
+        lc = self._lifecycle(st, cls)
+        lf = flow_findings(lc[0]) if lc else None
+        lifecycle_check = ({'name': 'lifecycle', 'result': 'fail' if lf else 'pass', 'findings': lf} if lc
+                           else {'name': 'lifecycle', 'result': 'not_applicable', 'findings': []})
         checks = [{'name': 'ports_verified', 'result': 'fail' if unverified else 'pass', 'findings': unverified},
-                  {'name': 'lifecycle', 'result': 'not_applicable', 'findings': []},
+                  lifecycle_check,
                   {'name': 'events_emitted', 'result': 'fail' if silent else 'pass', 'findings': silent},
                   {'name': 'documented', 'result': 'fail' if undocumented else 'pass', 'findings': undocumented},
                   {'name': 'tests', 'result': 'not_applicable', 'findings': []}]

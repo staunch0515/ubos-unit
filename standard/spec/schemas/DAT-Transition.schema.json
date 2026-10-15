@@ -1,0 +1,33 @@
+{
+  "$id": "DAT-Transition",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "description": {
+      "description": "documentation",
+      "type": "string"
+    },
+    "from": {
+      "description": "states the transition leaves, at least one",
+      "type": "array"
+    },
+    "guards": {
+      "description": "{name, rule, message} items; rule is an L1 boolean over this, params and ctx",
+      "type": "array"
+    },
+    "name": {
+      "description": "transition name (member-name grammar)",
+      "type": "string"
+    },
+    "to": {
+      "description": "the state the transition enters",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "from",
+    "to"
+  ],
+  "title": "DAT-Transition",
+  "type": "object"
+}

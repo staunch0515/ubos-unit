@@ -24,6 +24,7 @@ from .lang import Lang, custom_value
 from .exec import Exec
 from .sheets import Sheets
 from .rules import Rules, DryRun
+from .flow import Flow
 from .ubtp import Ubtp
 from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
@@ -121,7 +122,7 @@ def tl_at(tl, asof):
     return None
 
 
-class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp):
+class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
     def __init__(self):
         self.reset()
 
@@ -217,7 +218,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp):
         for d in classes:
             decls[d['name']] = d
         eff = {}
-        for n in list(decls) + ['ChangeSet', 'Release', 'Logic', 'GovernanceSheet', 'PropertyDecl']:
+        for n in list(decls) + ['ChangeSet', 'Release', 'Logic', 'GovernanceSheet', 'PropertyDecl', 'Lifecycle']:
             eff[n] = effective_class(list(decls.values()), n)
         for n, e in eff.items():
             old = self.classes.get(n)
@@ -400,10 +401,12 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp):
                 raise BpaError('MODEL.OBJECT_TOO_LARGE', 'body larger than the configured limit')
         return out
 
-    def _version(self, oid, cls, slug, body, valid, predecessor=None, tombstone=False, provenance=None):
+    def _version(self, oid, cls, slug, body, valid, predecessor=None, tombstone=False, provenance=None, state=None):
         env = {'object_id': oid, 'class': cls, 'class_version': content_id('ubos.chunk.v1', self._decl(cls)),
                'schema_version': self._decl(cls).get('schema_version', 1), 'kind': self._cls(cls)['kind'],
                'slug': slug, 'valid': valid, 'body_ref': content_id('ubos.chunk.v1', body)}
+        if state is not None:
+            env['state'] = state
         if predecessor:
             env['predecessor'] = predecessor
         if tombstone:
@@ -416,6 +419,8 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp):
                              'tombstone': tombstone, 'cseq': old['cseq'] if old else self._cseq, 'envelope': env}
         if provenance:
             self.versions[vh]['provenance_ref'] = provenance
+        if state is not None:
+            self.versions[vh]['state'] = state
         return vh
 
     # ---- branches (STD-VER-010, -013) ----
@@ -599,7 +604,10 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp):
             self.idempotency[key] = {'hash': h, 'result': copy.deepcopy(result), 'at': self.now}
         return result
 
-    def _do_commit(self, branch, changes, p, via_change_set=False):
+    def _do_commit(self, branch, changes, p, via_change_set=False, flow=None):
+        """`flow` carries what a process's transitions produced (STD-ISA-017, 1.0-rc3): the new
+        state per object and the guard evaluations to record in the rule binding."""
+        self._flow = flow or {}
         br = self._branch(branch)
         head = self.commits[br['head']]
         view, prov, _ = self._view(branch, br['head'])
@@ -684,6 +692,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp):
         self._integrity(st, appended)
         self._check_extensions(st)
         self._check_sheets(st)
+        self._check_lifecycle_objects(st)
         return [e['entry_id'] for e in appended]
 
     def _hide(self, st, ch, op):
@@ -733,10 +742,18 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp):
         for oid, vh, body in self._extension_objects(st):
             if body.get('target') in lin:
                 items.append({'class': 'ClassExtension', 'object_id': oid, 'class_version': vh})
+        # STD-CLS-004, STD-TIME-040 (1.0-rc3): the lifecycle versions of the changed classes
+        for n in sorted(names):
+            lc = self._lifecycle(st, n)
+            if lc and not any(i.get('object_id') == lc[1] for i in items):
+                items.append({'class': 'Lifecycle', 'object_id': lc[1], 'class_version': lc[2]})
         out = {'classes': items}
         lg = sorted(set(logic) | {x for d in self._derived for x in self.derivations[d[3]]['logic']})
         if lg:
             out['logic'] = lg
+        guards = (getattr(self, '_flow', None) or {}).get('guards') or []
+        if guards:
+            out['guards'] = list(guards)
         return out
     def _entry_owner(self, st, entry_id):
         for k, q in st['ledger'].items():
@@ -760,12 +777,17 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp):
         body = ch.get('body', {})
         if cls == 'GovernanceSheet':
             body = self._sheet_body(body)
+        # STD-CLS-004 (1.0-rc3): the lifecycle state is set by the kernel, never by a change
+        lc = self._lifecycle(st, cls)
+        if 'state' in ch or (lc and isinstance(body, dict) and 'state' in body):
+            raise BpaError('FLOW.STATE_DIRECT_WRITE', 'the lifecycle state changes by transitions only')
+        state = (self._flow.get('transitions') or {}).get(oid, {}).get('to', lc[0]['initial']) if lc else None
         body = self._apply_defaults(st, cls, oid, body)
         body = self._check_body(cls, body)
         valid = ch.get('valid') or {}
         a = valid.get('from') or self._default_valid(cls)
         rid = self._derivation(ch)
-        vh = self._version(oid, cls, ch['slug'], body, {'from': a, 'to': None}, provenance=rid)
+        vh = self._version(oid, cls, ch['slug'], body, {'from': a, 'to': None}, provenance=rid, state=state)
         st['objects'][oid] = {'class': cls, 'kind': eff['kind'], 'slug': ch['slug'], 'head': vh,
                               'timeline': tl_apply([], 'create', vh, a)}
         result['versions'][oid] = vh
@@ -787,10 +809,22 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp):
             raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'updates name their base (STD-TXN-020)')
         base = self.versions[o['head']]
         valid = ch.get('valid') or {}
+        # STD-CLS-004 (1.0-rc3): the state moves by transitions only; field rules of the state
+        lc = self._lifecycle(st, o['class'])
+        if 'state' in ch or (lc and isinstance(ch.get('body'), dict) and 'state' in ch['body']):
+            raise BpaError('FLOW.STATE_DIRECT_WRITE', 'the lifecycle state changes by transitions only')
+        tr = (self._flow.get('transitions') or {}).get(oid)
+        state = tr['to'] if tr else base.get('state')
+        if lc and op != 'end' and base.get('state') is not None:
+            rules = (lc[0].get('field_rules') or {}).get(base['state']) or {}
+            effect_fields = set(tr.get('fields') or ()) if tr else set()
+            for f in rules.get('read_only') or []:
+                if f in (ch.get('body') or {}) and f not in effect_fields:
+                    raise BpaError('FLOW.FIELD_RULE_VIOLATED', {'state': base['state'], 'field': f, 'rule': 'read_only'})
         if op == 'end':
             d = valid.get('from') or self._default_valid(o['class'])
             vh = self._version(oid, o['class'], o['slug'], base['body'], {'from': d, 'to': None},
-                               predecessor=o['head'], tombstone=True)
+                               predecessor=o['head'], tombstone=True, state=state)
             o['timeline'] = tl_apply(o['timeline'], 'end', vh, d)
             self._ended.append((oid, d))
             self._op(oid, 'end', d)
@@ -812,7 +846,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp):
             to = b if kind == 'set_period' else (None if kind == 'replace_future' else tl_range(o['timeline'], kind, a)[1])
             rid = self._derivation(ch)
             vh = self._version(oid, o['class'], slug, body, {'from': a, 'to': to}, predecessor=o['head'],
-                               provenance=rid)
+                               provenance=rid, state=state)
             rng = tl_range(o['timeline'], kind, a, b)
             o['timeline'] = tl_apply(o['timeline'], kind, vh, a, b)
             o['slug'] = slug
@@ -1216,6 +1250,8 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp):
         out = {'version_hash': seg[2], 'body': v['body'], 'slug': v['slug'], 'valid': {'from': seg[0], 'to': seg[1]}}
         if v.get('provenance_ref'):
             out['provenance_ref'] = v['provenance_ref']
+        if v.get('state') is not None:
+            out['state'] = v['state']
         return out
 
     def _follow(self, st, o, seg, field, a):

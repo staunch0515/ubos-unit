@@ -78,6 +78,12 @@ GENESIS = {
                                 _f('combine', 'enum', True, constraints={'allowed_values': [
                                     'override', 'max', 'min', 'union', 'all_true', 'any_true']}),
                                 _f('owner', 'text', True), _f('handler', 'text'), _f('description', 'text', True)]},
+    # STD-CLS-004 (BPA 1.0-rc3, DEC-071): the lifecycle of a class is a Definition object below
+    # ConfigAsset that its declaration names by URI.
+    'Lifecycle': {'name': 'Lifecycle', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
+                  'fields': [_f('name', 'text', True), _f('states', 'json', True), _f('initial', 'text', True),
+                             _f('final', 'json'), _f('transitions', 'json', True), _f('effects', 'json'),
+                             _f('field_rules', 'json'), _f('description', 'text', True)]},
     'Release': {'name': 'Release', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
                 'fields': [_f('version', 'text', True), _f('tag', 'text', True), _f('notes', 'text'),
                            _f('change_sets', 'json'), _f('approvals', 'json')]},
@@ -235,6 +241,12 @@ def check_decl(d):
     if 'validations' in d:
         check_validations(d['validations'])
     check_overlay_policy(d)
+    # STD-CLS-004 (1.0-rc3): the lifecycle is a URI; a class with a lifecycle has no field state
+    if 'lifecycle' in d:
+        if not isinstance(d['lifecycle'], str) or not d['lifecycle']:
+            raise BpaError('MODEL.INVALID_VALUE', 'lifecycle is the URI of a Lifecycle object')
+        if 'state' in names:
+            raise BpaError('MODEL.INVALID_VALUE', 'a class with a lifecycle has no field state')
 
 
 def _registry(classes):
@@ -430,6 +442,12 @@ def effective_class(classes, name, extensions=()):
     if policy is None:
         policy = 'change_set' if 'ConfigAsset' in lin else 'direct'
     out = {'linearization': lin, 'kind': kind, 'write_policy': policy, 'fields': fields}
+    # STD-CLS-004 (1.0-rc3): the lifecycle in force is the nearest one named along the linearization
+    lifecycle = next((reg[c].get('lifecycle') for c in lin if reg[c].get('lifecycle')), None)
+    if lifecycle:
+        if 'state' in fields:
+            raise BpaError('MODEL.INVALID_VALUE', 'a class with a lifecycle has no field state')
+        out['lifecycle'] = lifecycle
     if validations:
         out['validations'] = validations
     if overlay:

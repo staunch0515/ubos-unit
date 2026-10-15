@@ -93,6 +93,34 @@ DAT-PortDecl:
   description: { type: text, required: true, description: "documentation" }
 ```
 
+### STD-CLS-004 — Lifecycle declaration
+- **Clause:** A class MAY name a lifecycle: `lifecycle` is the canonical URI of an object of the genesis class `Lifecycle` (`DAT-Lifecycle`, a Definition class below `ConfigAsset`). The lifecycle declares its states, one initial state, its final states, its transitions (`DAT-Transition`: name, the states it leaves, the state it enters, its guards), the entry and exit effects of its states and the per-state field rules. The lifecycle state of an object is the `state` member of its versions (STD-OBJ-002): an object of a class with a lifecycle is created in the initial state, and its state changes only by `commit.transition` (STD-ISA-017); a change that names `state`, or that writes a `state` field of a class with a lifecycle, MUST be rejected with `FLOW.STATE_DIRECT_WRITE`. A subclass MAY name its own lifecycle only if it extends every lifecycle named along its linearization: the same initial state, every state and every transition kept (a transition keeps its name and target state and MAY leave more states); anything else is `MODEL.NARROWING_VIOLATION`.
+- **Grammar / Schema:** `DAT-Lifecycle`, `DAT-Transition`
+- **Conformance vectors:** VER-CONF-0580…0599
+- **Satisfies:** FR-FLOW-011, FR-FLOW-012, FR-FLOW-015
+- **Notes:** Since 1.0-rc3 (DEC-071). State and transition names follow the member-name grammar; `initial` and the members of `final`, `from` and `to` name declared states; a class with a lifecycle MUST NOT declare or inherit a field named `state` (`MODEL.INVALID_VALUE`); the lifecycle object of a class is resolved on its branch when an object is created, read or transitioned (`MODEL.REFERENCE_INVALID` when absent), and the lifecycle in force for a class is the one named by the nearest class of its linearization that names one. A guard is `{name, rule, message?}` with `rule` an L1 boolean over `this` (the object), `params` (the port's parameters) and `ctx` (the decision context of STD-LGS-031); a guard that cannot be evaluated fails. An effect is `{set: {field: expr}}`, every `expr` an L1 expression over the same roots assigned to the field, or `{logic: "<asset>#<function>"}`, a function of a logic asset run in the same process with the object as `this`. `effects` maps a state to `{entry?: [effect], exit?: [effect]}`; `field_rules` maps a state to `{read_only?: [field], required?: [field], hidden?: [field]}`: in that state the read-only fields MUST NOT be written and the required fields MUST be present when the state is entered (`FLOW.FIELD_RULE_VIOLATED`); hidden fields are a matter of views (step 13). `:state` selectors of governance sheets match the lifecycle state (STD-LGS-020). The checks of the lifecycle object run when it is committed and when a class naming it is loaded; STD-BPU-011 reports unreachable states and dead ends.
+
+```yaml
+DAT-Lifecycle:
+  name: { type: text, required: true, description: "namespaced name" }
+  states: { type: list, required: true, description: "state names, at least one" }
+  initial: { type: text, required: true, description: "the state of a created object" }
+  final: { type: list, required: false, description: "states without further transitions (default none)" }
+  transitions: { type: list, required: true, description: "DAT-Transition items, names unique" }
+  effects: { type: map, required: false, description: "state → {entry, exit}: lists of {set: {field: expr}} or {logic: ref}" }
+  field_rules: { type: map, required: false, description: "state → {read_only, required, hidden}: lists of field names" }
+  description: { type: text, required: true, description: "documentation" }
+```
+
+```yaml
+DAT-Transition:
+  name: { type: text, required: true, description: "transition name (member-name grammar)" }
+  from: { type: list, required: true, description: "states the transition leaves, at least one" }
+  to: { type: text, required: true, description: "the state the transition enters" }
+  guards: { type: list, required: false, description: "{name, rule, message} items; rule is an L1 boolean over this, params and ctx" }
+  description: { type: text, required: false, description: "documentation" }
+```
+
 ## 2. Inheritance
 
 ### STD-CLS-010 — Root and base classes
