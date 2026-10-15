@@ -1,6 +1,6 @@
 {
   "clauses": 197,
-  "content_id": "sha256:afef9698ed69a25bce47d043f1e87d4baffe50719d17ac6f515a08bc137a90ac",
+  "content_id": "sha256:ac5a31b236c8b3326a170b4d931d04154f377488ae7d138ec683a1a96948fa08",
   "files": [
     {
       "path": "release/1.0-rc2/coverage.md",
@@ -8,7 +8,7 @@
     },
     {
       "path": "release/1.0-rc2/notes.md",
-      "sha256": "ab8c7d3e476bd1296639796bc47f90b0e7417b196114c7274bf9a70d3635cd28"
+      "sha256": "b7c5fd92765ae2c5f13beb439f77d5b75cc85c3c22514f18df068a7d039efdd2"
     },
     {
       "path": "release/1.0-rc2/scope.json",
