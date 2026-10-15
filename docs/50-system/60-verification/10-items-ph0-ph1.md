@@ -299,6 +299,16 @@ Numbers follow UBS-VER-00 §3.
 
 ## PH-1 gate 1b
 
+### VER-INSP-9004 — BPA 1.0-rc2 coverage
+- **Verifies:** FR-STD-022, DSN-BPA-003
+- **Suite:** SUITE-BPA-COVERAGE · **Phase:** PH-1
+- **Environment:** release pipeline
+- **Procedure:**
+  1. Compute MUST-clause coverage per profile for the rc2 profiles (Core, Bitemporal, Ledger, Proof, Governance, Protocol), excluding the superseded vectors of 1.0-rc1 (STD-CONF-030).
+- **Pass criterion:** 100% coverage.
+- **Evidence:** coverage report and release manifest `standard/release/1.0-rc2/` (PH-1 step 10e, DEC-069: 165 of 165 MUST clauses, 1,586 vectors); tag `bpa-v1.0.0-rc2`.
+- **Supports:** EXIT-1-14
+
 ### VER-CONF-8404 — Governance profile and remaining 1b vectors
 - **Verifies:** STD-EXPR-*, STD-LGS-*, STD-ADDR-*, STD-PROTO-*, STD-ERR-* clauses in the claimed profiles
 - **Suite:** SUITE-DVM-CONF · **Phase:** PH-1
