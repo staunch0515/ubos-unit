@@ -36,6 +36,27 @@ const TRAIT_REQUIRED: &[&str] = &[
 ];
 const FIELD_REQUIRED: &[&str] = &["name", "type", "label", "description"];
 const PORT_REQUIRED: &[&str] = &["name", "kind", "permission", "description"];
+/// Members of `DAT-PortDecl` (STD-CLS-003; the optional ones since 1.0-rc2, DEC-067).
+const PORT_MEMBERS: &[&str] = &[
+    "name",
+    "kind",
+    "params",
+    "result",
+    "errors",
+    "states",
+    "transition",
+    "guards",
+    "impl",
+    "permission",
+    "idempotent",
+    "ui",
+    "description",
+    "emits",
+];
+/// Overlay policies of a member (STD-CLS-031).
+const OVERLAY: &[&str] = &["overridable", "extend_only", "locked"];
+/// Severities of a validation (STD-LGS-030).
+const SEVERITIES: &[&str] = &["error", "warning", "info"];
 const KINDS: &[&str] = &["definition", "ledger", "system", "raw_document", "inherit"];
 const CONCRETE: &[&str] = &["definition", "ledger", "raw_document"];
 const MIN_KEYS: &[&str] = &["min", "min_length", "min_items"];
@@ -139,6 +160,8 @@ fn genesis() -> BTreeMap<String, Value> {
                 ext_json("refinements"),
                 ext_json("ports"),
                 ext_json("views"),
+                // since 1.0-rc2 (STD-LGS-030, DEC-067): validations added by the extension
+                ext_json("validations"),
             ],
         ),
         g(
@@ -370,22 +393,147 @@ pub fn check_field(f: &Value, custom: &BTreeSet<String>) -> Result<(), BpaError>
     Ok(())
 }
 
+fn is_error_code(e: &Value) -> bool {
+    e.as_str().is_some_and(|t| {
+        t.split_once('.').is_some_and(|(a, b)| {
+            !a.is_empty()
+                && !b.is_empty()
+                && a.bytes().all(|c| c.is_ascii_uppercase())
+                && b.bytes().all(|c| c.is_ascii_uppercase() || c == b'_')
+        })
+    })
+}
+
+fn non_empty_text(v: &Value) -> bool {
+    v.as_str().is_some_and(|t| !t.trim().is_empty())
+}
+
+/// STD-CLS-003: a `DAT-PortDecl` (its optional members since 1.0-rc2, DEC-067).
 fn check_port(p: &Value, custom: &BTreeSet<String>) -> Result<(), BpaError> {
     require(p, PORT_REQUIRED, "port")?;
+    let o = p
+        .as_object()
+        .ok_or_else(|| err("MODEL.INVALID_VALUE", "a port is a map"))?;
+    if let Some(k) = o.keys().find(|k| !PORT_MEMBERS.contains(&k.as_str())) {
+        return Err(err(
+            "MODEL.INVALID_VALUE",
+            format!("unknown port member {k}"),
+        ));
+    }
     let name = s(p, "name").unwrap_or_default();
     if !names::matches("member-name", name) {
         return Err(err("MODEL.INVALID_NAME", name));
     }
-    if !matches!(s(p, "kind"), Some("query" | "command")) {
+    let kind = s(p, "kind").unwrap_or_default();
+    if !matches!(kind, "query" | "command") {
         return Err(err("MODEL.INVALID_VALUE", "port kind"));
     }
-    for q in p
-        .get("params")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
+    if let Some(params) = p.get("params") {
+        let Some(list) = params.as_array() else {
+            return Err(err("MODEL.INVALID_VALUE", "params is a list"));
+        };
+        for q in list {
+            check_field(q, custom)?;
+        }
+    }
+    if let Some(r) = p.get("result")
+        && r.as_str().is_none_or(|t| t.is_empty())
     {
-        check_field(q, custom)?;
+        return Err(err("MODEL.INVALID_VALUE", "result is a type name"));
+    }
+    if members(p, "errors").any(|e| !is_error_code(e)) {
+        return Err(err("MODEL.INVALID_VALUE", "an error is a registered code"));
+    }
+    for st in members(p, "states") {
+        if !st
+            .as_str()
+            .is_some_and(|t| names::matches("member-name", t))
+        {
+            return Err(err("MODEL.INVALID_NAME", format!("state {st}")));
+        }
+    }
+    if let Some(t) = p.get("transition") {
+        if !t.as_str().is_some_and(|t| names::matches("member-name", t)) {
+            return Err(err("MODEL.INVALID_NAME", "transition"));
+        }
+        if kind != "command" {
+            return Err(err(
+                "MODEL.INVALID_VALUE",
+                "only a command port triggers a transition",
+            ));
+        }
+    }
+    if members(p, "guards").any(|g| g.as_str().is_none_or(|t| t.is_empty())) {
+        return Err(err("MODEL.INVALID_VALUE", "a guard is a reference"));
+    }
+    if let Some(i) = p.get("impl")
+        && !non_empty_text(i)
+    {
+        return Err(err("MODEL.INVALID_VALUE", "impl references a logic asset"));
+    }
+    if p["permission"].as_str().is_none_or(|t| t.is_empty()) {
+        return Err(err(
+            "MODEL.INVALID_VALUE",
+            "permission is a policy action name",
+        ));
+    }
+    if let Some(i) = p.get("idempotent") {
+        if !i.is_boolean() {
+            return Err(err("MODEL.INVALID_VALUE", "idempotent is boolean"));
+        }
+        if kind == "query" && i == &Value::Bool(false) {
+            return Err(err(
+                "MODEL.INVALID_VALUE",
+                "a query port is always idempotent",
+            ));
+        }
+    }
+    if let Some(u) = p.get("ui")
+        && !u.is_object()
+    {
+        return Err(err("MODEL.INVALID_VALUE", "ui is a map"));
+    }
+    if p["description"].as_str().is_none_or(|t| t.is_empty()) {
+        return Err(err("MODEL.INVALID_VALUE", "description"));
+    }
+    Ok(())
+}
+
+/// STD-LGS-030: the `validations` of a class, an extension or a refinement (1.0-rc2,
+/// DEC-067); the rule text is parsed by the engine layer.
+pub fn check_validations(items: &Value) -> Result<(), BpaError> {
+    let Some(list) = items.as_array() else {
+        return Err(err("MODEL.INVALID_VALUE", "validations is a list"));
+    };
+    for v in list {
+        let ok = v.is_object()
+            && v["name"].is_string()
+            && v["rule"].is_string()
+            && SEVERITIES.contains(&s(v, "severity").unwrap_or_default());
+        if !ok {
+            return Err(err(
+                "MODEL.DECLARATION_INCOMPLETE",
+                "a validation has name, rule and severity",
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// STD-CLS-031: `overlay_policy` maps members to `overridable`, `extend_only` or `locked`.
+fn check_overlay_policy(d: &Value) -> Result<(), BpaError> {
+    let Some(pol) = d.get("overlay_policy").filter(|v| !v.is_null()) else {
+        return Ok(());
+    };
+    let ok = pol.as_object().is_some_and(|m| {
+        m.values()
+            .all(|v| OVERLAY.contains(&v.as_str().unwrap_or_default()))
+    });
+    if !ok {
+        return Err(err(
+            "MODEL.INVALID_VALUE",
+            "overlay_policy maps members to overridable, extend_only or locked",
+        ));
     }
     Ok(())
 }
@@ -432,7 +580,10 @@ pub fn check_decl(d: &Value, custom: &BTreeSet<String>) -> Result<(), BpaError> 
             return Err(err("MODEL.DECLARATION_INCOMPLETE", "duplicate port"));
         }
     }
-    Ok(())
+    if let Some(v) = d.get("validations") {
+        check_validations(v)?;
+    }
+    check_overlay_policy(d)
 }
 
 /// Check an extension as given in adapter inputs or as the body of a `ClassExtension`
@@ -450,6 +601,14 @@ pub fn check_extension(e: &Value, custom: &BTreeSet<String>) -> Result<(), BpaEr
     }
     for p in members(e, "ports") {
         check_port(p, custom)?;
+    }
+    if let Some(v) = e.get("validations") {
+        check_validations(v)?;
+    }
+    for r in members(e, "refinements") {
+        if let Some(v) = r.get("validations") {
+            check_validations(v)?;
+        }
     }
     Ok(())
 }
@@ -654,6 +813,11 @@ pub struct Class {
     pub class_version: String,
     /// C3 linearization, the class first (STD-CLS-011).
     pub linearization: Vec<String>,
+    /// Validations of the declarations, refinements and extensions along the
+    /// linearization (STD-LGS-030; since 1.0-rc2).
+    pub validations: Vec<Value>,
+    /// Overlay policy of the members (STD-CLS-031; since 1.0-rc2).
+    pub overlay_policy: Map<String, Value>,
 }
 
 impl Class {
@@ -665,6 +829,12 @@ impl Class {
             "write_policy": self.write_policy,
             "fields": self.fields,
         });
+        if !self.validations.is_empty() {
+            out["validations"] = Value::Array(self.validations.clone());
+        }
+        if !self.overlay_policy.is_empty() {
+            out["overlay_policy"] = Value::Object(self.overlay_policy.clone());
+        }
         if !self.ports.is_empty() {
             let ports: Map<String, Value> = self
                 .ports
@@ -968,8 +1138,14 @@ impl Registry {
         let mut fields: BTreeMap<String, Value> = BTreeMap::new();
         let mut ports: BTreeMap<String, Port> = BTreeMap::new();
         let mut policy: Option<String> = None;
+        let mut validations: Vec<Value> = Vec::new();
+        let mut overlay: Map<String, Value> = Map::new();
         for c in lin.iter().rev() {
             let d = &self.decls[c];
+            validations.extend(members(d, "validations").cloned());
+            if let Some(o) = d.get("overlay_policy").and_then(Value::as_object) {
+                overlay.extend(o.iter().map(|(k, v)| (k.clone(), v.clone())));
+            }
             if let Some(wp) = s(d, "write_policy") {
                 if policy.as_deref() == Some("change_set") && wp == "direct" {
                     return Err(err("MODEL.NARROWING_VIOLATION", "write_policy"));
@@ -1053,8 +1229,39 @@ impl Registry {
                         "refinement of an unknown member",
                     ));
                 };
-                let v = refine(old, r)?;
+                // STD-CLS-031: the overlay policy of the member (1.0-rc2, DEC-067)
+                let pol = overlay
+                    .get(&n)
+                    .and_then(Value::as_str)
+                    .unwrap_or("overridable");
+                if pol == "locked" {
+                    return Err(err("TEN.OVERRIDE_LOCKED", n));
+                }
+                let additive = r.as_object().is_some_and(|m| {
+                    m.keys()
+                        .all(|k| matches!(k.as_str(), "name" | "constraints" | "validations"))
+                });
+                if pol == "extend_only" && !additive {
+                    return Err(err(
+                        "TEN.OVERRIDE_LOCKED",
+                        format!("{n} accepts additive refinements only"),
+                    ));
+                }
+                let mut plain = r.clone();
+                if let Some(m) = plain.as_object_mut() {
+                    m.remove("validations");
+                }
+                let v = refine(old, &plain)?;
                 fields.insert(n, v);
+                validations.extend(members(r, "validations").cloned());
+            }
+            validations.extend(members(e, "validations").cloned());
+            for v in members(e, "views") {
+                let locked = |k: &str| overlay.get(k).and_then(Value::as_str) == Some("locked");
+                let mode = v.get("mode").and_then(Value::as_str).unwrap_or_default();
+                if locked("views") || (v.is_object() && locked(&format!("views.{mode}"))) {
+                    return Err(err("TEN.OVERRIDE_LOCKED", "views"));
+                }
             }
             for p in members(e, "ports") {
                 let key = format!("{ns}.{}", s(p, "name").unwrap_or_default());
@@ -1097,6 +1304,8 @@ impl Registry {
             schema_version: d.get("schema_version").and_then(Value::as_i64).unwrap_or(1),
             class_version: content_id("ubos.chunk.v1", d)?,
             linearization: lin,
+            validations,
+            overlay_policy: overlay,
         })
     }
 

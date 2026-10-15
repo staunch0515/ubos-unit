@@ -37,6 +37,7 @@ pub const IMPLEMENTED: &[&str] = &[
     "read.effective",
     "read.explain",
     "run.port",
+    "run.validate",
     "run.super",
     "run.logic",
     "run.async",
@@ -294,6 +295,9 @@ impl Core {
         if let Some(x) = c.get("input").filter(|v| !v.is_null()) {
             ctx["input"] = x.clone();
         }
+        if let Some(r) = c.get("role").filter(|v| !v.is_null()) {
+            ctx["role"] = r.clone();
+        }
         for k in c.as_object().map(|m| m.keys()).into_iter().flatten() {
             if !matches!(
                 k.as_str(),
@@ -307,6 +311,7 @@ impl Core {
                     | "profile"
                     | "on_behalf_of"
                     | "input"
+                    | "role"
             ) {
                 return Err(BpaError::new(
                     "LOGIC.CONTEXT_IMMUTABLE",
@@ -785,6 +790,11 @@ pub fn instruction(
         && let Some((p, _, _)) = d.params.iter().find(|(p, _, opt)| {
             !opt && args.get(p).is_none_or(Value::is_null)
                 && !(name == "commit.update" && p == "set" && args.contains_key("timeline"))
+                // STD-ISA-054: `changes` or `target`
+                && !(name == "run.validate"
+                    && ["changes", "target"]
+                        .iter()
+                        .any(|k| args.get(*k).is_some_and(|v| !v.is_null())))
         })
     {
         return Err(BpaError::new(

@@ -813,6 +813,47 @@ impl<'a> EngineHost<'a> {
         Ok(out)
     }
 
+    /// STD-ISA-054: the validation preview of proposed changes or of the unit of work on a
+    /// target (FR-RULE-035).
+    fn run_validate(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        _d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let changes: Vec<Value> = if let Some(c) = a.get("changes").filter(|v| !v.is_null()) {
+            c.as_array().cloned().unwrap_or_default()
+        } else {
+            let Some(t) = a.get("target").filter(|v| !v.is_null()) else {
+                return Err(BpaError::new(
+                    "MODEL.DECLARATION_INCOMPLETE",
+                    "run.validate takes changes or a target",
+                ));
+            };
+            let oid = self.target(core, t)?;
+            core.uow
+                .iter()
+                .filter(|c| s(c, "object_id") == Some(&oid))
+                .map(|c| {
+                    let mut c = c.clone();
+                    c.as_object_mut().map(|m| m.remove("derivation"));
+                    c
+                })
+                .collect()
+        };
+        for c in &changes {
+            if let Some(oid) = s(c, "object_id") {
+                let cls = self.class_of(core, oid)?;
+                core.authorize("read", &cls)?;
+            }
+        }
+        let process = json!({
+            "channel": core.context["channel"], "principal_kind": core.context["principal_kind"],
+        });
+        self.e
+            .validate(&json!({"branch": core.branch, "changes": changes, "process": process}))
+    }
+
     /// STD-ISA-035: explanations of a cascade, a validation outcome or a decision.
     fn read_explain(
         &mut self,
@@ -840,10 +881,30 @@ impl<'a> EngineHost<'a> {
                 r.as_object_mut().map(|m| m.remove("evaluated_at"));
                 Ok(r)
             }
-            Some("validation" | "decision") => Err(BpaError::new(
-                "LOGIC.NOT_AVAILABLE",
-                "validation and decision explanations come with the rules of PH-1 step 11c",
-            )),
+            Some("validation") => {
+                let mut b = Map::new();
+                b.insert("target".into(), a["target"].clone());
+                self.run_validate(core, &b, d)
+            }
+            Some("decision") => {
+                let Some(port) = a.get("property").and_then(Value::as_str) else {
+                    return Err(BpaError::new(
+                        "MODEL.DECLARATION_INCOMPLETE",
+                        "a decision explanation names the port",
+                    ));
+                };
+                let st = self.state(core)?.clone();
+                let dctx = self.decision_ctx(core)?;
+                let branch = core.branch.clone();
+                self.e.decide_in(
+                    &st,
+                    &branch,
+                    &oid,
+                    port,
+                    &json!({}),
+                    dctx.as_object().expect("context"),
+                )
+            }
             _ => Err(BpaError::new(
                 "LOGIC.NOT_AVAILABLE",
                 "lineage explanations come with PH-2",
@@ -868,6 +929,32 @@ impl<'a> EngineHost<'a> {
         };
         let permission = s(&p.decl, "permission").unwrap_or("none").to_string();
         core.authorize(&permission, &cls)?;
+        if !core.pending.contains_key(&oid) {
+            // STD-LGS-031: the decisions of a command port run before it (DSN-DVM-720) and
+            // their result is journaled (DSN-DVM-721)
+            let params = a.get("params").cloned().unwrap_or_else(|| json!({}));
+            let st = self.state(core)?.clone();
+            let dctx = self.decision_ctx(core)?;
+            let branch = core.branch.clone();
+            let args = json!({"target": oid, "port": port, "params": params});
+            let r = ubos_runtime::program::journaled(core, "decision", &args, |_| {
+                self.e.decide_in(
+                    &st,
+                    &branch,
+                    &oid,
+                    &port,
+                    &params,
+                    dctx.as_object().expect("context"),
+                )
+            })?;
+            match s(&r, "outcome") {
+                Some("deny") => return Err(BpaError::with_details("RULE.DECISION_DENIED", r)),
+                Some("require") => {
+                    return Err(BpaError::with_details("RULE.DECISION_REQUIRES", r));
+                }
+                _ => {}
+            }
+        }
         let found = reg.dispatch(&cls, &port, None)?;
         let body = Value::Object(self.head_body(core, &oid)?);
         let params = a.get("params").cloned().unwrap_or_else(|| json!({}));
@@ -1025,6 +1112,7 @@ impl Host for EngineHost<'_> {
             "read.diff" => self.read_diff(core, a, d),
             "read.effective" => self.read_effective(core, a, d),
             "read.explain" => self.read_explain(core, a, d),
+            "run.validate" => self.run_validate(core, a, d),
             "run.port" => self.run_port(core, a),
             "run.super" => self.run_super(core),
             "run.logic" => self.run_logic(core, a, d),
@@ -1239,6 +1327,8 @@ impl Engine {
                         &meta,
                         self.max_inputs,
                         None,
+                        false,
+                        self.max_violations,
                     )?;
                     self.touch_branch(&branch)?;
                     let n = r["cseq"].as_u64().unwrap_or_default();

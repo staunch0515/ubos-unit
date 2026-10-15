@@ -30,6 +30,8 @@ PH-1 step 11 (DEC-070) adds `ubos-rules`, the pure engine of governance sheets (
 grammar, AST, property registry, authoring checks, specificity, the rank and overlap
 analysis of the cascade and the cascade itself; the sheet objects, their checks at commit
 and the evaluation of qualifiers over a state are the kernel's (`ubos-dvm/src/sheets.rs`).
+Commit enforcement, validations, invariants, the validation preview and the decisions before
+command ports are `ubos-dvm/src/rules.rs` (STD-LGS-030, -031).
 
 Run the BPA vectors tagged `prototype`:
 
