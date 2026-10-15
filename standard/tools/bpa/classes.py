@@ -84,6 +84,11 @@ GENESIS = {
                   'fields': [_f('name', 'text', True), _f('states', 'json', True), _f('initial', 'text', True),
                              _f('final', 'json'), _f('transitions', 'json', True), _f('effects', 'json'),
                              _f('field_rules', 'json'), _f('description', 'text', True)]},
+    # DSN-DVM-803 (PH-1 step 13b, DEC-073): policies are Definition objects below ConfigAsset;
+    # the kernel validates `source` against its entity model (no standard clause until 1.0.0).
+    'Policy': {'name': 'Policy', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
+               'fields': [_f('name', 'text', True), _f('source', 'text', True), _f('enabled', 'boolean'),
+                          _f('description', 'text', True)]},
     'Release': {'name': 'Release', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
                 'fields': [_f('version', 'text', True), _f('tag', 'text', True), _f('notes', 'text'),
                            _f('change_sets', 'json'), _f('approvals', 'json')]},

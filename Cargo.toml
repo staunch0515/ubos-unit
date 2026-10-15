@@ -15,6 +15,7 @@ members = [
     "crates/ubos-rules",
     "crates/ubos-flow",
     "crates/ubos-query",
+    "crates/ubos-authz",
     "crates/ubos-runtime",
     "crates/ubos-dvm",
     "crates/ubos-node",
@@ -46,6 +47,7 @@ ubos-expr = { path = "crates/ubos-expr" }
 ubos-rules = { path = "crates/ubos-rules" }
 ubos-flow = { path = "crates/ubos-flow" }
 ubos-query = { path = "crates/ubos-query" }
+ubos-authz = { path = "crates/ubos-authz" }
 ubos-runtime = { path = "crates/ubos-runtime" }
 # third-party crates of the PH-0 prototype (DEC-033)
 serde = { version = "1", features = ["derive"] }
@@ -72,6 +74,8 @@ zstd = { version = "0.13", default-features = false }
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["alloc"] }
 aes-gcm = { version = "0.10", default-features = false, features = ["aes", "alloc"] }
 getrandom = "0.2"
+# the policy engine of ubos-authz (DEC-021, DEC-065): the Cedar reference implementation
+cedar-policy = "4.13"
 # Forge project sources (DSN-FRG-002): YAML sources and the TOML manifest
 serde_yaml_ng = "0.10"
 toml = "0.8"

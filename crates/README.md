@@ -59,6 +59,20 @@ keys encoded order-preserving per type by `ubos-types`); the kernel's `query`
 indexed field, else scans the class within the budget (`QRY.SCAN_LIMIT`), and `search.query`
 uses the same planner.
 
+`ubos-authz` (step 13b, DEC-073) embeds the `cedar-policy` crate (DEC-065) and generates the
+entity model from the registry: `UBOS::User` (in its `Role`s), `UBOS::VAE`, `UBOS::Branch`,
+`UBOS::Class` and one entity type per business class under `UBOS::Model` whose attributes
+are the policy-visible fields (classification `public` or `internal`); the actions are those
+of STD-ISA-005 plus the port permissions, `query`, `merge`, `approve` and `export`; the
+context is the decision context of STD-LGS-031. Policies are `Policy` objects (`name`,
+`source`, `enabled`) validated against the model at commit; the adapter operation
+`policy_schema` prints the schema. Optional attributes need a `has` guard
+(`resource has country && resource.country == "US"`). The kernel (`ubos-dvm/src/authz.rs`)
+denies by default once a branch holds policies and keeps the `grants` of STD-ISA-005 alone
+without them; it enforces every instruction on its resource and on the branch, reports an
+invisible resource as `IAM.NOT_FOUND`, filters query rows and logs denials
+(`decision_log`).
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh

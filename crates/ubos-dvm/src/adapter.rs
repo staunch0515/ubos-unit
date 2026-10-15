@@ -67,6 +67,9 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "explain_cascade",
     "actions",
     "declare_index",
+    "authorize",
+    "decision_log",
+    "policy_schema",
     "validate",
     "decide",
 ];
@@ -310,6 +313,9 @@ impl Adapter {
             "decide" => self.engine.decide(i)?,
             "explain_cascade" => self.engine.explain_cascade(i)?,
             "actions" => self.engine.actions(i)?,
+            "authorize" => self.engine.authorize_op(i)?,
+            "decision_log" => Value::Array(self.engine.drain_decision_log()),
+            "policy_schema" => self.engine.policy_schema()?,
             "declare_index" => self
                 .engine
                 .declare_index(text(i, "class")?, text(i, "field")?)?,

@@ -7,6 +7,7 @@
 //! operations of STD-CONF-005 for the runner (`ubos-forge`).
 
 pub mod adapter;
+pub mod authz;
 pub mod execution;
 pub mod expressions;
 pub mod flow;
@@ -20,6 +21,7 @@ pub mod stateful;
 pub mod transactions;
 pub mod verification;
 
+pub use ubos_authz as authz_engine;
 /// The engine crates a host reaches through this facade (AR-031: hosts depend on `ubos-dvm`).
 pub use ubos_crypto as crypto;
 pub use ubos_expr as expr;

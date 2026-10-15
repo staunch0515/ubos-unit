@@ -64,6 +64,11 @@ pub struct EngineHost<'a> {
     view: Option<State>,
     /// The transitions and guards of the process for its commit (STD-ISA-017, since 1.0-rc3).
     pub(crate) flow: ubos_flow::Flow,
+    /// The policy set of the branch at the snapshot, resolved on the first enforcement
+    /// (`None` inside: no policies, grants only; DSN-DVM-801, step 13b).
+    policies: Option<Option<crate::authz::PolicySet>>,
+    /// Decisions of this attempt by `(action, class, object)` (DSN-DVM-806).
+    decisions: BTreeMap<(String, String, Option<String>), Option<&'static str>>,
 }
 
 impl<'a> EngineHost<'a> {
@@ -72,7 +77,136 @@ impl<'a> EngineHost<'a> {
             e,
             view: None,
             flow: ubos_flow::Flow::default(),
+            policies: None,
+            decisions: BTreeMap::new(),
         }
+    }
+
+    // ---- authorization (STD-ISA-005; DSN-DVM-801, -804, -806, -807; step 13b) ----
+
+    /// Authorize an action of the process on a class or an object: the grants of the
+    /// process (STD-ISA-005) and, when the branch holds a policy set, the policies — on
+    /// the resource and on the branch (DSN-DVM-807). A denial is `IAM.DENIED`, or
+    /// `IAM.NOT_FOUND` for a read-type action and for a resource the principal may not
+    /// read (DSN-DVM-804). Decisions are cached per attempt (DSN-DVM-806).
+    fn permit(
+        &mut self,
+        core: &mut Core,
+        action: &str,
+        cls: &str,
+        oid: Option<&str>,
+    ) -> Result<(), BpaError> {
+        core.authorize(action, cls)?;
+        if action == "none" {
+            return Ok(());
+        }
+        if self.policies.is_none() {
+            let st = self.state(core)?.clone();
+            let set = self.e.policy_set_in(&st)?;
+            self.policies = Some(set);
+        }
+        let Some(set) = self.policies.as_ref().and_then(|p| p.clone()) else {
+            return Ok(());
+        };
+        let key = (action.to_string(), cls.to_string(), oid.map(str::to_string));
+        if let Some(code) = self.decisions.get(&key) {
+            return match code {
+                None => Ok(()),
+                Some(c) => Err(BpaError::new(c, "policy decision")),
+            };
+        }
+        let principal = ubos_authz::Principal {
+            id: s(&core.context, "principal")
+                .unwrap_or_default()
+                .to_string(),
+            kind: s(&core.context, "principal_kind")
+                .unwrap_or("human")
+                .to_string(),
+            roles: s(&core.context, "role")
+                .map(|r| vec![r.to_string()])
+                .unwrap_or_default(),
+            auth_level: s(&core.context, "auth_level").map(str::to_string),
+        };
+        let mut ctx = self
+            .decision_ctx(core)?
+            .as_object()
+            .cloned()
+            .unwrap_or_default();
+        if let Some(a) = s(&core.context, "auth_level") {
+            ctx.insert("auth_level".into(), json!(a));
+        }
+        let branch = core.branch.clone();
+        let kind = self.e.branch_meta(&branch)?.kind;
+        let resource = match oid {
+            Some(oid) => {
+                let body = self.head_body(core, oid)?;
+                let state = self.object_state(core, oid)?;
+                let slug = self.slug_of(core, oid)?;
+                ubos_authz::Resource::Object {
+                    oid: oid.to_string(),
+                    class: cls.to_string(),
+                    lineage: self.registry(core)?.class(cls)?.linearization.clone(),
+                    branch: branch.clone(),
+                    branch_kind: kind.clone(),
+                    slug,
+                    state,
+                    body,
+                }
+            }
+            None => ubos_authz::Resource::Class {
+                name: cls.to_string(),
+            },
+        };
+        let pid = core.process_id.clone();
+        let outcome = (|| -> Result<(), BpaError> {
+            for res in [
+                &resource,
+                &ubos_authz::Resource::Branch {
+                    name: branch.clone(),
+                    kind: kind.clone(),
+                },
+            ] {
+                let d = self.e.decide_access(
+                    &set,
+                    &branch,
+                    &principal,
+                    action,
+                    res,
+                    &ctx,
+                    Some(&pid),
+                )?;
+                if d.allow {
+                    continue;
+                }
+                if program::READ_ACTIONS.contains(&action) {
+                    return Err(BpaError::new("IAM.NOT_FOUND", "not visible"));
+                }
+                let visible = self.e.decide_access(
+                    &set,
+                    &branch,
+                    &principal,
+                    "read",
+                    res,
+                    &ctx,
+                    Some(&pid),
+                )?;
+                if !visible.allow {
+                    return Err(BpaError::new("IAM.NOT_FOUND", "not visible"));
+                }
+                return Err(BpaError::with_details(
+                    "IAM.DENIED",
+                    json!({"action": action, "policies": d.policies}),
+                ));
+            }
+            Ok(())
+        })();
+        let code: Option<&'static str> = match &outcome {
+            Ok(()) => None,
+            Err(e) if e.code == "IAM.NOT_FOUND" => Some("IAM.NOT_FOUND"),
+            Err(_) => Some("IAM.DENIED"),
+        };
+        self.decisions.insert(key, code);
+        outcome
     }
 
     // ---- lifecycles (STD-CLS-004, since 1.0-rc3) ----
@@ -258,7 +392,7 @@ impl<'a> EngineHost<'a> {
     ) -> Result<Value, BpaError> {
         let oid = self.target(core, &a["target"])?;
         let cls = self.class_of(core, &oid)?;
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, Some(&oid))?;
         let st = self.state(core)?.clone();
         let dctx = self.decision_ctx(core)?;
         let dctx = dctx.as_object().cloned().unwrap_or_default();
@@ -553,7 +687,7 @@ impl<'a> EngineHost<'a> {
         d: &Instruction,
     ) -> Result<Value, BpaError> {
         let cls = last_segment(&a["class"]);
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, None)?;
         let fields = a
             .get("fields")
             .and_then(Value::as_object)
@@ -611,7 +745,7 @@ impl<'a> EngineHost<'a> {
     ) -> Result<Value, BpaError> {
         let oid = self.target(core, &a["target"])?;
         let cls = self.class_of(core, &oid)?;
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, Some(&oid))?;
         let sets = a
             .get("set")
             .and_then(Value::as_object)
@@ -687,7 +821,7 @@ impl<'a> EngineHost<'a> {
     ) -> Result<Value, BpaError> {
         let oid = self.target(core, &a["target"])?;
         let cls = self.class_of(core, &oid)?;
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, Some(&oid))?;
         let mut ch = json!({"op": "end", "object_id": oid, "base": self.base_of(core, &oid, a.get("base"))?});
         if let Some(f) = a.get("from").filter(|v| !v.is_null()) {
             ch["valid"] = json!({"from": f});
@@ -703,7 +837,7 @@ impl<'a> EngineHost<'a> {
         d: &Instruction,
     ) -> Result<Value, BpaError> {
         let cls = last_segment(&a["class"]);
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, None)?;
         let fields = a.get("fields").cloned().unwrap_or(Value::Null);
         core.per_item(d, fields.as_object().map(Map::len).unwrap_or(0) as u64)?;
         let eid = core.uuid();
@@ -732,7 +866,7 @@ impl<'a> EngineHost<'a> {
         d: &Instruction,
     ) -> Result<Value, BpaError> {
         let cls = self.entry_class(core, &a["entry"])?;
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, None)?;
         let nid = core.uuid();
         let mut ch = json!({"op": "reverse", "entry_id": a["entry"], "new_entry_id": nid});
         if let Some(v) = a.get("valid_at").filter(|v| !v.is_null()) {
@@ -753,7 +887,7 @@ impl<'a> EngineHost<'a> {
             return Err(invalid("an adjustment corrects one entry in BPA 1.0-rc1"));
         };
         let cls = self.entry_class(core, first)?;
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, None)?;
         let nid = core.uuid();
         let mut ch = json!({"op": "adjust", "entry_id": first, "new_entry_id": nid, "body": a.get("fields")});
         if let Some(v) = a.get("valid_at").filter(|v| !v.is_null()) {
@@ -772,7 +906,7 @@ impl<'a> EngineHost<'a> {
     ) -> Result<Value, BpaError> {
         let oid = self.target(core, &a["from"])?;
         let cls = self.class_of(core, &oid)?;
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, Some(&oid))?;
         let rel = s(&Value::Object(a.clone()), "relationship")
             .unwrap_or_default()
             .to_string();
@@ -843,14 +977,14 @@ impl<'a> EngineHost<'a> {
             let cls = s(&self.version(&vh)?, "class")
                 .unwrap_or_default()
                 .to_string();
-            core.authorize(&d.authorization, &cls)?;
+            self.permit(core, &d.authorization, &cls, None)?;
             let branch = s(&r, "branch").unwrap_or_default().to_string();
             json!({"object_id": r["object_id"], "class": cls, "version": vh, "fields": r["body"], "valid": r["valid"],
                 "resolved_from": {"branch": branch, "commit": r["evaluated_at"][&branch]}})
         } else {
             let oid = self.target(core, &t)?;
             let cls = self.class_of(core, &oid)?;
-            core.authorize(&d.authorization, &cls)?;
+            self.permit(core, &d.authorization, &cls, Some(&oid))?;
             if let Some(p) = core.pending.get(&oid) {
                 json!({"object_id": oid, "class": cls, "version": null, "fields": p.body, "valid": null,
                     "resolved_from": {"branch": core.branch, "commit": null}})
@@ -902,7 +1036,7 @@ impl<'a> EngineHost<'a> {
     ) -> Result<Value, BpaError> {
         let oid = self.target(core, &a["target"])?;
         let cls = self.class_of(core, &oid)?;
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, Some(&oid))?;
         let h = self
             .e
             .history(&json!({"branch": core.branch, "object_id": oid,
@@ -925,7 +1059,7 @@ impl<'a> EngineHost<'a> {
     ) -> Result<Value, BpaError> {
         let oid = self.target(core, &a["target"])?;
         let cls = self.class_of(core, &oid)?;
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, Some(&oid))?;
         let first = self
             .state(core)?
             .objects
@@ -960,7 +1094,7 @@ impl<'a> EngineHost<'a> {
     ) -> Result<Value, BpaError> {
         let oid = self.target(core, &a["scope"])?;
         let cls = self.class_of(core, &oid)?;
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, Some(&oid))?;
         let coord = |v: &Value| -> Value {
             let mut c = v.clone();
             if c.get("branch").is_none() {
@@ -1000,7 +1134,7 @@ impl<'a> EngineHost<'a> {
         d: &Instruction,
     ) -> Result<Value, BpaError> {
         let cls = last_segment(&a["target"]);
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, None)?;
         match s(&Value::Object(a.clone()), "what") {
             Some("class") => {
                 let mut i = json!({"branch": core.branch, "class": cls});
@@ -1074,7 +1208,7 @@ impl<'a> EngineHost<'a> {
         for c in &changes {
             if let Some(oid) = s(c, "object_id") {
                 let cls = self.class_of(core, oid)?;
-                core.authorize("read", &cls)?;
+                self.permit(core, "read", &cls, Some(oid))?;
             }
         }
         let process = json!({
@@ -1115,6 +1249,18 @@ impl<'a> EngineHost<'a> {
         input["branch"] = json!(core.branch);
         input["commit"] = json!(core.pins.get(&core.branch));
         input["profile"] = json!(core.profile);
+        // row filters (DSN-DVM-820): the principal of the process
+        for k in [
+            "principal",
+            "principal_kind",
+            "role",
+            "auth_level",
+            "channel",
+        ] {
+            if let Some(v) = core.context.get(k).filter(|v| v.is_string()) {
+                input[k] = v.clone();
+            }
+        }
         let from = input
             .get("from")
             .and_then(Value::as_str)
@@ -1126,7 +1272,7 @@ impl<'a> EngineHost<'a> {
                     .and_then(|p| p.get("from").and_then(Value::as_str).map(str::to_string))
             })
             .unwrap_or_default();
-        core.authorize(&d.authorization, &from)?;
+        self.permit(core, &d.authorization, &from, None)?;
         let r = self.e.query(&input)?;
         let items = r["objects"].clone();
         core.per_item(d, items.as_array().map_or(0, Vec::len) as u64)?;
@@ -1145,7 +1291,7 @@ impl<'a> EngineHost<'a> {
     ) -> Result<Value, BpaError> {
         let oid = self.target(core, &a["target"])?;
         let cls = self.class_of(core, &oid)?;
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, Some(&oid))?;
         match s(&Value::Object(a.clone()), "kind") {
             Some("cascade") => {
                 let Some(property) = a.get("property").and_then(Value::as_str) else {
@@ -1220,7 +1366,7 @@ impl<'a> EngineHost<'a> {
             ));
         }
         let permission = s(&decl, "permission").unwrap_or("none").to_string();
-        core.authorize(&permission, &cls)?;
+        self.permit(core, &permission, &cls, Some(&oid))?;
         if !core.pending.contains_key(&oid) {
             // STD-LGS-031: the decisions of a command port run before it (DSN-DVM-720) and
             // their result is journaled (DSN-DVM-721)
@@ -1327,7 +1473,8 @@ impl<'a> EngineHost<'a> {
                 format!("the pinned version of {name} is unknown"),
             ));
         };
-        core.authorize(&d.authorization, s(&v, "class").unwrap_or_default())?;
+        let asset_class = s(&v, "class").unwrap_or_default().to_string();
+        self.permit(core, &d.authorization, &asset_class, None)?;
         self.check_asset(core, &v["body"])?;
         if !core.logic.contains(&vh) {
             core.logic.push(vh.clone());
@@ -1359,7 +1506,7 @@ impl<'a> EngineHost<'a> {
     ) -> Result<Value, BpaError> {
         let oid = self.target(core, &a["subject"])?;
         let cls = self.class_of(core, &oid)?;
-        core.authorize(&d.authorization, &cls)?;
+        self.permit(core, &d.authorization, &cls, Some(&oid))?;
         let lin = self.e.registry.class(&cls)?.linearization.clone();
         let mut declared = Vec::new();
         for c in &lin {

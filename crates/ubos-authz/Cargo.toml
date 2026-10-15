@@ -1,0 +1,17 @@
+[package]
+name = "ubos-authz"
+description = "Policy engine integration: the cedar-policy crate, the entity model of the business model, decisions and row filters (DSN-DVM-801…807, 820)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+ubos-model.workspace = true
+cedar-policy.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

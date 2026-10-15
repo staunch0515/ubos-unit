@@ -238,7 +238,22 @@ impl Engine {
             .max_scan
             .unwrap_or_else(|| ubos_query::scan_budget(profile));
 
+        // row filters (DSN-DVM-820): with a principal and a policy set on the branch,
+        // every row is subject to `read`; denied rows are left out (a residual post-filter
+        // until partial evaluation is measured in step 13d)
+        let principal = Engine::principal_of(i);
+        let policy = match &principal {
+            Some(_) => self.policy_set_at(&branch, None)?,
+            None => None,
+        };
+        let access_ctx = match &principal {
+            Some(_) => Some(self.access_ctx(i, &branch)?),
+            None => None,
+        };
+        let branch_kind = self.branch_meta(&branch)?.kind;
+        let mut denied_log: Vec<Value> = Vec::new();
         let now = self.now.clone();
+        let now_text = self.now.clone();
         let reg = &self.registry;
         let default_valid = move |c: &str| match reg.class(c).map(|c| c.valid_time.as_str()) {
             Ok("instant") => now.clone(),
@@ -351,6 +366,28 @@ impl Engine {
                 .filter(|(k, _)| members.contains_key(*k))
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect();
+            if let (Some(p), Some((model, compiled)), Some(ctx)) =
+                (&principal, &policy, &access_ctx)
+            {
+                let resource = ubos_authz::Resource::Object {
+                    oid: oid.clone(),
+                    class: o.class.clone(),
+                    lineage: lin.clone(),
+                    branch: branch.clone(),
+                    branch_kind: branch_kind.clone(),
+                    slug: o.slug.clone(),
+                    state: v.get("state").and_then(Value::as_str).map(str::to_string),
+                    body: v["body"].as_object().cloned().unwrap_or_default(),
+                };
+                let d =
+                    ubos_authz::authorize(model, compiled, p, "read", &resource, &authority, ctx)?;
+                if !d.allow {
+                    denied_log.push(json!({"principal": p.id, "action": "read", "branch": branch,
+                        "resource": {"kind": "object", "class": o.class, "object_id": oid},
+                        "outcome": "deny", "policies": d.policies, "at": now_text, "query": spec.hash}));
+                    continue;
+                }
+            }
             cands.push(Row {
                 oid: oid.clone(),
                 this: from_json(&this_t, &Value::Object(body)),
@@ -400,6 +437,9 @@ impl Engine {
                 grouped.push((ks, vs));
             }
             let groups = ubos_query::aggregate(&spec, grouped)?;
+            drop(reader);
+            drop(repo);
+            self.decision_log.extend(denied_log);
             return Ok(json!({"groups": groups, "evaluated_at": evaluated_at}));
         }
         rows.sort_by(|a, b| a.0.oid.cmp(&b.0.oid));
@@ -438,6 +478,9 @@ impl Engine {
             };
             out["cursor"] = json!(c.encode(&key)?);
         }
+        drop(reader);
+        drop(repo);
+        self.decision_log.extend(denied_log);
         Ok(out)
     }
 }

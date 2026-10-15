@@ -282,6 +282,21 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("description", "text", true),
             ],
         ),
+        // DSN-DVM-803 (PH-1 step 13b, DEC-073): policies are Definition objects below
+        // ConfigAsset; `source` is one Cedar policy, validated against the entity model at
+        // commit (kernel; a standard clause follows with BPA 1.0.0).
+        g(
+            "Policy",
+            Some("definition"),
+            Some("ConfigAsset"),
+            false,
+            vec![
+                field("name", "text", true),
+                field("source", "text", true),
+                field("enabled", "boolean", false),
+                field("description", "text", true),
+            ],
+        ),
         g(
             "Release",
             Some("definition"),
@@ -317,6 +332,7 @@ pub fn is_genesis(name: &str) -> bool {
             | "GovernanceSheet"
             | "PropertyDecl"
             | "Lifecycle"
+            | "Policy"
             | "Release"
     )
 }
