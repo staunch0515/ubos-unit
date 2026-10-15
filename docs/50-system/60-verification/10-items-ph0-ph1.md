@@ -176,14 +176,14 @@ Numbers follow UBS-VER-00 §3.
 - **Supports:** EXIT-1-03
 
 ### VER-PROP-0100 — Kernel property set
-- **Verifies:** DSN-DVM-005, DSN-DVM-092, DSN-DVM-230, DSN-DVM-242, DSN-DVM-303, DSN-DVM-420, DSN-DVM-421, DSN-DVM-908, NR-DET-003
+- **Verifies:** DSN-DVM-005, DSN-DVM-092, DSN-DVM-230, DSN-DVM-242, DSN-DVM-303, DSN-DVM-420, DSN-DVM-421, DSN-DVM-501, DSN-DVM-908, NR-DET-003
 - **Suite:** SUITE-DVM-PROP · **Phase:** PH-1
 - **Environment:** CI workers (long mode)
 - **Procedure:**
-  1. Run properties: index rebuild equality; diff cost bound; merge determinism and ledger completeness; timeline non-overlap; balance = Σ entries at any `(asof, cseq)`; cursor completeness; roots history independence.
+  1. Run properties: index rebuild equality; diff cost bound; merge determinism and ledger completeness; timeline non-overlap; balance = Σ entries at any `(asof, cseq)`; cursor completeness; roots history independence; process state machine (only the transitions of UBS-SYS-DVM-05 §1 are possible and every execution records a path of the table ending in the terminal phase its outcome implies; since PH-1 step 12c, DEC-072).
   2. Long mode: ≥ 1,000,000 cases per property.
 - **Pass criterion:** 0 failures.
-- **Evidence:** property report `verify/reports/exit-1-04/` (PH-1 step 8a, DEC-061: nine properties, the five of VER-PROP-0100 and VER-PROP-0001…0003 at 1,000,000 cases each and VER-PROP-0004 at 100,000, 0 failures).
+- **Evidence:** property report `verify/reports/exit-1-04/` (PH-1 step 8a, DEC-061: nine properties, the five of VER-PROP-0100 and VER-PROP-0001…0003 at 1,000,000 cases each and VER-PROP-0004 at 100,000, 0 failures; PH-1 step 12c, DEC-072: `process_state_machine` at 1,000,000 cases, 0 failures).
 - **Supports:** EXIT-1-04
 
 ### VER-SIM-0001 — Concurrency and crash simulation
@@ -307,6 +307,16 @@ Numbers follow UBS-VER-00 §3.
   1. Compute MUST-clause coverage per profile for the rc2 profiles (Core, Bitemporal, Ledger, Proof, Governance, Protocol), excluding the superseded vectors of 1.0-rc1 (STD-CONF-030).
 - **Pass criterion:** 100% coverage.
 - **Evidence:** coverage report and release manifest `standard/release/1.0-rc2/` (PH-1 step 10e, DEC-069: 165 of 165 MUST clauses, 1,586 vectors); tag `bpa-v1.0.0-rc2`.
+- **Supports:** EXIT-1-14
+
+### VER-INSP-9005 — BPA 1.0-rc3 coverage
+- **Verifies:** FR-STD-022, DSN-BPA-003
+- **Suite:** SUITE-BPA-COVERAGE · **Phase:** PH-1
+- **Environment:** release pipeline
+- **Procedure:**
+  1. Compute MUST-clause coverage per profile for the rc3 profiles (Core, Bitemporal, Ledger, Proof, Governance, Protocol), excluding the superseded vectors of 1.0-rc1 (STD-CONF-030).
+- **Pass criterion:** 100% coverage.
+- **Evidence:** coverage report and release manifest `standard/release/1.0-rc3/` (PH-1 step 12c, DEC-072: 166 of 166 MUST clauses, 1,642 vectors); tag `bpa-v1.0.0-rc3`.
 - **Supports:** EXIT-1-14
 
 ### VER-CONF-8404 — Governance profile and remaining 1b vectors

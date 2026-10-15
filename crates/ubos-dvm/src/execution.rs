@@ -1532,8 +1532,17 @@ impl Engine {
             .and_then(Value::as_u64)
             .unwrap_or(MAX_ATTEMPTS);
         let mut attempt = 0u64;
+        // the process state machine of DSN-DVM-501 (UBS-SYS-DVM-05 §1)
+        let mut machine = crate::process::Machine::new();
+        let invariant = |e: String| BpaError::new("LOGIC.NOT_AVAILABLE", e);
         loop {
             attempt += 1;
+            machine.attempts = attempt;
+            if machine.phase == crate::process::Phase::Created {
+                machine
+                    .fire(crate::process::Event::FirstInstruction)
+                    .map_err(invariant)?;
+            }
             let seed = if attempt == 1 {
                 seed0
             } else {
@@ -1566,7 +1575,14 @@ impl Engine {
                     self.commit(&json!({"branch": branch, "changes": changes}))?;
                 }
                 let mut cseq = None;
-                if !core.uow.is_empty() {
+                if core.uow.is_empty() {
+                    machine
+                        .fire(crate::process::Event::CommitEmpty)
+                        .map_err(invariant)?;
+                } else {
+                    machine
+                        .fire(crate::process::Event::CommitStaged)
+                        .map_err(invariant)?;
                     let mut pc = p.p.clone();
                     pc["serializable"] = i.get("serializable").cloned().unwrap_or(json!(false));
                     pc["reads"] = json!(core.reads);
@@ -1578,7 +1594,7 @@ impl Engine {
                     };
                     let meta = self.branch_meta(&branch)?;
                     let input = json!({"branch": branch, "changes": core.uow, "process": pr.p});
-                    let (r, classes, effects) = commit_on(
+                    let committed = commit_on(
                         self.store.as_mut(),
                         &self.registry,
                         &self.now,
@@ -1592,7 +1608,27 @@ impl Engine {
                         self.max_violations,
                         &mut self.rules,
                         Some(&flow),
-                    )?;
+                    );
+                    // staged → flushing → committed; a conflict re-runs or aborts, a storage
+                    // failure aborts, any other error is the pre-lock validation failing
+                    use crate::process::Event;
+                    let events: Vec<Event> = match &committed {
+                        Ok(_) => vec![Event::Enqueued, Event::Flushed],
+                        Err(e) if RETRY_CODES.contains(&e.code) => vec![
+                            Event::Enqueued,
+                            Event::Conflict {
+                                retry: retryable && attempt < max_attempts,
+                            },
+                        ],
+                        Err(e) if e.code.starts_with("NOD.") => {
+                            vec![Event::Enqueued, Event::StorageFailure]
+                        }
+                        Err(_) => vec![Event::ValidationFailed],
+                    };
+                    for ev in events {
+                        machine.fire(ev).map_err(invariant)?;
+                    }
+                    let (r, classes, effects) = committed?;
                     self.touch_branch(&branch)?;
                     let n = r["cseq"].as_u64().unwrap_or_default();
                     record(
@@ -1613,7 +1649,7 @@ impl Engine {
                         let j = self.journal_full(&p.id)?;
                         return Engine::compare_replay(&core, &result, &j);
                     }
-                    return self.finish(&core, i, &p, Some(result), cseq, "ok", attempt);
+                    return self.finish(&core, i, &p, Some(result), cseq, "ok", attempt, &machine);
                 }
                 Err(e) => {
                     if replay.is_some() {
@@ -1622,12 +1658,18 @@ impl Engine {
                     if RETRY_CODES.contains(&e.code) && retryable && attempt < max_attempts {
                         continue;
                     }
+                    if !machine.phase.is_terminal() {
+                        // a limit, a cancellation or a fault while running (or staged)
+                        machine
+                            .fire(crate::process::Event::Fault)
+                            .map_err(invariant)?;
+                    }
                     let outcome = match e.code {
                         "LOGIC.LIMIT_EXCEEDED" => "limit",
                         "LOGIC.CANCELLED" => "cancelled",
                         _ => "error",
                     };
-                    self.finish(&core, i, &p, None, None, outcome, attempt)?;
+                    self.finish(&core, i, &p, None, None, outcome, attempt, &machine)?;
                     return Err(e);
                 }
             }
@@ -1645,6 +1687,7 @@ impl Engine {
         cseq: Option<u64>,
         outcome: &str,
         attempt: u64,
+        machine: &crate::process::Machine,
     ) -> Result<Value, BpaError> {
         let pid = p.id.clone();
         if outcome == "ok" {
@@ -1672,6 +1715,7 @@ impl Engine {
         } else {
             record(self.store.as_mut(), p, "failed", None, 0)?;
         }
+        crate::versioning::record_phases(self.store.as_mut(), p, machine)?;
         let m = core.metering(outcome);
         let commit_ids: Vec<String> = match cseq {
             Some(_) => {

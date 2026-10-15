@@ -168,6 +168,24 @@ pub fn record(
     store.put_process_rec(&p.id, &rec)
 }
 
+/// Record the phases a process passed and its attempts (DSN-DVM-501, UBS-SYS-DVM-05 §1)
+/// with the process; nothing for processes the caller did not name.
+pub fn record_phases(
+    store: &mut dyn Store,
+    p: &Process,
+    machine: &crate::process::Machine,
+) -> Result<(), BpaError> {
+    if !p.explicit {
+        return Ok(());
+    }
+    let Some(mut rec) = store.process_rec(&p.id)? else {
+        return Ok(());
+    };
+    rec["phases"] = machine.to_json();
+    rec["attempts"] = json!(machine.attempts);
+    store.put_process_rec(&p.id, &rec)
+}
+
 fn all_processes(store: &mut dyn Store) -> Result<Vec<Value>, BpaError> {
     let mut out = Vec::new();
     for id in store.process_ids()? {
