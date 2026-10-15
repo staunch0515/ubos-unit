@@ -1329,6 +1329,7 @@ impl Engine {
                         None,
                         false,
                         self.max_violations,
+                        &mut self.rules,
                     )?;
                     self.touch_branch(&branch)?;
                     let n = r["cseq"].as_u64().unwrap_or_default();

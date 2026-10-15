@@ -32,6 +32,9 @@ analysis of the cascade and the cascade itself; the sheet objects, their checks 
 and the evaluation of qualifiers over a state are the kernel's (`ubos-dvm/src/sheets.rs`).
 Commit enforcement, validations, invariants, the validation preview and the decisions before
 command ports are `ubos-dvm/src/rules.rs` (STD-LGS-030, -031).
+Sheets are compiled once per version hash and indexed by class (`ubos-rules::Cache`);
+`ubos-bench sheets` and `ubos-bench invariants` measure NR-PERF-009 and DSN-DVM-708 in
+memory (`verify/reports/exit-1-14/workstation/`).
 
 Run the BPA vectors tagged `prototype`:
 

@@ -1,13 +1,15 @@
 //! Governance sheets of the Governance profile (BPA 1.0-rc2, STD-LGS-001…023; PH-1 step
 //! 11, DSN-DVM-701…706): the textual grammar and its lossless AST, the property registry
 //! with the kernel properties of ABI 1.0, authoring checks, specificity, the rank and the
-//! overlap analysis of the cascade, the cascade itself and the checks of a sheet set. The
-//! engine is pure: the sheet objects and their versions at a coordinate, and the evaluation
-//! of qualifiers over the state ([`Matcher`]), are the kernel's (`ubos-dvm`).
+//! overlap analysis of the cascade, the compiled sheets with their selector index
+//! (DSN-DVM-703), the cascade itself and the checks of a sheet set. The engine is pure:
+//! the sheet objects and their versions at a coordinate, and the evaluation of qualifiers
+//! over the state ([`Matcher`]), are the kernel's (`ubos-dvm`).
 
 pub mod ast;
 pub mod cascade;
 pub mod check;
+pub mod compiled;
 pub mod parse;
 pub mod registry;
 
@@ -15,7 +17,11 @@ pub use ast::{Block, Declaration, Qualifier, Selector, Sheet, SheetValue};
 pub use cascade::{
     Candidate, Effective, Matcher, SheetRef, cascade, check_set, explain, matches, sheet_applies,
 };
-pub use check::{Key, check_sheet, depth, may_overlap, rank, reason, specificity};
+pub use check::{
+    Key, Overlap, check_sheet, compile_expr, depth, may_overlap, qualifiers_may_overlap, rank,
+    reason, rel_target, specificity, types_may_overlap,
+};
+pub use compiled::{Cache, CompiledExpr, CompiledSelector, CompiledSheet, Index, Normalised};
 pub use parse::{parse, parse_selector, parse_sheet};
 pub use registry::{LAYERS, Property, Registry, kernel_properties};
 

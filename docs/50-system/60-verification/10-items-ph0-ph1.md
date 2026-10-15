@@ -380,7 +380,7 @@ Numbers follow UBS-VER-00 §3.
 - **Procedure:**
   1. Run indexed queries with row filters over 10 M objects; 10,000-block sheet evaluation; commit-to-handler latency under WL-MIXED-OLTP; became-effective timing with 1,000 future changes.
 - **Pass criterion:** MET-PERF-016, MET-PERF-017, NR-PERF-009 and NR-PERF-012 met.
-- **Evidence:** benchmark report.
+- **Evidence:** benchmark report (NR-PERF-009 on the workstation at PH-1 step 11d, DEC-070: `verify/reports/exit-1-14/workstation/`, `ubos-bench sheets` with 10,000 blocks and 20 candidates — warm p95 0.41 ms per object; the reference run follows at step 19).
 - **Supports:** EXIT-1-17
 
 ### VER-FAULT-2000 — Installation, backup and point-in-time restore

@@ -2,6 +2,8 @@
 //!
 //! ```text
 //! ubos-bench tree  [--keys N] [--changes C] [--rounds R] [--seed S]
+//! ubos-bench sheets [--blocks B] [--candidates K] [--objects N] [--rounds R] [--per-sheet P]
+//! ubos-bench invariants [--invariants I] [--commits C]
 //! ubos-bench load  --database URL [--objects N] [--months M] [--seed S] [--threads T]
 //! ubos-bench check --database URL [--objects N] [--months M] [--seed S]
 //! ubos-bench run   --database URL --what read|commit|diff|branch|merge|asof [--objects N]
@@ -15,6 +17,7 @@
 
 mod load;
 mod run;
+mod sheets;
 mod tree;
 mod workload;
 
@@ -42,6 +45,8 @@ fn main() {
     );
     let r: Result<Value, String> = match args.first().map(String::as_str) {
         Some("tree") => tree::tree(&args[1..]).map(|_| Value::Null),
+        Some("sheets") => sheets::sheets(&args[1..]).map_err(|e| e.to_string()),
+        Some("invariants") => sheets::invariants(&args[1..]).map_err(|e| e.to_string()),
         Some("load") => load::load(&url, spec, threads).map_err(|e| e.to_string()),
         Some("check") => load::check(&url, spec).map_err(|e| e.to_string()),
         Some("run") => {

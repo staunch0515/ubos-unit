@@ -324,6 +324,14 @@ impl<'a> Repo<'a> {
         Ok(c)
     }
 
+    /// The commit identifier of a commit, without the rest of its record.
+    pub fn commit_id(&mut self, id: u64) -> Result<String, BpaError> {
+        if let Some(c) = self.cache.get(&id) {
+            return Ok(c.commit_id.clone());
+        }
+        self.store.commit_id(id)
+    }
+
     /// Initialise `main` with the empty genesis commit (cseq 0).
     pub fn init(&mut self) -> Result<(), BpaError> {
         let id = self.init_branch("main")?;
@@ -422,7 +430,7 @@ impl<'a> Repo<'a> {
     }
 
     /// The ordinal a read of `branch` at `time` uses (default: head), checked to exist.
-    pub(crate) fn ordinal(&mut self, branch: &str, time: Option<u64>) -> Result<u64, BpaError> {
+    pub fn ordinal(&mut self, branch: &str, time: Option<u64>) -> Result<u64, BpaError> {
         let r = self.branch_ref(branch)?;
         match time {
             None => Ok(r.head_cseq),
