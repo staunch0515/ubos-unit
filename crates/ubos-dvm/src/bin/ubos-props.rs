@@ -22,6 +22,9 @@
 //!   dense sequences and the same balance), `balance_bitemporal` (the balance at any
 //!   `(asof, cseq)` is the sum of the included entries) and `cursor_completeness` (pages of a
 //!   query under concurrent commits return the snapshot exactly once, in order).
+//! - VER-PROP-0100 (PH-1 step 12c): `process_state_machine` (only the transitions of
+//!   UBS-SYS-DVM-05 §1 are possible, and every execution records a path of the table ending
+//!   in the terminal phase its outcome implies; DSN-DVM-501).
 
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -31,6 +34,7 @@ use std::time::Instant;
 /// Merge outcomes seen: conflicts, merges that changed the target, merges without change.
 static MERGE_OUTCOMES: [AtomicU64; 3] = [AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0)];
 use ubos_dvm::Adapter;
+use ubos_dvm::process::{Event, Phase};
 use ubos_time::Segment;
 
 struct Rng(u64);
@@ -998,6 +1002,224 @@ fn prop_cursor(rng: &mut Rng) -> Result<(), String> {
     Ok(())
 }
 
+// ---- VER-PROP-0100: process state machine (PH-1 step 12c, DEC-071) ----
+
+/// The transition table of UBS-SYS-DVM-05 §1 as the property states it, independently of
+/// `ubos_dvm::process::step`.
+const PROCESS_TABLE: &[(Phase, Event, Phase)] = &[
+    (Phase::Created, Event::FirstInstruction, Phase::Running),
+    (Phase::Running, Event::CommitEmpty, Phase::Committed),
+    (Phase::Running, Event::CommitStaged, Phase::Staged),
+    (Phase::Staged, Event::ValidationFailed, Phase::Aborted),
+    (Phase::Staged, Event::Requires, Phase::Deferred),
+    (Phase::Staged, Event::Enqueued, Phase::Flushing),
+    (Phase::Flushing, Event::Flushed, Phase::Committed),
+    (
+        Phase::Flushing,
+        Event::Conflict { retry: true },
+        Phase::Running,
+    ),
+    (
+        Phase::Flushing,
+        Event::Conflict { retry: false },
+        Phase::Aborted,
+    ),
+    (Phase::Running, Event::Fault, Phase::Aborted),
+    (Phase::Staged, Event::Fault, Phase::Aborted),
+    (Phase::Flushing, Event::StorageFailure, Phase::Aborted),
+];
+const PHASES: &[Phase] = &[
+    Phase::Created,
+    Phase::Running,
+    Phase::Staged,
+    Phase::Flushing,
+    Phase::Committed,
+    Phase::Aborted,
+    Phase::Deferred,
+];
+const EVENTS: &[Event] = &[
+    Event::FirstInstruction,
+    Event::CommitEmpty,
+    Event::CommitStaged,
+    Event::ValidationFailed,
+    Event::Requires,
+    Event::Enqueued,
+    Event::Flushed,
+    Event::Conflict { retry: true },
+    Event::Conflict { retry: false },
+    Event::Fault,
+    Event::StorageFailure,
+];
+
+fn phase_of(name: &str) -> Option<Phase> {
+    PHASES.iter().copied().find(|p| p.name() == name)
+}
+
+/// A recorded phase list is a path of the table from `created` to a terminal phase.
+fn check_path(names: &[Value]) -> Result<Phase, String> {
+    let mut cur = Phase::Created;
+    if names.first().and_then(Value::as_str) != Some("created") {
+        return Err(format!("phases start with created: {names:?}"));
+    }
+    for n in &names[1..] {
+        let to = n
+            .as_str()
+            .and_then(phase_of)
+            .ok_or_else(|| format!("unknown phase {n}"))?;
+        if !PROCESS_TABLE.iter().any(|(f, _, t)| *f == cur && *t == to) {
+            return Err(format!(
+                "{} → {} is not in the table ({names:?})",
+                cur.name(),
+                to.name()
+            ));
+        }
+        cur = to;
+    }
+    if !cur.is_terminal() {
+        return Err(format!(
+            "the process did not end in a terminal phase ({names:?})"
+        ));
+    }
+    Ok(cur)
+}
+
+/// Process state machine (DSN-DVM-501, UBS-SYS-DVM-05 §1): `step` lists exactly the table
+/// (every other pair is illegal, terminal phases absorb); a random walk through `Machine`
+/// never leaves the table; and the kernel's executions — empty, with writes, re-executed
+/// after a head move, aborted after a conflict, aborted by a limit, aborted by a validation
+/// failure — record a phase path of the table that ends in the terminal phase their outcome
+/// implies.
+fn prop_process(rng: &mut Rng) -> Result<(), String> {
+    // 1. the table, both ways
+    for &from in PHASES {
+        for &ev in EVENTS {
+            let want = PROCESS_TABLE
+                .iter()
+                .find(|(f, e, _)| *f == from && *e == ev)
+                .map(|(_, _, t)| *t);
+            let got = ubos_dvm::process::step(from, ev);
+            if got != want {
+                return Err(format!("step({from:?}, {ev:?}) = {got:?}, table {want:?}"));
+            }
+            if from.is_terminal() && want.is_some() {
+                return Err(format!("terminal phase {from:?} leaves on {ev:?}"));
+            }
+        }
+    }
+    // 2. a random walk: legal events are applied, illegal ones rejected and ignored
+    let mut m = ubos_dvm::process::Machine::new();
+    for _ in 0..(1 + rng.below(12)) {
+        let ev = EVENTS[rng.below(EVENTS.len() as u64) as usize];
+        let before = m.phase;
+        let legal = PROCESS_TABLE
+            .iter()
+            .any(|(f, e, _)| *f == before && *e == ev);
+        match m.fire(ev) {
+            Ok(to) if legal => {
+                if !PROCESS_TABLE.contains(&(before, ev, to)) {
+                    return Err(format!(
+                        "walk {before:?} --{ev:?}--> {to:?} is not in the table"
+                    ));
+                }
+            }
+            Ok(to) => return Err(format!("illegal {before:?} --{ev:?}--> {to:?} applied")),
+            Err(_) if !legal => {
+                if m.phase != before {
+                    return Err("a rejected event changed the phase".into());
+                }
+            }
+            Err(e) => return Err(format!("legal {before:?} --{ev:?} rejected: {e}")),
+        }
+    }
+    let names: Vec<Value> = m.phases.iter().map(|p| json!(p.name())).collect();
+    if m.phase.is_terminal() {
+        check_path(&names)?;
+    }
+    // 3. the kernel's executions
+    let mut a = Adapter::new().map_err(|e| e.to_string())?;
+    genesis(&mut a)?;
+    run(
+        &mut a,
+        "create_branch",
+        json!({"name": "feature/p", "from": "main"}),
+    )?;
+    let target = "\"ubos://acme/Item/i-1\"";
+    let kinds = ["empty", "write", "retry", "conflict", "limit", "invalid"];
+    let kind = kinds[rng.below(kinds.len() as u64) as usize];
+    let body = match kind {
+        "empty" => vec![json!({"return": "1"})],
+        "invalid" => vec![
+            json!({"do": "read.get", "args": {"target": target}}),
+            json!({"do": "commit.update", "args": {"target": target, "set": {"a": "\"x\"", "zz": "1"}}}),
+            json!({"return": "1"}),
+        ],
+        _ => vec![
+            json!({"do": "read.get", "args": {"target": target}}),
+            json!({"do": "commit.update", "args": {"target": target, "set": {"a": "\"x\""}}}),
+            json!({"return": "1"}),
+        ],
+    };
+    let program = json!({"op": "create", "class": "Logic", "object_id": uid(80), "slug": "acme-p",
+        "body": {"name": "acme.p", "tier": "host", "abi": "1.0",
+            "source": {"functions": {"main": {"params": [], "body": body, "retryable": kind == "retry"}}},
+            "exports": ["main"], "capabilities": ["commit", "read", "run"], "profile": "standard",
+            "state": "committed"}});
+    let item = json!({"op": "create", "class": "Item", "object_id": uid(1), "slug": "i-1",
+        "body": {"a": "0", "b": "0", "c": "0"}});
+    run(
+        &mut a,
+        "commit",
+        json!({"branch": "feature/p", "changes": [program, item]}),
+    )?;
+    let pid = uid(500);
+    let mut input = json!({"branch": "feature/p", "asset": "acme.p", "function": "main", "args": [],
+        "process": {"process_id": pid}, "entropy_seed": "11".repeat(32)});
+    if kind == "retry" || kind == "conflict" {
+        // a commit of another process between the read and the commit moves the head
+        let head = run(
+            &mut a,
+            "read",
+            json!({"branch": "feature/p", "object_id": uid(1)}),
+        )?["version_hash"]
+            .clone();
+        input["interfere"] = json!([{"attempt": 1, "changes": [
+            {"op": "update", "object_id": uid(1), "base": head, "body": {"c": "9"}}]}]);
+    }
+    if kind == "limit" {
+        input["limits"] = json!({"units": 3});
+    }
+    let r = run(&mut a, "execute", input);
+    let info = run(&mut a, "process_info", json!({"process_id": pid}))?;
+    let phases = info["phases"].as_array().cloned().unwrap_or_default();
+    let end = check_path(&phases)?;
+    let (want_end, want_ok, want_attempts): (Phase, bool, u64) = match kind {
+        "empty" | "write" => (Phase::Committed, true, 1),
+        "retry" => (Phase::Committed, true, 2),
+        _ => (Phase::Aborted, false, 1),
+    };
+    if end != want_end || r.is_ok() != want_ok {
+        return Err(format!(
+            "{kind}: ended {end:?} (ok {}), wanted {want_end:?} (ok {want_ok}): {phases:?} {r:?}",
+            r.is_ok()
+        ));
+    }
+    if info["attempts"].as_u64() != Some(want_attempts) {
+        return Err(format!(
+            "{kind}: attempts {}, wanted {want_attempts}",
+            info["attempts"]
+        ));
+    }
+    let staged = phases.iter().any(|p| p == "staged");
+    if staged == (kind == "empty" || kind == "limit") {
+        return Err(format!("{kind}: staged phase {staged} ({phases:?})"));
+    }
+    let state = info["state"].as_str().unwrap_or_default();
+    if (end == Phase::Committed) != (state == "committed") {
+        return Err(format!("{kind}: recorded state {state} with phase {end:?}"));
+    }
+    Ok(())
+}
+
 // ---- driver ----
 
 const PROPERTIES: &[(&str, &str, u64)] = &[
@@ -1010,6 +1232,7 @@ const PROPERTIES: &[(&str, &str, u64)] = &[
     ("merge_ledger_completeness", "VER-PROP-0100", 7),
     ("balance_bitemporal", "VER-PROP-0100", 8),
     ("cursor_completeness", "VER-PROP-0100", 9),
+    ("process_state_machine", "VER-PROP-0100", 10),
 ];
 
 fn check(name: &str, id: u64, seed: u64, case: u64) -> Result<(), String> {
@@ -1025,6 +1248,7 @@ fn check(name: &str, id: u64, seed: u64, case: u64) -> Result<(), String> {
                 "merge_ledger_completeness" => prop_merge_ledger(&mut rng),
                 "balance_bitemporal" => prop_balance(&mut rng),
                 "cursor_completeness" => prop_cursor(&mut rng),
+                "process_state_machine" => prop_process(&mut rng),
                 _ => prop_timeline(&mut rng),
             }
         }

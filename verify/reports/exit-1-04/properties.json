@@ -1,90 +1,98 @@
 {
-  "suite": "SUITE-DVM-PROP",
-  "generator": "SplitMix64",
-  "threads": 3,
-  "build": "PH-1 step 8a (DEC-061)",
-  "results": [
-    {
-      "cases": 1000000,
-      "failures": [],
-      "item": "VER-PROP-0001",
-      "property": "root_history_independence",
-      "seconds": 168.9,
-      "seed": 20260930
-    },
-    {
-      "cases": 1000000,
-      "failures": [],
-      "item": "VER-PROP-0002",
-      "property": "timeline_non_overlap",
-      "seconds": 0.9,
-      "seed": 20260930
-    },
-    {
-      "item": "VER-PROP-0003",
-      "property": "merge_determinism",
-      "cases": 1000000,
-      "seed": 20260930,
-      "failures": [],
-      "seconds": 5067.6,
-      "outcomes": {
-        "conflict": 561759,
-        "merged_with_changes": 438241,
-        "merged_unchanged": 0
-      },
-      "note": "from the log of the first run (3 threads under CPU contention); the report file of that run was not written because the run was stopped at the next property"
-    },
-    {
-      "cases": 100000,
-      "failures": [],
-      "item": "VER-PROP-0004",
-      "property": "tree_incremental",
-      "seconds": 574.0,
-      "seed": 20260930
-    },
-    {
-      "cases": 1000000,
-      "failures": [],
-      "item": "VER-PROP-0100",
-      "property": "index_rebuild_equality",
-      "seconds": 14551.5,
-      "seed": 20260930
-    },
-    {
-      "cases": 1000000,
-      "cost": {
-        "max_node_reads": 116,
-        "max_reads_per_bound_permille": 750
-      },
-      "failures": [],
-      "item": "VER-PROP-0100",
-      "property": "diff_cost_bound",
-      "seconds": 2213.2,
-      "seed": 20260930
-    },
-    {
-      "cases": 1000000,
-      "failures": [],
-      "item": "VER-PROP-0100",
-      "property": "merge_ledger_completeness",
-      "seconds": 1859.7,
-      "seed": 20260930
-    },
-    {
-      "cases": 1000000,
-      "failures": [],
-      "item": "VER-PROP-0100",
-      "property": "balance_bitemporal",
-      "seconds": 1702.9,
-      "seed": 20260930
-    },
-    {
-      "cases": 1000000,
-      "failures": [],
-      "item": "VER-PROP-0100",
-      "property": "cursor_completeness",
-      "seconds": 4433.0,
-      "seed": 20260930
-    }
-  ]
+ "build": "PH-1 step 8a (DEC-061); process_state_machine at PH-1 step 12c (DEC-072)",
+ "generator": "SplitMix64",
+ "results": [
+  {
+   "cases": 1000000,
+   "failures": [],
+   "item": "VER-PROP-0001",
+   "property": "root_history_independence",
+   "seconds": 168.9,
+   "seed": 20260930
+  },
+  {
+   "cases": 1000000,
+   "failures": [],
+   "item": "VER-PROP-0002",
+   "property": "timeline_non_overlap",
+   "seconds": 0.9,
+   "seed": 20260930
+  },
+  {
+   "cases": 1000000,
+   "failures": [],
+   "item": "VER-PROP-0003",
+   "note": "from the log of the first run (3 threads under CPU contention); the report file of that run was not written because the run was stopped at the next property",
+   "outcomes": {
+    "conflict": 561759,
+    "merged_unchanged": 0,
+    "merged_with_changes": 438241
+   },
+   "property": "merge_determinism",
+   "seconds": 5067.6,
+   "seed": 20260930
+  },
+  {
+   "cases": 100000,
+   "failures": [],
+   "item": "VER-PROP-0004",
+   "property": "tree_incremental",
+   "seconds": 574.0,
+   "seed": 20260930
+  },
+  {
+   "cases": 1000000,
+   "failures": [],
+   "item": "VER-PROP-0100",
+   "property": "index_rebuild_equality",
+   "seconds": 14551.5,
+   "seed": 20260930
+  },
+  {
+   "cases": 1000000,
+   "cost": {
+    "max_node_reads": 116,
+    "max_reads_per_bound_permille": 750
+   },
+   "failures": [],
+   "item": "VER-PROP-0100",
+   "property": "diff_cost_bound",
+   "seconds": 2213.2,
+   "seed": 20260930
+  },
+  {
+   "cases": 1000000,
+   "failures": [],
+   "item": "VER-PROP-0100",
+   "property": "merge_ledger_completeness",
+   "seconds": 1859.7,
+   "seed": 20260930
+  },
+  {
+   "cases": 1000000,
+   "failures": [],
+   "item": "VER-PROP-0100",
+   "property": "balance_bitemporal",
+   "seconds": 1702.9,
+   "seed": 20260930
+  },
+  {
+   "cases": 1000000,
+   "failures": [],
+   "item": "VER-PROP-0100",
+   "property": "cursor_completeness",
+   "seconds": 4433.0,
+   "seed": 20260930
+  },
+  {
+   "cases": 1000000,
+   "failures": [],
+   "item": "VER-PROP-0100",
+   "property": "process_state_machine",
+   "seconds": 553.8,
+   "seed": 20260930
+  }
+ ],
+ "suite": "SUITE-DVM-PROP",
+ "threads": 3
 }

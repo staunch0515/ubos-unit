@@ -44,6 +44,9 @@ object. The lifecycle objects, the state in the version envelope, `commit.transi
 `run.port` availability, `read.actions` and the operation `actions` are the kernel's
 (`ubos-dvm/src/flow.rs`, with the commit path in `stateful.rs` and the instructions in
 `execution.rs`).
+The process of an execution follows the state machine of DSN-DVM-501 (`ubos-dvm/src/process.rs`,
+UBS-SYS-DVM-05 §1); `process_info` returns the phases passed and the attempts, and
+`ubos-props` checks the machine (`process_state_machine`, VER-PROP-0100).
 
 Run the BPA vectors tagged `prototype`:
 

@@ -3,7 +3,7 @@
 | Item | Value |
 |---|---|
 | Criterion | EXIT-1-04: 0 property failures at ≥ 1,000,000 cases per property (VER-PROP-0100 long mode; VER-PROP-0004 at its own criterion of ≥ 100,000) |
-| Result | **0 failures** in nine properties |
+| Result | **0 failures** in ten properties (the tenth, `process_state_machine`, added at PH-1 step 12c) |
 | Build | PH-1 step 8a (`cargo build --release --locked -p ubos-dvm --bin ubos-props`), DEC-061 |
 | Generator | SplitMix64, seed 20260930, 3 threads; a case is replayed from its index (`--only <property> --cases N`) |
 | Workstation | 4 vCPU, Linux x86-64, Rust 1.94; the runs shared the machine with the mutation and coverage jobs, so the times are upper bounds |
@@ -19,6 +19,7 @@
 | VER-PROP-0100 | merge_ledger_completeness | merge ledger completeness: own entries then every branch entry in branch order, dense sequences, same balance | 1,000,000 | 0 | 1860 s |
 | VER-PROP-0100 | balance_bitemporal | bitemporal balance: the balance at any `(asof, cseq)` is the sum of the included entries, backdated ones included | 1,000,000 | 0 | 1703 s |
 | VER-PROP-0100 | cursor_completeness | cursor completeness: pages under concurrent creates, updates and ends return the snapshot exactly once, in order | 1,000,000 | 0 | 4433 s |
+| VER-PROP-0100 | process_state_machine | process state machine (DSN-DVM-501, UBS-SYS-DVM-05 §1): `step` lists exactly the table, random walks never leave it, and the kernel's empty, writing, re-executed, conflicting, limited and invalid executions record a path of the table ending in the terminal phase their outcome implies (PH-1 step 12c, DEC-072; 4 threads) | 1,000,000 | 0 | 554 s |
 
 Merge determinism outcomes: 561,759 conflicts and 438,241 merges that changed the target.
 Diff cost: at most 116 node reads in one diff; the largest ratio to the bound
