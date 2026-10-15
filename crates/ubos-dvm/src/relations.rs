@@ -235,6 +235,7 @@ impl Checks<'_, '_> {
             Some(&o.head),
             true,
             None,
+            base.get("state").and_then(Value::as_str),
         )?;
         let tl = ubos_time::apply(&o.timeline, "end", &vh, d, None)
             .map_err(|e| BpaError::new(e.0, "timeline operation rejected"))?;
@@ -317,10 +318,8 @@ impl Checks<'_, '_> {
         result: &mut Value,
     ) -> Result<(), BpaError> {
         let o = self.tx.state.objects[src].clone();
-        let mut body = self.version(&o.head)?["body"]
-            .as_object()
-            .cloned()
-            .unwrap_or_default();
+        let base = self.version(&o.head)?;
+        let mut body = base["body"].as_object().cloned().unwrap_or_default();
         let t = &self.tx.state.objects[target];
         let uri = uri_of(&self.repo.store.authority(), &t.class, &t.slug);
         match body.get(field).cloned() {
@@ -350,6 +349,7 @@ impl Checks<'_, '_> {
             Some(&o.head),
             false,
             None,
+            base.get("state").and_then(Value::as_str),
         )?;
         let tl = ubos_time::apply(&o.timeline, "supersede_from", &vh, d, None)
             .map_err(|e| BpaError::new(e.0, "timeline operation rejected"))?;

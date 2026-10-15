@@ -126,6 +126,7 @@ pub(crate) fn apply_defaults(
     body: &mut Map<String, Value>,
     asof: &str,
     ctx: &Map<String, Value>,
+    state: Option<&str>,
 ) -> Result<(), BpaError> {
     if !governed(reg_ext, class) {
         return Ok(());
@@ -141,6 +142,7 @@ pub(crate) fn apply_defaults(
         &given,
         asof,
         ctx,
+        state,
     )?;
     for (path, (v, _)) in &eff {
         if let Some(f) = path.strip_prefix("field_default.")
@@ -198,7 +200,7 @@ pub(crate) fn enforce(
     e: &Enforce<'_>,
 ) -> Result<Vec<Value>, BpaError> {
     let ctx = rule_ctx(e.process, e.branch_kind, &repo.store.authority());
-    let mut written: Vec<(String, String, Value)> = Vec::new();
+    let mut written: Vec<(String, String, Value, Option<String>)> = Vec::new();
     for (oid, vh) in e.written {
         let Some(o) = tx.state.objects.get(oid) else {
             continue;
@@ -208,7 +210,12 @@ pub(crate) fn enforce(
         }
         let v = version_of(repo, Some(tx), vh)?;
         if v["tombstone"] != json!(true) {
-            written.push((oid.clone(), vh.clone(), v["body"].clone()));
+            written.push((
+                oid.clone(),
+                vh.clone(),
+                v["body"].clone(),
+                crate::flow::state_of(&v),
+            ));
         }
     }
     let written_ids: BTreeSet<&str> = written.iter().map(|(o, ..)| o.as_str()).collect();
@@ -219,7 +226,8 @@ pub(crate) fn enforce(
         if written_ids.contains(oid.as_str()) || !governed(reg_ext, &o.class) {
             continue;
         }
-        let body = version_of(repo, Some(tx), &o.head)?["body"].clone();
+        let v = version_of(repo, Some(tx), &o.head)?;
+        let body = v["body"].clone();
         let asof = (e.default_valid)(&o.class);
         let (eff, _, _) = cascade_state(
             repo,
@@ -231,6 +239,7 @@ pub(crate) fn enforce(
             &body,
             &asof,
             &ctx,
+            crate::flow::state_of(&v).as_deref(),
         )?;
         if eff.get("read_only").map(|(v, _)| v) == Some(&json!(true)) {
             return Err(unsatisfied("read_only", oid, &[]));
@@ -246,7 +255,7 @@ pub(crate) fn enforce(
     let mut violations: Vec<Value> = Vec::new();
     let mut warnings: Vec<Value> = Vec::new();
     let mut invariants: BTreeMap<String, Value> = BTreeMap::new();
-    for (oid, _, body) in &written {
+    for (oid, _, body, state) in &written {
         let class = tx.state.objects[oid].class.clone();
         let existed = tx.loaded.get(oid).is_some_and(Option::is_some);
         let old = match tx.loaded.get(oid) {
@@ -264,6 +273,7 @@ pub(crate) fn enforce(
             body,
             &asof,
             &ctx,
+            state.as_deref(),
         )?;
         let value = |p: &str| eff.get(p).map(|(v, _)| v.clone()).unwrap_or(Value::Null);
         if value("read_only") == json!(true) && existed {
@@ -314,7 +324,7 @@ pub(crate) fn enforce(
             .flatten()
             .filter_map(Value::as_str)
             .collect();
-        for (oid, _, body) in &written {
+        for (oid, _, body, _) in &written {
             let class = tx.state.objects[oid].class.clone();
             let lin = &reg_ext.class(&class)?.linearization;
             if !lin.iter().any(|l| scope.contains(&l.as_str())) {
@@ -402,6 +412,7 @@ impl Engine {
             &body,
             &asof,
             &ctx,
+            crate::flow::state_of(&head).as_deref(),
         )?;
         if decl.get("kind") == Some(&json!("query")) {
             return Ok(json!({"outcome": "allow", "explanations": [], "bindings": bindings}));
@@ -549,6 +560,7 @@ impl Engine {
             true,
             self.max_violations,
             &mut self.rules,
+            None,
         );
         match r {
             Ok((result, _, _)) => Ok(json!({

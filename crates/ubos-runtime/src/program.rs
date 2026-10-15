@@ -30,7 +30,10 @@ pub const IMPLEMENTED: &[&str] = &[
     "commit.adjust",
     "commit.link",
     "commit.unlink",
+    // BPA 1.0-rc3, PH-1 step 12b (DEC-071)
+    "commit.transition",
     "read.get",
+    "read.actions",
     "read.history",
     "read.timeline",
     "read.diff",

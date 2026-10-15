@@ -24,6 +24,10 @@ pub use check::{
 pub use compiled::{Cache, CompiledExpr, CompiledSelector, CompiledSheet, Index, Normalised};
 pub use parse::{parse, parse_selector, parse_sheet};
 pub use registry::{LAYERS, Property, Registry, kernel_properties};
+/// The model and expression crates, for the engine crates above this one that may depend
+/// on `ubos-rules` only (UBS-ARC-07 §2: `ubos-flow`).
+pub use ubos_expr as expr;
+pub use ubos_model as model;
 
 use serde_json::{Value, json};
 use ubos_model::types::BpaError;

@@ -62,7 +62,7 @@ fn object(spec: &Spec, reg: &Registry, fields: &Fields, i: u64) -> Result<Object
         false,
     )?;
     let (vh, rec) = version_record(
-        reg, &oid, &class, &slug, &body, &d0, None, None, false, None,
+        reg, &oid, &class, &slug, &body, &d0, None, None, false, None, None,
     )?;
     let timeline = ubos_time::apply(&[], "create", &vh, &d0, None)
         .map_err(|e| BpaError::new(e.0, "timeline"))?;
@@ -101,6 +101,7 @@ fn object(spec: &Spec, reg: &Registry, fields: &Fields, i: u64) -> Result<Object
             to.as_deref(),
             Some(&state.head),
             false,
+            None,
             None,
         )?;
         let cseq = 1 + m;

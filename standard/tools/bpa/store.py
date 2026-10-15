@@ -1107,7 +1107,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         o = st['objects'][oid]
         base = self.versions[o['head']]
         vh = self._version(oid, o['class'], o['slug'], base['body'], {'from': d, 'to': None},
-                           predecessor=o['head'], tombstone=True)
+                           predecessor=o['head'], tombstone=True, state=base.get('state'))
         o['timeline'] = tl_apply(o['timeline'], 'end', vh, d)
         o['head'] = vh
         result['versions'][oid] = vh
@@ -1151,7 +1151,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
                     self._check_body(o['class'], body)
                     rng = tl_range(o['timeline'], 'supersede_from', d)
                     vh = self._version(src, o['class'], o['slug'], body, {'from': rng[0], 'to': rng[1]},
-                                       predecessor=o['head'])
+                                       predecessor=o['head'], state=self.versions[o['head']].get('state'))
                     o['timeline'] = tl_apply(o['timeline'], 'supersede_from', vh, d)
                     o['head'] = vh
                     result['versions'][src] = vh
@@ -1405,7 +1405,8 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
                 pred = tl_at(to_['timeline'], a) if to_ else None
                 slug = self.versions[pred[2]]['slug'] if pred else meta['slug']
                 vh = self._version(oid, meta['class'], slug, body, {'from': a, 'to': b},
-                                   predecessor=pred[2] if pred else None)
+                                   predecessor=pred[2] if pred else None,
+                                   state=self.versions[pred[2]].get('state') if pred else None)
                 created.append(vh)
                 final.append([a, b, vh])
             else:

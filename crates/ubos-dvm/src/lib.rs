@@ -9,6 +9,7 @@
 pub mod adapter;
 pub mod execution;
 pub mod expressions;
+pub mod flow;
 pub mod host;
 pub mod proofs;
 pub mod relations;
@@ -21,6 +22,7 @@ pub mod verification;
 /// The engine crates a host reaches through this facade (AR-031: hosts depend on `ubos-dvm`).
 pub use ubos_crypto as crypto;
 pub use ubos_expr as expr;
+pub use ubos_flow as flow_engine;
 pub use ubos_model as model;
 pub use ubos_runtime as runtime;
 /// Memory probe of the L2 host, for host binaries that install a counting allocator

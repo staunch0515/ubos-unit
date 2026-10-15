@@ -245,6 +245,7 @@ impl Engine {
             false,
             self.max_violations,
             &mut self.rules,
+            None,
         );
         let (r, classes, effects) = match r {
             Ok(x) => x,
@@ -315,6 +316,7 @@ impl Engine {
                 false,
                 self.max_violations,
                 &mut self.rules,
+                None,
             ) {
                 Ok((r, c, _)) => {
                     out.push(Ok(r));
@@ -703,6 +705,8 @@ fn create(
     provenance: Option<&str>,
     rule_ctx: &Map<String, Value>,
     cache: &mut ubos_rules::Cache,
+    lcs: &crate::flow::Lifecycles,
+    flow: &ubos_flow::Flow,
 ) -> Result<(), BpaError> {
     let oid = s(ch, "object_id").unwrap_or_default().to_string();
     let class = s(ch, "class").unwrap_or_default().to_string();
@@ -724,6 +728,20 @@ fn create(
     names::check_name("slug", &slug)?;
     let mut given = object(ch.get("body").unwrap_or(&json!({})));
     crate::sheets::sheet_body(&class, &mut given)?;
+    // STD-CLS-004 (1.0-rc3): the lifecycle state is set by the kernel, never by a change
+    let lc = lcs.lifecycle(repo, Some(tx), &tx.state, repo.reg, &class)?;
+    if ch.get("state").is_some() || (lc.is_some() && given.contains_key("state")) {
+        return Err(BpaError::new(
+            "FLOW.STATE_DIRECT_WRITE",
+            "the lifecycle state changes by transitions only",
+        ));
+    }
+    let state: Option<String> = lc.as_ref().map(|(_, _, body)| {
+        flow.transitions
+            .get(&oid)
+            .map(|m| m.to.clone())
+            .unwrap_or_else(|| s(body, "initial").unwrap_or_default().to_string())
+    });
     crate::rules::apply_defaults(
         repo,
         tx,
@@ -733,6 +751,7 @@ fn create(
         &mut given,
         &default_valid(&class),
         rule_ctx,
+        state.as_deref(),
     )?;
     let body = repo.reg.check_body(&class, &Value::Object(given), false)?;
     let a = ch
@@ -741,7 +760,17 @@ fn create(
         .map(str::to_string)
         .unwrap_or_else(|| default_valid(&class));
     let vh = repo.new_version(
-        tx, &oid, &class, &slug, &body, &a, None, None, false, provenance,
+        tx,
+        &oid,
+        &class,
+        &slug,
+        &body,
+        &a,
+        None,
+        None,
+        false,
+        provenance,
+        state.as_deref(),
     )?;
     let timeline = ubos_time::apply(&[], "create", &vh, &a, None).map_err(tl_err)?;
     tx.state.objects.insert(
@@ -758,6 +787,7 @@ fn create(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn update(
     repo: &mut Repo<'_>,
     tx: &mut Tx,
@@ -766,6 +796,8 @@ fn update(
     default_valid: &dyn Fn(&str) -> String,
     result: &mut Value,
     provenance: Option<&str>,
+    lcs: &crate::flow::Lifecycles,
+    flow: &ubos_flow::Flow,
 ) -> Result<(), BpaError> {
     let oid = s(ch, "object_id").unwrap_or_default().to_string();
     let Some(o) = repo.obj(tx, &oid)? else {
@@ -789,6 +821,37 @@ fn update(
     let valid = ch.get("valid").cloned().unwrap_or(json!({}));
     let dv = default_valid(&o.class);
     let mut obj = o.clone();
+    // STD-CLS-004 (1.0-rc3): the state moves by transitions only; field rules of the state
+    let lc = lcs.lifecycle(repo, Some(tx), &tx.state, repo.reg, &o.class)?;
+    let given_body = ch.get("body").and_then(Value::as_object);
+    if ch.get("state").is_some()
+        || (lc.is_some() && given_body.is_some_and(|b| b.contains_key("state")))
+    {
+        return Err(BpaError::new(
+            "FLOW.STATE_DIRECT_WRITE",
+            "the lifecycle state changes by transitions only",
+        ));
+    }
+    let moved = flow.transitions.get(&oid);
+    let base_state = crate::flow::state_of(&base);
+    let state: Option<String> = moved.map(|m| m.to.clone()).or_else(|| base_state.clone());
+    if let (Some((_, _, lcb)), Some(bs), Some(given)) = (&lc, &base_state, given_body)
+        && op != "end"
+    {
+        let read_only = ubos_flow::field_rules(lcb, bs)
+            .and_then(|r| r.get("read_only"))
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        for f in read_only.iter().filter_map(Value::as_str) {
+            if given.contains_key(f) && !moved.is_some_and(|m| m.fields.contains(f)) {
+                return Err(BpaError::with_details(
+                    "FLOW.FIELD_RULE_VIOLATED",
+                    json!({"state": bs, "field": f, "rule": "read_only"}),
+                ));
+            }
+        }
+    }
     let retro_from;
     let retro_to;
     if op == "end" {
@@ -804,6 +867,7 @@ fn update(
             Some(&o.head),
             true,
             None,
+            state.as_deref(),
         )?;
         obj.timeline = ubos_time::apply(&o.timeline, "end", &vh, &d, None).map_err(tl_err)?;
         obj.head = vh;
@@ -844,6 +908,7 @@ fn update(
             Some(&o.head),
             false,
             provenance,
+            state.as_deref(),
         )?;
         obj.timeline =
             ubos_time::apply(&o.timeline, kind, &vh, &a, b.as_deref()).map_err(tl_err)?;
@@ -882,7 +947,9 @@ pub(crate) fn commit_on(
     dry: bool,
     max_violations: u64,
     cache: &mut ubos_rules::Cache,
+    flow: Option<&ubos_flow::Flow>,
 ) -> Result<(Value, Vec<String>, u32), BpaError> {
+    let flow = flow.cloned().unwrap_or_default();
     let changes = input
         .get("changes")
         .and_then(Value::as_array)
@@ -922,9 +989,11 @@ pub(crate) fn commit_on(
         for c in crate::sheets::SHEET_CLASSES {
             has_sheets |= !r.objects_in(&branch, cseq, Some(c))?.is_empty();
         }
-        (exts, has_sheets)
+        // the lifecycle objects of the head (STD-CLS-004); those of this commit win
+        let lcs = crate::flow::Lifecycles::at(&mut r, &branch, cseq)?;
+        (exts, has_sheets, lcs)
     };
-    let (exts, has_sheets) = exts;
+    let (exts, has_sheets, lcs) = exts;
     let writes_extension = changes
         .iter()
         .any(|c| s(c, "class") == Some("ClassExtension"));
@@ -1012,6 +1081,8 @@ pub(crate) fn commit_on(
                     rid,
                     &rule_ctx,
                     cache,
+                    &lcs,
+                    &flow,
                 )?;
                 let oid = s(ch, "object_id").unwrap_or_default();
                 if let Some(d) = &deriv {
@@ -1084,7 +1155,17 @@ pub(crate) fn commit_on(
                 }
                 let oid = s(ch, "object_id").unwrap_or_default().to_string();
                 let before = tx.state.objects.get(&oid).map(|o| o.timeline.clone());
-                update(&mut repo, &mut tx, ch, op, &default_valid, &mut result, rid)?;
+                update(
+                    &mut repo,
+                    &mut tx,
+                    ch,
+                    op,
+                    &default_valid,
+                    &mut result,
+                    rid,
+                    &lcs,
+                    &flow,
+                )?;
                 if let (Some(d), "update") = (&deriv, op) {
                     let vh = result["versions"][&oid]
                         .as_str()
@@ -1133,6 +1214,18 @@ pub(crate) fn commit_on(
         }
     }
     repo.check_double_entry(&tx)?;
+    // STD-CLS-004: the shape and the extension rule of the lifecycle objects written
+    {
+        let written: Vec<(String, String)> = result["versions"]
+            .as_object()
+            .map(|m| {
+                m.iter()
+                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or_default().to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        lcs.check_written(&mut repo, &tx, reg, &written)?;
+    }
     let appended_ops: Vec<(String, String)> = tx
         .appended
         .iter()
@@ -1221,6 +1314,8 @@ pub(crate) fn commit_on(
         &result["versions"],
         &result["entries"],
         &logic,
+        &lcs,
+        &flow,
     )?;
     tx.extra.insert("rule_binding".into(), binding);
     if dry {
@@ -1264,6 +1359,7 @@ pub(crate) fn commit_on(
 }
 
 /// The rule binding of a commit over the transaction's state (STD-TIME-040).
+#[allow(clippy::too_many_arguments)]
 fn rule_binding_of(
     repo: &mut Repo<'_>,
     tx: &Tx,
@@ -1271,6 +1367,8 @@ fn rule_binding_of(
     versions: &Value,
     entries: &Value,
     logic: &BTreeSet<String>,
+    lcs: &crate::flow::Lifecycles,
+    flow: &ubos_flow::Flow,
 ) -> Result<Value, BpaError> {
     let mut names: BTreeSet<String> = BTreeSet::new();
     for oid in versions.as_object().map(|m| m.keys()).into_iter().flatten() {
@@ -1305,9 +1403,22 @@ fn rule_binding_of(
             }
         }
     }
+    // STD-CLS-004, STD-TIME-040 (1.0-rc3): the lifecycle versions of the changed classes
+    for n in &names {
+        if let Some((oid, vh, _)) = lcs.lifecycle(repo, Some(tx), &tx.state, reg, n)?
+            && !items
+                .iter()
+                .any(|i| i.get("object_id") == Some(&json!(oid)))
+        {
+            items.push(json!({"class": "Lifecycle", "object_id": oid, "class_version": vh}));
+        }
+    }
     let mut out = json!({"classes": items});
     if !logic.is_empty() {
         out["logic"] = json!(logic);
+    }
+    if !flow.guards.is_empty() {
+        out["guards"] = json!(flow.guards);
     }
     Ok(out)
 }

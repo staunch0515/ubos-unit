@@ -264,6 +264,24 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("description", "text", true),
             ],
         ),
+        // STD-CLS-004 (BPA 1.0-rc3, DEC-071): the lifecycle of a class is a Definition object
+        // below ConfigAsset that its declaration names by URI.
+        g(
+            "Lifecycle",
+            Some("definition"),
+            Some("ConfigAsset"),
+            false,
+            vec![
+                field("name", "text", true),
+                field("states", "json", true),
+                field("initial", "text", true),
+                ext_json("final"),
+                field("transitions", "json", true),
+                ext_json("effects"),
+                ext_json("field_rules"),
+                field("description", "text", true),
+            ],
+        ),
         g(
             "Release",
             Some("definition"),
@@ -298,6 +316,7 @@ pub fn is_genesis(name: &str) -> bool {
             | "Logic"
             | "GovernanceSheet"
             | "PropertyDecl"
+            | "Lifecycle"
             | "Release"
     )
 }
@@ -583,6 +602,21 @@ pub fn check_decl(d: &Value, custom: &BTreeSet<String>) -> Result<(), BpaError> 
     if let Some(v) = d.get("validations") {
         check_validations(v)?;
     }
+    // STD-CLS-004 (1.0-rc3): the lifecycle is a URI; a class with a lifecycle has no field state
+    if let Some(l) = d.get("lifecycle") {
+        if !non_empty_text(l) {
+            return Err(err(
+                "MODEL.INVALID_VALUE",
+                "lifecycle is the URI of a Lifecycle object",
+            ));
+        }
+        if members(d, "fields").any(|f| s(f, "name") == Some("state")) {
+            return Err(err(
+                "MODEL.INVALID_VALUE",
+                "a class with a lifecycle has no field state",
+            ));
+        }
+    }
     check_overlay_policy(d)
 }
 
@@ -818,6 +852,9 @@ pub struct Class {
     pub validations: Vec<Value>,
     /// Overlay policy of the members (STD-CLS-031; since 1.0-rc2).
     pub overlay_policy: Map<String, Value>,
+    /// URI of the lifecycle in force: the nearest one named along the linearization
+    /// (STD-CLS-004; since 1.0-rc3).
+    pub lifecycle: Option<String>,
 }
 
 impl Class {
@@ -834,6 +871,9 @@ impl Class {
         }
         if !self.overlay_policy.is_empty() {
             out["overlay_policy"] = Value::Object(self.overlay_policy.clone());
+        }
+        if let Some(l) = &self.lifecycle {
+            out["lifecycle"] = json!(l);
         }
         if !self.ports.is_empty() {
             let ports: Map<String, Value> = self
@@ -1292,6 +1332,17 @@ impl Registry {
             }
         });
         let d = &self.decls[name];
+        // STD-CLS-004 (1.0-rc3): the lifecycle in force is the nearest one named along the
+        // linearization; a class with a lifecycle has no field state
+        let lifecycle = lin
+            .iter()
+            .find_map(|c| s(&self.decls[c], "lifecycle").map(str::to_string));
+        if lifecycle.is_some() && fields.contains_key("state") {
+            return Err(err(
+                "MODEL.INVALID_VALUE",
+                "a class with a lifecycle has no field state",
+            ));
+        }
         Ok(Class {
             name: name.to_string(),
             kind,
@@ -1306,6 +1357,7 @@ impl Registry {
             linearization: lin,
             validations,
             overlay_policy: overlay,
+            lifecycle,
         })
     }
 

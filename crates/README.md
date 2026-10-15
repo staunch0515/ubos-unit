@@ -36,6 +36,15 @@ Sheets are compiled once per version hash and indexed by class (`ubos-rules::Cac
 `ubos-bench sheets` and `ubos-bench invariants` measure NR-PERF-009 and DSN-DVM-708 in
 memory (`verify/reports/exit-1-14/workstation/`).
 
+PH-1 step 12 (DEC-071) adds `ubos-flow`, the pure engine of lifecycles (STD-CLS-004,
+STD-ISA-017, STD-ISA-036, STD-ISA-050): the shape of a lifecycle declaration, the extension
+rule for subclass lifecycles, the reachability findings of the BPU class verification, guards
+and `set` effects as L1 expressions, port availability by state and the action list of an
+object. The lifecycle objects, the state in the version envelope, `commit.transition`,
+`run.port` availability, `read.actions` and the operation `actions` are the kernel's
+(`ubos-dvm/src/flow.rs`, with the commit path in `stateful.rs` and the instructions in
+`execution.rs`).
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh

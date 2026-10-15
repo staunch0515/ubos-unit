@@ -458,12 +458,16 @@ impl Repo<'_> {
                     let pred = to
                         .and_then(|o| at(&o.timeline, &a))
                         .map(|s| s.version.clone());
-                    let slug = match &pred {
-                        Some(p) => self.version_in(tx, p)?["slug"]
-                            .as_str()
-                            .unwrap_or_default()
-                            .to_string(),
-                        None => meta.slug.clone(),
+                    // the slug and the lifecycle state (STD-CLS-004) of the predecessor
+                    let (slug, state) = match &pred {
+                        Some(p) => {
+                            let v = self.version_in(tx, p)?;
+                            (
+                                v["slug"].as_str().unwrap_or_default().to_string(),
+                                v.get("state").and_then(Value::as_str).map(str::to_string),
+                            )
+                        }
+                        None => (meta.slug.clone(), None),
                     };
                     let vh = self.new_version(
                         tx,
@@ -476,6 +480,7 @@ impl Repo<'_> {
                         pred.as_deref(),
                         false,
                         None,
+                        state.as_deref(),
                     )?;
                     created.push(vh.clone());
                     vh
