@@ -24,6 +24,7 @@ from .lang import Lang, custom_value
 from .exec import Exec
 from .sheets import Sheets
 from .rules import Rules, DryRun
+from .ubtp import Ubtp
 from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
@@ -120,7 +121,7 @@ def tl_at(tl, asof):
     return None
 
 
-class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules):
+class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp):
     def __init__(self):
         self.reset()
 

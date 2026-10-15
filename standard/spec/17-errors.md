@@ -130,6 +130,7 @@ DAT-Error:
   | `BILL.LICENCE_INACTIVE` | licence lapsed | no | yes | 402 |
   | `BILL.NOT_ENTITLED` | outside plan | no | yes | 402 |
   | `OPS.QUOTA_EXCEEDED` | quota reached | no | yes | 429 |
+  | `INT.PROTOCOL_ERROR` | malformed envelope, message before the handshake, duplicate id, unknown type (since 1.0-rc2) | no | yes | 400 |
   | `INT.VERSION_UNSUPPORTED` | protocol mismatch | no | no | 426 |
   | `INT.CURSOR_EXPIRED` | subscription cursor too old | no | yes | 410 |
   | `ADDR.CONFLICTING_SELECTORS` | incompatible URI selectors | no | yes | 400 |

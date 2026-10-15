@@ -130,6 +130,7 @@ DAT-ConformanceReport:
   | `validate` | `{branch, changes, process}` | `{violations, warnings}` of the commit the changes would make, without committing (STD-LGS-030, FR-RULE-035). Since 1.0-rc2. |
   | `decide` | `{branch, object_id, port, params, ctx}` and a selector | `DAT-DecisionResult` of the port call (STD-LGS-031). Since 1.0-rc2. |
   | `parse_query` | `{text}` | the `DAT-Query` of the textual form (STD-EXPR-010); `query` also takes `text` in place of the JSON members. Since 1.0-rc2. |
+  | `ubtp` | `{session, messages}` | `{responses}`: the in-process UBTP binding handles the `DAT-UbtpEnvelope` messages on the named session (default `s1`, kept across calls) and returns the frames produced in order (STD-PROTO-001…020); `process_id` and `pending_change_id` of its frames are implementation-assigned. Since 1.0-rc2. |
   | `read_range` | `{branch, object_id, from, to}` and a selector | `{segments, evaluated_at}`, each segment as `read` clipped to `[from, to)` (STD-TIME-014). Since 1.0-rc1. |
   | `history` | `{branch, object_id, from, to}` | `{commits, evaluated_at}`, each `{cseq, commit_id, tx_time, ops}` for the first-parent commits with `from ≤ tx_time < to` that changed the object; `ops` are `{kind, from, to}` (STD-TIME-014). Since 1.0-rc1. |
   | `tree_diff` | `{from, to}`, each a branch with a selector | `{keys}`, the state-tree keys whose entries differ (STD-VER-031). Since 1.0-rc1. |
