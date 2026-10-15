@@ -2708,6 +2708,44 @@ impl Store for PgStore {
         remember(&mut self.versions, hash.to_string(), &v);
         Ok(v)
     }
+    fn versions(&mut self, hashes: &[String]) -> Result<Vec<(String, Value)>, BpaError> {
+        let mut out = Vec::with_capacity(hashes.len());
+        let mut want: HashMap<Vec<u8>, String> = HashMap::new();
+        for h in hashes {
+            if let Some(v) = self.versions.get(h) {
+                out.push((h.clone(), v.clone()));
+            } else {
+                want.insert(hash_of(h)?.to_vec(), h.clone());
+            }
+        }
+        if want.is_empty() {
+            return Ok(out);
+        }
+        let ids: Vec<Vec<u8>> = want.keys().cloned().collect();
+        let tenant = self.backend.scope.tenant.clone();
+        let pool = self.backend.pool.clone();
+        let rows: Vec<(Vec<u8>, Vec<u8>)> = self.rt.block_on(async move {
+            let rows = sqlx::query("SELECT version_id, envelope FROM object_version WHERE tenant_id = $1::uuid AND version_id = ANY($2::bytea[])")
+                .bind(&tenant)
+                .bind(&ids)
+                .fetch_all(&pool)
+                .await
+                .map_err(db)?;
+            rows.into_iter()
+                .map(|r| Ok((r.try_get(0).map_err(db)?, r.try_get(1).map_err(db)?)))
+                .collect::<Result<Vec<_>, BpaError>>()
+        })?;
+        for (id_bytes, b) in rows {
+            let Some(h) = want.get(&id_bytes) else {
+                continue;
+            };
+            let id = hash_of(h)?;
+            let v = json(&self.physical.open(&id, &b)?)?;
+            remember(&mut self.versions, h.clone(), &v);
+            out.push((h.clone(), v));
+        }
+        Ok(out)
+    }
     fn commit(&mut self, id: u64) -> Result<Value, BpaError> {
         if let Some(v) = self.commits.get(&id) {
             return Ok(v.clone());

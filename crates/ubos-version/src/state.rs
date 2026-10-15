@@ -380,6 +380,11 @@ impl<'a> Repo<'a> {
         Ok(c)
     }
 
+    /// Several versions at once, by hash (the candidates of a query; step 13d).
+    pub fn versions(&mut self, hashes: &[String]) -> Result<HashMap<String, Value>, BpaError> {
+        Ok(self.store.versions(hashes)?.into_iter().collect())
+    }
+
     /// The small members of a commit record, without its write set (step 13d).
     pub fn meta(&mut self, id: u64) -> Result<CommitMeta, BpaError> {
         if let Some(m) = self.metas.get(&id) {

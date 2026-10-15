@@ -80,6 +80,12 @@ pub fn query(args: &[String], url: &str) -> Result<Value, BpaError> {
     let rounds: u64 = opt(args, "--rounds", 50);
     let backend = text(args, "--backend").unwrap_or_else(|| "memory".into());
     let seed: u64 = opt(args, "--seed", 20_261_015);
+    // `--reuse`: the dataset a previous PostgreSQL run loaded (same `--objects`, `--seed`)
+    let reuse = args.iter().any(|a| a == "--reuse") && backend == "postgres";
+    if reuse {
+        let mut e = Engine::open_existing(Box::new(PgStore::connect(url)?.with_fixed_scope()))?;
+        return suite(&mut e, objects, per_commit, rounds, seed, &backend, 0.0);
+    }
     let mut e = match backend.as_str() {
         "postgres" => Engine::new(Box::new(PgStore::connect(url)?.with_fixed_scope()))?,
         _ => Engine::new(Box::new(MemStore::default()))?,
@@ -110,6 +116,19 @@ pub fn query(args: &[String], url: &str) -> Result<Value, BpaError> {
         i += n;
     }
     let load_ms = t0.elapsed().as_secs_f64() * 1000.0;
+    suite(&mut e, objects, per_commit, rounds, seed, &backend, load_ms)
+}
+
+/// The query suite over a loaded dataset.
+fn suite(
+    e: &mut Engine,
+    objects: u64,
+    per_commit: u64,
+    rounds: u64,
+    seed: u64,
+    backend: &str,
+    load_ms: f64,
+) -> Result<Value, BpaError> {
     let mut lat: std::collections::BTreeMap<&str, Vec<u64>> = Default::default();
     let mut rows: std::collections::BTreeMap<&str, u64> = Default::default();
     let mut errors = 0u64;
@@ -123,7 +142,7 @@ pub fn query(args: &[String], url: &str) -> Result<Value, BpaError> {
         let us = t.elapsed().as_micros() as u64;
         lat.entry(name).or_default().push(us);
         if let Err(e) = &r {
-            last_error.insert(name, format!("{}: {}", e.code, e.message));
+            last_error.insert(name, format!("{}: {} {:?}", e.code, e.message, e.details));
         }
         r
     };

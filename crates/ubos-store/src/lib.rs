@@ -117,6 +117,17 @@ pub trait Store {
     fn reset(&mut self) -> Result<(), BpaError>;
     /// A version record by hash.
     fn version(&mut self, hash: &str) -> Result<Value, BpaError>;
+    /// Several versions at once (the candidates of a query; step 13d): `(hash, version)`
+    /// for every hash found. The default reads them one by one.
+    fn versions(&mut self, hashes: &[String]) -> Result<Vec<(String, Value)>, BpaError> {
+        let mut out = Vec::with_capacity(hashes.len());
+        for h in hashes {
+            if let Ok(v) = self.version(h) {
+                out.push((h.clone(), v));
+            }
+        }
+        Ok(out)
+    }
     /// A commit record by identifier.
     fn commit(&mut self, id: u64) -> Result<Value, BpaError>;
     /// The small members of a commit record without its write set: `{branch, cseq,
@@ -955,6 +966,20 @@ impl Store for Group {
             Some(v) => Ok(v.clone()),
             None => self.inner.version(hash),
         }
+    }
+    fn versions(&mut self, hashes: &[String]) -> Result<Vec<(String, Value)>, BpaError> {
+        let mut out = Vec::with_capacity(hashes.len());
+        let mut rest = Vec::new();
+        for h in hashes {
+            match self.overlay.versions.get(h) {
+                Some(v) => out.push((h.clone(), v.clone())),
+                None => rest.push(h.clone()),
+            }
+        }
+        if !rest.is_empty() {
+            out.extend(self.inner.versions(&rest)?);
+        }
+        Ok(out)
     }
     fn commit(&mut self, id: u64) -> Result<Value, BpaError> {
         match self.overlay.commits.get(&id) {

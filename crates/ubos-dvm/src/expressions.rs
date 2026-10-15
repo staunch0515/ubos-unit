@@ -424,6 +424,19 @@ impl Engine {
         };
         // the candidates: class, liveness, the segment at asof, the lifecycle state
         let mut cands: Vec<Row> = Vec::new();
+        // the versions of the candidates in one read (step 13d)
+        let mut hashes: Vec<String> = Vec::new();
+        for o in st.objects.values() {
+            let lin = &reg.class(&o.class)?.linearization;
+            if !(if only { o.class == cls } else { lin.contains(&cls) }) {
+                continue;
+            }
+            let a = asof.clone().unwrap_or_else(|| default_valid(&o.class));
+            if let Some(seg) = at(&o.timeline, &a) {
+                hashes.push(seg.version.clone());
+            }
+        }
+        let fetched = repo.versions(&hashes)?;
         for (oid, o) in &st.objects {
             let lin = &reg.class(&o.class)?.linearization;
             let hit = if only {
@@ -438,7 +451,10 @@ impl Engine {
             let Some(seg) = at(&o.timeline, &a) else {
                 continue;
             };
-            let v = repo.version(&seg.version)?;
+            let v = match fetched.get(&seg.version) {
+                Some(v) => v.clone(),
+                None => repo.version(&seg.version)?,
+            };
             if v["tombstone"] == json!(true) {
                 continue;
             }
