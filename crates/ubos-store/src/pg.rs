@@ -1919,6 +1919,8 @@ pub struct PgStore {
     nodes: Cache<String>,
     versions: Cache<String>,
     commits: Cache<u64>,
+    /// The small members of the commit records read so far (`commit_meta`, step 13d).
+    commit_metas: HashMap<u64, Value>,
 }
 
 impl PgStore {
@@ -1966,6 +1968,7 @@ impl PgStore {
             nodes: Cache::default(),
             versions: Cache::default(),
             commits: Cache::default(),
+            commit_metas: HashMap::new(),
         })
     }
 
@@ -2716,6 +2719,21 @@ impl Store for PgStore {
         let v = json(&b)?;
         remember(&mut self.commits, id, &v);
         Ok(v)
+    }
+    fn commit_meta(&mut self, id: u64) -> Result<Value, BpaError> {
+        if let Some(m) = self.commit_metas.get(&id) {
+            return Ok(m.clone());
+        }
+        let c = self.commit(id)?;
+        let mut out = serde_json::Map::new();
+        for k in ["branch", "cseq", "commit_id", "tx_time", "parents"] {
+            if let Some(v) = c.get(k) {
+                out.insert(k.to_string(), v.clone());
+            }
+        }
+        let m = Value::Object(out);
+        self.commit_metas.insert(id, m.clone());
+        Ok(m)
     }
     fn commit_at(&mut self, branch: &str, cseq: u64) -> Result<Option<u64>, BpaError> {
         let Some(bid) = self.branch_id(branch)? else {

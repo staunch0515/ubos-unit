@@ -39,7 +39,7 @@ impl Engine {
         let mut repo = Repo::new(self.store.as_mut(), &self.registry);
         for name in repo.store.branch_names()? {
             let snap = repo.select(&name, &Value::Null)?;
-            let tx = repo.commit(snap.commit)?.tx_time;
+            let tx = repo.meta(snap.commit)?.tx_time;
             if tx > latest {
                 latest = tx;
             }
@@ -98,7 +98,7 @@ impl Engine {
         let mut repo = Repo::new(self.store.as_mut(), &self.registry);
         let b = repo.commit_at(branch, i.get("to").and_then(Value::as_u64))?;
         let a = repo.commit_at(branch, i.get("from").and_then(Value::as_u64))?;
-        if repo.commit(a)?.cseq > repo.commit(b)?.cseq {
+        if repo.meta(a)?.cseq > repo.meta(b)?.cseq {
             return Err(not_found("the earlier commit is after the later one"));
         }
         let mut records = Vec::new();
@@ -113,7 +113,7 @@ impl Engine {
             }
         }
         Ok(json!({"length": records.len(), "records": records,
-            "from_commit": repo.commit(a)?.commit_id, "to_commit": repo.commit(b)?.commit_id}))
+            "from_commit": repo.meta(a)?.commit_id, "to_commit": repo.meta(b)?.commit_id}))
     }
 
     /// `tenant_root` (STD-PROOF-030): the root over the heads of the active main, release
@@ -131,7 +131,7 @@ impl Engine {
                 continue;
             }
             let head = repo.head(&name)?;
-            heads.push((format!("{vae}/{name}"), repo.commit(head)?.commit_id));
+            heads.push((format!("{vae}/{name}"), repo.meta(head)?.commit_id));
             names.push(name);
         }
         let root = ubos_tree::tree_root(&heads)?;
@@ -152,7 +152,7 @@ impl Engine {
         let empty = {
             let mut repo = Repo::new(self.store.as_mut(), &self.registry);
             let head = repo.head("main")?;
-            repo.store.branch_names()? == ["main"] && repo.commit(head)?.cseq == 0
+            repo.store.branch_names()? == ["main"] && repo.meta(head)?.cseq == 0
         } && self.registry.declarations().is_empty();
         if !empty {
             return Err(BpaError::new(

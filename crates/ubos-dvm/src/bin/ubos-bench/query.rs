@@ -113,6 +113,7 @@ pub fn query(args: &[String], url: &str) -> Result<Value, BpaError> {
     let mut lat: std::collections::BTreeMap<&str, Vec<u64>> = Default::default();
     let mut rows: std::collections::BTreeMap<&str, u64> = Default::default();
     let mut errors = 0u64;
+    let mut last_error: std::collections::BTreeMap<&str, String> = Default::default();
     let mut run = |name: &'static str,
                    input: Value,
                    lat: &mut std::collections::BTreeMap<&str, Vec<u64>>|
@@ -121,6 +122,9 @@ pub fn query(args: &[String], url: &str) -> Result<Value, BpaError> {
         let r = e.query(&input);
         let us = t.elapsed().as_micros() as u64;
         lat.entry(name).or_default().push(us);
+        if let Err(e) = &r {
+            last_error.insert(name, format!("{}: {}", e.code, e.message));
+        }
         r
     };
     for r in 0..rounds {
@@ -149,7 +153,7 @@ pub fn query(args: &[String], url: &str) -> Result<Value, BpaError> {
             Err(_) => errors += 1,
         }
         let range = q(format!(
-            "from Account where this.balance >= {lo} && this.balance < {} order by this.balance limit 100",
+            "from Account where this.balance >= {lo}.00 and this.balance < {}.00 order by this.balance limit 100",
             lo + 100
         ));
         match run("range", range, &mut lat) {
@@ -190,6 +194,9 @@ pub fn query(args: &[String], url: &str) -> Result<Value, BpaError> {
         result[name] = json!({"latency": s, "rows": rows.get(name).copied().unwrap_or(0)});
     }
     result["met"] = json!(met);
+    if !last_error.is_empty() {
+        result["last_error"] = json!(last_error);
+    }
     Ok(json!({
         "benchmark": "query", "requirement": "NR-PERF-008",
         "params": {"objects": objects, "per_commit": per_commit, "rounds": rounds, "backend": backend, "seed": seed},

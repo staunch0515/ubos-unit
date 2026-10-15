@@ -424,7 +424,7 @@ impl<'a> EngineHost<'a> {
         if !core.pins.contains_key(&core.branch) {
             let mut repo = self.repo();
             let head = repo.head(&core.branch)?;
-            let id = repo.commit(head)?.commit_id;
+            let id = repo.meta(head)?.commit_id;
             core.pins.insert(core.branch.clone(), id);
         }
         if self.view.is_none() {
@@ -1904,7 +1904,7 @@ impl Engine {
                     let head = {
                         let mut repo = Repo::new(self.store.as_mut(), &self.registry);
                         let h = repo.head(&core.branch)?;
-                        repo.commit(h)?.cseq
+                        repo.meta(h)?.cseq
                     };
                     let rows = effects_of(self.store.as_mut(), &pr, &core.branch, head)?;
                     let n = rows.len() as u32;
@@ -1921,7 +1921,7 @@ impl Engine {
             Some(_) => {
                 let mut repo = Repo::new(self.store.as_mut(), &self.registry);
                 let h = repo.head(&core.branch)?;
-                vec![repo.commit(h)?.commit_id]
+                vec![repo.meta(h)?.commit_id]
             }
             None => Vec::new(),
         };

@@ -248,7 +248,7 @@ impl Engine {
         for branch in branches {
             let mut repo = Repo::new(self.store.as_mut(), &self.registry);
             let head = repo.head(&branch)?;
-            let cseq = repo.commit(head)?.cseq;
+            let cseq = repo.meta(head)?.cseq;
             let mut rows: Vec<(String, String, Vec<u8>, String)> = Vec::new();
             for c in &subclasses {
                 for (oid, o) in repo.objects_in(&branch, cseq, Some(c))? {
@@ -309,7 +309,7 @@ impl Engine {
                     break;
                 }
                 let from = repo.branch_meta(&b)?.created_from;
-                let fc = repo.commit(from)?;
+                let fc = repo.meta(from)?;
                 if fc.branch == b || hops > 64 {
                     return Ok(false);
                 }
@@ -1128,7 +1128,7 @@ pub(crate) fn commit_on(
     let exts = {
         let mut r = Repo::new(&mut *store, registry);
         let head = r.head(&branch)?;
-        let cseq = r.commit(head)?.cseq;
+        let cseq = r.meta(head)?.cseq;
         let objs = r.objects_in(&branch, cseq, Some("ClassExtension"))?;
         let mut exts = Vec::new();
         for o in objs.values() {

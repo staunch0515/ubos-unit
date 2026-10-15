@@ -169,7 +169,7 @@ impl Repo<'_> {
         }
         let mut best = Vec::new();
         for c in common.difference(&dominated) {
-            best.push((self.commit(*c)?.commit_id, *c));
+            best.push((self.meta(*c)?.commit_id, *c));
         }
         best.sort();
         Ok(best.into_iter().map(|(_, c)| c).collect())
@@ -715,7 +715,7 @@ impl Repo<'_> {
             );
             stack.extend(rec.parents);
         }
-        let cseq = self.commit(source_head)?.cseq;
+        let cseq = self.meta(source_head)?.cseq;
         let mut out = BTreeSet::new();
         for id in &entry_ids {
             let Some(e) = self
@@ -765,7 +765,7 @@ impl Repo<'_> {
             let (st, conflicts) = self.merge_result(source, target, tx)?;
             return Ok((bases, tstate, st, conflicts));
         };
-        let (sc, tc) = (self.commit(s)?.cseq, self.commit(t)?.cseq);
+        let (sc, tc) = (self.meta(s)?.cseq, self.meta(t)?.cseq);
         let mut sstate = self.state_of(s, Some(&ids))?;
         let mut tstate = self.state_of(t, Some(&ids))?;
         for (class, key) in &queues {
@@ -829,7 +829,7 @@ impl Repo<'_> {
     pub fn merge(&mut self, source: &str, target: &str) -> Result<Value, BpaError> {
         let Some(plan) = self.merge_prepare(source, target, &[])? else {
             let t = self.head(target)?;
-            return Ok(json!({"cseq": self.commit(t)?.cseq, "merged": false}));
+            return Ok(json!({"cseq": self.meta(t)?.cseq, "merged": false}));
         };
         let cseq = plan.tx.cseq;
         let appended = plan.appended.clone();

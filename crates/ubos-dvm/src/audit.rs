@@ -46,7 +46,7 @@ fn bound(repo: &mut Repo<'_>, branch: &str, v: Option<&Value>) -> Result<Option<
     };
     if let Some(c) = s(v, "commit") {
         let id = repo.by_id(branch, c)?;
-        return Ok(Some(Bound::Cseq(repo.commit(id)?.cseq)));
+        return Ok(Some(Bound::Cseq(repo.meta(id)?.cseq)));
     }
     if let Some(c) = v.get("cseq").and_then(Value::as_u64) {
         return Ok(Some(Bound::Cseq(c)));
@@ -339,7 +339,7 @@ impl Engine {
             let from = bound(&mut repo, &branch, input.get("from"))?;
             let to = bound(&mut repo, &branch, input.get("to"))?;
             let commits = commits_in(&mut repo, page.head, from.as_ref(), to.as_ref())?;
-            (commits, repo.commit(page.head)?.commit_id)
+            (commits, repo.meta(page.head)?.commit_id)
         };
         let changes = self.changes_in(&commits, only)?;
         let mut items = Vec::new();

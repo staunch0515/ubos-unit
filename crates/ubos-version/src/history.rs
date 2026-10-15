@@ -242,7 +242,7 @@ impl Repo<'_> {
     /// The first-parent history of a commit, the commit first.
     pub fn first_parents(&mut self, mut id: u64) -> Result<Vec<u64>, BpaError> {
         let mut out = vec![id];
-        while let Some(p) = self.commit(id)?.parents.first().copied() {
+        while let Some(p) = self.meta(id)?.parents.first().copied() {
             out.push(p);
             id = p;
         }
@@ -253,7 +253,7 @@ impl Repo<'_> {
     pub fn by_id(&mut self, branch: &str, commit_id: &str) -> Result<u64, BpaError> {
         let head = self.head(branch)?;
         for c in self.first_parents(head)? {
-            if self.commit(c)?.commit_id == commit_id {
+            if self.meta(c)?.commit_id == commit_id {
                 return Ok(c);
             }
         }
@@ -264,7 +264,7 @@ impl Repo<'_> {
     pub fn at_tx(&mut self, branch: &str, t: &str) -> Result<u64, BpaError> {
         let head = self.head(branch)?;
         for c in self.first_parents(head)? {
-            match self.commit(c)?.tx_time {
+            match self.meta(c)?.tx_time {
                 Some(tx) if tx.as_str() > t => continue,
                 _ => return Ok(c),
             }
@@ -305,7 +305,7 @@ impl Repo<'_> {
             let c = self.by_id(branch, p.as_str().unwrap_or_default())?;
             return Ok(Snapshot {
                 commit: c,
-                tau: self.commit(c)?.tx_time,
+                tau: self.meta(c)?.tx_time,
             });
         }
         let Some(k) = sel.first() else {
@@ -341,7 +341,7 @@ impl Repo<'_> {
         };
         Ok(Snapshot {
             commit: c,
-            tau: self.commit(c)?.tx_time,
+            tau: self.meta(c)?.tx_time,
         })
     }
 
@@ -371,7 +371,7 @@ impl Repo<'_> {
         let ptau = if pl.mode == "live" && tau.is_none() && !pins.contains_key(&p) {
             None
         } else {
-            self.commit(pcid)?.tx_time
+            self.meta(pcid)?.tx_time
         };
         Ok(Some(self.view_at(
             &p,

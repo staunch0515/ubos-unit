@@ -119,6 +119,19 @@ pub trait Store {
     fn version(&mut self, hash: &str) -> Result<Value, BpaError>;
     /// A commit record by identifier.
     fn commit(&mut self, id: u64) -> Result<Value, BpaError>;
+    /// The small members of a commit record without its write set: `{branch, cseq,
+    /// commit_id, tx_time, parents}` (history walks and snapshot selection read these
+    /// alone; step 13d). The default reads the full record.
+    fn commit_meta(&mut self, id: u64) -> Result<Value, BpaError> {
+        let c = self.commit(id)?;
+        let mut out = serde_json::Map::new();
+        for k in ["branch", "cseq", "commit_id", "tx_time", "parents"] {
+            if let Some(v) = c.get(k) {
+                out.insert(k.to_string(), v.clone());
+            }
+        }
+        Ok(Value::Object(out))
+    }
     /// The commit identifier (content ID) of a commit, without the rest of its record
     /// (the evaluation evidence of a read, STD-TIME-015).
     fn commit_id(&mut self, id: u64) -> Result<String, BpaError> {
@@ -504,6 +517,8 @@ pub struct MemStore {
     versions: HashMap<String, Value>,
     commits: HashMap<u64, Value>,
     commit_ids: HashMap<u64, String>,
+    /// The small members of each commit record (`commit_meta`).
+    commit_metas: HashMap<u64, Value>,
     /// Object identifiers by branch and class (the class of an object never changes).
     by_class: HashMap<String, HashMap<String, Vec<String>>>,
     by_cseq: HashMap<(String, u64), u64>,
@@ -550,6 +565,21 @@ impl Store for MemStore {
             .get(&id)
             .cloned()
             .ok_or_else(|| missing("commit"))
+    }
+    fn commit_meta(&mut self, id: u64) -> Result<Value, BpaError> {
+        match self.commit_metas.get(&id) {
+            Some(m) => Ok(m.clone()),
+            None => {
+                let c = self.commit(id)?;
+                let mut out = serde_json::Map::new();
+                for k in ["branch", "cseq", "commit_id", "tx_time", "parents"] {
+                    if let Some(v) = c.get(k) {
+                        out.insert(k.to_string(), v.clone());
+                    }
+                }
+                Ok(Value::Object(out))
+            }
+        }
     }
     fn commit_at(&mut self, branch: &str, cseq: u64) -> Result<Option<u64>, BpaError> {
         Ok(self.by_cseq.get(&(branch.to_string(), cseq)).copied())
@@ -602,6 +632,13 @@ impl Store for MemStore {
             self.versions.insert(h.clone(), v.clone());
         }
         self.commits.insert(f.commit_id, f.commit.clone());
+        let mut meta = serde_json::Map::new();
+        for k in ["branch", "cseq", "commit_id", "tx_time", "parents"] {
+            if let Some(v) = f.commit.get(k) {
+                meta.insert(k.to_string(), v.clone());
+            }
+        }
+        self.commit_metas.insert(f.commit_id, Value::Object(meta));
         self.commit_ids.insert(
             f.commit_id,
             f.commit["commit_id"]
@@ -923,6 +960,12 @@ impl Store for Group {
         match self.overlay.commits.get(&id) {
             Some(v) => Ok(v.clone()),
             None => self.inner.commit(id),
+        }
+    }
+    fn commit_meta(&mut self, id: u64) -> Result<Value, BpaError> {
+        match self.overlay.commit_metas.get(&id) {
+            Some(v) => Ok(v.clone()),
+            None => self.inner.commit_meta(id),
         }
     }
     fn commit_id(&mut self, id: u64) -> Result<String, BpaError> {

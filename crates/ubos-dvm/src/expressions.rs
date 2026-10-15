@@ -129,6 +129,16 @@ struct Row {
     this: Val,
 }
 
+/// What a repeated scan of the order-by pushdown carries over (step 13d): the rows that
+/// passed so far with their sort keys, the key the next scan starts from, the objects
+/// already read at that key, and the index rows read so far (the scan budget).
+struct Carry {
+    rows: Vec<(Row, Vec<Option<OrderKey>>)>,
+    lo: Vec<u8>,
+    seen: BTreeSet<String>,
+    scanned: u64,
+}
+
 impl Engine {
     /// `query` (STD-EXPR-010, -011; DSN-DVM-901…908): the objects of a class (and its
     /// subclasses unless `only`) at a snapshot that satisfy `where`, ordered by `order_by`
@@ -139,15 +149,20 @@ impl Engine {
     /// every candidate. `states` filters by lifecycle state, `select` returns field
     /// values (`rows`), `group_by` and `aggregates` return `groups` (DSN-DVM-905).
     pub fn query(&mut self, i: &Value) -> Result<Value, BpaError> {
-        self.query_in(i, None)
+        self.query_in(i, None, None)
     }
 
     /// `query` with the number of index rows the order-by pushdown reads (step 13d): when
     /// the query orders by the indexed field of its best bound, ascending, over one class,
     /// the index scan reads `chunk` rows in key order and the page is complete once
-    /// `offset + limit` rows pass the predicates; otherwise the scan is repeated with four
-    /// times the rows, up to the scan budget.
-    fn query_in(&mut self, i: &Value, chunk: Option<usize>) -> Result<Value, BpaError> {
+    /// `offset + limit` rows pass the predicates; otherwise the scan continues from the
+    /// last key read with four times the rows (`carry`), up to the scan budget.
+    fn query_in(
+        &mut self,
+        i: &Value,
+        chunk: Option<usize>,
+        carry: Option<Carry>,
+    ) -> Result<Value, BpaError> {
         let spec = ubos_query::spec_of(i)?;
         let branch = s(i, "branch").unwrap_or("main").to_string();
         let key = self.cursor_key();
@@ -276,7 +291,7 @@ impl Engine {
             let snap_cseq = {
                 let mut r = Repo::new(self.store.as_mut(), &self.registry);
                 let snap = r.select(&branch, &sel)?;
-                r.commit(snap.commit)?.cseq
+                r.meta(snap.commit)?.cseq
             };
             for (f, _) in self.registry.indexed_fields(&cls) {
                 if self.index_usable(&branch, snap_cseq, &lineage, &f)? {
@@ -285,6 +300,8 @@ impl Engine {
             }
         }
         let mut pushdown: Option<(usize, bool)> = None;
+        let mut scanned_rows: u64 = 0;
+        let mut next_lo: Option<(Vec<u8>, BTreeSet<String>)> = None;
         let reg = &self.registry;
         let default_valid = move |c: &str| match reg.class(c).map(|c| c.valid_time.as_str()) {
             Ok("instant") => now.clone(),
@@ -294,11 +311,11 @@ impl Engine {
         let mut repo = Repo::new(self.store.as_mut(), reg);
         let (st, commit_id, evaluated_at): (State, String, Value) = if view_path {
             let (view, snap) = repo.view(&branch, &sel)?;
-            let commit_id = repo.commit(snap.commit)?.commit_id;
+            let commit_id = repo.meta(snap.commit)?.commit_id;
             (view.state, commit_id, json!(view.evaluated_at))
         } else {
             let snap = repo.select(&branch, &sel)?;
-            let c = repo.commit(snap.commit)?;
+            let c = repo.meta(snap.commit)?;
             let (cseq, commit_id) = (c.cseq, c.commit_id);
             let classes: Vec<String> = if only {
                 vec![cls.clone()]
@@ -337,16 +354,15 @@ impl Engine {
                 Some((f, _)) => f.saturating_add(1),
                 None => (budget as usize).saturating_add(1),
             };
+            let lo: Option<&[u8]> = match (&carry, &best) {
+                (Some(c), _) => Some(c.lo.as_slice()),
+                (None, Some(b)) => b.lo.as_deref(),
+                (None, None) => None,
+            };
             let scanned = match &best {
-                Some(b) => repo.field_scan(
-                    &branch,
-                    cseq,
-                    &classes,
-                    &b.field,
-                    b.lo.as_deref(),
-                    b.hi.as_deref(),
-                    fetch,
-                )?,
+                Some(b) => {
+                    repo.field_scan(&branch, cseq, &classes, &b.field, lo, b.hi.as_deref(), fetch)?
+                }
                 None => None,
             };
             let objects = match scanned {
@@ -355,6 +371,24 @@ impl Engine {
                         Some((f, more)) => {
                             *more = rows.len() > *f;
                             rows.truncate(*f);
+                            scanned_rows = rows.len() as u64;
+                            if let Some(last) = rows.last() {
+                                let key = last.1.clone();
+                                let mut seen: BTreeSet<String> = rows
+                                    .iter()
+                                    .filter(|(_, k)| *k == key)
+                                    .map(|(id, _)| id.clone())
+                                    .collect();
+                                if let Some(c) = &carry
+                                    && c.lo == key
+                                {
+                                    seen.extend(c.seen.iter().cloned());
+                                }
+                                next_lo = Some((key, seen));
+                            }
+                            if let Some(c) = &carry {
+                                rows.retain(|(id, _)| !c.seen.contains(id));
+                            }
                         }
                         None => {
                             if rows.len() as u64 > budget {
@@ -477,17 +511,43 @@ impl Engine {
             }
             rows.push((row, keys));
         }
+        let (carried, scanned_total) = match carry {
+            Some(c) => (c.rows, c.scanned + scanned_rows),
+            None => (Vec::new(), scanned_rows),
+        };
         if let Some((fetch, more)) = pushdown
             && more
-            && (rows.len() as u64) < offset + limit
+            && ((carried.len() + rows.len()) as u64) < offset + limit
         {
-            if fetch as u64 > budget {
-                return Err(scan_limit(budget, fetch as u64, &cls, None));
+            if scanned_total >= budget {
+                return Err(scan_limit(budget, scanned_total, &cls, None));
             }
+            let Some((lo, seen)) = next_lo else {
+                unreachable!("a scan with more rows read at least one")
+            };
             drop(reader);
             drop(repo);
-            return self.query_in(i, Some(fetch.saturating_mul(4)));
+            let mut passed = carried;
+            passed.extend(rows);
+            let next = fetch.saturating_mul(4).min((budget - scanned_total) as usize);
+            return self.query_in(
+                i,
+                Some(next.max(1)),
+                Some(Carry {
+                    rows: passed,
+                    lo,
+                    seen,
+                    scanned: scanned_total,
+                }),
+            );
         }
+        let mut rows = if carried.is_empty() {
+            rows
+        } else {
+            let mut all = carried;
+            all.extend(rows);
+            all
+        };
         if !spec.aggregates.is_empty() {
             let mut grouped = Vec::with_capacity(rows.len());
             for (row, _) in &rows {
