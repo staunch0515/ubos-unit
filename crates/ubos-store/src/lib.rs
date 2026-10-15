@@ -115,6 +115,14 @@ pub trait Store {
     fn version(&mut self, hash: &str) -> Result<Value, BpaError>;
     /// A commit record by identifier.
     fn commit(&mut self, id: u64) -> Result<Value, BpaError>;
+    /// The commit identifier (content ID) of a commit, without the rest of its record
+    /// (the evaluation evidence of a read, STD-TIME-015).
+    fn commit_id(&mut self, id: u64) -> Result<String, BpaError> {
+        Ok(self.commit(id)?["commit_id"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string())
+    }
     /// The commit of a branch with the given ordinal, among the branch's own commits.
     fn commit_at(&mut self, branch: &str, cseq: u64) -> Result<Option<u64>, BpaError>;
     /// The commit with a commit identifier (content ID), on any branch.
@@ -422,7 +430,6 @@ pub fn state_of(facts: &kernel::ObjectFacts) -> Option<Value> {
 /// An object-index row as kept in memory.
 #[derive(Debug, Clone)]
 struct MemObject {
-    class: String,
     cseq_from: u64,
     cseq_to: Option<u64>,
     state: Option<Value>,
@@ -443,6 +450,9 @@ struct MemEntry {
 pub struct MemStore {
     versions: HashMap<String, Value>,
     commits: HashMap<u64, Value>,
+    commit_ids: HashMap<u64, String>,
+    /// Object identifiers by branch and class (the class of an object never changes).
+    by_class: HashMap<String, HashMap<String, Vec<String>>>,
     by_cseq: HashMap<(String, u64), u64>,
     branches: HashMap<String, BranchRef>,
     objects: HashMap<String, BTreeMap<String, Vec<MemObject>>>,
@@ -473,6 +483,12 @@ impl Store for MemStore {
     }
     fn commit(&mut self, id: u64) -> Result<Value, BpaError> {
         self.commits
+            .get(&id)
+            .cloned()
+            .ok_or_else(|| missing("commit"))
+    }
+    fn commit_id(&mut self, id: u64) -> Result<String, BpaError> {
+        self.commit_ids
             .get(&id)
             .cloned()
             .ok_or_else(|| missing("commit"))
@@ -528,17 +544,30 @@ impl Store for MemStore {
             self.versions.insert(h.clone(), v.clone());
         }
         self.commits.insert(f.commit_id, f.commit.clone());
+        self.commit_ids.insert(
+            f.commit_id,
+            f.commit["commit_id"]
+                .as_str()
+                .unwrap_or_default()
+                .to_string(),
+        );
         self.by_cseq.insert((f.branch.clone(), f.cseq), f.commit_id);
         let objects = self.objects.entry(f.branch.clone()).or_default();
+        let by_class = self.by_class.entry(f.branch.clone()).or_default();
         for o in &f.objects {
             let rows = objects.entry(o.object_id.clone()).or_default();
+            if rows.is_empty() {
+                by_class
+                    .entry(o.class.clone())
+                    .or_default()
+                    .push(o.object_id.clone());
+            }
             if let Some(last) = rows.last_mut()
                 && last.cseq_to.is_none()
             {
                 last.cseq_to = Some(f.cseq);
             }
             rows.push(MemObject {
-                class: o.class.clone(),
                 cseq_from: f.cseq,
                 cseq_to: None,
                 state: o.state.clone(),
@@ -591,10 +620,30 @@ impl Store for MemStore {
         class: Option<&str>,
     ) -> Result<Vec<(String, Option<Value>)>, BpaError> {
         let mut out = Vec::new();
-        for (id, rows) in self.objects.get(branch).into_iter().flatten() {
-            if let Some(r) = rows.iter().find(|r| visible(r, cseq))
-                && class.is_none_or(|c| c == r.class)
-            {
+        let Some(objects) = self.objects.get(branch) else {
+            return Ok(out);
+        };
+        if let Some(c) = class {
+            // the class index: only the objects of the class are visited
+            let ids = self
+                .by_class
+                .get(branch)
+                .and_then(|m| m.get(c))
+                .map(Vec::as_slice)
+                .unwrap_or_default();
+            for id in ids {
+                if let Some(r) = objects
+                    .get(id)
+                    .and_then(|rows| rows.iter().find(|r| visible(r, cseq)))
+                {
+                    out.push((id.clone(), r.state.clone()));
+                }
+            }
+            out.sort_by(|a, b| a.0.cmp(&b.0));
+            return Ok(out);
+        }
+        for (id, rows) in objects {
+            if let Some(r) = rows.iter().find(|r| visible(r, cseq)) {
                 out.push((id.clone(), r.state.clone()));
             }
         }
@@ -731,6 +780,12 @@ impl Store for Group {
         match self.overlay.commits.get(&id) {
             Some(v) => Ok(v.clone()),
             None => self.inner.commit(id),
+        }
+    }
+    fn commit_id(&mut self, id: u64) -> Result<String, BpaError> {
+        match self.overlay.commit_ids.get(&id) {
+            Some(v) => Ok(v.clone()),
+            None => self.inner.commit_id(id),
         }
     }
     fn commit_at(&mut self, branch: &str, cseq: u64) -> Result<Option<u64>, BpaError> {

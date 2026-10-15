@@ -5,6 +5,7 @@
 use crate::ast::{Qualifier, Selector, Sheet};
 use crate::registry::{LAYERS, Registry};
 use serde_json::{Value, json};
+use std::collections::HashMap;
 use ubos_expr::{Env, Ty};
 use ubos_model::Registry as Classes;
 use ubos_model::types::BpaError;
@@ -18,9 +19,69 @@ fn class_of<'a>(classes: &Classes, type_name: &'a str) -> Result<&'a str, BpaErr
     Ok(type_name)
 }
 
-/// A qualifier expression is a boolean over `this` of the class (`LOGIC.TYPE_ERROR`).
+/// A qualifier expression parsed and type-checked as a boolean over `this` of the class
+/// (`LOGIC.TYPE_ERROR`).
+pub fn compile_expr(
+    classes: &Classes,
+    cls: &str,
+    text: &str,
+) -> Result<crate::compiled::CompiledExpr, BpaError> {
+    let ast = ubos_expr::parse(&Value::String(text.to_string()))?;
+    let this = ubos_expr::class_type(classes, cls)?;
+    let mut env = Env::new(Some(this.clone()), None, None, None);
+    let t = ubos_expr::check(&ast, &mut env)?;
+    if !matches!(t, Ty::Boolean | Ty::Any) {
+        return Err(BpaError::with_details(
+            "LOGIC.TYPE_ERROR",
+            json!({"message": "a qualifier is boolean"}),
+        ));
+    }
+    Ok(crate::compiled::CompiledExpr {
+        text: text.to_string(),
+        node: ast,
+        class: cls.to_string(),
+        this,
+    })
+}
+
+/// The target class of a `:rel(member)` qualifier on a class: the member is a reference
+/// (or a list of references) of the class.
+pub fn rel_target(classes: &Classes, cls: &str, member: &str) -> Result<String, BpaError> {
+    let eff = classes.class(cls)?;
+    let f = if cls == "Object" {
+        None
+    } else {
+        eff.fields.get(member)
+    };
+    let Some(f) = f else {
+        return Err(BpaError::new(
+            "MODEL.REFERENCE_INVALID",
+            format!("unknown member {member}"),
+        ));
+    };
+    let item = if f.get("type").and_then(Value::as_str) == Some("list") {
+        f.get("constraints")
+            .and_then(|c| c.get("item_type"))
+            .unwrap_or(f)
+    } else {
+        f
+    };
+    if item.get("type").and_then(Value::as_str) != Some("reference") {
+        return Err(invalid(":rel needs a reference member"));
+    }
+    let target = item
+        .get("constraints")
+        .and_then(|c| c.get("target_class"))
+        .and_then(Value::as_str)
+        .unwrap_or("Object");
+    classes.class(target)?;
+    Ok(target.to_string())
+}
+
+/// A qualifier expression is a boolean over `this` of the class (`LOGIC.TYPE_ERROR` with
+/// the selector).
 fn check_expr(classes: &Classes, cls: &str, text: &str, selector: &str) -> Result<(), BpaError> {
-    let wrap = |e: BpaError| {
+    compile_expr(classes, cls, text).map(|_| ()).map_err(|e| {
         if e.code == "LOGIC.TYPE_ERROR" {
             let message = e
                 .details
@@ -35,18 +96,7 @@ fn check_expr(classes: &Classes, cls: &str, text: &str, selector: &str) -> Resul
         } else {
             e
         }
-    };
-    let ast = ubos_expr::parse(&Value::String(text.to_string())).map_err(wrap)?;
-    let this = ubos_expr::class_type(classes, cls).map_err(wrap)?;
-    let mut env = Env::new(Some(this), None, None, None);
-    let t = ubos_expr::check(&ast, &mut env).map_err(wrap)?;
-    if !matches!(t, Ty::Boolean | Ty::Any) {
-        return Err(BpaError::with_details(
-            "LOGIC.TYPE_ERROR",
-            json!({"selector": selector, "message": "a qualifier is boolean"}),
-        ));
-    }
-    Ok(())
+    })
 }
 
 /// STD-LGS-001, -010, -020: the selectors are checked against the classes and the
@@ -76,34 +126,8 @@ pub fn check_sheet(sheet: &Sheet, classes: &Classes, reg: &Registry) -> Result<(
                                 "selector on RawDocument content",
                             ));
                         }
-                        let f = if cls == "Object" {
-                            None
-                        } else {
-                            eff.fields.get(member)
-                        };
-                        let Some(f) = f else {
-                            return Err(BpaError::new(
-                                "MODEL.REFERENCE_INVALID",
-                                format!("unknown member {member}"),
-                            ));
-                        };
-                        let item = if f.get("type").and_then(Value::as_str) == Some("list") {
-                            f.get("constraints")
-                                .and_then(|c| c.get("item_type"))
-                                .unwrap_or(f)
-                        } else {
-                            f
-                        };
-                        if item.get("type").and_then(Value::as_str) != Some("reference") {
-                            return Err(invalid(":rel needs a reference member"));
-                        }
-                        let target = item
-                            .get("constraints")
-                            .and_then(|c| c.get("target_class"))
-                            .and_then(Value::as_str)
-                            .unwrap_or("Object");
-                        classes.class(target)?;
-                        check_expr(classes, target, expr, &where_)?;
+                        let target = rel_target(classes, cls, member)?;
+                        check_expr(classes, &target, expr, &where_)?;
                     }
                     _ => {}
                 }
@@ -164,7 +188,74 @@ fn is_trait(classes: &Classes, name: &str) -> bool {
 /// object unless their type selectors are disjoint, their `:state` qualifiers differ, or a
 /// `:ctx` condition on the same key admits no common value.
 pub fn may_overlap(classes: &Classes, a: &Selector, b: &Selector) -> Result<bool, BpaError> {
-    let (ta, tb) = (a.type_name.as_str(), b.type_name.as_str());
+    if !types_may_overlap(classes, &a.type_name, &b.type_name)? {
+        return Ok(false);
+    }
+    qualifiers_may_overlap(a, b)
+}
+
+/// The overlap analysis of type selectors with its memory: the concrete descendants of a
+/// class (the non-abstract, non-trait classes whose linearization contains it) and the
+/// pairs already decided, so that a sheet set over many classes is analysed in time
+/// proportional to the pairs of candidates, not to the cube of the classes.
+#[derive(Debug, Default)]
+pub struct Overlap {
+    descendants: HashMap<String, Vec<String>>,
+    pairs: HashMap<(String, String), bool>,
+}
+
+impl Overlap {
+    fn descendants(&mut self, classes: &Classes, name: &str) -> &[String] {
+        if !self.descendants.contains_key(name) {
+            let mut d: Vec<String> = classes
+                .classes()
+                .filter(|c| !c.is_abstract && !is_trait(classes, &c.name))
+                .filter(|c| c.linearization.iter().any(|x| x == name))
+                .map(|c| c.name.clone())
+                .collect();
+            d.sort();
+            self.descendants.insert(name.to_string(), d);
+        }
+        &self.descendants[name]
+    }
+
+    /// `types_may_overlap` with memory.
+    pub fn types(&mut self, classes: &Classes, ta: &str, tb: &str) -> Result<bool, BpaError> {
+        let key = if ta <= tb {
+            (ta.to_string(), tb.to_string())
+        } else {
+            (tb.to_string(), ta.to_string())
+        };
+        if let Some(v) = self.pairs.get(&key) {
+            return Ok(*v);
+        }
+        let v = if ta != "*"
+            && tb != "*"
+            && ta != tb
+            && !is_trait(classes, ta)
+            && !is_trait(classes, tb)
+        {
+            let la = classes.linearize(ta)?;
+            let lb = classes.linearize(tb)?;
+            if lb.iter().any(|x| x == ta) || la.iter().any(|x| x == tb) {
+                true
+            } else {
+                let da = self.descendants(classes, ta).to_vec();
+                let db = self.descendants(classes, tb);
+                da.iter().any(|x| db.binary_search(x).is_ok())
+            }
+        } else {
+            true
+        };
+        self.pairs.insert(key, v);
+        Ok(v)
+    }
+}
+
+/// The type-selector part of the overlap analysis: two type selectors are disjoint when
+/// both name non-trait classes, neither in the other's linearization, with no concrete
+/// class carrying both.
+pub fn types_may_overlap(classes: &Classes, ta: &str, tb: &str) -> Result<bool, BpaError> {
     if ta != "*" && tb != "*" && ta != tb && !is_trait(classes, ta) && !is_trait(classes, tb) {
         let la = classes.linearize(ta)?;
         let lb = classes.linearize(tb)?;
@@ -186,6 +277,13 @@ pub fn may_overlap(classes: &Classes, a: &Selector, b: &Selector) -> Result<bool
             }
         }
     }
+    Ok(true)
+}
+
+/// The qualifier part of the overlap analysis: `:state` qualifiers that differ, or a
+/// `:ctx` condition on the same key with `=` or `in` that admits no common value, make
+/// two selectors disjoint; attribute, tag and relation qualifiers are assumed to overlap.
+pub fn qualifiers_may_overlap(a: &Selector, b: &Selector) -> Result<bool, BpaError> {
     fn states(s: &Selector) -> Vec<&str> {
         s.qualifiers
             .iter()

@@ -28,6 +28,8 @@ pub struct Engine {
     pub max_inputs: u64,
     /// Largest number of violations reported (FR-RULE-034, adapter `set_limits`).
     pub max_violations: u64,
+    /// Compiled sheets and the selector index (DSN-DVM-701, -703).
+    pub rules: ubos_rules::Cache,
     /// Counter for generated process identifiers.
     pub next_process: u64,
     /// Branch metadata read in this adapter (invalidated when it changes).
@@ -60,6 +62,7 @@ impl Engine {
             instances: BTreeSet::new(),
             max_inputs: 10_000,
             max_violations: crate::rules::MAX_VIOLATIONS,
+            rules: ubos_rules::Cache::default(),
             next_process: 0,
             branch_cache: Default::default(),
             principal: crate::versioning::PRINCIPAL.into(),
@@ -80,6 +83,7 @@ impl Engine {
             instances: BTreeSet::new(),
             max_inputs: 10_000,
             max_violations: crate::rules::MAX_VIOLATIONS,
+            rules: ubos_rules::Cache::default(),
             next_process: 0,
             branch_cache: Default::default(),
             principal: crate::versioning::PRINCIPAL.into(),
@@ -96,6 +100,7 @@ impl Engine {
         self.registry = crate::expressions::registry();
         self.now = DEFAULT_NOW.into();
         self.instances.clear();
+        self.rules.clear();
         self.next_process = 0;
         self.branch_cache.clear();
         Repo::new(self.store.as_mut(), &self.registry).init()?;
@@ -145,6 +150,7 @@ impl Engine {
             }
         }
         self.registry = next;
+        self.rules.clear();
         // the declarations persist with the VAE, so that a host reopens it (step 7a)
         self.store.put_meta(
             "genesis",
@@ -164,6 +170,7 @@ impl Engine {
             instances: BTreeSet::new(),
             max_inputs: 10_000,
             max_violations: crate::rules::MAX_VIOLATIONS,
+            rules: ubos_rules::Cache::default(),
             next_process: 0,
             branch_cache: Default::default(),
             principal: crate::versioning::PRINCIPAL.into(),
@@ -237,6 +244,7 @@ impl Engine {
             idem,
             false,
             self.max_violations,
+            &mut self.rules,
         );
         let (r, classes, effects) = match r {
             Ok(x) => x,
@@ -306,6 +314,7 @@ impl Engine {
                 None,
                 false,
                 self.max_violations,
+                &mut self.rules,
             ) {
                 Ok((r, c, _)) => {
                     out.push(Ok(r));
@@ -385,7 +394,7 @@ impl Engine {
             let o = repo
                 .object_at(branch, time, oid)?
                 .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown object"))?;
-            let ev = BTreeMap::from([(branch.to_string(), repo.commit(snap.commit)?.commit_id)]);
+            let ev = BTreeMap::from([(branch.to_string(), repo.commit_id(snap.commit)?)]);
             Ok((o, None, ev, None))
         }
     }
@@ -400,7 +409,7 @@ impl Engine {
         let snap = repo.select(branch, input)?;
         Ok(BTreeMap::from([(
             branch.to_string(),
-            repo.commit(snap.commit)?.commit_id,
+            repo.commit_id(snap.commit)?,
         )]))
     }
 
@@ -684,6 +693,7 @@ impl Engine {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn create(
     repo: &mut Repo<'_>,
     tx: &mut Tx,
@@ -692,6 +702,7 @@ fn create(
     result: &mut Value,
     provenance: Option<&str>,
     rule_ctx: &Map<String, Value>,
+    cache: &mut ubos_rules::Cache,
 ) -> Result<(), BpaError> {
     let oid = s(ch, "object_id").unwrap_or_default().to_string();
     let class = s(ch, "class").unwrap_or_default().to_string();
@@ -717,6 +728,7 @@ fn create(
         repo,
         tx,
         repo.reg,
+        cache,
         &class,
         &mut given,
         &default_valid(&class),
@@ -869,6 +881,7 @@ pub(crate) fn commit_on(
     idempotency: Option<(String, String, String)>,
     dry: bool,
     max_violations: u64,
+    cache: &mut ubos_rules::Cache,
 ) -> Result<(Value, Vec<String>, u32), BpaError> {
     let changes = input
         .get("changes")
@@ -998,6 +1011,7 @@ pub(crate) fn commit_on(
                     &mut result,
                     rid,
                     &rule_ctx,
+                    cache,
                 )?;
                 let oid = s(ch, "object_id").unwrap_or_default();
                 if let Some(d) = &deriv {
@@ -1144,7 +1158,7 @@ pub(crate) fn commit_on(
         checks.relationships(&mut ended, &mut result)?;
         checks.integrity(&written)?;
         checks.extensions_apply(registry, &written)?;
-        crate::sheets::check_sheets(&mut repo, &tx, &written)?;
+        crate::sheets::check_sheets(&mut repo, &tx, &written, cache)?;
     }
     let written_classes: Vec<String> = result["versions"]
         .as_object()
@@ -1175,6 +1189,7 @@ pub(crate) fn commit_on(
             &mut repo,
             &tx,
             reg,
+            cache,
             &crate::rules::Enforce {
                 process: &process.p,
                 via_change_set,

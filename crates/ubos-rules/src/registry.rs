@@ -195,6 +195,9 @@ pub fn order_of(root: &str) -> Option<&'static [&'static str]> {
 #[derive(Debug, Clone)]
 pub struct Registry {
     props: BTreeMap<String, Property>,
+    /// A hash of the Buk property declarations: two registries with the same fingerprint
+    /// normalise declarations identically (the cache of compiled sheets keys on it).
+    fingerprint: u64,
 }
 
 impl Registry {
@@ -246,7 +249,20 @@ impl Registry {
                 },
             );
         }
-        Ok(Registry { props })
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        for d in properties {
+            ubos_model::types::canonical(d)?.hash(&mut h);
+        }
+        Ok(Registry {
+            props,
+            fingerprint: h.finish(),
+        })
+    }
+
+    /// The fingerprint of the Buk property declarations.
+    pub fn fingerprint(&self) -> u64 {
+        self.fingerprint
     }
 
     /// A registered property.

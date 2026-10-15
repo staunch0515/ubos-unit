@@ -1,27 +1,29 @@
-//! The cascade over a set of sheets (STD-LGS-020, -022, -023) and the static checks of a
-//! sheet set at commit (STD-LGS-022). Matching needs the state (qualifier expressions over
-//! the object, one reference hop): the caller supplies it through [`Matcher`].
+//! The cascade over a set of compiled sheets (STD-LGS-020, -022, -023) and the static
+//! checks of a sheet set at commit (STD-LGS-022). Matching needs the state (qualifier
+//! expressions over the object, one reference hop): the caller supplies it through
+//! [`Matcher`].
 
-use crate::ast::{Qualifier, Selector, Sheet, SheetValue};
-use crate::check::{Key, may_overlap, rank, reason, specificity};
+use crate::ast::{Qualifier, SheetValue};
+use crate::check::{Key, Overlap, qualifiers_may_overlap, rank, reason};
+use crate::compiled::{CompiledExpr, CompiledSelector, CompiledSheet, Index};
 use crate::registry::{LAYERS, Registry};
 use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 use ubos_model::Registry as Classes;
 use ubos_model::types::{BpaError, canonical};
 
-/// A live sheet object: its identifier, canonical URI, version hash and body
-/// (`DAT-Sheet` with `ast`, `layer`, `priority` and `scope`).
+/// A live sheet object: its identifier, canonical URI, version hash and compiled form.
 #[derive(Debug, Clone)]
-pub struct SheetRef<'a> {
+pub struct SheetRef {
     /// Object identifier.
     pub id: String,
     /// Canonical URI of the sheet object.
     pub uri: String,
     /// Version hash of the sheet version in force.
     pub version: String,
-    /// The sheet body.
-    pub body: &'a Value,
+    /// The compiled sheet.
+    pub sheet: Arc<CompiledSheet>,
 }
 
 /// A declaration that matched an object (a row of `DAT-CascadeExplanation.candidates`).
@@ -74,46 +76,31 @@ impl Candidate {
     }
 }
 
-fn sheet_of(body: &Value) -> Result<Sheet, BpaError> {
-    Sheet::from_json(body.get("ast").unwrap_or(&Value::Null))
-}
-
-fn layer_of(body: &Value) -> String {
-    body.get("layer")
-        .and_then(Value::as_str)
-        .unwrap_or(LAYERS[0])
-        .to_string()
-}
-
-fn priority_of(body: &Value) -> i64 {
-    body.get("priority").and_then(Value::as_i64).unwrap_or(0)
-}
-
-/// Every `(path, candidate)` a sheet declares, with the selector that carries it (the
-/// static analysis takes every selector of a block).
+/// Every `(path, selector, candidate)` a sheet declares (the static analysis takes every
+/// selector of a block).
 fn candidates_of(
     reg: &Registry,
-    classes: &Classes,
-    sheet: &SheetRef<'_>,
-) -> Result<Vec<(String, Selector, Candidate)>, BpaError> {
-    let ast = sheet_of(sheet.body)?;
-    let (layer, priority) = (layer_of(sheet.body), priority_of(sheet.body));
+    sheet: &SheetRef,
+) -> Result<Vec<(String, usize, usize, Candidate)>, BpaError> {
+    let sh = &sheet.sheet;
+    let norm = sh.normalised(reg)?;
     let mut out = Vec::new();
-    for (bi, b) in ast.blocks.iter().enumerate() {
+    for (bi, b) in sh.sheet.blocks.iter().enumerate() {
         for (di, d) in b.declarations.iter().enumerate() {
-            for (path, value) in reg.normalise(d)? {
-                for sel in &b.selectors {
+            for (path, value) in &norm[bi][di] {
+                for (si, sel) in sh.blocks[bi].selectors.iter().enumerate() {
                     out.push((
                         path.clone(),
-                        sel.clone(),
+                        bi,
+                        si,
                         Candidate {
                             sheet: sheet.id.clone(),
                             sheet_version: sheet.version.clone(),
                             block: bi,
-                            selector: sel.text(),
-                            layer: layer.clone(),
-                            specificity: specificity(classes, sel)?,
-                            priority,
+                            selector: sel.text.clone(),
+                            layer: sh.layer.clone(),
+                            specificity: sel.specificity,
+                            priority: sh.priority,
                             locked: d.locked,
                             value: value.clone(),
                             position: (sheet.id.clone(), bi, di),
@@ -135,25 +122,32 @@ fn candidates_of(
 pub fn check_set(
     reg: &Registry,
     classes: &Classes,
-    sheets: &[SheetRef<'_>],
+    sheets: &[SheetRef],
     written: &BTreeSet<String>,
 ) -> Result<(), BpaError> {
-    let mut by_path: BTreeMap<String, Vec<(Selector, Candidate)>> = BTreeMap::new();
-    for sh in sheets {
-        for (path, sel, c) in candidates_of(reg, classes, sh)? {
-            by_path.entry(path).or_default().push((sel, c));
+    let mut by_path: BTreeMap<String, Vec<(usize, usize, usize, Candidate)>> = BTreeMap::new();
+    for (i, sh) in sheets.iter().enumerate() {
+        for (path, bi, si, c) in candidates_of(reg, sh)? {
+            by_path.entry(path).or_default().push((i, bi, si, c));
         }
     }
+    let sel = |i: usize, bi: usize, si: usize| &sheets[i].sheet.blocks[bi].selectors[si].selector;
+    // candidates are compared per pair of type-selector classes that may overlap, so the
+    // analysis scales with the candidates of a class chain, not of the whole sheet set
+    let mut types = Overlap::default();
     for (path, cs) in &by_path {
         let combine = reg.combine_of(path)?;
-        for (i, (sa, a)) in cs.iter().enumerate() {
-            for (sb, b) in &cs[i + 1..] {
+        for (k, (ia, ba, sa, a)) in cs.iter().enumerate() {
+            for (ib, bb, sb, b) in &cs[k + 1..] {
                 if a.sheet == b.sheet
                     || (!written.contains(&a.sheet) && !written.contains(&b.sheet))
                 {
                     continue;
                 }
-                if !may_overlap(classes, sa, sb)? {
+                let (x, y) = (sel(*ia, *ba, *sa), sel(*ib, *bb, *sb));
+                if !types.types(classes, &x.type_name, &y.type_name)?
+                    || !qualifiers_may_overlap(x, y)?
+                {
                     continue;
                 }
                 for (lo, hi) in [(a, b), (b, a)] {
@@ -179,21 +173,22 @@ pub fn check_set(
     Ok(())
 }
 
-/// What matching needs from the state: qualifier expressions over an object and over the
-/// objects one reference hop away (STD-LGS-020). An expression that fails to evaluate
-/// does not match.
+/// What matching needs from the state: compiled qualifier expressions over an object and
+/// over the objects one reference hop away (STD-LGS-020). An expression that fails to
+/// evaluate does not match.
 pub trait Matcher {
-    /// `[expr]` on the object `body` of class `class`.
-    fn attr(&mut self, class: &str, body: &Value, expr: &str) -> Result<bool, BpaError>;
+    /// `[expr]` on the object `body`.
+    fn attr(&mut self, expr: &CompiledExpr, body: &Value) -> Result<bool, BpaError>;
     /// `:rel(member)[expr]`: true when any referenced object (resolved at the same
     /// coordinate) satisfies `expr`.
-    fn rel(&mut self, member: &str, body: &Value, expr: &str) -> Result<bool, BpaError>;
+    fn rel(&mut self, member: &str, expr: &CompiledExpr, body: &Value) -> Result<bool, BpaError>;
 }
 
 /// The scope of a sheet includes the context and the object's linearization (STD-LGS-020).
-pub fn sheet_applies(body: &Value, ctx: &Map<String, Value>, lin: &[String]) -> bool {
-    let scope = body.get("scope").and_then(Value::as_object);
-    let Some(scope) = scope else { return true };
+pub fn sheet_applies(scope: Option<&Value>, ctx: &Map<String, Value>, lin: &[String]) -> bool {
+    let Some(scope) = scope.and_then(Value::as_object) else {
+        return true;
+    };
     let list = |k: &str| -> Option<Vec<&str>> {
         scope
             .get(k)
@@ -225,21 +220,21 @@ pub fn sheet_applies(body: &Value, ctx: &Map<String, Value>, lin: &[String]) -> 
     true
 }
 
-/// A selector matches an object in a context (STD-LGS-020).
+/// A compiled selector matches an object in a context (STD-LGS-020).
 pub fn matches(
-    sel: &Selector,
-    class: &str,
+    sel: &CompiledSelector,
     lin: &[String],
     body: &Value,
     ctx: &Map<String, Value>,
     m: &mut dyn Matcher,
 ) -> Result<bool, BpaError> {
-    if sel.type_name != "*" && !lin.contains(&sel.type_name) {
+    let s = &sel.selector;
+    if s.type_name != "*" && !lin.contains(&s.type_name) {
         return Ok(false);
     }
-    for q in &sel.qualifiers {
+    for (q, e) in s.qualifiers.iter().zip(&sel.exprs) {
         let ok = match q {
-            Qualifier::Attr(expr) => m.attr(class, body, expr)?,
+            Qualifier::Attr(_) => m.attr(e.as_ref().expect("compiled"), body)?,
             Qualifier::State(st) => body.get("state").and_then(Value::as_str) == Some(st),
             Qualifier::Tag(tag) => body
                 .get("tags")
@@ -258,7 +253,7 @@ pub fn matches(
                     },
                 }
             }
-            Qualifier::Rel { member, expr } => m.rel(member, body, expr)?,
+            Qualifier::Rel { member, .. } => m.rel(member, e.as_ref().expect("compiled"), body)?,
         };
         if !ok {
             return Ok(false);
@@ -270,57 +265,63 @@ pub fn matches(
 /// The effective value and the candidates of every property path.
 pub type Effective = BTreeMap<String, (Value, Vec<Candidate>)>;
 
-/// The cascade of an object over the sheets effective at its coordinate (STD-LGS-022):
+/// The cascade of an object over the sheets effective at its coordinate (STD-LGS-022),
+/// visiting only the blocks the index lists for its linearization (DSN-DVM-703):
 /// `{path: (effective value, candidates)}` and the versions of the sheets whose scope
 /// includes the context (the bindings).
 #[allow(clippy::too_many_arguments)]
 pub fn cascade(
     reg: &Registry,
-    classes: &Classes,
-    sheets: &[SheetRef<'_>],
-    class: &str,
+    sheets: &[SheetRef],
+    index: &Index,
     lin: &[String],
     body: &Value,
     ctx: &Map<String, Value>,
     m: &mut dyn Matcher,
 ) -> Result<(Effective, Vec<String>), BpaError> {
+    let applies: Vec<bool> = sheets
+        .iter()
+        .map(|sh| sheet_applies(sh.sheet.scope.as_ref(), ctx, lin))
+        .collect();
+    let bindings: Vec<String> = sheets
+        .iter()
+        .zip(&applies)
+        .filter(|(_, a)| **a)
+        .map(|(sh, _)| sh.version.clone())
+        .collect();
     let mut cands: BTreeMap<String, Vec<Candidate>> = BTreeMap::new();
-    let mut bindings = Vec::new();
-    for sh in sheets {
-        if !sheet_applies(sh.body, ctx, lin) {
+    for (si, bi) in index.candidates(lin) {
+        if !applies[si] {
             continue;
         }
-        bindings.push(sh.version.clone());
-        let ast = sheet_of(sh.body)?;
-        let (layer, priority) = (layer_of(sh.body), priority_of(sh.body));
-        for (bi, b) in ast.blocks.iter().enumerate() {
-            let mut best: Option<(&Selector, [usize; 4])> = None;
-            for sel in &b.selectors {
-                if matches(sel, class, lin, body, ctx, m)? {
-                    let sp = specificity(classes, sel)?;
-                    if best.is_none_or(|(_, bs)| sp > bs) {
-                        best = Some((sel, sp));
-                    }
-                }
+        let sh = &sheets[si];
+        let block = &sh.sheet.blocks[bi];
+        let mut best: Option<&CompiledSelector> = None;
+        for sel in &block.selectors {
+            if matches(sel, lin, body, ctx, m)?
+                && best.is_none_or(|b| sel.specificity > b.specificity)
+            {
+                best = Some(sel);
             }
-            let Some((sel, sp)) = best else { continue };
-            for (di, d) in b.declarations.iter().enumerate() {
-                for (path, value) in reg.normalise(d)? {
-                    cands.entry(path).or_default().push(Candidate {
-                        sheet: sh.uri.clone(),
-                        sheet_version: sh.version.clone(),
-                        block: bi,
-                        selector: sel.text(),
-                        layer: layer.clone(),
-                        specificity: sp,
-                        priority,
-                        locked: d.locked,
-                        value,
-                        position: (sh.id.clone(), bi, di),
-                        won: false,
-                        reason: "won",
-                    });
-                }
+        }
+        let Some(sel) = best else { continue };
+        let norm = sh.sheet.normalised(reg)?;
+        for (di, d) in sh.sheet.sheet.blocks[bi].declarations.iter().enumerate() {
+            for (path, value) in &norm[bi][di] {
+                cands.entry(path.clone()).or_default().push(Candidate {
+                    sheet: sh.uri.clone(),
+                    sheet_version: sh.version.clone(),
+                    block: bi,
+                    selector: sel.text.clone(),
+                    layer: sh.sheet.layer.clone(),
+                    specificity: sel.specificity,
+                    priority: sh.sheet.priority,
+                    locked: d.locked,
+                    value: value.clone(),
+                    position: (sh.id.clone(), bi, di),
+                    won: false,
+                    reason: "won",
+                });
             }
         }
     }

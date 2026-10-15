@@ -5,9 +5,11 @@
 use crate::sheets::{cascade_state, version_of};
 use crate::stateful::Engine;
 use serde_json::{Map, Value, json};
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use ubos_expr::{Env, Evaluator, Ty, Val, field_type, from_json};
 use ubos_model::Registry;
+use ubos_rules::Cache;
 use ubos_types::BpaError;
 use ubos_version::{Repo, State, Tx};
 
@@ -114,10 +116,12 @@ pub(crate) fn eval_rule(
 
 /// STD-LGS-011 `field_default`: the defaults of the cascade fill the absent fields of a
 /// created object before its validation (DEC-067).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn apply_defaults(
     repo: &mut Repo<'_>,
     tx: &Tx,
     reg_ext: &Registry,
+    cache: &mut Cache,
     class: &str,
     body: &mut Map<String, Value>,
     asof: &str,
@@ -127,7 +131,17 @@ pub(crate) fn apply_defaults(
         return Ok(());
     }
     let given = Value::Object(body.clone());
-    let (eff, _, _) = cascade_state(repo, Some(tx), &tx.state, reg_ext, class, &given, asof, ctx)?;
+    let (eff, _, _) = cascade_state(
+        repo,
+        Some(tx),
+        &tx.state,
+        reg_ext,
+        cache,
+        class,
+        &given,
+        asof,
+        ctx,
+    )?;
     for (path, (v, _)) in &eff {
         if let Some(f) = path.strip_prefix("field_default.")
             && body.get(f).is_none_or(Value::is_null)
@@ -180,6 +194,7 @@ pub(crate) fn enforce(
     repo: &mut Repo<'_>,
     tx: &Tx,
     reg_ext: &Registry,
+    cache: &mut Cache,
     e: &Enforce<'_>,
 ) -> Result<Vec<Value>, BpaError> {
     let ctx = rule_ctx(e.process, e.branch_kind, &repo.store.authority());
@@ -211,6 +226,7 @@ pub(crate) fn enforce(
             Some(tx),
             &tx.state,
             reg_ext,
+            cache,
             &o.class,
             &body,
             &asof,
@@ -243,6 +259,7 @@ pub(crate) fn enforce(
             Some(tx),
             &tx.state,
             reg_ext,
+            cache,
             &class,
             body,
             &asof,
@@ -347,7 +364,11 @@ impl Engine {
             return Err(BpaError::new("IAM.NOT_FOUND", "unknown object"));
         }
         let exts = crate::relations::extensions_of(&mut repo, st)?;
-        let reg_ext = self.registry.with_extensions(&exts)?;
+        let reg_ext: Cow<Registry> = if exts.is_empty() {
+            Cow::Borrowed(&self.registry)
+        } else {
+            Cow::Owned(self.registry.with_extensions(&exts)?)
+        };
         let mut repo = Repo::new(self.store.as_mut(), &reg_ext);
         let Some(decl) = reg_ext
             .class(&o.class)?
@@ -371,8 +392,17 @@ impl Engine {
         ] {
             ctx.entry(k.to_string()).or_insert_with(|| json!(d));
         }
-        let (eff, bindings, _) =
-            cascade_state(&mut repo, None, st, &reg_ext, &o.class, &body, &asof, &ctx)?;
+        let (eff, bindings, _) = cascade_state(
+            &mut repo,
+            None,
+            st,
+            &reg_ext,
+            &mut self.rules,
+            &o.class,
+            &body,
+            &asof,
+            &ctx,
+        )?;
         if decl.get("kind") == Some(&json!("query")) {
             return Ok(json!({"outcome": "allow", "explanations": [], "bindings": bindings}));
         }
@@ -518,6 +548,7 @@ impl Engine {
             None,
             true,
             self.max_violations,
+            &mut self.rules,
         );
         match r {
             Ok((result, _, _)) => Ok(json!({
