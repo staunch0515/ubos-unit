@@ -48,6 +48,17 @@ The process of an execution follows the state machine of DSN-DVM-501 (`ubos-dvm/
 UBS-SYS-DVM-05 §1); `process_info` returns the phases passed and the attempts, and
 `ubos-props` checks the machine (`process_state_machine`, VER-PROP-0100).
 
+PH-1 step 13 (DEC-073) adds `ubos-query`, the pure part of criteria queries (STD-EXPR-010,
+-011, STD-ISA-080): the textual form, the normalised `DAT-Query` and its hash, the key
+bounds a `where` yields for the planner, the scan budgets of the profiles, HMAC-signed
+snapshot cursors and the aggregates of the query form. Field indexes are declared to the
+kernel (`declare_index`, before a class has instances; the fields of unique `keys` are
+indexed by default) and maintained by the stores at flush (`field_index`, migration 0007;
+keys encoded order-preserving per type by `ubos-types`); the kernel's `query`
+(`ubos-dvm/src/expressions.rs`) reads candidates from the most selective comparison on an
+indexed field, else scans the class within the budget (`QRY.SCAN_LIMIT`), and `search.query`
+uses the same planner.
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh

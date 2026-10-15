@@ -42,6 +42,9 @@ pub struct Engine {
     /// The host services (CTR-002) when a host opened this engine; the conformance adapter
     /// has none and seeds processes deterministically.
     pub services: Option<crate::host::Services>,
+    /// The largest unindexed scan of a query, when lowered below the profile's budget
+    /// (DSN-DVM-903, adapter `set_limits.max_scan`).
+    pub max_scan: Option<u64>,
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
@@ -68,6 +71,7 @@ impl Engine {
             principal: crate::versioning::PRINCIPAL.into(),
             l2: false,
             services: None,
+            max_scan: None,
         };
         e.reset()?;
         Ok(e)
@@ -89,6 +93,7 @@ impl Engine {
             principal: crate::versioning::PRINCIPAL.into(),
             l2: false,
             services: None,
+            max_scan: None,
         };
         e.load_genesis(classes, None)?;
         Ok(e)
@@ -98,6 +103,7 @@ impl Engine {
     pub fn reset(&mut self) -> Result<(), BpaError> {
         self.store.reset()?;
         self.registry = crate::expressions::registry();
+        self.max_scan = None;
         self.now = DEFAULT_NOW.into();
         self.instances.clear();
         self.rules.clear();
@@ -176,6 +182,7 @@ impl Engine {
             principal: crate::versioning::PRINCIPAL.into(),
             l2: false,
             services: None,
+            max_scan: None,
         };
         if e.store.branch("main")?.is_none() {
             Repo::new(e.store.as_mut(), &e.registry).init()?;
@@ -190,8 +197,40 @@ impl Engine {
                 vts.and_then(Value::as_array).map(Vec::as_slice),
             )?;
         }
+        // the field indexes declared to the kernel (DSN-DVM-902, step 13a)
+        if let Some(ix) = e.store.meta("indexes")? {
+            e.registry.restore_indexes(&ix);
+        }
         e.next_process = e.store.process_ids()?.len() as u64;
         Ok(e)
+    }
+
+    /// Declare a field index of a class (DSN-DVM-902, FR-ANL-014): an index of a class
+    /// serves its subclasses; the fields of unique `keys` are indexed without a
+    /// declaration. Indexes are declared before the class has instances (the rows are
+    /// written at flush; rebuilding an index over existing objects comes with step 13d).
+    pub fn declare_index(&mut self, class: &str, field: &str) -> Result<Value, BpaError> {
+        if self
+            .registry
+            .subclasses(class)
+            .iter()
+            .any(|c| self.instances.contains(c))
+        {
+            return Err(BpaError::new(
+                "MODEL.INVALID_VALUE",
+                format!("{class} has instances: declare indexes before the first commit"),
+            ));
+        }
+        self.registry.declare_index(class, field)?;
+        self.store
+            .put_meta("indexes", &self.registry.declared_indexes())?;
+        Ok(Value::Bool(true))
+    }
+
+    /// The key of the signed query cursors (DSN-DVM-908): derived from the VAE
+    /// authority until the node host supplies the tenant key (step 14).
+    pub(crate) fn cursor_key(&self) -> [u8; 32] {
+        ubos_crypto::hkdf_sha256(self.store.authority().as_bytes(), b"ubos.cursor", b"")
     }
 
     /// Metadata of a branch, cached per adapter (DEC-051).
@@ -338,7 +377,7 @@ impl Engine {
     /// `read` (STD-TIME-012).
     /// True when a read needs the resolved view (selectors beyond `time`, provenance, or a
     /// branch with a parent line); otherwise the object index answers directly.
-    fn needs_view(&mut self, branch: &str, input: &Value) -> Result<bool, BpaError> {
+    pub(crate) fn needs_view(&mut self, branch: &str, input: &Value) -> Result<bool, BpaError> {
         if [
             "commit",
             "tag",

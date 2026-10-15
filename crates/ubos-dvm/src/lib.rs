@@ -25,6 +25,7 @@ pub use ubos_crypto as crypto;
 pub use ubos_expr as expr;
 pub use ubos_flow as flow_engine;
 pub use ubos_model as model;
+pub use ubos_query as query;
 pub use ubos_runtime as runtime;
 /// Memory probe of the L2 host, for host binaries that install a counting allocator
 /// (DSN-DVM-612).

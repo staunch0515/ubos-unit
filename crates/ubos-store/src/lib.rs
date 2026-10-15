@@ -55,6 +55,10 @@ pub struct ObjectRow {
     pub instant: bool,
     /// Object state (class, kind, slug, head, timeline).
     pub state: Option<Value>,
+    /// Declared field indexes of the head version: `(field, value key)` (DSN-DVM-902,
+    /// PH-1 step 13a); empty when the object has no head on the branch.
+    #[serde(default)]
+    pub index: Vec<(String, Vec<u8>)>,
 }
 
 /// A ledger entry written by a flush.
@@ -176,6 +180,33 @@ pub trait Store {
             }
         }
         Ok(out)
+    }
+    /// The number of local object rows visible at `cseq`, optionally of one class (the
+    /// scan estimate of the query planner, DSN-DVM-903).
+    fn count_objects(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        class: Option<&str>,
+    ) -> Result<u64, BpaError> {
+        Ok(self.objects(branch, cseq, class)?.len() as u64)
+    }
+    /// A declared field index of the given classes at `cseq`: the objects whose head
+    /// version has a value key in `[lo, hi]` (either bound open when `None`), as
+    /// `(object_id, value key)` in key order then object order, at most `limit` rows
+    /// (DSN-DVM-902). A backend without field indexes returns `None`.
+    #[allow(clippy::too_many_arguments)]
+    fn field_scan(
+        &mut self,
+        _branch: &str,
+        _cseq: u64,
+        _classes: &[String],
+        _field: &str,
+        _lo: Option<&[u8]>,
+        _hi: Option<&[u8]>,
+        _limit: usize,
+    ) -> Result<Option<FieldRows>, BpaError> {
+        Ok(None)
     }
     /// Local ledger entries up to `cseq` in append order, optionally of one ledger key or
     /// with one entry identifier.
@@ -362,6 +393,14 @@ pub trait Store {
     }
 }
 
+/// Rows of a field scan: `(object_id, value key)` in key order then object order.
+pub type FieldRows = Vec<(String, Vec<u8>)>;
+/// The memory store's field index of one branch: `(class, field, value key, object)` →
+/// the commit ranges `(cseq_from, cseq_to)` of the head versions carrying the key.
+type MemFieldIndex = BTreeMap<(String, String, Vec<u8>, String), Vec<(u64, Option<u64>)>>;
+/// An open field-index row of an object in the memory store: `(class, field, value key)`.
+type OpenField = (String, String, Vec<u8>);
+
 /// Kernel index rows of one engine object row: head, kind and slug and the valid-time
 /// segments come from the engine state (`head`, `kind`, `slug`, `timeline[].{from, to,
 /// version}`).
@@ -456,6 +495,11 @@ pub struct MemStore {
     by_cseq: HashMap<(String, u64), u64>,
     branches: HashMap<String, BranchRef>,
     objects: HashMap<String, BTreeMap<String, Vec<MemObject>>>,
+    /// Field index rows by branch: `(class, field, value key, object)` → the commit
+    /// ranges `(cseq_from, cseq_to)` of the head versions carrying the key (DSN-DVM-902).
+    field_index: HashMap<String, MemFieldIndex>,
+    /// The open field-index rows of each object by branch, closed when the object changes.
+    open_fields: HashMap<String, HashMap<String, Vec<OpenField>>>,
     entries: HashMap<String, Vec<MemEntry>>,
     nodes: HashMap<String, Value>,
     meta: HashMap<String, Value>,
@@ -573,6 +617,35 @@ impl Store for MemStore {
                 state: o.state.clone(),
             });
         }
+        // the field index rows of the changed objects: the open rows close, the rows of
+        // the new head open at this commit
+        let fi = self.field_index.entry(f.branch.clone()).or_default();
+        let open = self.open_fields.entry(f.branch.clone()).or_default();
+        for o in &f.objects {
+            for (c, field, key) in open.remove(&o.object_id).unwrap_or_default() {
+                if let Some(ranges) = fi.get_mut(&(c, field, key, o.object_id.clone()))
+                    && let Some(last) = ranges.last_mut()
+                    && last.1.is_none()
+                {
+                    last.1 = Some(f.cseq);
+                }
+            }
+            if o.state.is_some() && !o.index.is_empty() {
+                let mut mine = Vec::new();
+                for (field, key) in &o.index {
+                    fi.entry((
+                        o.class.clone(),
+                        field.clone(),
+                        key.clone(),
+                        o.object_id.clone(),
+                    ))
+                    .or_default()
+                    .push((f.cseq, None));
+                    mine.push((o.class.clone(), field.clone(), key.clone()));
+                }
+                open.insert(o.object_id.clone(), mine);
+            }
+        }
         let entries = self.entries.entry(f.branch.clone()).or_default();
         for e in &f.entries {
             entries.push(MemEntry {
@@ -588,6 +661,44 @@ impl Store for MemStore {
         }
         apply_metadata(self, f)?;
         Ok(true)
+    }
+    fn field_scan(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        classes: &[String],
+        field: &str,
+        lo: Option<&[u8]>,
+        hi: Option<&[u8]>,
+        limit: usize,
+    ) -> Result<Option<FieldRows>, BpaError> {
+        let Some(fi) = self.field_index.get(branch) else {
+            return Ok(Some(Vec::new()));
+        };
+        let mut out: FieldRows = Vec::new();
+        for c in classes {
+            let start = (
+                c.clone(),
+                field.to_string(),
+                lo.map(<[u8]>::to_vec).unwrap_or_default(),
+                String::new(),
+            );
+            for ((kc, kf, key, oid), ranges) in fi.range(start..) {
+                if kc != c || kf != field || hi.is_some_and(|h| key.as_slice() > h) {
+                    break;
+                }
+                if ranges
+                    .iter()
+                    .any(|(a, b)| *a <= cseq && b.is_none_or(|t| t > cseq))
+                {
+                    out.push((oid.clone(), key.clone()));
+                }
+            }
+        }
+        out.sort();
+        out.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)));
+        out.truncate(limit);
+        Ok(Some(out))
     }
     fn object_slugs(&mut self, object_id: &str) -> Result<Vec<String>, BpaError> {
         let mut out: Vec<String> = self

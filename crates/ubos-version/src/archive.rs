@@ -457,6 +457,16 @@ impl Repo<'_> {
                         }
                     }
                 }
+                // the field index rows of the head (DSN-DVM-902), rebuilt on import
+                let mut index = Vec::new();
+                if let Some(o) = new
+                    && !self.reg.indexed_fields(&o.class).is_empty()
+                    && let Some(env) = versions.get(&o.head)
+                    && let Some(body) = chunks.get(text(env, "body_ref"))
+                {
+                    index =
+                        crate::state::index_rows(self.reg, &o.class, &stored_version(env, body));
+                }
                 objects.push(ObjectRow {
                     object_id: oid.clone(),
                     class: any.class.clone(),
@@ -466,6 +476,7 @@ impl Repo<'_> {
                         .map(|c| c.valid_time == "instant")
                         .unwrap_or(false),
                     state: new.map(serde_json::to_value).transpose().map_err(storage)?,
+                    index,
                 });
             }
             let mut entries = Vec::new();
