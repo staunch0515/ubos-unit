@@ -747,9 +747,24 @@ impl Engine {
             }
         }
         let check = |name: &str, findings: Vec<Value>| json!({"name": name, "result": if findings.is_empty() { "pass" } else { "fail" }, "findings": findings});
+        // STD-BPU-011 item 2 (1.0-rc3): unreachable states and dead ends of the lifecycle
+        let lifecycle = {
+            let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+            let lc = crate::flow::Lifecycles::of(&repo).lifecycle(
+                &mut repo,
+                None,
+                &st,
+                &self.registry,
+                cls,
+            )?;
+            match lc {
+                Some((_, _, body)) => check("lifecycle", ubos_flow::findings(&body)),
+                None => json!({"name": "lifecycle", "result": "not_applicable", "findings": []}),
+            }
+        };
         let checks = vec![
             check("ports_verified", unverified),
-            json!({"name": "lifecycle", "result": "not_applicable", "findings": []}),
+            lifecycle,
             check("events_emitted", silent),
             check("documented", undocumented),
             json!({"name": "tests", "result": "not_applicable", "findings": []}),

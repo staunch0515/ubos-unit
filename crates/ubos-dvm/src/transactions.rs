@@ -56,6 +56,9 @@ pub fn segment(
     if let Some(p) = s(&v, "provenance_ref") {
         out["provenance_ref"] = json!(p);
     }
+    if let Some(st) = s(&v, "state") {
+        out["state"] = json!(st);
+    }
     Ok(out)
 }
 

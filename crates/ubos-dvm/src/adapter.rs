@@ -65,6 +65,7 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "import_archive",
     "cascade",
     "explain_cascade",
+    "actions",
     "validate",
     "decide",
 ];
@@ -306,6 +307,7 @@ impl Adapter {
             "validate" => self.engine.validate(i)?,
             "decide" => self.engine.decide(i)?,
             "explain_cascade" => self.engine.explain_cascade(i)?,
+            "actions" => self.engine.actions(i)?,
             "check_sheet" => ubos_rules::ops::check_sheet(i)?,
             "specificity" => ubos_rules::ops::specificity(i)?,
             "eval_expr" => ubos_expr::eval_expr(i, None)?,

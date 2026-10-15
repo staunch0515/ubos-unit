@@ -218,6 +218,7 @@ pub fn version_record(
     predecessor: Option<&str>,
     tombstone: bool,
     provenance: Option<&str>,
+    state: Option<&str>,
 ) -> Result<(String, Value), BpaError> {
     let c = reg.class(class)?;
     let valid = json!({"from": from, "to": to});
@@ -225,6 +226,10 @@ pub fn version_record(
         "object_id": oid, "class": class, "class_version": c.class_version, "schema_version": c.schema_version,
         "kind": c.kind, "slug": slug, "valid": valid, "body_ref": content_id("ubos.chunk.v1", &Value::Object(body.clone()))?,
     });
+    // STD-CLS-004 (1.0-rc3): the lifecycle state is a member of the envelope
+    if let Some(st) = state {
+        env["state"] = json!(st);
+    }
     if let Some(p) = predecessor {
         env["predecessor"] = json!(p);
     }
@@ -244,6 +249,9 @@ pub fn version_record(
     }
     if let Some(p) = provenance {
         rec["provenance_ref"] = json!(p);
+    }
+    if let Some(st) = state {
+        rec["state"] = json!(st);
     }
     Ok((vh, rec))
 }
@@ -886,6 +894,7 @@ impl<'a> Repo<'a> {
         predecessor: Option<&str>,
         tombstone: bool,
         provenance: Option<&str>,
+        state: Option<&str>,
     ) -> Result<String, BpaError> {
         let (vh, rec) = version_record(
             self.reg,
@@ -898,6 +907,7 @@ impl<'a> Repo<'a> {
             predecessor,
             tombstone,
             provenance,
+            state,
         )?;
         tx.versions.push((vh.clone(), rec));
         Ok(vh)

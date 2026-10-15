@@ -62,11 +62,223 @@ fn unhex32(v: &Value, what: &str) -> Result<[u8; 32], BpaError> {
 pub struct EngineHost<'a> {
     e: &'a mut Engine,
     view: Option<State>,
+    /// The transitions and guards of the process for its commit (STD-ISA-017, since 1.0-rc3).
+    pub(crate) flow: ubos_flow::Flow,
 }
 
 impl<'a> EngineHost<'a> {
     pub(crate) fn new(e: &'a mut Engine) -> EngineHost<'a> {
-        EngineHost { e, view: None }
+        EngineHost {
+            e,
+            view: None,
+            flow: ubos_flow::Flow::default(),
+        }
+    }
+
+    // ---- lifecycles (STD-CLS-004, since 1.0-rc3) ----
+
+    /// The lifecycle in force for a class on the snapshot.
+    fn lifecycle_of(
+        &mut self,
+        core: &mut Core,
+        cls: &str,
+    ) -> Result<Option<crate::flow::Lifecycle>, BpaError> {
+        let st = self.state(core)?.clone();
+        let reg = self.registry(core)?;
+        let mut repo = self.repo();
+        crate::flow::Lifecycles::of(&repo).lifecycle(&mut repo, None, &st, &reg, cls)
+    }
+
+    /// The lifecycle state of an object as this process sees it: after its pending
+    /// transition, the initial state of a pending create, else the head version's.
+    fn object_state(&mut self, core: &mut Core, oid: &str) -> Result<Option<String>, BpaError> {
+        if let Some(m) = self.flow.transitions.get(oid) {
+            return Ok(Some(m.to.clone()));
+        }
+        if let Some(p) = core.pending.get(oid).filter(|p| p.change.is_some()) {
+            let cls = p.class.clone();
+            return Ok(self
+                .lifecycle_of(core, &cls)?
+                .and_then(|(_, _, b)| s(&b, "initial").map(str::to_string)));
+        }
+        let head = self
+            .state(core)?
+            .objects
+            .get(oid)
+            .map(|o| o.head.clone())
+            .ok_or_else(|| not_found("unknown object"))?;
+        Ok(crate::flow::state_of(&self.version(&head)?))
+    }
+
+    /// STD-ISA-017: a lifecycle transition as the effect of the current port.
+    fn commit_transition(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let oid = self.target(core, &a["target"])?;
+        let cls = self.class_of(core, &oid)?;
+        let name = s(&Value::Object(a.clone()), "transition")
+            .unwrap_or_default()
+            .to_string();
+        let frame = core.frames.last().cloned().unwrap_or_default();
+        let reg = self.registry(core)?;
+        let decl = frame.port.as_deref().and_then(|p| {
+            reg.class(&cls)
+                .ok()
+                .and_then(|c| c.ports.get(p).map(|q| q.decl.clone()))
+        });
+        let Some(decl) = decl.filter(|p| s(p, "transition") == Some(name.as_str())) else {
+            return Err(BpaError::with_details(
+                "FLOW.TRANSITION_NOT_ALLOWED",
+                json!({"transition": name, "message": "the port does not name the transition"}),
+            ));
+        };
+        let Some((_, _, lc)) = self.lifecycle_of(core, &cls)? else {
+            return Err(BpaError::with_details(
+                "FLOW.TRANSITION_NOT_ALLOWED",
+                json!({"transition": name, "message": "the class has no lifecycle"}),
+            ));
+        };
+        let current = self.object_state(core, &oid)?;
+        let Some(t) = ubos_flow::transition(&lc, &name)
+            .filter(|t| ubos_flow::leaves(t, current.as_deref()))
+            .cloned()
+        else {
+            return Err(BpaError::with_details(
+                "FLOW.TRANSITION_NOT_ALLOWED",
+                json!({"transition": name, "from": current}),
+            ));
+        };
+        let current = current.unwrap_or_default();
+        let to = s(&t, "to").unwrap_or_default().to_string();
+        let guards = t
+            .get("guards")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let n_effects = ubos_flow::effects(&lc, &current, "exit").len()
+            + ubos_flow::effects(&lc, &to, "entry").len();
+        core.per_item(d, (guards.len() + n_effects) as u64)?;
+        let mut body = Value::Object(self.head_body(core, &oid)?);
+        let decls = ubos_flow::param_decls(&decl);
+        let params = ubos_flow::params_json(&frame.params)?;
+        let ctx = self.decision_ctx(core)?;
+        let ctx = ctx.as_object().cloned().unwrap_or_default();
+        let failed =
+            ubos_flow::failed_transition_guards(&reg, &cls, &t, &decls, &body, &params, &ctx)?;
+        if !failed.is_empty() {
+            return Err(BpaError::with_details(
+                "FLOW.GUARD_FAILED",
+                json!({"transition": name, "failed": failed}),
+            ));
+        }
+        let mut sets: Map<String, Value> = Map::new();
+        for (state, kind) in [(current.as_str(), "exit"), (to.as_str(), "entry")] {
+            for ef in ubos_flow::effects(&lc, state, kind) {
+                let r = (|| -> Result<(), BpaError> {
+                    if let Some(set) = ef.get("set").and_then(Value::as_object) {
+                        for (f, text) in set {
+                            if !reg.class(&cls)?.fields.contains_key(f) {
+                                return Err(invalid(&format!("undeclared field {f}")));
+                            }
+                            let text = text.as_str().unwrap_or_default();
+                            let v = ubos_flow::eval_value(
+                                &reg,
+                                &cls,
+                                text,
+                                &body,
+                                Some((&decls, &params)),
+                                Some(&ctx),
+                            )?;
+                            body[f] = v.clone();
+                            sets.insert(f.clone(), v);
+                        }
+                    } else {
+                        let logic = s(ef, "logic").unwrap_or_default();
+                        let (asset_name, fname) = logic.split_once('#').unwrap_or((logic, ""));
+                        let (asset, vh) = self.asset(core, asset_name)?;
+                        let fr = Frame {
+                            asset,
+                            vh: Some(vh),
+                            fname: Some(fname.to_string()),
+                            oid: Some(oid.clone()),
+                            this: Some(body.clone()),
+                            cls: Some(cls.clone()),
+                            port: frame.port.clone(),
+                            impl_class: None,
+                            params: BTreeMap::new(),
+                        };
+                        program::run_function(core, self, fr, &params)?;
+                        body = Value::Object(self.head_body(core, &oid)?);
+                    }
+                    Ok(())
+                })();
+                if let Err(e) = r {
+                    return Err(BpaError::with_details(
+                        "FLOW.EFFECT_FAILED",
+                        json!({"state": state, "effect": kind, "code": e.code}),
+                    ));
+                }
+            }
+        }
+        for f in ubos_flow::field_rules(&lc, &to)
+            .and_then(|r| r.get("required"))
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+        {
+            if body.get(f).is_none_or(Value::is_null) {
+                return Err(BpaError::with_details(
+                    "FLOW.FIELD_RULE_VIOLATED",
+                    json!({"state": to, "field": f, "rule": "required"}),
+                ));
+            }
+        }
+        self.stage_update(core, &oid, sets.clone(), None, None, None)?;
+        let moved = self.flow.transitions.entry(oid.clone()).or_default();
+        moved.from = current.clone();
+        moved.to = to.clone();
+        moved.fields.extend(sets.keys().cloned());
+        for g in &guards {
+            self.flow
+                .passed(&format!("{name}/{}", s(g, "name").unwrap_or_default()));
+        }
+        Ok(json!({"from": current, "to": to}))
+    }
+
+    /// STD-ISA-036: the ports of an object with their availability for this principal.
+    fn read_actions(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let oid = self.target(core, &a["target"])?;
+        let cls = self.class_of(core, &oid)?;
+        core.authorize(&d.authorization, &cls)?;
+        let st = self.state(core)?.clone();
+        let dctx = self.decision_ctx(core)?;
+        let dctx = dctx.as_object().cloned().unwrap_or_default();
+        let branch = core.branch.clone();
+        let grants = core.grants.clone();
+        // the principal's permission as `Core::authorize` decides it (STD-ISA-005)
+        let mut permit = |action: &str, c: &str| match &grants {
+            None => true,
+            Some(g) => {
+                action == "none"
+                    || g.iter()
+                        .any(|x| x == action || *x == format!("{action}:{c}"))
+            }
+        };
+        let out = self
+            .e
+            .actions_in(&st, &branch, &oid, &dctx, Some(&mut permit))?;
+        let n = out["actions"].as_array().map_or(0, Vec::len) as u64;
+        core.per_item(d, n)?;
+        Ok(out)
     }
 
     fn repo(&mut self) -> Repo<'_> {
@@ -406,6 +618,20 @@ impl<'a> EngineHost<'a> {
             .cloned()
             .unwrap_or_default();
         core.per_item(d, sets.len() as u64)?;
+        self.stage_update(core, &oid, sets, slug, a.get("base"), a.get("timeline"))
+    }
+
+    /// Merge field sets into the pending change of an object, or stage an update.
+    fn stage_update(
+        &mut self,
+        core: &mut Core,
+        oid: &str,
+        sets: Map<String, Value>,
+        slug: Option<&str>,
+        base: Option<&Value>,
+        timeline: Option<&Value>,
+    ) -> Result<Value, BpaError> {
+        let oid = oid.to_string();
         if let Some(p) = core.pending.get_mut(&oid) {
             p.body
                 .extend(sets.iter().map(|(k, v)| (k.clone(), v.clone())));
@@ -419,11 +645,11 @@ impl<'a> EngineHost<'a> {
             }
             return Ok(json!({"version": null}));
         }
-        let mut ch = json!({"op": "update", "object_id": oid, "base": self.base_of(core, &oid, a.get("base"))?, "body": sets});
+        let mut ch = json!({"op": "update", "object_id": oid, "base": self.base_of(core, &oid, base)?, "body": sets});
         if let Some(sl) = slug {
             ch["slug"] = json!(sl);
         }
-        if let Some(tl) = a.get("timeline").filter(|v| v.is_object()) {
+        if let Some(tl) = timeline.filter(|v| v.is_object()) {
             ch["valid"] = json!({"kind": tl.get("op"), "from": tl.get("from")});
             if let Some(to) = tl.get("to").filter(|v| !v.is_null()) {
                 ch["valid"]["to"] = to.clone();
@@ -644,9 +870,13 @@ impl<'a> EngineHost<'a> {
                     core.triples.push(trip);
                 }
                 let v = self.version(&seg.version)?;
-                json!({"object_id": oid, "class": cls, "version": seg.version, "fields": v["body"],
+                let mut out = json!({"object_id": oid, "class": cls, "version": seg.version, "fields": v["body"],
                     "valid": {"from": seg.from, "to": seg.to},
-                    "resolved_from": {"branch": core.branch, "commit": core.pins.get(&core.branch)}})
+                    "resolved_from": {"branch": core.branch, "commit": core.pins.get(&core.branch)}});
+                if let Some(st) = v.get("state").filter(|x| !x.is_null()) {
+                    out["state"] = st.clone();
+                }
+                out
             }
         };
         if let Some(keep) = a.get("fields").and_then(Value::as_array) {
@@ -927,7 +1157,17 @@ impl<'a> EngineHost<'a> {
                 format!("no port {port}"),
             ));
         };
-        let permission = s(&p.decl, "permission").unwrap_or("none").to_string();
+        let decl = p.decl.clone();
+        // STD-ISA-050 (1.0-rc3): the port is available in the object's lifecycle state
+        let state = self.object_state(core, &oid)?;
+        let lc = self.lifecycle_of(core, &cls)?;
+        if !ubos_flow::available(&decl, lc.as_ref().map(|l| &l.2), state.as_deref()) {
+            return Err(BpaError::with_details(
+                "FLOW.PORT_UNAVAILABLE",
+                json!({"port": port, "state": state}),
+            ));
+        }
+        let permission = s(&decl, "permission").unwrap_or("none").to_string();
         core.authorize(&permission, &cls)?;
         if !core.pending.contains_key(&oid) {
             // STD-LGS-031: the decisions of a command port run before it (DSN-DVM-720) and
@@ -958,6 +1198,24 @@ impl<'a> EngineHost<'a> {
         let found = reg.dispatch(&cls, &port, None)?;
         let body = Value::Object(self.head_body(core, &oid)?);
         let params = a.get("params").cloned().unwrap_or_else(|| json!({}));
+        // STD-ISA-050 (1.0-rc3): the port's guards, L1 booleans over this, params and ctx
+        let dctx = self.decision_ctx(core)?;
+        let dctx = dctx.as_object().cloned().unwrap_or_default();
+        let failed = ubos_flow::failed_port_guards(&reg, &cls, &decl, &body, &params, &dctx)?;
+        if !failed.is_empty() {
+            let failed: Vec<Value> = failed.iter().map(|(_, g)| json!({"guard": g})).collect();
+            return Err(BpaError::with_details(
+                "FLOW.GUARD_FAILED",
+                json!({"port": port, "failed": failed}),
+            ));
+        }
+        let n = decl
+            .get("guards")
+            .and_then(Value::as_array)
+            .map_or(0, Vec::len);
+        for i in 0..n {
+            self.flow.passed(&format!("{port}/{i}"));
+        }
         self.call_impl(core, &found, &oid, &cls, body, &port, &params)
     }
 
@@ -1106,7 +1364,9 @@ impl Host for EngineHost<'_> {
             "commit.adjust" => self.commit_adjust(core, a, d),
             "commit.link" => self.link(core, a, d, true),
             "commit.unlink" => self.link(core, a, d, false),
+            "commit.transition" => self.commit_transition(core, a, d),
             "read.get" => self.read_get(core, a, d),
+            "read.actions" => self.read_actions(core, a, d),
             "read.history" => self.read_history(core, a, d),
             "read.timeline" => self.read_timeline(core, a, d),
             "read.diff" => self.read_diff(core, a, d),
@@ -1297,6 +1557,7 @@ impl Engine {
             let r = (|| -> Result<(Value, Option<u64>), BpaError> {
                 let mut host = EngineHost::new(self);
                 let (result, rt) = start(&mut core, &mut host, i)?;
+                let flow = std::mem::take(&mut host.flow);
                 retryable = rt;
                 if replay.is_some() {
                     return Ok((result, None));
@@ -1330,6 +1591,7 @@ impl Engine {
                         false,
                         self.max_violations,
                         &mut self.rules,
+                        Some(&flow),
                     )?;
                     self.touch_branch(&branch)?;
                     let n = r["cseq"].as_u64().unwrap_or_default();

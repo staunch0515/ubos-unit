@@ -252,8 +252,11 @@ pub(crate) fn cascade_state(
     body: &Value,
     asof: &str,
     ctx: &Map<String, Value>,
+    state: Option<&str>,
 ) -> Result<(ubos_rules::Effective, Vec<String>, ubos_rules::Registry), BpaError> {
-    cascade_lazy(repo, tx, st, reg_ext, cache, class, body, asof, ctx, None)
+    cascade_lazy(
+        repo, tx, st, reg_ext, cache, class, body, asof, ctx, state, None,
+    )
 }
 
 /// `cascade_state` over a partial state (the sheets and the object), the whole state of
@@ -269,8 +272,20 @@ pub(crate) fn cascade_lazy(
     body: &Value,
     asof: &str,
     ctx: &Map<String, Value>,
+    state: Option<&str>,
     lazy: Option<(String, Option<u64>)>,
 ) -> Result<(ubos_rules::Effective, Vec<String>, ubos_rules::Registry), BpaError> {
+    // the `:state` qualifier matches the lifecycle state (STD-CLS-004) or a field `state`
+    let with_state;
+    let body = match state {
+        Some(st) => {
+            let mut b = body.clone();
+            b["state"] = json!(st);
+            with_state = b;
+            &with_state
+        }
+        None => body,
+    };
     let set = live_versions(repo, tx, st, Some(asof), reg_ext, cache)?;
     let reg = ubos_rules::Registry::new(&set.properties)?;
     let index = cache.index(&set.versions(), &set.compiled());
@@ -341,7 +356,9 @@ impl Engine {
         let seg = at(&o.timeline, &asof)
             .ok_or_else(|| BpaError::new("QRY.NOT_FOUND_AT_TIME", "no segment at asof"))?;
         let version = seg.version.clone();
-        let body = repo.version(&version)?["body"].clone();
+        let v = repo.version(&version)?;
+        let body = v["body"].clone();
+        let state = crate::flow::state_of(&v);
         let exts = extensions_of(&mut repo, &st)?;
         let reg_ext: Cow<Registry> = if exts.is_empty() {
             Cow::Borrowed(&self.registry)
@@ -367,6 +384,7 @@ impl Engine {
             &body,
             &asof,
             &ctx,
+            state.as_deref(),
             lazy,
         )?;
         Ok((out, bindings, ev, uri, version, reg))
