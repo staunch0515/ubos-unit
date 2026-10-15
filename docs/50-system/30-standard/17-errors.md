@@ -108,6 +108,9 @@ DAT-Error:
   | `FLOW.TRANSITION_NOT_ALLOWED` | undeclared transition | no | yes | 409 |
   | `FLOW.GUARD_FAILED` | guard failed | no | yes | 409 |
   | `FLOW.STATE_DIRECT_WRITE` | direct state write | no | yes | 409 |
+  | `FLOW.PORT_UNAVAILABLE` | port not available in the lifecycle state (since 1.0-rc3) | no | yes | 409 |
+  | `FLOW.EFFECT_FAILED` | an entry or exit effect of a transition failed (since 1.0-rc3) | no | yes | 422 |
+  | `FLOW.FIELD_RULE_VIOLATED` | a per-state field rule: a read-only field written or a required field missing (since 1.0-rc3) | no | yes | 422 |
   | `EVT.UNKNOWN_EVENT_TYPE` | undeclared event | no | yes | 422 |
   | `QRY.SCAN_LIMIT` | unindexed scan too large | no | yes | 422 |
   | `QRY.INVALID_QUERY` | malformed query | no | yes | 400 |

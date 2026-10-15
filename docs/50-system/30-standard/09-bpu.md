@@ -104,7 +104,7 @@ DAT-BpuDescriptor:
   4. the class, its fields, ports and states are documented (FR-MODEL-017);
   5. the class's declared test cases and scenarios pass.
 
-  The checks are reported as `ports_verified`, `lifecycle`, `events_emitted`, `documented` and `tests`; a port lists the events it emits in `emits`. In BPA 1.0-rc1 `lifecycle` and `tests` are `not_applicable` until the Governance profile (DEC-044).
+  The checks are reported as `ports_verified`, `lifecycle`, `events_emitted`, `documented` and `tests`; a port lists the events it emits in `emits`. In BPA 1.0-rc1 `lifecycle` and `tests` are `not_applicable` until the Governance profile (DEC-044). Since 1.0-rc3 (DEC-071): `lifecycle` is `not_applicable` for a class without a lifecycle; otherwise it fails with the findings `{state, finding: unreachable | dead_end}` for a state the transitions cannot reach from the initial state and for a non-final state no transition leaves.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2660…2674
 - **Satisfies:** FR-PKG-061, FR-LOGIC-083

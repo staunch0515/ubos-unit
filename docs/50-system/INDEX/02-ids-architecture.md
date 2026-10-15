@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (70)
+## DEC (71)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -164,4 +164,5 @@ depends_on: [UBS-IDX-00]
 | DEC-068 | BPA 1.0-rc2 UBTP: envelope, handshake, mutate, query, subscriptions, flow control and bindings (step 10, part 10d) | `90-decisions/000-index.md` |
 | DEC-069 | Release of BPA 1.0-rc2 (step 10, part 10e) | `90-decisions/000-index.md` |
 | DEC-070 | PH-1 step 11: governance sheets and rules in the kernel, parts 11a–11d | `90-decisions/000-index.md` |
+| DEC-071 | BPA 1.0-rc3 opened; PH-1 step 12: lifecycles, ports and guards, parts 12a–12c | `90-decisions/000-index.md` |
 

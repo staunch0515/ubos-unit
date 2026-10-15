@@ -691,7 +691,7 @@ class Sheets:
             raise
         return r['value'] is True
 
-    def _matches(self, st, asof, classes, sel, oid, o, body, ctx):
+    def _matches(self, st, asof, classes, sel, oid, o, body, ctx, state=None):
         lin = self._cls(o['class'])['linearization']
         if sel['type'] != '*' and sel['type'] not in lin:
             return False
@@ -701,7 +701,8 @@ class Sheets:
                 if not self._eval_qualifier(st, asof, classes, o['class'], body, q['expr']):
                     return False
             elif k == 'state':
-                if body.get('state') != q['state']:
+                # the lifecycle state (STD-CLS-004) or a field named state
+                if (state if state is not None else body.get('state')) != q['state']:
                     return False
             elif k == 'tag':
                 tags = body.get('tags')
@@ -749,9 +750,12 @@ class Sheets:
         out, bindings = self._cascade_in(st, branch, object_id, o, body, ctx, asof)
         return out, ev, o, seg[2], st, bindings
 
-    def _cascade_in(self, st, branch, object_id, o, body, ctx, asof):
+    def _cascade_in(self, st, branch, object_id, o, body, ctx, asof, state=None):
         """The cascade over a state: `{path: (value, candidates)}` and the sheet versions bound."""
-        from .store import branch_kind
+        from .store import branch_kind, tl_at
+        if state is None and o.get('head'):
+            seg = tl_at(o['timeline'], asof)
+            state = self.versions[seg[2] if seg else o['head']].get('state')
         ctx = dict(ctx or {})
         ctx.setdefault('branch_kind', branch_kind(branch))
         classes = list(self.decls.values())
@@ -763,7 +767,7 @@ class Sheets:
                 continue
             bindings.append(vh)
             for bi, b in enumerate(sbody['ast']['blocks']):
-                hits = [s for s in b['selectors'] if self._matches(st, asof, classes, s, object_id, o, body, ctx)]
+                hits = [s for s in b['selectors'] if self._matches(st, asof, classes, s, object_id, o, body, ctx, state)]
                 if not hits:
                     continue
                 best = max(hits, key=lambda s: specificity(classes, s))
@@ -813,10 +817,14 @@ class Sheets:
             eff = self._cls(cls)
             o = {'class': cls, 'kind': eff['kind'], 'slug': '', 'head': '', 'timeline': []}
             st = {'objects': dict(st['objects'], **{object_id: o}), 'ledger': st['ledger']}
+        state = None
         if body is None:
             seg = tl_at(o['timeline'], asof)
             body = self.versions[seg[2]]['body'] if seg else self.versions[o['head']]['body']
-        out, bindings = self._cascade_in(st, branch, object_id, o, body, ctx, asof)
+        elif not o.get('head'):
+            lc = self._lifecycle(st, o['class'])
+            state = lc[0]['initial'] if lc else None
+        out, bindings = self._cascade_in(st, branch, object_id, o, body, ctx, asof, state)
         return {p: v for p, (v, _) in out.items()}, bindings
 
     @staticmethod

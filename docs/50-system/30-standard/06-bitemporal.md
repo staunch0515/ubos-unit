@@ -108,7 +108,7 @@ depends_on: [UBS-STD-05]
 - **Grammar / Schema:** `DAT-RuleBinding`
 - **Conformance vectors:** VER-CONF-1875…1884
 - **Satisfies:** FR-TIME-061, FR-FLOW-032
-- **Notes:** —
+- **Notes:** Since 1.0-rc3 (DEC-071): `guards` lists the guard evaluations of the transitions and ports the commit's process executed, `{guard: "<transition>/<name>" | "<port>/<index>", result: true}` (a failed guard stages nothing, so only passed guards reach a commit); `classes` lists the version of the lifecycle object of a changed object's class as `{class: Lifecycle, object_id, class_version}`.
 
 ```yaml
 DAT-RuleBinding:

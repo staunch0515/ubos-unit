@@ -360,9 +360,13 @@ def cases(g):
                                        port_run('ubos://acme/Account/a-1', 'rename', {'name': 'Later'}, pid=2)])
 
     # ---- STD-ISA-001 instruction descriptors ----
-    P('STD-ISA-001', 'the descriptors of ABI 1.0 are normative', 'instructions', {})
+    # The released vector of 1.0-rc1 asserts the catalogue of its release: superseded by 1.0-rc3,
+    # which adds read.actions and error codes (STD-CONF-030, DEC-071); the next vector asserts the current one.
+    V('STD-ISA-001', 'the descriptors of ABI 1.0 are normative', prototype=False,
+      steps=[{'op': 'instructions', 'input': {}, 'frozen': 'the catalogue of ABI 1.0 grows in BPA 1.0-rc3 (STD-ISA-036, DEC-071)'}])
     run1('STD-ISA-001', 'logic sees no instruction outside the descriptors', [
         {'do': 'read.everything', 'args': {}}], caps=('read',), error='LOGIC.FORBIDDEN_CAPABILITY')
+    P('STD-ISA-001', 'the descriptors of ABI 1.0 are normative (since 1.0-rc3)', 'instructions', {})
 
     # ---- STD-ISA-002 ABI versioning ----
     for abi, err in (('1.0', None), ('1.1', 'LOGIC.ABI_UNSUPPORTED'), ('2.0', 'LOGIC.ABI_UNSUPPORTED'),

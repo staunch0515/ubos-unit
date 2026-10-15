@@ -1,0 +1,47 @@
+{
+  "$id": "DAT-Lifecycle",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "description": {
+      "description": "documentation",
+      "type": "string"
+    },
+    "effects": {
+      "description": "state \u2192 {entry, exit}: lists of {set: {field: expr}} or {logic: ref}",
+      "type": "object"
+    },
+    "field_rules": {
+      "description": "state \u2192 {read_only, required, hidden}: lists of field names",
+      "type": "object"
+    },
+    "final": {
+      "description": "states without further transitions (default none)",
+      "type": "array"
+    },
+    "initial": {
+      "description": "the state of a created object",
+      "type": "string"
+    },
+    "name": {
+      "description": "namespaced name",
+      "type": "string"
+    },
+    "states": {
+      "description": "state names, at least one",
+      "type": "array"
+    },
+    "transitions": {
+      "description": "DAT-Transition items, names unique",
+      "type": "array"
+    }
+  },
+  "required": [
+    "name",
+    "states",
+    "initial",
+    "transitions",
+    "description"
+  ],
+  "title": "DAT-Lifecycle",
+  "type": "object"
+}

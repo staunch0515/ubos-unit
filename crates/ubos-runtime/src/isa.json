@@ -10,7 +10,10 @@
   "BILL.LICENCE_INACTIVE": true,
   "BILL.NOT_ENTITLED": true,
   "EVT.UNKNOWN_EVENT_TYPE": true,
+  "FLOW.EFFECT_FAILED": true,
+  "FLOW.FIELD_RULE_VIOLATED": true,
   "FLOW.GUARD_FAILED": true,
+  "FLOW.PORT_UNAVAILABLE": true,
   "FLOW.STATE_DIRECT_WRITE": true,
   "FLOW.TRANSITION_NOT_ALLOWED": true,
   "IAM.DELEGATION_EXPIRED": true,
@@ -560,7 +563,9 @@
    "determinism": "snapshot",
    "errors": [
     "FLOW.TRANSITION_NOT_ALLOWED",
-    "FLOW.GUARD_FAILED"
+    "FLOW.GUARD_FAILED",
+    "FLOW.EFFECT_FAILED",
+    "FLOW.FIELD_RULE_VIOLATED"
    ],
    "name": "commit.transition",
    "params": [
@@ -829,6 +834,36 @@
    "since": "1.0"
   },
   {
+   "authorization": "read",
+   "clause": "STD-ISA-036",
+   "cost": {
+    "base": 20,
+    "item": "port",
+    "per_item": 1
+   },
+   "determinism": "snapshot",
+   "errors": [
+    "IAM.NOT_FOUND"
+   ],
+   "name": "read.actions",
+   "params": [
+    {
+     "name": "target",
+     "optional": false,
+     "type": "uri"
+    }
+   ],
+   "profiles": [
+    "agent",
+    "batch",
+    "simulation",
+    "standard",
+    "strict"
+   ],
+   "result": "{state, actions: list<action>}",
+   "since": "1.0"
+  },
+  {
    "authorization": "permission",
    "clause": "STD-ISA-050",
    "cost": {
@@ -838,6 +873,7 @@
    "determinism": "snapshot",
    "errors": [
     "MODEL.PORT_NOT_IMPLEMENTED",
+    "FLOW.PORT_UNAVAILABLE",
     "FLOW.GUARD_FAILED",
     "RULE.DECISION_DENIED",
     "RULE.DECISION_REQUIRES",
