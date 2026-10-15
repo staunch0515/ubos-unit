@@ -1,14 +1,14 @@
 {
   "clauses": 197,
-  "content_id": "sha256:c153915e6e3ff3d68ac551a2b53fd9f9cc10e711f63c4925c185c48d99187fdf",
+  "content_id": "sha256:afef9698ed69a25bce47d043f1e87d4baffe50719d17ac6f515a08bc137a90ac",
   "files": [
     {
       "path": "release/1.0-rc2/coverage.md",
-      "sha256": "2325bb68c83ee72188f7641a4b40183c9de4a0eab36768e4628b3f6a0dc67845"
+      "sha256": "77821553bafb00241e138675a776feafcc1dd7e666d897ccb18d222e36c316a4"
     },
     {
       "path": "release/1.0-rc2/notes.md",
-      "sha256": "6daa85f951433a6e6bbc20aeac7c19e3dbf110ca8f6f82a84d566340ec69dfb0"
+      "sha256": "ab8c7d3e476bd1296639796bc47f90b0e7417b196114c7274bf9a70d3635cd28"
     },
     {
       "path": "release/1.0-rc2/scope.json",
@@ -84,15 +84,15 @@
     },
     {
       "path": "spec/15-ubtp.md",
-      "sha256": "b4f17fb7ef409a9692f02466aaf76bbf8b4c491cb39846cdfb314cbeff859185"
+      "sha256": "f1e78323e383966a4d92f1a934dd94e23466c27ec49cc52b4eee5858f2706698"
     },
     {
       "path": "spec/17-errors.md",
-      "sha256": "df22c9d648445170d830b868cde5577a188c2d574762ce478aff8474b5f77c91"
+      "sha256": "e57f0186c4c0813bba2ea48ce6a9974f7b36ab344f6037312723c7adf7820787"
     },
     {
       "path": "spec/18-conformance.md",
-      "sha256": "e0cb7f0a738a85b7dd858441dc77e8768c00e713875c6a4ec2094d0e8464f99d"
+      "sha256": "acaf98887f12512b2c6c5625f956379ab5f95c93fe8bc69d26ab7c40541d1405"
     },
     {
       "path": "spec/schemas/DAT-AdapterChange.schema.json",
@@ -6239,6 +6239,358 @@
       "sha256": "3d18c29fa6231a094b7cd031e828e36a735b8bbb0473606a506bf0c5039421db"
     },
     {
+      "path": "vectors/protocol/VER-CONF-5400.json",
+      "sha256": "75fd2491bc7fd7b62860411ce3c905dcc629be17050f3caaceeece651ebf2488"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5401.json",
+      "sha256": "6ebed083a8c0a5596e7b86f96086c8b05e2e9a53ce3399e9d231c1443df9829d"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5402.json",
+      "sha256": "76371aa4fb68db9e05120880f7089abe1662b8c589340b78b370aed741e94ef8"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5403.json",
+      "sha256": "f591af7f9fd957df8ce4d020ccf1deabe9f2ab094ddf602757eb8f8821383db4"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5404.json",
+      "sha256": "719fa8622ef3f8c32190307d22fcda01d10347de7b526d8461d41909e26fee78"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5405.json",
+      "sha256": "f1b0eaa2c05af65799437269d50faa44cd226d1418343709cdb81f552d4c5ad9"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5406.json",
+      "sha256": "2fc58c8de1b0a682d5133a6f511a8c868203587abb7e655ff520d0972eef1eab"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5407.json",
+      "sha256": "2eac7441daef959304ae95812676d9d497884f835d32da5d2412b9ffaab92f08"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5408.json",
+      "sha256": "0f5c02c12af43288116ec150bada4f8e3d29feafd152faf32e098edfe8210880"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5409.json",
+      "sha256": "28a7ef2c2ac3c60e6b86cc002113b5683553d17d8ecb1a6d68f4a2f78ffc0c14"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5410.json",
+      "sha256": "3be7aeef712ffe81ed91f3c1cfa7d67f323197c00b259409605ca9aa18977c5c"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5411.json",
+      "sha256": "e5994d1e7da4cf864f992df059219c2ba3c3f0e44734d17369f53c6bc0353726"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5412.json",
+      "sha256": "a77630de5bd803e6ea23a7080e78ba196fc436f987e5c325440f10c72659da97"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5413.json",
+      "sha256": "13da919f2955fe009e037bc0b197da53a65eab6d214618564c2d6b4085ae17bd"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5414.json",
+      "sha256": "7ad26f0813702146571fc0b82a1f32e405b886fb95cc55187ab351c961dda7f5"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5420.json",
+      "sha256": "ebd22e54d0883b31ca3fa7bfa57ccd6b238c667d22b80b350435db7b1d9ef2f1"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5421.json",
+      "sha256": "29ad8cabede2b9ae3aeea24712c1274842140590430852f63aeb7e61fd11e135"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5422.json",
+      "sha256": "b6e824e588f09dcab95aafa3ce7fe986a79b86f3f9bdeb05488e58341dd671b4"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5423.json",
+      "sha256": "5b3aab322bc15e90f42f087e96963905534a17f507507a25585464744ce440a3"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5424.json",
+      "sha256": "b820ea6d3e4e1c25cc58e4b63acc9f027d7cd7c1269f29468332414043c1aff7"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5425.json",
+      "sha256": "957165016f8402a75d3b3bd6415f0d21b8ff3e6e4b04336cda817b704285b160"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5426.json",
+      "sha256": "cf66cea99da7f58c6c37376f83fd5832ac08883762a5db5bb6b32de7e7278933"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5427.json",
+      "sha256": "4d38fbc98e3daf19506b2a54f83ae84b33e594c1902f97c76baf6cac46cf94a5"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5428.json",
+      "sha256": "1469f286228aaf3f19b198f8219ab069d08040e7a0be0d48a32b82e9341f053f"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5429.json",
+      "sha256": "c94b704cb213b1cbe30c5688cefc4611e40fc48995d498776e9663d25d716f01"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5430.json",
+      "sha256": "b1466c7790cd4df77e69c7f8c4d03a8dedd86b1008694c08b0f47a66e9b4d94d"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5431.json",
+      "sha256": "9c4b8e7228685f37eceab053cdf9049d9d45fe7f6565bf93c61a267460eb41fa"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5440.json",
+      "sha256": "a71013cf8bf95653d6634487db02d238715020ffc1e5ddc26e206d811a03862b"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5441.json",
+      "sha256": "b3b003dce99f7d6d4309abcd02081b3715f9ddb5a3f5bc1e7fe3fbf087f1dc49"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5442.json",
+      "sha256": "b53cbe34e5012bfc6a602661b5c9252eb5ef0953f35fb895025a57cac3009452"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5443.json",
+      "sha256": "b46722fe8f38b98c7bb20eba7247c51de399fec8616a2cc91ea767a4bd2205dd"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5444.json",
+      "sha256": "a5f71550ac717b5a2dbd1e0062e5b66c819f34c6d1eb3db484a02d36ffd47e9e"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5445.json",
+      "sha256": "a6688e671a27a13f3ae01da35de60bd1a1a3b27f55f23424c7273e18c9891fa8"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5446.json",
+      "sha256": "357e0c3ce8f79bdf0c4bf1bf890e2d6da8f2e897a2f7097203b12539498e0097"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5447.json",
+      "sha256": "e19a3b42996580df91931f4a607604521ef4767a3f3b61ca68c460acf0959057"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5448.json",
+      "sha256": "6bb89b0072655fcaced54e71edc41fbfa1a317c1178922dfd1de7f525a63f4ec"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5449.json",
+      "sha256": "2be6d2d2d72b11f4f9310b3b4ed6d830a4eb67e5a618263debf0123af1990d69"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5450.json",
+      "sha256": "c959060320b0efd970d7855df249ee20a88cc2f2e41c315f6af36dfb7e3f28f0"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5451.json",
+      "sha256": "ba44fe32a3e8b26088525fc1c902bb91235d670895565c6c266bbdeaa3222e6a"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5452.json",
+      "sha256": "ef243a791d4c7b2351666dbb0f5e5df3a28a3eecc88daa0c5de3b1f5b7d9f9fd"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5453.json",
+      "sha256": "1f47d00bbb0d19e409d1c115bef43919a809c784f4221eb2104709cdcb4d744b"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5454.json",
+      "sha256": "087f861ba75e25e5ef8eef8c1db917253fabf9734cd2047d57240be8d8be1133"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5455.json",
+      "sha256": "455e97fd4684353cfce07b58bdb058fb579838bccadb0ddbd8e4e39fb5e1be7f"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5456.json",
+      "sha256": "2eab36691fef4669889ef6ba99c3dae8de0063980605c99fa777912631ec58f7"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5457.json",
+      "sha256": "f8887b9cbf06dfedf8ed8b59ec5cb6d27a4c3ab7e97f049efeaf3cd0d0b6175d"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5458.json",
+      "sha256": "694d261b9964e5bed965b63e17646b0722d98f9338ea9fbc438aef91eb3b0432"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5470.json",
+      "sha256": "6c1ed3e8cd8256b7dcbfd9a7bbb75ce6524f2a180a4789ba5c97ec85d0d0d4bf"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5471.json",
+      "sha256": "95bdf550b1bb46079c99e84ffa17763b2acad0748a0e4e75270e5ac0cbcf1483"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5472.json",
+      "sha256": "b931a054a060b331ccbd55601dbe6b12873ed11e3dae1c1b96c8dd0f3455bf69"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5473.json",
+      "sha256": "afc0f4f2644952d0dbda39031e0200a7eb9397045dfd64eb43410bee139ad786"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5474.json",
+      "sha256": "d16adf5e91e821ab175ab6080049e2525c71b153bd69e653270aefbcb0adc686"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5475.json",
+      "sha256": "26da92a1c4bb21652c832e1bb5091513422f14539c9a425a259af904f6a8534b"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5476.json",
+      "sha256": "7106928a2df94093e2cbf54a877535729db550fdca3088d16c9d7c6d6997a54b"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5477.json",
+      "sha256": "db08ba7533bfe33b5ee238731c4069478b81b743447ccacb99e6a1c8a4d25f2e"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5478.json",
+      "sha256": "5f69b4e818707b9408d475c6beca56a0eab2503c68e73cc99e1810ee90e98172"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5479.json",
+      "sha256": "abd5d871322de05f5c4cb43223f8bdcfac50747ecc8579b0429bd1f624346fd8"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5480.json",
+      "sha256": "97b9788153a170e94f4960d85de1f5525dee2c653a57b21f000f15d5cd77a666"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5481.json",
+      "sha256": "81c31138156471c2fa28c28d2b20a0b8c94f0d8bd4e7fd734592453605564f59"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5482.json",
+      "sha256": "46964980a5e33c077a0fffe6504e8a8cb7189e00c6772fc94b7d9c681adf0f94"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5483.json",
+      "sha256": "319fc5d3049953453df719ca45d3e2ebfcfd1e9df560c29786e188767b40c647"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5484.json",
+      "sha256": "69bfc1a4705aeed7755bda1d3cf7b99850da973268df5de0c6e61b372778916e"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5500.json",
+      "sha256": "f65f74f7e7c4d420b192739cd63551318359209a0313806fb5a2dee68558e605"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5501.json",
+      "sha256": "fa4127ea042498c9111a37b29085b6a51ab63ab13f9980b08184ab29e48026a4"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5502.json",
+      "sha256": "9231fc46ada913cd3c0036d6918ac21787fe3261f47ac782ef25bc367a8e3666"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5503.json",
+      "sha256": "d0a6be978986a932d2bbe13b05ab109fe0fba11bd561813ba1fe9333111d2795"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5504.json",
+      "sha256": "65707b87192e503922b26794372829dba0aeffabcd8c025fd4c48d798bcf9efb"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5505.json",
+      "sha256": "f548462c444182bf395978e7bb543ab58555221066495642363f4edea17d3fb7"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5506.json",
+      "sha256": "4e4f6e099304f3b5fdc32f4911355daac441ce1b2055ddcbbba71124a35247a4"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5507.json",
+      "sha256": "f502e1dd599505281b8099708b00f0699af6357860eec26674c41ee2daa09585"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5508.json",
+      "sha256": "734a3174ebe5a08985ec7c741ea3f238ed24587077e1a0c78893a6981ac6d656"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5509.json",
+      "sha256": "c300e324cb731c84df8645123a527137d487c44b08d356a170eb5bf15d4f86e0"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5510.json",
+      "sha256": "2b9e093ab199024050cbacf21b5217909ae12ac650ed38ed89db8999503187cc"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5511.json",
+      "sha256": "6964035d113300056c1985c254b12c20e4f2bdbfc6291bb6c3f5dae25524b2a8"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5512.json",
+      "sha256": "6102290b37e508c84962a17912590207a7aac4ee68042085384b99662eadb7e8"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5513.json",
+      "sha256": "3fefd8e263b64c5bf5a49fc38b8ee678100150fa428c7ffb3260e8afd59bf686"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5514.json",
+      "sha256": "9147eea948b460b58fe19fff794609cb1f4db812437b2cb3bf0cb0cfbb82d99f"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5530.json",
+      "sha256": "2c1347eb6ea48489a29b3e73bbbfec1771803a07b4aaf674964339b73f740af3"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5531.json",
+      "sha256": "3d612ba7b08136f3c4d6ff6ecc272146cebbbfb1a6816a647131c2f55edaabde"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5532.json",
+      "sha256": "12dfda4d0671fff742f354423cd17b8ce328f1b330e5918cecdcbbed89fb96ba"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5533.json",
+      "sha256": "1516218038745a702cd7a0cf6cf0274842baef2877a77da32f4a764c9497405b"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5534.json",
+      "sha256": "d883be57bbaf337ee2c64d29619e3f924eee75388745d125a0fc2cd75c4195f5"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5535.json",
+      "sha256": "3736fc99abb8e22c5a8c94c0631087a4cd249d5635b8a4836f12db9faa00d7cf"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5536.json",
+      "sha256": "ed1a1e04ac9506e89375720b3b99e8e26f049f9964f50a2f2dc07ab13355f885"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5545.json",
+      "sha256": "3960d3693eaf6c2e6fe7ab56dc3a170b85a07acb592c24f4d488e289341f8f8d"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5546.json",
+      "sha256": "71a5b71924aba4303ccbd5527244e5d31ff2430dac5b3daa47b901c00a0303bd"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5547.json",
+      "sha256": "fe5570249c3fe0282be65ea879b10bac8291fbece2b34a05ae6fdb214ba2b4d5"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5548.json",
+      "sha256": "6f5e60f3b28c2a8880ec23066622d7bd5bcd6d82460835bdfd2b172e787983f1"
+    },
+    {
+      "path": "vectors/protocol/VER-CONF-5549.json",
+      "sha256": "2fcdd39cde873ea21a5daf61cdd3ab81c5bbd3d0478014d3a0ef6097c5381fc1"
+    },
+    {
       "path": "vectors/superseded.txt",
       "sha256": "b7e3663421d778f5e13e338ab0f041eca454bcf785af7e155be8b2cef91a4786"
     }
@@ -6252,6 +6604,6 @@
     "Protocol"
   ],
   "standard": "BPA",
-  "vectors": 1498,
+  "vectors": 1586,
   "version": "1.0.0-rc2"
 }

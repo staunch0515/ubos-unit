@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (67)
+## DEC (68)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -161,4 +161,5 @@ depends_on: [UBS-IDX-00]
 | DEC-065 | Policy-engine library: the `cedar-policy` crate in `ubos-authz` (step 10, part 10a) | `90-decisions/000-index.md` |
 | DEC-066 | BPA 1.0-rc2 governance sheets: grammar, objects, registry, matching and cascade (step 10, part 10b) | `90-decisions/000-index.md` |
 | DEC-067 | BPA 1.0-rc2 validations, decisions and the Core clauses of gate 1b (step 10, part 10c) | `90-decisions/000-index.md` |
+| DEC-068 | BPA 1.0-rc2 UBTP: envelope, handshake, mutate, query, subscriptions, flow control and bindings (step 10, part 10d) | `90-decisions/000-index.md` |
 

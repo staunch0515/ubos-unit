@@ -30,6 +30,11 @@ range is covered. BPA 1.0-rc1 stays frozen as tagged (DEC-045).
   `message` and `reason` of `DAT-Process`; error code `RULE.VALIDATION_FAILED`; the supersession
   of released vectors (`superseded.txt`, STD-CONF-030): VER-CONF-3361 and VER-CONF-4036 of
   1.0-rc1; 116 vectors.
+- Part 10d (DEC-068): UBTP — the in-process binding as the adapter operation `ubtp`, the
+  envelope rules and `INT.PROTOCOL_ERROR`, the handshake with in-process credentials and
+  limits, `mutate` with idempotency, `base`, `validate_only` and pending results, the `query`
+  kinds, subscriptions with cursors, emits, retention and acknowledgement windows, `cancel`
+  and `ping`; 88 vectors.
 
 ## Known limits
 

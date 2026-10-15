@@ -17,13 +17,13 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from bpa.canon import canonical                          # noqa: E402
-from bpa.ops import run_step, pointer, run_vector, strip  # noqa: E402
+from bpa.ops import run_step, pointer, run_vector, strip, UBTP_STRIPPED  # noqa: E402
 from bpa.spec import clauses, REPO                       # noqa: E402
 from bpa.store import Store                              # noqa: E402
 
 OUT = os.path.join(REPO, 'standard', 'vectors')
 AREAS = ['fnd', 'obj', 'cls', 'kind', 'ver', 'time', 'txn', 'proof', 'err', 'model', 'history', 'proofs', 'language', 'execution',
-         'sheets', 'rules', 'core1b']
+         'sheets', 'rules', 'core1b', 'ubtp']
 # Stateful operations whose expected results are stripped of implementation-dependent members
 # and compared as subsets by default (STD-CONF-005, rule 6); the operations of step 1b keep
 # exact matching.
@@ -32,7 +32,7 @@ STRIPPED = ('commit', 'read', 'read_ledger', 'merge', 'diff', 'export_state', 'c
             'tag', 'tag_info', 'release', 'revert', 'process_info', 'lineage', 'derivation', 'impact', 'outbox',
             'bulk', 'commit_record', 'prove', 'consistency_proof', 'tenant_root', 'export_archive',
             'import_archive', 'resolve', 'query', 'execute', 'journal', 'metering', 'metering_total', 'replay',
-            'verify_asset', 'bpu_descriptor', 'bpu_state', 'verify_bpu', 'cascade', 'explain_cascade', 'decide')
+            'verify_asset', 'bpu_descriptor', 'bpu_state', 'verify_bpu', 'cascade', 'explain_cascade', 'decide', 'ubtp')
 
 
 # The time-zone vectors use only transitions that are stable in every tz database release
@@ -92,7 +92,7 @@ class Gen:
                     step['expect'] = {'same_as': s['same_as']}
                 elif phase == 'steps' and s.get('check', True):
                     stateful = s['op'] in STRIPPED
-                    res = strip(out[1]) if stateful else out[1]
+                    res = strip(out[1], UBTP_STRIPPED if s['op'] == 'ubtp' else ()) if stateful else out[1]
                     step['expect'] = {'result': res, 'match': s.get('match', 'subset' if stateful else 'exact')}
                 vec[phase].append(step)
         last = vec['steps'][-1].get('expect', {})

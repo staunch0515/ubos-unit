@@ -11,8 +11,8 @@
 | Ledger | 9 | 9 | 100% | 55 | 52 |
 | Proof | 9 | 9 | 100% | 73 | 16 |
 | Governance | 9 | 9 | 100% | 205 | 0 |
-| Protocol | 6 | 0 | 0% | 0 | 0 |
-| **All** | **165** | **159** | **96%** | **1498** | **453** |
+| Protocol | 6 | 6 | 100% | 88 | 0 |
+| **All** | **165** | **165** | **100%** | **1586** | **453** |
 
 ## Clauses
 
@@ -208,10 +208,10 @@
 | STD-LGS-023 | Governance | yes | 7 (VER-CONF-5025…VER-CONF-5031) |
 | STD-LGS-030 | Governance | yes | 28 (VER-CONF-5035…VER-CONF-5062) |
 | STD-LGS-031 | Governance | yes | 20 (VER-CONF-5065…VER-CONF-5084) |
-| STD-PROTO-001 | Protocol | yes | **none** |
-| STD-PROTO-002 | Protocol | yes | **none** |
-| STD-PROTO-010 | Protocol | yes | **none** |
-| STD-PROTO-011 | Protocol | no | **none** |
-| STD-PROTO-012 | Protocol | yes | **none** |
-| STD-PROTO-013 | Protocol | yes | **none** |
-| STD-PROTO-020 | Protocol | yes | **none** |
+| STD-PROTO-001 | Protocol | yes | 15 (VER-CONF-5400…VER-CONF-5414) |
+| STD-PROTO-002 | Protocol | yes | 12 (VER-CONF-5420…VER-CONF-5431) |
+| STD-PROTO-010 | Protocol | yes | 19 (VER-CONF-5440…VER-CONF-5458) |
+| STD-PROTO-011 | Protocol | no | 15 (VER-CONF-5470…VER-CONF-5484) |
+| STD-PROTO-012 | Protocol | yes | 15 (VER-CONF-5500…VER-CONF-5514) |
+| STD-PROTO-013 | Protocol | yes | 7 (VER-CONF-5530…VER-CONF-5536) |
+| STD-PROTO-020 | Protocol | yes | 5 (VER-CONF-5545…VER-CONF-5549) |

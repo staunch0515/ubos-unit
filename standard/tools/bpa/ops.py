@@ -172,7 +172,13 @@ STATEFUL = {
     'validate': lambda s, i: s.validate(i.get('branch', 'main'), i['changes'], i.get('process')),
     'decide': lambda s, i: s.decide(i.get('branch', 'main'), i['object_id'], i['port'], i.get('params'),
                                     i.get('ctx'), i),
+    # BPA 1.0-rc2, PH-1 step 10d (DEC-068): the in-process UBTP binding
+    'ubtp': lambda s, i: s.ubtp(i['messages'], i.get('session', 's1')),
 }
+
+# Members of `ubtp` frames an implementation assigns (process identifiers), stripped like the
+# implementation-dependent members (DEC-068).
+UBTP_STRIPPED = ('process_id', 'pending_change_id')
 
 OPERATIONS = set(PURE) | set(STATEFUL)
 IMPLEMENTATION_DEPENDENT = ('version_hash', 'entry_hash', 'root', 'head', 'versions',
@@ -192,12 +198,12 @@ IMPLEMENTATION_DEPENDENT = ('version_hash', 'entry_hash', 'root', 'head', 'versi
                             'sheet_version', 'bindings')
 
 
-def strip(value):
+def strip(value, extra=()):
     """Remove implementation-dependent members of a stateful result (STD-CONF-005, rule 6)."""
     if isinstance(value, dict):
-        return {k: strip(v) for k, v in value.items() if k not in IMPLEMENTATION_DEPENDENT}
+        return {k: strip(v, extra) for k, v in value.items() if k not in IMPLEMENTATION_DEPENDENT and k not in extra}
     if isinstance(value, list):
-        return [strip(v) for v in value]
+        return [strip(v, extra) for v in value]
     return value
 
 
