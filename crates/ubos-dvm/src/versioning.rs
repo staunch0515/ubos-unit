@@ -993,6 +993,25 @@ impl Engine {
         if let Some(exp) = repo.expires_at(branch)? {
             out["expires_at"] = json!(exp);
         }
+        // FR-TEN-031 (step 13c): an overlay holds only the tenant's own versions locally
+        if m.kind == "overlay" {
+            let mut versions: u64 = 0;
+            let mut objects = std::collections::BTreeSet::new();
+            let mut commits: u64 = 0;
+            for cid in repo.first_parents(head)? {
+                let c = repo.commit(cid)?;
+                if c.branch != branch || c.cseq == 0 {
+                    break;
+                }
+                commits += 1;
+                for (oid, ops) in &c.ops {
+                    versions += ops.len() as u64;
+                    objects.insert(oid.clone());
+                }
+            }
+            out["overlay"] = json!({"local_commits": commits, "local_versions": versions,
+                "local_objects": objects.len()});
+        }
         if let Some(pl) = m.parent_line {
             out["parent_line"] = json!({"branch": pl.branch, "mode": pl.mode});
             if let Some(pin) = pl.pin {

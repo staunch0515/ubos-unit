@@ -171,6 +171,7 @@ impl Engine {
             if !d.errors.is_empty() {
                 rec["errors"] = json!(d.errors);
             }
+            self.security_append("authz.deny", rec.clone())?;
             self.decision_log.push(rec);
         }
         Ok(d)

@@ -73,6 +73,24 @@ without them; it enforces every instruction on its resource and on the branch, r
 invisible resource as `IAM.NOT_FOUND`, filters query rows and logs denials
 (`decision_log`).
 
+Step 13c (DEC-073) adds the history queries and the audit trail (`ubos-dvm/src/audit.rs`):
+`changes {branch, from?, to?, class?, author?, process_id?, object_id?, field?, limit?,
+cursor?}` and `transitions {…, from_state?, to_state?}` walk the first-parent history of a
+branch (a bound is an instant, `{commit}` or `{cseq}`) and page with signed snapshot
+cursors in `(cseq, object_id)` order; `audit {branch, object_id}` reports per commit who
+(principal, on behalf of whom), what (operation, field changes, states), when (transaction
+and valid time), why (message, reason, change set), how (channel, client, process kind and
+trigger) and the rule binding. The security log is hash-chained and append-only
+(`security_log {from?, to?, limit?}`, `verify_security_log`): denials of the decision log,
+policy changes, key rotation, archive export and import, limits and index declarations.
+`view {branch, object_id | class, mode?, staged?, role?, device?, locale?}`
+(`ubos-dvm/src/views.rs`) resolves the declared view of the mode (STD-CLS-023; a `views`
+item `{mode, view: uri}` of a class, the view object's `layout` or the `layout` of the
+first matching `variants` item) or generates one, and returns the data, the field states
+(hidden, read-only, required, masked) and the actions for the principal, the violations of
+staged edits and a `payload_hash`. `branch_info` of an overlay reports its local commits,
+versions and objects.
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh

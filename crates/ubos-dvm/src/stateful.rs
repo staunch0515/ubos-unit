@@ -260,12 +260,20 @@ impl Engine {
     pub fn commit(&mut self, input: &Value) -> Result<Value, BpaError> {
         let branch = s(input, "branch").unwrap_or("main").to_string();
         let mut next = self.next_process;
+        // the principal of a host input is the initiator unless the process names one
+        let principal = s(input, "principal").unwrap_or(&self.principal).to_string();
+        let mut process = input.get("process").cloned();
+        if let Some(b) = s(input, "on_behalf_of")
+            && let Some(p) = process.get_or_insert_with(|| json!({})).as_object_mut()
+        {
+            p.entry("on_behalf_of").or_insert_with(|| json!(b));
+        }
         let p = crate::versioning::process(
             self.store.as_mut(),
-            input.get("process"),
+            process.as_ref(),
             "action",
             &mut next,
-            &self.principal,
+            &principal,
         )?;
         self.next_process = next;
         // STD-TXN-040: a known key returns the stored result without effect.
@@ -317,6 +325,8 @@ impl Engine {
             effects,
         )?;
         self.instances.extend(classes);
+        // FR-AUD-012 (step 13c): policy changes go to the security log
+        self.log_policy_changes(&branch, &r)?;
         Ok(r)
     }
 
@@ -1394,6 +1404,12 @@ pub(crate) fn commit_on(
     }
     if let Some(a) = process.p.get("initiator").filter(|v| v.is_string()) {
         tx.extra.insert("author".into(), a.clone());
+    }
+    // the audit trail (FR-AUD-011, step 13c): on behalf of whom, why and how
+    for k in ["on_behalf_of", "channel", "client", "message", "reason"] {
+        if let Some(v) = process.p.get(k).filter(|v| v.is_string()) {
+            tx.extra.insert(k.into(), v.clone());
+        }
     }
     tx.extra
         .insert("retroactive".into(), result["retroactive"].clone());

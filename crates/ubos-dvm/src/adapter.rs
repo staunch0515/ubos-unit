@@ -70,6 +70,12 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "authorize",
     "decision_log",
     "policy_schema",
+    "changes",
+    "transitions",
+    "audit",
+    "view",
+    "security_log",
+    "verify_security_log",
     "validate",
     "decide",
 ];
@@ -316,9 +322,22 @@ impl Adapter {
             "authorize" => self.engine.authorize_op(i)?,
             "decision_log" => Value::Array(self.engine.drain_decision_log()),
             "policy_schema" => self.engine.policy_schema()?,
-            "declare_index" => self
-                .engine
-                .declare_index(text(i, "class")?, text(i, "field")?)?,
+            "changes" => self.engine.changes(i)?,
+            "transitions" => self.engine.transitions(i)?,
+            "audit" => self.engine.audit(i)?,
+            "view" => self.engine.view(i)?,
+            "security_log" => self.engine.security_log(i)?,
+            "verify_security_log" => self.engine.verify_security_log()?,
+            "declare_index" => {
+                let r = self
+                    .engine
+                    .declare_index(text(i, "class")?, text(i, "field")?)?;
+                self.engine.security_append(
+                    "admin.declare_index",
+                    json!({"class": text(i, "class")?, "field": text(i, "field")?}),
+                )?;
+                r
+            }
             "check_sheet" => ubos_rules::ops::check_sheet(i)?,
             "specificity" => ubos_rules::ops::specificity(i)?,
             "eval_expr" => ubos_expr::eval_expr(i, None)?,
@@ -351,13 +370,27 @@ impl Adapter {
                 .verify_bpu(s_or(i, "branch", "main"), text(i, "class")?)?,
             "node_did" => self.engine.node_did()?,
             "did_document" => self.engine.did_document(field(i, "did")?)?,
-            "rotate_node_key" => self.engine.rotate_node_key(field(i, "seed")?)?,
+            "rotate_node_key" => {
+                let r = self.engine.rotate_node_key(field(i, "seed")?)?;
+                self.engine
+                    .security_append("key.rotate", json!({"did": r.get("did")}))?;
+                r
+            }
             "commit_record" => self.engine.commit_record(i)?,
             "prove" => self.engine.prove(i)?,
             "consistency_proof" => self.engine.consistency_proof(i)?,
             "tenant_root" => self.engine.tenant_root()?,
-            "export_archive" => self.engine.export_archive()?,
-            "import_archive" => self.engine.import_archive(field(i, "archive")?)?,
+            "export_archive" => {
+                let r = self.engine.export_archive()?;
+                self.engine.security_append("export.archive", json!({}))?;
+                r
+            }
+            "import_archive" => {
+                let r = self.engine.import_archive(field(i, "archive")?)?;
+                self.engine
+                    .security_append("admin.import_archive", json!({}))?;
+                r
+            }
             "sign" => ubos_crypto::sign(
                 &ubos_crypto::unhex32(field(i, "seed")?, "seed")?,
                 field(i, "content_id")?
@@ -462,6 +495,19 @@ impl Adapter {
                 if let Some(n) = i.get("max_scan").and_then(Value::as_u64) {
                     self.engine.max_scan = Some(n);
                 }
+                let mut limits = Map::new();
+                for k in [
+                    "max_body_bytes",
+                    "max_derivation_inputs",
+                    "max_violations",
+                    "max_scan",
+                ] {
+                    if let Some(v) = i.get(k).filter(|v| !v.is_null()) {
+                        limits.insert(k.into(), v.clone());
+                    }
+                }
+                self.engine
+                    .security_append("admin.set_limits", Value::Object(limits))?;
                 Value::Bool(true)
             }
             "list_objects" | "traverse" | "class_at" => self.engine.other(op, i)?,

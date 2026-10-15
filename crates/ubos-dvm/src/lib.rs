@@ -7,6 +7,7 @@
 //! operations of STD-CONF-005 for the runner (`ubos-forge`).
 
 pub mod adapter;
+pub mod audit;
 pub mod authz;
 pub mod execution;
 pub mod expressions;
@@ -36,6 +37,7 @@ pub use ubos_store as store;
 pub use ubos_types as types;
 pub mod verify;
 pub mod versioning;
+pub mod views;
 
 pub use adapter::{Adapter, STATEFUL_OPERATIONS};
 pub use stateful::Engine;
