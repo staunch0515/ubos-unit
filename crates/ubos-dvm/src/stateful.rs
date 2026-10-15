@@ -701,9 +701,9 @@ fn create(
     }
     let slug = s(ch, "slug").unwrap_or_default().to_string();
     names::check_name("slug", &slug)?;
-    let body = repo
-        .reg
-        .check_body(&class, ch.get("body").unwrap_or(&json!({})), false)?;
+    let mut given = object(ch.get("body").unwrap_or(&json!({})));
+    crate::sheets::sheet_body(&class, &mut given)?;
+    let body = repo.reg.check_body(&class, &Value::Object(given), false)?;
     let a = ch
         .get("valid")
         .and_then(|v| s(v, "from"))
@@ -780,10 +780,15 @@ fn update(
         retro_to = None;
     } else {
         let mut body = base_body.clone();
-        body.extend(
-            repo.reg
-                .check_body(&o.class, ch.get("body").unwrap_or(&json!({})), true)?,
-        );
+        let given = ch.get("body").unwrap_or(&json!({})).clone();
+        if o.class == "GovernanceSheet"
+            && given.get("source").is_some()
+            && given.get("ast").is_none()
+        {
+            body.remove("ast");
+        }
+        body.extend(repo.reg.check_body(&o.class, &given, true)?);
+        crate::sheets::sheet_body(&o.class, &mut body)?;
         repo.reg
             .check_body(&o.class, &Value::Object(body.clone()), false)?;
         let slug = s(ch, "slug").unwrap_or(&o.slug).to_string();
@@ -878,12 +883,25 @@ pub(crate) fn commit_on(
                 exts.push(v["body"].clone());
             }
         }
-        exts
+        // sheets and property declarations are checked over the whole set (STD-LGS-022)
+        let mut has_sheets = false;
+        for c in crate::sheets::SHEET_CLASSES {
+            has_sheets |= !r.objects_in(&branch, cseq, Some(c))?.is_empty();
+        }
+        (exts, has_sheets)
     };
+    let (exts, has_sheets) = exts;
     let writes_extension = changes
         .iter()
         .any(|c| s(c, "class") == Some("ClassExtension"));
-    let full = needs_full_state(registry) || !exts.is_empty() || writes_extension;
+    let writes_sheet = changes
+        .iter()
+        .any(|c| s(c, "class").is_some_and(|k| crate::sheets::SHEET_CLASSES.contains(&k)));
+    let full = needs_full_state(registry)
+        || !exts.is_empty()
+        || writes_extension
+        || has_sheets
+        || writes_sheet;
     let reg_ext;
     let reg: &Registry = if exts.is_empty() {
         registry
@@ -1096,6 +1114,7 @@ pub(crate) fn commit_on(
         checks.relationships(&mut ended, &mut result)?;
         checks.integrity(&written)?;
         checks.extensions_apply(registry, &written)?;
+        crate::sheets::check_sheets(&mut repo, &tx, &written)?;
     }
     let written_classes: Vec<String> = result["versions"]
         .as_object()

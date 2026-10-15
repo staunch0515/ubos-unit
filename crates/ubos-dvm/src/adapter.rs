@@ -63,6 +63,8 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "tenant_root",
     "export_archive",
     "import_archive",
+    "cascade",
+    "explain_cascade",
 ];
 
 const ENVELOPE_REQUIRED: &[&str] = &[
@@ -298,6 +300,8 @@ impl Adapter {
             "validate_value" => crate::expressions::validate(i)?,
             "check_expr" => ubos_expr::check_expr(i)?,
             "parse_sheet" => ubos_rules::ops::parse_sheet(i)?,
+            "cascade" => self.engine.cascade(i)?,
+            "explain_cascade" => self.engine.explain_cascade(i)?,
             "check_sheet" => ubos_rules::ops::check_sheet(i)?,
             "specificity" => ubos_rules::ops::specificity(i)?,
             "eval_expr" => ubos_expr::eval_expr(i, None)?,

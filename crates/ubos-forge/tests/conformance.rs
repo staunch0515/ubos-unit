@@ -3,9 +3,9 @@
 //! This is the test body of the mutation score (EXIT-1-11, DEC-061): every vector of the
 //! profiles the kernel claims must pass; the PostgreSQL run is `forge conform --backend
 //! postgres`. The kernel claims BPA 1.0-rc1: of the vectors that 1.0-rc2 adds (DEC-064), it
-//! runs those that use only the operations the steps 11–14 have implemented so far
-//! (`RC2_OPERATIONS`, DEC-070) until step 11c claims the release's clauses; the vectors a
-//! later release supersedes are skipped (DEC-067).
+//! runs those whose clauses the steps 11–14 have implemented so far (`RC2_CLAUSES`,
+//! DEC-070) until step 11c claims the release's clauses; the vectors a later release
+//! supersedes are skipped (DEC-067).
 
 use std::path::{Path, PathBuf};
 use ubos_dvm::Adapter;
@@ -18,17 +18,27 @@ static ALLOC: cap::Cap<std::alloc::System> = cap::Cap::new(std::alloc::System, u
 /// The release the kernel claims (STD-CONF-004): its manifest lists the vectors to run.
 const CLAIMED_RELEASE: &str = "1.0-rc1";
 
-/// The release in implementation (PH-1 steps 11–14): a vector of it runs when every one of
-/// its operations is implemented (the pure operations of `ubos-rules`, step 11a).
+/// The release in implementation (PH-1 steps 11–14): a vector of it runs when every clause
+/// it verifies is implemented (DEC-070: the governance sheets of step 11b).
 const NEXT_RELEASE: &str = "1.0-rc2";
-const RC2_OPERATIONS: &[&str] = &["parse_sheet", "check_sheet", "specificity"];
+const RC2_CLAUSES: &[&str] = &[
+    "STD-LGS-001",
+    "STD-LGS-002",
+    "STD-LGS-010",
+    "STD-LGS-011",
+    "STD-LGS-020",
+    "STD-LGS-021",
+    "STD-LGS-022",
+    "STD-LGS-023",
+];
 
-/// The operations a vector uses, in `setup` and `steps`.
-fn operations(v: &serde_json::Value) -> Vec<String> {
-    ["setup", "steps"]
-        .iter()
-        .flat_map(|k| v[k].as_array().cloned().unwrap_or_default())
-        .filter_map(|s| s["op"].as_str().map(str::to_string))
+/// The clauses a vector verifies.
+fn clauses(v: &serde_json::Value) -> Vec<String> {
+    v["clauses"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|c| c.as_str().map(str::to_string))
         .collect()
 }
 
@@ -86,9 +96,9 @@ fn every_vector_passes_in_memory() {
         // a vector outside the claimed release, or one a later release supersedes, is skipped
         let id = v["id"].as_str().unwrap_or_default();
         let implemented = next.contains(id)
-            && operations(&v)
+            && clauses(&v)
                 .iter()
-                .all(|op| RC2_OPERATIONS.contains(&op.as_str()));
+                .all(|c| RC2_CLAUSES.contains(&c.as_str()));
         if (!claimed.contains(id) && !implemented) || superseded.contains(id) {
             skipped += 1;
             continue;

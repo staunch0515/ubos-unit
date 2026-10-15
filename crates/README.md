@@ -28,7 +28,8 @@ commits can be grouped (`Engine::commit_group`, DSN-DVM-006).
 
 PH-1 step 11 (DEC-070) adds `ubos-rules`, the pure engine of governance sheets (STD-LGS):
 grammar, AST, property registry, authoring checks, specificity, the rank and overlap
-analysis of the cascade; the sheet objects and the cascade over a state are the kernel's.
+analysis of the cascade and the cascade itself; the sheet objects, their checks at commit
+and the evaluation of qualifiers over a state are the kernel's (`ubos-dvm/src/sheets.rs`).
 
 Run the BPA vectors tagged `prototype`:
 

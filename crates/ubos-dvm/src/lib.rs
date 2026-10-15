@@ -12,6 +12,7 @@ pub mod expressions;
 pub mod host;
 pub mod proofs;
 pub mod relations;
+pub mod sheets;
 pub mod stateful;
 pub mod transactions;
 pub mod verification;

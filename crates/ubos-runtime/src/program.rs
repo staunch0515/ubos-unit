@@ -35,6 +35,7 @@ pub const IMPLEMENTED: &[&str] = &[
     "read.timeline",
     "read.diff",
     "read.effective",
+    "read.explain",
     "run.port",
     "run.super",
     "run.logic",
