@@ -2,9 +2,10 @@
 //!
 //! This is the test body of the mutation score (EXIT-1-11, DEC-061): every vector of the
 //! profiles the kernel claims must pass; the PostgreSQL run is `forge conform --backend
-//! postgres`. The kernel claims BPA 1.0-rc1: the vectors that 1.0-rc2 adds (DEC-064) are
-//! skipped until the steps that implement them (11–14) claim the release, as are the vectors
-//! a later release supersedes (DEC-067).
+//! postgres`. The kernel claims BPA 1.0-rc1: of the vectors that 1.0-rc2 adds (DEC-064), it
+//! runs those that use only the operations the steps 11–14 have implemented so far
+//! (`RC2_OPERATIONS`, DEC-070) until step 11c claims the release's clauses; the vectors a
+//! later release supersedes are skipped (DEC-067).
 
 use std::path::{Path, PathBuf};
 use ubos_dvm::Adapter;
@@ -16,6 +17,20 @@ static ALLOC: cap::Cap<std::alloc::System> = cap::Cap::new(std::alloc::System, u
 
 /// The release the kernel claims (STD-CONF-004): its manifest lists the vectors to run.
 const CLAIMED_RELEASE: &str = "1.0-rc1";
+
+/// The release in implementation (PH-1 steps 11–14): a vector of it runs when every one of
+/// its operations is implemented (the pure operations of `ubos-rules`, step 11a).
+const NEXT_RELEASE: &str = "1.0-rc2";
+const RC2_OPERATIONS: &[&str] = &["parse_sheet", "check_sheet", "specificity"];
+
+/// The operations a vector uses, in `setup` and `steps`.
+fn operations(v: &serde_json::Value) -> Vec<String> {
+    ["setup", "steps"]
+        .iter()
+        .flat_map(|k| v[k].as_array().cloned().unwrap_or_default())
+        .filter_map(|s| s["op"].as_str().map(str::to_string))
+        .collect()
+}
 
 /// The vector identifiers of a release, from the `files` of its manifest.
 fn released(standard: &Path, version: &str) -> std::collections::BTreeSet<String> {
@@ -61,6 +76,7 @@ fn every_vector_passes_in_memory() {
     let mut skipped = 0usize;
     let superseded = superseded(&dir);
     let claimed = released(&dir.join(".."), CLAIMED_RELEASE);
+    let next = released(&dir.join(".."), NEXT_RELEASE);
     for p in &paths {
         let v: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(p).expect("read")).expect("json");
@@ -69,7 +85,11 @@ fn every_vector_passes_in_memory() {
         // pass (EXIT-1-02); a vector of an unclaimed profile is skipped
         // a vector outside the claimed release, or one a later release supersedes, is skipped
         let id = v["id"].as_str().unwrap_or_default();
-        if !claimed.contains(id) || superseded.contains(id) {
+        let implemented = next.contains(id)
+            && operations(&v)
+                .iter()
+                .all(|op| RC2_OPERATIONS.contains(&op.as_str()));
+        if (!claimed.contains(id) && !implemented) || superseded.contains(id) {
             skipped += 1;
             continue;
         }
@@ -79,6 +99,10 @@ fn every_vector_passes_in_memory() {
             Outcome::NotApplicable(d) => failures.push(format!("{} not applicable: {d}", v["id"])),
         }
     }
+    eprintln!(
+        "conformance: {} vectors run, {skipped} skipped",
+        paths.len() - skipped
+    );
     assert!(
         failures.is_empty(),
         "{} of {} vectors fail ({skipped} outside the claimed release skipped):\n{}",
