@@ -410,6 +410,32 @@ impl Vae {
         self.call("verify_asset", &input)
     }
 
+    /// `view`: the view payload of an object or of a class form for the principal
+    /// (DSN-DVM-920…922; step 13c).
+    pub fn view(&mut self, ctx: &Context, input: Value) -> Result<Value, BpaError> {
+        self.call("view", &Self::with_ctx(ctx, input))
+    }
+
+    /// `audit`: the audit trail of an object (FR-AUD-011; step 13c).
+    pub fn audit(&mut self, ctx: &Context, input: Value) -> Result<Value, BpaError> {
+        self.call("audit", &Self::with_ctx(ctx, input))
+    }
+
+    /// `changes`: a change query over a branch (FR-QRY-051; step 13c).
+    pub fn changes(&mut self, ctx: &Context, input: Value) -> Result<Value, BpaError> {
+        self.call("changes", &Self::with_ctx(ctx, input))
+    }
+
+    /// `transitions`: a transition query over a branch (FR-QRY-052; step 13c).
+    pub fn transitions(&mut self, ctx: &Context, input: Value) -> Result<Value, BpaError> {
+        self.call("transitions", &Self::with_ctx(ctx, input))
+    }
+
+    /// `security_log`: the entries of the hash-chained security log (FR-AUD-012).
+    pub fn security_log(&mut self, input: Value) -> Result<Value, BpaError> {
+        self.call("security_log", &input)
+    }
+
     /// `explain`: the history of an object and, when a process is named, its lineage.
     pub fn explain(&mut self, input: Value) -> Result<Value, BpaError> {
         let mut out = json!({});
