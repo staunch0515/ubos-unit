@@ -9,10 +9,10 @@ use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::sync::Arc;
-use ubos_expr::{Env, Evaluator, Node, OrderKey, Resolver, Ty, Val, from_json, order_key};
+use ubos_expr::{Env, Evaluator, Node, OrderKey, Resolver, Ty, Val, from_json};
 use ubos_model::{CustomTypes, Registry};
+use ubos_types::BpaError;
 use ubos_types::values::validate_value;
-use ubos_types::{BpaError, canonical, content_id};
 use ubos_version::{Repo, State, at};
 
 /// Largest page of a query.
@@ -90,28 +90,6 @@ pub fn validate(i: &Value) -> Result<Value, BpaError> {
     }
 }
 
-/// Base64url without padding to bytes.
-fn b64u_decode(s: &str) -> Option<Vec<u8>> {
-    const A: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-    let mut out = Vec::new();
-    let mut acc: u32 = 0;
-    let mut bits = 0;
-    for c in s.bytes() {
-        if c == b'=' {
-            break;
-        }
-        let v = A.iter().position(|&x| x == c)? as u32;
-        acc = (acc << 6) | v;
-        bits += 6;
-        if bits >= 8 {
-            bits -= 8;
-            out.push((acc >> bits) as u8);
-            acc &= (1 << bits) - 1;
-        }
-    }
-    Some(out)
-}
-
 /// Reads objects of a snapshot by canonical URI, typed by their class (the `ref()` and
 /// `exists()` of a query's expressions).
 struct Reader<'a, 'r> {
@@ -144,48 +122,35 @@ impl Resolver for Reader<'_, '_> {
     }
 }
 
-/// Sort key of an `order_by` value: nulls first, then by the value's order key.
-fn sort_key(v: &Val) -> Result<Option<OrderKey>, BpaError> {
-    if v.is_null() {
-        return Ok(None);
-    }
-    order_key(v).map(Some).ok_or_else(|| {
-        BpaError::with_details(
-            "LOGIC.TYPE_ERROR",
-            json!({"position": 0, "message": "values are not ordered"}),
-        )
-    })
+/// A candidate row of a query: the object, its head version at the coordinates and the
+/// typed `this`.
+struct Row {
+    oid: String,
+    this: Val,
 }
 
 impl Engine {
-    /// `query` (STD-EXPR-011): the objects of a class (and its subclasses unless `only`)
-    /// at a snapshot that satisfy `where`, ordered by `order_by` then by object id, paged
-    /// by `limit` and an opaque cursor bound to the query and the commit.
+    /// `query` (STD-EXPR-010, -011; DSN-DVM-901…908): the objects of a class (and its
+    /// subclasses unless `only`) at a snapshot that satisfy `where`, ordered by `order_by`
+    /// then by object id, paged by `limit` and a signed cursor bound to the query and the
+    /// commit. Candidates come from a declared field index when a comparison of the
+    /// `where` yields a key range (DSN-DVM-902), else from the class, within the scan
+    /// budget of the profile (`QRY.SCAN_LIMIT`, DSN-DVM-903); the `where` is evaluated on
+    /// every candidate. `states` filters by lifecycle state, `select` returns field
+    /// values (`rows`), `group_by` and `aggregates` return `groups` (DSN-DVM-905).
     pub fn query(&mut self, i: &Value) -> Result<Value, BpaError> {
-        let spec = json!({
-            "from": i.get("from").cloned().unwrap_or(Value::Null),
-            "only": i.get("only").cloned().unwrap_or(Value::Null),
-            "where": i.get("where").cloned().unwrap_or(Value::Null),
-            "order_by": i.get("order_by").cloned().unwrap_or(Value::Null),
-            "limit": i.get("limit").cloned().unwrap_or(Value::Null),
-            "asof": i.get("asof").cloned().unwrap_or(Value::Null),
-        });
-        let qhash = content_id("ubos.chunk.v1", &spec)?;
+        let spec = ubos_query::spec_of(i)?;
         let branch = s(i, "branch").unwrap_or("main").to_string();
+        let key = self.cursor_key();
         let mut offset: u64 = 0;
         let sel = match s(i, "cursor").filter(|c| !c.is_empty()) {
             Some(c) => {
-                let cur: Value = b64u_decode(c)
-                    .and_then(|b| serde_json::from_slice(&b).ok())
-                    .ok_or_else(|| bad_query("unknown cursor"))?;
-                if !cur.is_object()
-                    || s(&cur, "q") != Some(qhash.as_str())
-                    || s(&cur, "branch") != Some(branch.as_str())
-                {
+                let cur = ubos_query::Cursor::decode(&key, c)?;
+                if cur.q != spec.hash || cur.branch != branch {
                     return Err(bad_query("the cursor belongs to another query"));
                 }
-                offset = cur.get("offset").and_then(Value::as_u64).unwrap_or(0);
-                json!({"commit": cur.get("commit").cloned().unwrap_or(Value::Null)})
+                offset = cur.offset;
+                json!({"commit": cur.commit})
             }
             None => {
                 let mut sel = json!({});
@@ -197,31 +162,19 @@ impl Engine {
                 sel
             }
         };
-        let cls = s(&spec, "from")
-            .filter(|c| self.registry.class(c).is_ok())
-            .ok_or_else(|| {
-                bad_query(&format!(
-                    "unknown class {}",
-                    s(&spec, "from").unwrap_or_default()
-                ))
-            })?
-            .to_string();
-        let limit = match &spec["limit"] {
-            Value::Null => DEFAULT_LIMIT,
-            Value::Number(n) => match n.as_u64() {
-                Some(l) if (1..=MAX_LIMIT).contains(&l) => l,
-                _ => return Err(bad_query(&format!("limit is 1 to {MAX_LIMIT}"))),
-            },
-            _ => return Err(bad_query(&format!("limit is 1 to {MAX_LIMIT}"))),
-        };
+        let cls = spec.from.clone();
+        if self.registry.class(&cls).is_err() {
+            return Err(bad_query(&format!("unknown class {cls}")));
+        }
+        let limit = spec.limit;
         let this_t = ubos_expr::class_type(&self.registry, &cls)?;
         let Ty::Obj(members) = &this_t else {
             unreachable!("a class type is an object")
         };
         let env = Env::new(Some(this_t.clone()), None, None, None);
-        let where_ = match spec.get("where").filter(|w| !w.is_null()) {
+        let where_ = match &spec.where_ {
             Some(w) => {
-                let ast = ubos_expr::parse(w)?;
+                let ast = ubos_expr::parse(&json!(w))?;
                 let t = ubos_expr::check(&ast, &mut env.clone())?;
                 if t != Ty::Boolean && !t.is_dyn() {
                     return Err(BpaError::with_details(
@@ -233,21 +186,57 @@ impl Engine {
             }
             None => None,
         };
-        let mut orders: Vec<(Node, bool)> = Vec::new();
-        for o in spec["order_by"].as_array().into_iter().flatten() {
-            let dir = o.get("dir").map(|d| d.as_str()).unwrap_or(Some("asc"));
-            if !o.is_object() || !matches!(dir, Some("asc" | "desc")) {
-                return Err(bad_query("order_by items are {path, dir}"));
+        let path_ast = |p: &str| -> Result<Node, BpaError> {
+            let text = if p == "this" || p.starts_with("this.") || p.starts_with("this?.") {
+                p.to_string()
+            } else {
+                format!("this.{p}")
+            };
+            let ast = ubos_expr::parse(&json!(text))?;
+            if !matches!(ast, Node::Member(..) | Node::Path(..)) {
+                return Err(bad_query("a path names a member of this"));
             }
-            let ast = ubos_expr::parse(o.get("path").unwrap_or(&Value::Null))?;
+            ubos_expr::check(&ast, &mut env.clone())?;
+            Ok(ast)
+        };
+        let mut orders: Vec<(Node, bool)> = Vec::new();
+        for o in &spec.order_by {
+            let ast = ubos_expr::parse(&json!(o.path))?;
             if !matches!(ast, Node::Member(..) | Node::Path(..)) {
                 return Err(bad_query("order_by names a path"));
             }
             ubos_expr::check(&ast, &mut env.clone())?;
-            orders.push((ast, dir == Some("desc")));
+            orders.push((ast, o.desc));
         }
-        let asof = s(&spec, "asof").map(str::to_string);
-        let only = spec["only"] == json!(true);
+        let selects: Vec<(String, Node)> = spec
+            .select
+            .iter()
+            .map(|p| path_ast(p).map(|a| (p.clone(), a)))
+            .collect::<Result<_, _>>()?;
+        let groups: Vec<Node> = spec
+            .group_by
+            .iter()
+            .map(|p| path_ast(p))
+            .collect::<Result<_, _>>()?;
+        let aggs: Vec<Option<Node>> = spec
+            .aggregates
+            .iter()
+            .map(|a| match s(a, "path") {
+                Some(p) => path_ast(p).map(Some),
+                None => Ok(None),
+            })
+            .collect::<Result<_, _>>()?;
+        let asof = spec.asof.clone();
+        let only = spec.only;
+        let reaches = where_.as_ref().is_some_and(ubos_query::reaches_objects)
+            || orders.iter().any(|(a, _)| ubos_query::reaches_objects(a))
+            || selects.iter().any(|(_, a)| ubos_query::reaches_objects(a))
+            || groups.iter().any(ubos_query::reaches_objects)
+            || aggs.iter().flatten().any(ubos_query::reaches_objects);
+        let profile = s(i, "profile").unwrap_or("standard");
+        let budget = self
+            .max_scan
+            .unwrap_or_else(|| ubos_query::scan_budget(profile));
 
         let now = self.now.clone();
         let reg = &self.registry;
@@ -256,11 +245,79 @@ impl Engine {
             _ => now[..10].to_string(),
         };
         let authority = self.store.authority();
+        // the view path (a parent line, a tag or transaction-time coordinate, or
+        // expressions reaching other objects) materialises the snapshot; the index path
+        // reads the candidates of the class or of a field index (DSN-DVM-902, -903)
+        let view_path = reaches
+            || ["tag", "tx_time"].iter().any(|k| sel.get(*k).is_some())
+            || Repo::new(self.store.as_mut(), reg)
+                .branch_meta(&branch)?
+                .parent_line
+                .is_some();
         let mut repo = Repo::new(self.store.as_mut(), reg);
-        let (view, snap) = repo.view(&branch, &sel)?;
-        let st = &view.state;
-        // candidate objects and their bodies, by object id
-        let mut cands: Vec<(String, Val)> = Vec::new();
+        let (st, commit_id, evaluated_at): (State, String, Value) = if view_path {
+            let (view, snap) = repo.view(&branch, &sel)?;
+            let commit_id = repo.commit(snap.commit)?.commit_id;
+            (view.state, commit_id, json!(view.evaluated_at))
+        } else {
+            let snap = repo.select(&branch, &sel)?;
+            let c = repo.commit(snap.commit)?;
+            let (cseq, commit_id) = (c.cseq, c.commit_id);
+            let classes: Vec<String> = if only {
+                vec![cls.clone()]
+            } else {
+                reg.subclasses(&cls)
+            };
+            let indexed = reg.indexed_fields(&cls);
+            let bounds = where_
+                .as_ref()
+                .map(|w| ubos_query::bounds(w, &indexed))
+                .unwrap_or_default();
+            let scanned = match ubos_query::best_bound(&bounds) {
+                Some(b) => repo.field_scan(
+                    &branch,
+                    cseq,
+                    &classes,
+                    &b.field,
+                    b.lo.as_deref(),
+                    b.hi.as_deref(),
+                    (budget as usize).saturating_add(1),
+                )?,
+                None => None,
+            };
+            let objects = match scanned {
+                Some(rows) => {
+                    if rows.len() as u64 > budget {
+                        return Err(scan_limit(budget, rows.len() as u64, &cls, None));
+                    }
+                    let ids: Vec<String> = rows.into_iter().map(|(id, _)| id).collect();
+                    repo.objects_in_ids(&branch, cseq, &ids)?
+                }
+                None => {
+                    let mut n = 0u64;
+                    for c in &classes {
+                        n += repo.count_in(&branch, cseq, Some(c))?;
+                    }
+                    if n > budget {
+                        let hint = where_.as_ref().and_then(ubos_query::suggested_index);
+                        return Err(scan_limit(budget, n, &cls, hint.as_deref()));
+                    }
+                    let mut all = std::collections::BTreeMap::new();
+                    for c in &classes {
+                        all.extend(repo.objects_in(&branch, cseq, Some(c))?);
+                    }
+                    all
+                }
+            };
+            let st = State {
+                objects,
+                ledger: Vec::new(),
+            };
+            let ev = json!({&branch: commit_id});
+            (st, commit_id, ev)
+        };
+        // the candidates: class, liveness, the segment at asof, the lifecycle state
+        let mut cands: Vec<Row> = Vec::new();
         for (oid, o) in &st.objects {
             let lin = &reg.class(&o.class)?.linearization;
             let hit = if only {
@@ -279,6 +336,14 @@ impl Engine {
             if v["tombstone"] == json!(true) {
                 continue;
             }
+            if !spec.states.is_empty()
+                && !v
+                    .get("state")
+                    .and_then(Value::as_str)
+                    .is_some_and(|st| spec.states.iter().any(|x| x == st))
+            {
+                continue;
+            }
             let body: serde_json::Map<String, Value> = v["body"]
                 .as_object()
                 .into_iter()
@@ -286,38 +351,58 @@ impl Engine {
                 .filter(|(k, _)| members.contains_key(*k))
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect();
-            cands.push((oid.clone(), from_json(&this_t, &Value::Object(body))));
+            cands.push(Row {
+                oid: oid.clone(),
+                this: from_json(&this_t, &Value::Object(body)),
+            });
         }
-        let commit_id = repo.commit(snap.commit)?.commit_id;
         let reader = Reader {
             repo: RefCell::new(&mut repo),
-            st,
+            st: &st,
             reg,
             authority,
             asof: asof.clone(),
             default_valid: &default_valid,
         };
-        let mut rows: Vec<(String, Vec<Option<OrderKey>>)> = Vec::new();
-        for (oid, this) in cands {
-            if let Some(w) = &where_ {
-                let mut e = Evaluator::new(&env);
-                e.this = Some(this.clone());
-                e.resolver = Some(&reader);
-                if e.eval(w)? != Val::Bool(true) {
-                    continue;
-                }
+        let eval = |ast: &Node, this: &Val| -> Result<Val, BpaError> {
+            let mut e = Evaluator::new(&env);
+            e.this = Some(this.clone());
+            e.resolver = Some(&reader);
+            e.eval(ast)
+        };
+        let mut rows: Vec<(Row, Vec<Option<OrderKey>>)> = Vec::new();
+        for row in cands {
+            if let Some(w) = &where_
+                && eval(w, &row.this)? != Val::Bool(true)
+            {
+                continue;
             }
             let mut keys = Vec::with_capacity(orders.len());
             for (ast, _) in &orders {
-                let mut e = Evaluator::new(&env);
-                e.this = Some(this.clone());
-                e.resolver = Some(&reader);
-                keys.push(sort_key(&e.eval(ast)?)?);
+                keys.push(ubos_query::sort_key(&eval(ast, &row.this)?)?);
             }
-            rows.push((oid, keys));
+            rows.push((row, keys));
         }
-        // sort: by object id, then stably by each key from the last to the first
-        rows.sort_by(|a, b| a.0.cmp(&b.0));
+        if !spec.aggregates.is_empty() {
+            let mut grouped = Vec::with_capacity(rows.len());
+            for (row, _) in &rows {
+                let ks: Vec<Val> = groups
+                    .iter()
+                    .map(|g| eval(g, &row.this))
+                    .collect::<Result<_, _>>()?;
+                let vs: Vec<Val> = aggs
+                    .iter()
+                    .map(|a| match a {
+                        Some(ast) => eval(ast, &row.this),
+                        None => Ok(Val::Int(1)),
+                    })
+                    .collect::<Result<_, _>>()?;
+                grouped.push((ks, vs));
+            }
+            let groups = ubos_query::aggregate(&spec, grouped)?;
+            return Ok(json!({"groups": groups, "evaluated_at": evaluated_at}));
+        }
+        rows.sort_by(|a, b| a.0.oid.cmp(&b.0.oid));
         for (n, (_, desc)) in orders.iter().enumerate().rev() {
             rows.sort_by(|a, b| {
                 let o = a.1[n].cmp(&b.1[n]);
@@ -325,17 +410,43 @@ impl Engine {
             });
         }
         let total = rows.len() as u64;
-        let page: Vec<Value> = rows
+        let page: Vec<&Row> = rows
             .iter()
             .skip(offset as usize)
             .take(limit as usize)
-            .map(|(oid, _)| json!(oid))
+            .map(|(r, _)| r)
             .collect();
-        let mut out = json!({"objects": page, "evaluated_at": view.evaluated_at});
+        let mut out = json!({"objects": page.iter().map(|r| json!(r.oid)).collect::<Vec<_>>(),
+            "evaluated_at": evaluated_at});
+        if !selects.is_empty() {
+            let mut items = Vec::with_capacity(page.len());
+            for r in &page {
+                let mut fields = serde_json::Map::new();
+                for (p, ast) in &selects {
+                    fields.insert(p.clone(), ubos_expr::to_json(&eval(ast, &r.this)?)?);
+                }
+                items.push(json!({"object_id": r.oid, "fields": fields}));
+            }
+            out["rows"] = Value::Array(items);
+        }
         if offset + limit < total {
-            let c = json!({"branch": branch, "commit": commit_id, "offset": offset + limit, "q": qhash});
-            out["cursor"] = json!(ubos_types::addr::b64u(canonical(&c)?.as_bytes()));
+            let c = ubos_query::Cursor {
+                q: spec.hash.clone(),
+                branch,
+                commit: commit_id,
+                offset: offset + limit,
+            };
+            out["cursor"] = json!(c.encode(&key)?);
         }
         Ok(out)
     }
+}
+
+/// `QRY.SCAN_LIMIT` with the budget, the estimate and the suggested index (DSN-DVM-903).
+fn scan_limit(budget: u64, scanned: u64, class: &str, field: Option<&str>) -> BpaError {
+    let mut d = json!({"budget": budget, "estimated": scanned, "class": class});
+    if let Some(f) = field {
+        d["suggested_index"] = json!({"class": class, "field": f});
+    }
+    BpaError::with_details("QRY.SCAN_LIMIT", d)
 }

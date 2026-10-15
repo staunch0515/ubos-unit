@@ -38,7 +38,7 @@ component names below are used throughout this volume; each maps to a top-level 
 | `ubos-authz` | engine | policy engine integration (the `cedar-policy` crate, DEC-065), relations, masking, row filters | `ubos-model` |
 | `ubos-runtime` | engine | instruction set, `ctx` and `sys`, Rhai host, WASM host, profiles, metering, journal, replay, static analysis | `ubos-expr`, `ubos-authz` |
 | `ubos-flow` | engine | lifecycles, ports, guards, approvals, tasks, workflows, sagas | `ubos-runtime`, `ubos-rules` |
-| `ubos-query` | engine | criteria queries, aggregation, traversal, history queries, pagination | `ubos-time`, `ubos-authz` |
+| `ubos-query` | engine | criteria queries, aggregation, traversal, history queries, pagination | `ubos-time`, `ubos-expr`, `ubos-model`, `ubos-crypto`, `ubos-authz` |
 | `ubos-txn` | engine | processes, unit of work, flush orchestration, CAS, idempotency, outbox, provenance | all engine crates above |
 | `ubos-proof` | engine | evidence formats, seal format, verification primitives (shared with `ubos-verify`) | `ubos-tree`, `ubos-crypto` |
 | `ubos-dvm` | engine | host API facade (CTR-001) and host-service traits (CTR-002) | engine crates |

@@ -215,6 +215,20 @@ pub struct IndexRow {
     pub segments: Vec<(String, Option<String>, Hash)>,
 }
 
+/// A field index row (`field_index`, DSN-DVM-902): one indexed field value of the head
+/// version of an object.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FieldRow {
+    /// Object identifier (UUID text).
+    pub object_id: String,
+    /// Class name of the object.
+    pub class: String,
+    /// Field name.
+    pub field: String,
+    /// Order-preserving value key.
+    pub key: Vec<u8>,
+}
+
 /// The facts of one object at a commit ordinal, as read from the kernel indexes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObjectFacts {
@@ -497,6 +511,15 @@ pub trait StoreTx {
         cseq: u64,
         rows: &[IndexRow],
     ) -> Result<(), BpaError>;
+    /// Close the open field index rows of the changed objects and write the rows of their
+    /// new heads at `cseq` (`field_index`, DSN-DVM-902).
+    async fn upsert_field_rows(
+        &mut self,
+        branch_id: i64,
+        cseq: u64,
+        changed: &[String],
+        rows: &[FieldRow],
+    ) -> Result<(), BpaError>;
     /// Store tree nodes (idempotent by hash).
     async fn put_tree_nodes(&mut self, rows: &[NodeRow]) -> Result<(), BpaError>;
     /// Allocate dense sequences per ledger key from the counter rows (DSN-DVM-402); the
@@ -573,6 +596,26 @@ pub trait StoreRead {
         cseq: u64,
         class: Option<&str>,
     ) -> Result<Vec<(String, Option<ObjectFacts>)>, BpaError>;
+    /// The number of objects present at `cseq`, optionally of one class (DSN-DVM-903).
+    async fn count_objects(
+        &self,
+        branch_id: i64,
+        cseq: u64,
+        class: Option<&str>,
+    ) -> Result<u64, BpaError>;
+    /// The field index (DSN-DVM-902): objects of the classes whose head at `cseq` carries a
+    /// key in `[lo, hi]`, as `(object_id, key)` in key order then object order.
+    #[allow(clippy::too_many_arguments)]
+    async fn field_scan(
+        &self,
+        branch_id: i64,
+        cseq: u64,
+        classes: &[String],
+        field: &str,
+        lo: Option<&[u8]>,
+        hi: Option<&[u8]>,
+        limit: usize,
+    ) -> Result<Vec<(String, Vec<u8>)>, BpaError>;
     /// The facts of the given objects of the branch visible at `cseq` (merge previews).
     async fn objects_by_id(
         &self,

@@ -66,6 +66,7 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "cascade",
     "explain_cascade",
     "actions",
+    "declare_index",
     "validate",
     "decide",
 ];
@@ -303,11 +304,15 @@ impl Adapter {
             "validate_value" => crate::expressions::validate(i)?,
             "check_expr" => ubos_expr::check_expr(i)?,
             "parse_sheet" => ubos_rules::ops::parse_sheet(i)?,
+            "parse_query" => ubos_query::parse_query(field(i, "text")?)?,
             "cascade" => self.engine.cascade(i)?,
             "validate" => self.engine.validate(i)?,
             "decide" => self.engine.decide(i)?,
             "explain_cascade" => self.engine.explain_cascade(i)?,
             "actions" => self.engine.actions(i)?,
+            "declare_index" => self
+                .engine
+                .declare_index(text(i, "class")?, text(i, "field")?)?,
             "check_sheet" => ubos_rules::ops::check_sheet(i)?,
             "specificity" => ubos_rules::ops::specificity(i)?,
             "eval_expr" => ubos_expr::eval_expr(i, None)?,
@@ -426,7 +431,12 @@ impl Adapter {
                 ))
             }
             "set_limits" => {
-                for k in ["max_body_bytes", "max_derivation_inputs", "max_violations"] {
+                for k in [
+                    "max_body_bytes",
+                    "max_derivation_inputs",
+                    "max_violations",
+                    "max_scan",
+                ] {
                     if let Some(v) = i.get(k)
                         && !v.is_null()
                         && !v.as_u64().is_some_and(|n| n >= 1 && !v.is_boolean())
@@ -442,6 +452,9 @@ impl Adapter {
                 }
                 if let Some(n) = i.get("max_violations").and_then(Value::as_u64) {
                     self.engine.max_violations = n;
+                }
+                if let Some(n) = i.get("max_scan").and_then(Value::as_u64) {
+                    self.engine.max_scan = Some(n);
                 }
                 Value::Bool(true)
             }

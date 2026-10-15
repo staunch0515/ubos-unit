@@ -1,0 +1,19 @@
+[package]
+name = "ubos-query"
+description = "Criteria queries: textual form, planning over declared indexes, signed snapshot cursors, aggregation (STD-EXPR-010, -011, DSN-DVM-901…908)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+ubos-time.workspace = true
+ubos-expr.workspace = true
+ubos-model.workspace = true
+ubos-crypto.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

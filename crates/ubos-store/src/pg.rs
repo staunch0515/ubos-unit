@@ -7,10 +7,10 @@
 
 use crate::kernel::{
     Allocated, BranchMetaRow, BranchRow, ChangeSetRow, ChunkRow, CommitRow, CounterRow,
-    DerivationEdge, EntryFilter, EntryMeta, Hash, HeadRow, IdempotencyRow, IndexRow, LedgerRow,
-    NodeRow, OPEN, ObjectFacts, OutboxRow, Placement, ProcessRow, Scope, SequenceRequest,
-    StoreRead, StoreTx, TagRow, TemporalRow, TimerRow, VersionRow, hash_of, hash_text, kind_code,
-    kind_name,
+    DerivationEdge, EntryFilter, EntryMeta, FieldRow, Hash, HeadRow, IdempotencyRow, IndexRow,
+    LedgerRow, NodeRow, OPEN, ObjectFacts, OutboxRow, Placement, ProcessRow, Scope,
+    SequenceRequest, StoreRead, StoreTx, TagRow, TemporalRow, TimerRow, VersionRow, hash_of,
+    hash_text, kind_code, kind_name,
 };
 use crate::physical::{BlobStore, Chunks, LocalBlobs, Physical};
 use crate::{BranchRef, Flush, Store};
@@ -28,7 +28,7 @@ static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
 /// Tables emptied by `reset` (adapter operation, STD-CONF-002).
 const TABLES: &str = "kernel_meta, branch_ref, commit, commit_parent, chunk, object_version, \
-    ledger_entry, ledger_sequence, merkle_node, head_index, temporal_index, \
+    ledger_entry, ledger_sequence, merkle_node, head_index, temporal_index, field_index, \
     derivation_edge, idempotency_record, outbox, tag, process_record, change_set, timer, \
     blob, secret, node_key, event_log, job";
 
@@ -412,6 +412,83 @@ impl StoreRead for PgBackend {
             )
             .await?;
         r.map(|r| r.try_get(0).map_err(db)).transpose()
+    }
+    /// The field index (DSN-DVM-902): objects of the classes whose head at `cseq` carries a
+    /// key in `[lo, hi]`, in key order then object order.
+    #[allow(clippy::too_many_arguments)]
+    async fn field_scan(
+        &self,
+        branch_id: i64,
+        cseq: u64,
+        classes: &[String],
+        field: &str,
+        lo: Option<&[u8]>,
+        hi: Option<&[u8]>,
+        limit: usize,
+    ) -> Result<Vec<(String, Vec<u8>)>, BpaError> {
+        let mut sql = String::from(
+            "SELECT object_id::text, value_key FROM field_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid \
+             AND branch_id = $3 AND class_name = ANY($4::text[]) AND field = $5 AND cseq_from <= $6 AND cseq_to > $6",
+        );
+        if lo.is_some() {
+            sql.push_str(" AND value_key >= $7");
+        }
+        if hi.is_some() {
+            sql.push_str(if lo.is_some() {
+                " AND value_key <= $8"
+            } else {
+                " AND value_key <= $7"
+            });
+        }
+        sql.push_str(" ORDER BY value_key, object_id LIMIT ");
+        sql.push_str(&int(limit as u64).to_string());
+        let mut q = sqlx::query(&sql)
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .bind(branch_id)
+            .bind(classes.to_vec())
+            .bind(field)
+            .bind(int(cseq));
+        if let Some(l) = lo {
+            q = q.bind(l.to_vec());
+        }
+        if let Some(h) = hi {
+            q = q.bind(h.to_vec());
+        }
+        let rows = self.rows(q).await?;
+        rows.iter()
+            .map(|r| {
+                Ok((
+                    r.try_get::<String, _>(0).map_err(db)?,
+                    r.try_get::<Vec<u8>, _>(1).map_err(db)?,
+                ))
+            })
+            .collect()
+    }
+    /// The number of objects present at `cseq`, optionally of one class.
+    async fn count_objects(
+        &self,
+        branch_id: i64,
+        cseq: u64,
+        class: Option<&str>,
+    ) -> Result<u64, BpaError> {
+        let base = "SELECT count(*) FROM head_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 \
+                    AND cseq_from <= $4 AND cseq_to > $4 AND NOT hidden";
+        let q = match class {
+            Some(c) => sqlx::query(const_format(base, " AND class_name = $5"))
+                .bind(&self.scope.tenant)
+                .bind(&self.scope.vae)
+                .bind(branch_id)
+                .bind(int(cseq))
+                .bind(c),
+            None => sqlx::query(base)
+                .bind(&self.scope.tenant)
+                .bind(&self.scope.vae)
+                .bind(branch_id)
+                .bind(int(cseq)),
+        };
+        let r = q.fetch_one(&self.pool).await.map_err(db)?;
+        Ok(uint(r.try_get::<i64, _>(0).map_err(db)?))
     }
     async fn object(
         &self,
@@ -1349,6 +1426,51 @@ impl StoreTx for PgTx {
             .map_err(db)?;
         Ok(r.rows_affected() == 1)
     }
+    /// Field index rows of a flush (DSN-DVM-902): the open rows of every changed object
+    /// close at `cseq`, the rows of the new heads open at `cseq`.
+    async fn upsert_field_rows(
+        &mut self,
+        branch_id: i64,
+        cseq: u64,
+        changed: &[String],
+        rows: &[FieldRow],
+    ) -> Result<(), BpaError> {
+        if changed.is_empty() {
+            return Ok(());
+        }
+        let (t, v, c) = (&self.scope.tenant, &self.scope.vae, int(cseq));
+        sqlx::query("UPDATE field_index SET cseq_to = $4 WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND object_id = ANY($5::uuid[]) AND cseq_to = $6")
+            .bind(t)
+            .bind(v)
+            .bind(branch_id)
+            .bind(c)
+            .bind(changed.to_vec())
+            .bind(int(OPEN))
+            .execute(&mut *self.tx)
+            .await
+            .map_err(db)?;
+        if rows.is_empty() {
+            return Ok(());
+        }
+        let ids: Vec<&str> = rows.iter().map(|r| r.object_id.as_str()).collect();
+        let classes: Vec<&str> = rows.iter().map(|r| r.class.as_str()).collect();
+        let fields: Vec<&str> = rows.iter().map(|r| r.field.as_str()).collect();
+        let keys: Vec<Vec<u8>> = rows.iter().map(|r| r.key.clone()).collect();
+        sqlx::query("INSERT INTO field_index (tenant_id, vae_id, branch_id, class_name, field, value_key, object_id, cseq_from, cseq_to) SELECT $1::uuid, $2::uuid, $3, t.c, t.f, t.k, t.o::uuid, $4, $5 FROM unnest($6::text[], $7::text[], $8::bytea[], $9::text[]) AS t(c, f, k, o)")
+            .bind(t)
+            .bind(v)
+            .bind(branch_id)
+            .bind(c)
+            .bind(int(OPEN))
+            .bind(&classes)
+            .bind(&fields)
+            .bind(keys)
+            .bind(&ids)
+            .execute(&mut *self.tx)
+            .await
+            .map_err(db)?;
+        Ok(())
+    }
     async fn upsert_index_rows(
         &mut self,
         branch_id: i64,
@@ -1952,12 +2074,30 @@ impl PgStore {
                 ],
             );
         }
-        let (mut hi, mut ti) = (String::new(), String::new());
+        let (mut hi, mut ti, mut fi) = (String::new(), String::new(), String::new());
         let bs = bid.to_string();
         for (from, to, o) in &rows.objects {
             let to_s = to.map(int).unwrap_or(int(OPEN)).to_string();
             let from_s = from.to_string();
             let row = crate::index_row(o)?;
+            if o.state.is_some() {
+                for (field, key) in &o.index {
+                    copy_line(
+                        &mut fi,
+                        &[
+                            &t,
+                            &v,
+                            &bs,
+                            &o.class,
+                            field,
+                            &hex(key),
+                            &o.object_id,
+                            &from_s,
+                            &to_s,
+                        ],
+                    );
+                }
+            }
             let head = row.head.map(|h| hex(&h)).unwrap_or_else(|| "\\N".into());
             let (kind, gran) = (
                 kind_code(&row.kind).to_string(),
@@ -2024,6 +2164,7 @@ impl PgStore {
                 ("COPY head_index (tenant_id, vae_id, branch_id, object_id, cseq_from, cseq_to, version_id, class_name, kind, slug, granularity, hidden) FROM STDIN", hi),
                 ("COPY temporal_index (tenant_id, vae_id, branch_id, object_id, valid_from, valid_to, cseq_from, cseq_to, version_id, class_name, granularity) FROM STDIN", ti),
                 ("COPY merkle_node (tenant_id, node_id, level, body) FROM STDIN", nodes),
+                ("COPY field_index (tenant_id, vae_id, branch_id, class_name, field, value_key, object_id, cseq_from, cseq_to) FROM STDIN", fi),
             ] {
                 let mut w = conn.copy_in_raw(sql).await.map_err(db)?;
                 w.send(data.into_bytes()).await.map_err(db)?;
@@ -2151,6 +2292,8 @@ impl PgStore {
                 p.chain(&alloc)?;
                 tx.put_entries(p.branch_id, &p.entries).await?;
                 tx.upsert_index_rows(p.branch_id, f.cseq, &p.index).await?;
+                tx.upsert_field_rows(p.branch_id, f.cseq, &p.changed, &p.fields)
+                    .await?;
                 tx.put_tree_nodes(&p.nodes).await?;
                 // Metadata written with the commit (DEC-054): effects, the idempotency
                 // record, derivation records and edges, timers.
@@ -2269,6 +2412,9 @@ struct Plan {
     slot: Vec<usize>,
     entries: Vec<LedgerRow>,
     index: Vec<IndexRow>,
+    /// Objects whose field index rows change, and the new rows.
+    changed: Vec<String>,
+    fields: Vec<FieldRow>,
     nodes: Vec<NodeRow>,
     outbox: Vec<OutboxRow>,
     idempotency: Option<IdempotencyRow>,
@@ -2446,6 +2592,20 @@ impl Plan {
             .iter()
             .map(crate::index_row)
             .collect::<Result<Vec<_>, _>>()?;
+        let changed: Vec<String> = f.objects.iter().map(|o| o.object_id.clone()).collect();
+        let fields: Vec<FieldRow> = f
+            .objects
+            .iter()
+            .filter(|o| o.state.is_some())
+            .flat_map(|o| {
+                o.index.iter().map(|(field, key)| FieldRow {
+                    object_id: o.object_id.clone(),
+                    class: o.class.clone(),
+                    field: field.clone(),
+                    key: key.clone(),
+                })
+            })
+            .collect();
         let nodes = f
             .nodes
             .iter()
@@ -2470,6 +2630,8 @@ impl Plan {
             slot,
             entries,
             index,
+            changed,
+            fields,
             nodes,
             outbox,
             idempotency,
@@ -2663,6 +2825,38 @@ impl Store for PgStore {
             .into_iter()
             .map(|(id, f)| (id, f.as_ref().and_then(crate::state_of)))
             .collect())
+    }
+    fn count_objects(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        class: Option<&str>,
+    ) -> Result<u64, BpaError> {
+        let Some(bid) = self.branch_id(branch)? else {
+            return Ok(0);
+        };
+        self.rt
+            .block_on(self.backend.count_objects(bid, cseq, class))
+    }
+    fn field_scan(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        classes: &[String],
+        field: &str,
+        lo: Option<&[u8]>,
+        hi: Option<&[u8]>,
+        limit: usize,
+    ) -> Result<Option<crate::FieldRows>, BpaError> {
+        let Some(bid) = self.branch_id(branch)? else {
+            return Ok(Some(Vec::new()));
+        };
+        self.rt
+            .block_on(
+                self.backend
+                    .field_scan(bid, cseq, classes, field, lo, hi, limit),
+            )
+            .map(Some)
     }
     fn objects_by_id(
         &mut self,

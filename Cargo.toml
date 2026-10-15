@@ -14,6 +14,7 @@ members = [
     "crates/ubos-expr",
     "crates/ubos-rules",
     "crates/ubos-flow",
+    "crates/ubos-query",
     "crates/ubos-runtime",
     "crates/ubos-dvm",
     "crates/ubos-node",
@@ -44,6 +45,7 @@ ubos-model = { path = "crates/ubos-model" }
 ubos-expr = { path = "crates/ubos-expr" }
 ubos-rules = { path = "crates/ubos-rules" }
 ubos-flow = { path = "crates/ubos-flow" }
+ubos-query = { path = "crates/ubos-query" }
 ubos-runtime = { path = "crates/ubos-runtime" }
 # third-party crates of the PH-0 prototype (DEC-033)
 serde = { version = "1", features = ["derive"] }

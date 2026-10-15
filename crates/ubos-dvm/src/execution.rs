@@ -1085,6 +1085,58 @@ impl<'a> EngineHost<'a> {
     }
 
     /// STD-ISA-035: explanations of a cascade, a validation outcome or a decision.
+    /// STD-ISA-080: a criteria query at the process snapshot (since 1.0-rc2; step 13a).
+    fn search_query(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let q = match a.get("query") {
+            Some(Value::String(t)) => json!({"text": t}),
+            Some(v @ Value::Object(_)) => v.clone(),
+            _ => {
+                return Err(BpaError::new(
+                    "QRY.INVALID_QUERY",
+                    "query is a DAT-Query or its text",
+                ));
+            }
+        };
+        if a.get("coordinates").is_some_and(|c| !c.is_null()) {
+            return Err(BpaError::new(
+                "LOGIC.NOT_AVAILABLE",
+                "explicit coordinates come with PH-2",
+            ));
+        }
+        self.state(core)?;
+        // `limit` and `cursor` are members of the query object (DAT-Query): the ABI 1.0
+        // catalogue stays as released
+        let mut input = q;
+        input["branch"] = json!(core.branch);
+        input["commit"] = json!(core.pins.get(&core.branch));
+        input["profile"] = json!(core.profile);
+        let from = input
+            .get("from")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .or_else(|| {
+                input
+                    .get("text")
+                    .and_then(|t| ubos_query::parse_query(t).ok())
+                    .and_then(|p| p.get("from").and_then(Value::as_str).map(str::to_string))
+            })
+            .unwrap_or_default();
+        core.authorize(&d.authorization, &from)?;
+        let r = self.e.query(&input)?;
+        let items = r["objects"].clone();
+        core.per_item(d, items.as_array().map_or(0, Vec::len) as u64)?;
+        let mut out = json!({"items": items, "evaluated_at": r["evaluated_at"]});
+        if let Some(c) = r.get("cursor").filter(|c| !c.is_null()) {
+            out["cursor"] = c.clone();
+        }
+        Ok(out)
+    }
+
     fn read_explain(
         &mut self,
         core: &mut Core,
@@ -1372,6 +1424,7 @@ impl Host for EngineHost<'_> {
             "read.diff" => self.read_diff(core, a, d),
             "read.effective" => self.read_effective(core, a, d),
             "read.explain" => self.read_explain(core, a, d),
+            "search.query" => self.search_query(core, a, d),
             "run.validate" => self.run_validate(core, a, d),
             "run.port" => self.run_port(core, a),
             "run.super" => self.run_super(core),

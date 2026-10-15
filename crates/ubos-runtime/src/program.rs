@@ -45,6 +45,8 @@ pub const IMPLEMENTED: &[&str] = &[
     "run.logic",
     "run.async",
     "emit.event",
+    // BPA 1.0-rc2, PH-1 step 13a (DEC-073)
+    "search.query",
 ];
 /// System instructions and their determinism class.
 pub const SYSTEM: &[(&str, &str)] = &[

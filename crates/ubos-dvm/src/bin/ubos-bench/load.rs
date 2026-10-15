@@ -128,6 +128,7 @@ fn row(oid: &str, class: &str, state: &ObjectState) -> Result<ObjectRow, BpaErro
             serde_json::to_value(state)
                 .map_err(|e| BpaError::new("MODEL.INVALID_VALUE", e.to_string()))?,
         ),
+        index: Vec::new(),
     })
 }
 

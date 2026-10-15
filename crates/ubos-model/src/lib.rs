@@ -952,6 +952,10 @@ pub struct Registry {
     custom: Hook,
     /// Largest canonical body in bytes (STD-OBJ-009, adapter `set_limits`).
     pub max_body: usize,
+    /// Field indexes declared to the kernel by class (DSN-DVM-902, FR-ANL-014; PH-1 step
+    /// 13a): an index of a class also serves its subclasses. The fields of the unique
+    /// `keys` of a declaration are indexed without a declaration.
+    indexes: BTreeMap<String, BTreeSet<String>>,
 }
 
 impl Default for Registry {
@@ -1007,9 +1011,91 @@ impl Registry {
             value_types: BTreeMap::new(),
             custom: Hook(None),
             max_body: MAX_BODY,
+            indexes: BTreeMap::new(),
         };
         r.recompute(&[]).expect("genesis model");
         r
+    }
+
+    /// Declare a field index (DSN-DVM-902): the field is an effective field of the class
+    /// with an indexable type (`MODEL.UNKNOWN_FIELD`, `MODEL.INVALID_VALUE`).
+    pub fn declare_index(&mut self, class: &str, field: &str) -> Result<(), BpaError> {
+        let c = self.class(class)?;
+        let Some(f) = c.fields.get(field) else {
+            return Err(err("MODEL.UNKNOWN_FIELD", format!("{class}.{field}")));
+        };
+        if !ubos_types::values::indexable(s(f, "type").unwrap_or_default()) {
+            return Err(err(
+                "MODEL.INVALID_VALUE",
+                format!("the type of {class}.{field} has no index"),
+            ));
+        }
+        self.indexes
+            .entry(class.to_string())
+            .or_default()
+            .insert(field.to_string());
+        Ok(())
+    }
+
+    /// The declared indexes, as `{class: [field]}` (persisted by the engine).
+    pub fn declared_indexes(&self) -> Value {
+        Value::Object(
+            self.indexes
+                .iter()
+                .map(|(c, fs)| (c.clone(), json!(fs)))
+                .collect(),
+        )
+    }
+
+    /// Restore declared indexes (unknown classes and fields are skipped).
+    pub fn restore_indexes(&mut self, v: &Value) {
+        for (c, fs) in v.as_object().into_iter().flatten() {
+            for f in fs
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+            {
+                let _ = self.declare_index(c, f);
+            }
+        }
+    }
+
+    /// The indexed fields of a class with their types: the indexes declared on the class
+    /// or an ancestor and the fields of the unique `keys` along the linearization.
+    pub fn indexed_fields(&self, class: &str) -> Vec<(String, String)> {
+        let Ok(c) = self.class(class) else {
+            return Vec::new();
+        };
+        let mut names: BTreeSet<String> = BTreeSet::new();
+        for anc in &c.linearization {
+            if let Some(fs) = self.indexes.get(anc) {
+                names.extend(fs.iter().cloned());
+            }
+            if let Some(d) = self.decls.get(anc) {
+                for key in members(d, "keys") {
+                    names.extend(
+                        key.as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(Value::as_str)
+                            .map(str::to_string),
+                    );
+                }
+            }
+        }
+        names
+            .into_iter()
+            .filter_map(|n| {
+                let t = s(c.fields.get(&n)?, "type")?;
+                ubos_types::values::indexable(t).then(|| (n, t.to_string()))
+            })
+            .collect()
+    }
+
+    /// Whether a field of a class is indexed.
+    pub fn is_indexed(&self, class: &str, field: &str) -> bool {
+        self.indexed_fields(class).iter().any(|(f, _)| f == field)
     }
 
     /// The registry with an evaluator of custom value types installed.

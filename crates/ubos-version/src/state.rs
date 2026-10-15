@@ -256,6 +256,21 @@ pub fn version_record(
     Ok((vh, rec))
 }
 
+/// The field index rows of a head version (DSN-DVM-902): `(field, value key)` for every
+/// indexed field of the class; none for a tombstone.
+pub fn index_rows(reg: &Registry, class: &str, version: &Value) -> Vec<(String, Vec<u8>)> {
+    if version["tombstone"] == json!(true) {
+        return Vec::new();
+    }
+    reg.indexed_fields(class)
+        .into_iter()
+        .filter_map(|(f, t)| {
+            let value = version["body"].get(&f).cloned().unwrap_or(Value::Null);
+            ubos_model::types::values::index_key(&t, &value).map(|k| (f, k))
+        })
+        .collect()
+}
+
 /// Parsed tree nodes shared by the views of this thread, keyed by hash (the process-local
 /// node cache of DSN-DVM-007; nodes are immutable, so the cache is never stale, AR-028). The
 /// cache is bounded by an approximate byte budget, not a node count: a leaf holds up to
@@ -494,8 +509,57 @@ impl<'a> Repo<'a> {
         Ok(out)
     }
 
+    /// The objects of the classes whose head at `cseq` carries a key of `field` in
+    /// `[lo, hi]` (DSN-DVM-902), over the branch chain, newest branch first (an object
+    /// written on a later branch supersedes its rows on the parents); `None` when the store
+    /// has no field index. The candidates are confirmed by the caller against the head
+    /// version, so a stale row of a parent branch is harmless.
+    #[allow(clippy::too_many_arguments)]
+    pub fn field_scan(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        classes: &[String],
+        field: &str,
+        lo: Option<&[u8]>,
+        hi: Option<&[u8]>,
+        limit: usize,
+    ) -> Result<Option<ubos_store::FieldRows>, BpaError> {
+        let mut seen: BTreeMap<String, Vec<u8>> = BTreeMap::new();
+        for (b, c) in self.chain(branch, cseq)? {
+            let Some(rows) = self
+                .store
+                .field_scan(&b, c, classes, field, lo, hi, limit)?
+            else {
+                return Ok(None);
+            };
+            for (id, key) in rows {
+                seen.entry(id).or_insert(key);
+            }
+        }
+        let mut out: ubos_store::FieldRows = seen.into_iter().collect();
+        out.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)));
+        out.truncate(limit);
+        Ok(Some(out))
+    }
+
+    /// An upper bound of the objects of a class at an ordinal over the branch chain (the
+    /// scan estimate of the query planner, DSN-DVM-903).
+    pub fn count_in(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        class: Option<&str>,
+    ) -> Result<u64, BpaError> {
+        let mut n = 0;
+        for (b, c) in self.chain(branch, cseq)? {
+            n += self.store.count_objects(&b, c, class)?;
+        }
+        Ok(n)
+    }
+
     /// The given objects of a branch at an ordinal, read from the index in bulk.
-    pub(crate) fn objects_in_ids(
+    pub fn objects_in_ids(
         &mut self,
         branch: &str,
         cseq: u64,
@@ -784,6 +848,14 @@ impl<'a> Repo<'a> {
             if any.kind != "system" {
                 tree.insert(format!("o/{id}"), new.map(|o| o.head.clone()));
             }
+            // the field index rows of the new head (DSN-DVM-902)
+            let mut index = Vec::new();
+            if let Some(o) = new
+                && !self.reg.indexed_fields(&o.class).is_empty()
+            {
+                let v = self.version_in(&tx, &o.head)?;
+                index = index_rows(self.reg, &o.class, &v);
+            }
             objects.push(ObjectRow {
                 object_id: id.clone(),
                 class: any.class.clone(),
@@ -793,6 +865,7 @@ impl<'a> Repo<'a> {
                     .map(|c| c.valid_time == "instant")
                     .unwrap_or(false),
                 state: new.map(serde_json::to_value).transpose().map_err(storage)?,
+                index,
             });
         }
         let mut entries = Vec::new();

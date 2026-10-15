@@ -20,7 +20,8 @@ const CLAIMED_RELEASE: &str = "1.0-rc1";
 
 /// The release in implementation (PH-1 steps 11–14): a vector of it runs when every clause
 /// it verifies is implemented (DEC-070: the governance sheets of step 11b, the rules and
-/// the Core clauses of step 11c; DEC-071: the lifecycles of step 12b).
+/// the Core clauses of step 11c; DEC-071: the lifecycles of step 12b; DEC-073: the queries
+/// of step 13a).
 const NEXT_RELEASE: &str = "1.0-rc3";
 const RC2_CLAUSES: &[&str] = &[
     "STD-LGS-001",
@@ -45,6 +46,9 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-ISA-036",
     "STD-ISA-050",
     "STD-BPU-011",
+    // BPA 1.0-rc2 (step 13a): the textual query form and search.query
+    "STD-EXPR-010",
+    "STD-ISA-080",
 ];
 
 /// The clauses a vector verifies.

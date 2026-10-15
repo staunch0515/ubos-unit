@@ -566,3 +566,104 @@ fn dec_of_str(v: &Value) -> Result<Decimal, BpaError> {
         _ => Err(invalid("not a decimal string")),
     }
 }
+
+// ---- field index keys (DSN-DVM-902, PH-1 step 13a) ----
+
+/// Tags of the order-preserving value keys; a key compares as the values of its type do.
+const KEY_NULL: u8 = 0x00;
+const KEY_BOOL: u8 = 0x01;
+const KEY_NUM: u8 = 0x02;
+const KEY_TEXT: u8 = 0x03;
+const KEY_TIME: u8 = 0x04;
+const KEY_MONEY: u8 = 0x05;
+
+/// Order-preserving encoding of a decimal text: the sign byte (0 negative, 1 zero, 2
+/// positive), the number of integer digits and the digits; negative values are the byte
+/// complement of their magnitude, so byte order is numeric order.
+fn decimal_key(text: &str) -> Option<Vec<u8>> {
+    let d = Decimal::parse(text).ok()?;
+    let t = d.format(None);
+    if d.is_zero() {
+        return Some(vec![1]);
+    }
+    let (negative, mag) = match t.strip_prefix('-') {
+        Some(m) => (true, m),
+        None => (false, t.as_str()),
+    };
+    let (int_part, frac) = mag.split_once('.').unwrap_or((mag, ""));
+    let int_part = int_part.trim_start_matches('0');
+    let mut body = Vec::with_capacity(4 + mag.len());
+    body.extend_from_slice(&(int_part.len() as u32).to_be_bytes());
+    body.extend_from_slice(int_part.as_bytes());
+    body.push(b'.');
+    body.extend_from_slice(frac.as_bytes());
+    let mut out = Vec::with_capacity(1 + body.len());
+    if negative {
+        out.push(0);
+        out.extend(body.iter().map(|b| 0xFF - b));
+    } else {
+        out.push(2);
+        out.extend(body);
+    }
+    Some(out)
+}
+
+/// The order-preserving key of a field value for the field index (DSN-DVM-902): `None`
+/// for values of types that are not indexed (composites, lists, maps, documents, blobs,
+/// JSON, periods, quantities and durations). Equal values give equal keys and byte order
+/// is the order of the type (`order by` and the comparisons of criteria queries).
+pub fn index_key(type_name: &str, v: &Value) -> Option<Vec<u8>> {
+    if v.is_null() {
+        return Some(vec![KEY_NULL]);
+    }
+    let mut out = Vec::new();
+    match type_name {
+        "boolean" => {
+            out.push(KEY_BOOL);
+            out.push(u8::from(v.as_bool()?));
+        }
+        "integer" | "decimal" => {
+            out.push(KEY_NUM);
+            let text = match v {
+                Value::Number(n) => n.to_string(),
+                Value::String(t) => t.clone(),
+                _ => return None,
+            };
+            out.extend(decimal_key(&text)?);
+        }
+        "money" => {
+            out.push(KEY_MONEY);
+            let o = v.as_object()?;
+            out.extend_from_slice(o.get("currency")?.as_str()?.as_bytes());
+            out.push(0);
+            out.extend(decimal_key(o.get("amount")?.as_str()?)?);
+        }
+        "text" | "enum" | "reference" | "time" => {
+            out.push(KEY_TEXT);
+            out.extend_from_slice(v.as_str()?.as_bytes());
+        }
+        "date" | "instant" => {
+            out.push(KEY_TIME);
+            out.extend_from_slice(v.as_str()?.as_bytes());
+        }
+        _ => return None,
+    }
+    Some(out)
+}
+
+/// Whether a field type has index keys.
+pub fn indexable(type_name: &str) -> bool {
+    matches!(
+        type_name,
+        "boolean"
+            | "integer"
+            | "decimal"
+            | "money"
+            | "text"
+            | "enum"
+            | "reference"
+            | "time"
+            | "date"
+            | "instant"
+    )
+}
