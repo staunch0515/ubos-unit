@@ -35,7 +35,9 @@ MAX_NESTING = 32          # nesting in functions (STD-CTX-004, L2 expression dep
 TZDB = '2025b'
 IMPLEMENTED = ('commit.create', 'commit.update', 'commit.end', 'commit.move', 'commit.append', 'commit.reverse',
                'commit.adjust', 'commit.link', 'commit.unlink', 'read.get', 'read.history', 'read.timeline',
-               'read.diff', 'read.effective', 'run.port', 'run.super', 'run.logic', 'run.async', 'emit.event')
+               'read.diff', 'read.effective', 'run.port', 'run.super', 'run.logic', 'run.async', 'emit.event',
+               # BPA 1.0-rc2, PH-1 step 10c (DEC-067)
+               'read.explain', 'run.validate', 'search.query')
 SYSTEM = {'sys.uuid': 'pure', 'sys.random_bytes': 'pure', 'adapter.observe': 'journaled'}
 READ_ACTIONS = ('read', 'read_history', 'reflect', 'explain')
 L2_FORBIDDEN = ('eval', 'print', 'debug', 'import', 'export', 'Fn', 'call', 'curry', 'is_def_fn', 'is_def_var',
@@ -108,11 +110,22 @@ class Run:
             ctx['on_behalf_of'] = c['on_behalf_of']
         if c.get('input') is not None:
             ctx['input'] = c['input']
+        if c.get('role') is not None:
+            ctx['role'] = c['role']
         for k in c:
             if k not in ('principal', 'principal_kind', 'auth_level', 'asof', 'locale', 'time_zone', 'channel',
-                         'profile', 'on_behalf_of', 'input'):
+                         'profile', 'on_behalf_of', 'input', 'role'):
                 raise BpaError('LOGIC.CONTEXT_IMMUTABLE', 'the implementation sets %s' % k)
         return ctx
+
+    def decision_ctx(self):
+        """The context the decisions of STD-LGS-031 see (DEC-067)."""
+        c = self.context
+        out = {'principal_kind': c['principal_kind'], 'channel': c['channel'], 'vae': c['vae'],
+               'branch_kind': self.s.branches[self.branch]['kind']}
+        if c.get('role') is not None:
+            out['role'] = c['role']
+        return out
 
     def ctx_value(self):
         out = dict(self.context)
@@ -372,7 +385,7 @@ class Run:
             raise BpaError('MODEL.INVALID_VALUE', 'unknown parameter of %s' % name)
         missing = [p['name'] for p in d['params'] if not p['optional'] and args.get(p['name']) is None
                    and not (name == 'commit.update' and p['name'] == 'set' and 'timeline' in args)]
-        if missing and name not in ('run.async',):
+        if missing and name not in ('run.async', 'run.validate'):     # run.validate: changes or target
             raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'missing parameter %s of %s' % (missing[0], name))
         self.charge(d['cost']['base'])
         if name not in IMPLEMENTED:
@@ -616,7 +629,12 @@ class Run:
             return self.s.class_at(self.branch, cls, {'evaluated_at': self.pins} if self.pins else None)
         if a['what'] == 'descriptor':
             return self.s.bpu_descriptor(self.branch, cls)
-        raise BpaError('LOGIC.NOT_AVAILABLE', 'effective declarations come with the Governance profile')
+        if a['what'] == 'declarations':
+            # since 1.0-rc2 (DEC-067): the effective sheet declarations of an object
+            oid = self.target_id(a['target'])
+            r = self.s.cascade(self.branch, oid, self.decision_ctx(), {'evaluated_at': self.pins} if self.pins else None)
+            return {'properties': r['properties'], 'bindings': r['bindings']}
+        raise BpaError('MODEL.INVALID_VALUE', 'what is class, declarations or descriptor')
 
     # run.*
 
@@ -628,6 +646,10 @@ class Run:
         if port is None:
             raise BpaError('MODEL.PORT_NOT_IMPLEMENTED', 'no port %s' % a['port'])
         self.authorize(port.get('permission', 'none'), cls)
+        if oid not in self.pending:
+            # STD-LGS-031: the decisions of a command port run before it (DSN-DVM-720)
+            self.s._check_decision(self.state(), self.branch, oid, a['port'], a.get('params') or {},
+                                   self.decision_ctx())
         found = dispatch(list(self.s.decls.values()), cls, a['port'], None, self.s._extensions(self.state()))
         body = self.pending[oid]['body'] if oid in self.pending else self.s.versions[self.state()['objects'][oid]['head']]['body']
         return self.call_impl(found, oid, cls, body, a['port'], a.get('params') or {})
@@ -638,6 +660,64 @@ class Run:
         asset, vh = self.asset(name)
         return self.run_function(Frame(asset, vh, fname, this=body, cls=cls, port=port, impl_class=found['class'],
                                        oid=oid), params)
+
+    def i_run_validate(self, a, d):
+        """STD-ISA-054: the validation preview of proposed changes or of the unit of work on
+        a target."""
+        if a.get('changes') is not None:
+            changes = a['changes']
+        else:
+            if a.get('target') is None:
+                raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'run.validate takes changes or a target')
+            oid = self.target_id(a['target'])
+            changes = [{k: v for k, v in c.items() if k != 'derivation'} for c in self.uow if c.get('object_id') == oid]
+        for c in changes:
+            if c.get('object_id'):
+                self.authorize('read', self.class_of(c['object_id']))
+        return self.s.validate(self.branch, changes, {'channel': self.context['channel'],
+                                                      'principal_kind': self.context['principal_kind']})
+
+    def i_read_explain(self, a, d):
+        """STD-ISA-035: explanations of a cascade, a validation outcome or a decision."""
+        oid = self.target_id(a['target'])
+        cls = self.class_of(oid)
+        self.authorize(d['authorization'], cls)
+        kind = a['kind']
+        if kind == 'cascade':
+            if not a.get('property'):
+                raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'a cascade explanation names the property')
+            r = self.s.explain_cascade(self.branch, oid, a['property'], self.decision_ctx(),
+                                       {'evaluated_at': self.pins} if self.pins else None)
+            return {k: v for k, v in r.items() if k != 'evaluated_at'}
+        if kind == 'validation':
+            return self.i_run_validate({'target': a['target']}, d)
+        if kind == 'decision':
+            if not a.get('property'):
+                raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'a decision explanation names the port')
+            return self.s.decide(self.branch, oid, a['property'], {}, self.decision_ctx(),
+                                 {'evaluated_at': self.pins} if self.pins else None)
+        raise BpaError('LOGIC.NOT_AVAILABLE', 'lineage explanations come with PH-2')
+
+    def i_search_query(self, a, d):
+        """STD-ISA-080: a criteria query at the process snapshot."""
+        q = a['query']
+        if isinstance(q, str):
+            q = {'text': q}
+        if not isinstance(q, dict):
+            raise BpaError('QRY.INVALID_QUERY', 'query is a DAT-Query or its text')
+        self.state()
+        # `limit` and `cursor` are members of the query object (DAT-Query): the ABI 1.0
+        # catalogue stays as released
+        i = dict(q, branch=self.branch, commit=self.pins[self.branch])
+        if a.get('coordinates'):
+            raise BpaError('LOGIC.NOT_AVAILABLE', 'explicit coordinates come with PH-2')
+        self.authorize(d['authorization'], i.get('from') if isinstance(i.get('from'), str) else '')
+        r = self.s.query(i)
+        self.per_item(d, len(r['objects']))
+        out = {'items': r['objects'], 'evaluated_at': r['evaluated_at']}
+        if r.get('cursor'):
+            out['cursor'] = r['cursor']
+        return out
 
     def i_run_super(self, a, d):
         f = self.frames[-1]

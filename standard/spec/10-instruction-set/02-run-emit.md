@@ -65,7 +65,7 @@
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3470…3479
 - **Satisfies:** FR-RULE-035, FR-AI-045
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-067): one of `changes` and `target` is given; with `target`, the changes of the current unit of work on that object are previewed. The preview does not stop the process: a unit of work with error-level violations still fails at its commit.
 
 ### STD-ISA-055 — `run.async`
 - **Clause:** Requests a new process (a job) to run a port or logic function after commit, with the current process as its parent. The job is created through the outbox.
@@ -98,4 +98,4 @@
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3500…3514
 - **Satisfies:** FR-EVT-011, FR-EVT-013
-- **Notes:** —
+- **Notes:** **Phase note:** PH-1 step 10c (DEC-067): the instruction is in BPA 1.0-rc2 and the reference implementation runs it; its vectors are written with the event declarations of step 15.

@@ -60,6 +60,10 @@
       ],
       "type": "string"
     },
+    "message": {
+      "description": "commit message; required by audit_level strict (STD-LGS-011); since 1.0-rc2",
+      "type": "string"
+    },
     "on_behalf_of": {
       "description": "principal DID",
       "type": "string"
@@ -70,6 +74,10 @@
     },
     "process_id": {
       "description": "UUID",
+      "type": "string"
+    },
+    "reason": {
+      "description": "reason code; required by audit_level strict (STD-LGS-011); since 1.0-rc2",
       "type": "string"
     },
     "saga": {

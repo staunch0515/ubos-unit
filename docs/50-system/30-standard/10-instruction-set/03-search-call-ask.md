@@ -24,7 +24,7 @@ depends_on: [UBS-STD-10]
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3600…3639
 - **Satisfies:** FR-QRY-011, FR-QRY-013, FR-QRY-015, FR-QRY-071
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-067): `query` is a `DAT-Query` or its textual form (STD-EXPR-010); `limit` and `cursor` are its members; `items` are the object identifiers in order; explicit `coordinates` follow in PH-2.
 
 ### STD-ISA-081 — `search.aggregate`
 - **Clause:** Evaluates grouped aggregates (`count`, `sum`, `avg`, `min`, `max`, `percentile`) with currency-safe money semantics (STD-FND-023).

@@ -1,0 +1,1 @@
+{"clauses":["STD-EXPR-010"],"description":"the textual form names the class","id":"VER-CONF-4700","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"from":"Customer"}},"input":{"text":"from Customer"},"op":"parse_query"}]}

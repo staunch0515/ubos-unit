@@ -23,6 +23,7 @@ from .proofs import Proofs
 from .lang import Lang, custom_value
 from .exec import Exec
 from .sheets import Sheets
+from .rules import Rules, DryRun
 from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
@@ -119,13 +120,15 @@ def tl_at(tl, asof):
     return None
 
 
-class Store(Workflow, Proofs, Lang, Exec, Sheets):
+class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules):
     def __init__(self):
         self.reset()
 
     # ---- adapter lifecycle (STD-CONF-002) ----
 
     def reset(self):
+        self.max_violations = Rules.MAX_VIOLATIONS
+        self._dry = False
         self.now = DEFAULT_NOW
         self.max_body = MAX_BODY
         self._exts = None
@@ -163,14 +166,16 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets):
         self._tick()
         return True
 
-    def set_limits(self, max_body_bytes=None, max_derivation_inputs=None):
-        for v in (max_body_bytes, max_derivation_inputs):
+    def set_limits(self, max_body_bytes=None, max_derivation_inputs=None, max_violations=None):
+        for v in (max_body_bytes, max_derivation_inputs, max_violations):
             if v is not None and (not isinstance(v, int) or isinstance(v, bool) or v < 1):
                 raise BpaError('MODEL.INVALID_VALUE', 'a limit is a positive integer')
         if max_body_bytes is not None:
             self.max_body = max_body_bytes
         if max_derivation_inputs is not None:
             self.max_inputs = max_derivation_inputs
+        if max_violations is not None:
+            self.max_violations = max_violations
         return True
 
     # ---- commit records, transaction time (STD-VER-001, STD-TIME-001) ----
@@ -611,13 +616,20 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets):
                 if st['objects'].get(oid, {}).get('head') != vh:
                     raise BpaError('TXN.READ_SET_CHANGED')
         self._begin(st, p)
+        self._cur_branch, self._cur_p = branch, p
         try:
             appended = self._commit(st, cseq, result, changes)
+            warnings = self._enforce(branch, st, view, result, p, via_change_set)
+            if warnings:
+                result['warnings'] = warnings
             self._write_policy(branch, st, result, via_change_set)
             binding = self._binding(st, result)
+            if self._dry:
+                raise DryRun(result)
         finally:
             self._exts = None
             self._eff_cache = {}
+            self._cur_branch = self._cur_p = None
         own = {oid: o for oid, o in st['objects'].items() if oid not in inh or (o['head'], o['timeline']) != inh[oid]}
         state = {'objects': own, 'ledger': st['ledger']}
         cid = self._new_commit(branch, [br['head']], state, cseq, ops=self._ops, hidden=sorted(self._inherit['hidden']),
@@ -747,6 +759,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets):
         body = ch.get('body', {})
         if cls == 'GovernanceSheet':
             body = self._sheet_body(body)
+        body = self._apply_defaults(st, cls, oid, body)
         body = self._check_body(cls, body)
         valid = ch.get('valid') or {}
         a = valid.get('from') or self._default_valid(cls)

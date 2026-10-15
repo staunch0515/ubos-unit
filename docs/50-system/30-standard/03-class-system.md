@@ -74,7 +74,7 @@ DAT-FieldDecl:
 - **Grammar / Schema:** `DAT-PortDecl`
 - **Conformance vectors:** VER-CONF-0560…0579
 - **Satisfies:** FR-FLOW-021
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-067): `name`, `kind`, `permission` and `description` are required (`MODEL.DECLARATION_INCOMPLETE`); `name`, `states` and `transition` follow the member-name grammar; `params` are field declarations; `errors` are registered codes; `impl` is a non-empty reference to a logic asset (`<asset>#<function>` or an asset path); only a command port names a transition; a query port is idempotent and cannot be declared otherwise; `ui` is a map; unknown members are rejected (`MODEL.INVALID_VALUE`). `emits` lists the declared events a port emits.
 
 ```yaml
 DAT-PortDecl:
@@ -228,7 +228,7 @@ DAT-ClassExtension:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0800…0809
 - **Satisfies:** FR-TEN-033, FR-RULE-023
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-067): `overlay_policy` maps member names (and `views`) to `overridable`, `extend_only` or `locked`, collected along the linearization; a refinement of an `extend_only` member may only narrow `constraints` or add `validations`, every other aspect (`type`, `default`, `required`, `label`, `description`) is an override; an extension's `views` under a locked `views` member are rejected. The check runs in the effective definition, so it applies to extensions on any branch, including the overlays of child branches, at the commit that writes them.
 
 ## 5. Relationships
 

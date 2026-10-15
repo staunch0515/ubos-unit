@@ -98,7 +98,7 @@
 - **Grammar / Schema:** `DAT-Query`
 - **Conformance vectors:** VER-CONF-4700…4749
 - **Satisfies:** FR-QRY-011, FR-QRY-072
-- **Notes:** —
+- **Notes:** Since 1.0-rc2 (DEC-067): the textual form covers `from`, `only`, `where`, `order by` (`asc` by default) and `limit`; `states`, `select`, `group_by`, `aggregates` and `cursor` have the JSON form only. The adapter operation `parse_query` gives the JSON form of a text, and `query` accepts `text`; a malformed text is `QRY.INVALID_QUERY`, and a `where` that does not type-check fails as in the JSON form.
 
 ```yaml
 DAT-Query:

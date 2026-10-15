@@ -1,0 +1,1 @@
+{"clauses":["STD-EXPR-010"],"description":"a limit is a number at the end","id":"VER-CONF-4711","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"QRY.INVALID_QUERY"},"input":{"text":"from Customer limit ten"},"op":"parse_query"}]}

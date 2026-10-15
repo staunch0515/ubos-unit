@@ -1,0 +1,1 @@
+{"clauses":["STD-EXPR-010"],"description":"a query starts with from","id":"VER-CONF-4707","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"QRY.INVALID_QUERY"},"input":{"text":"select * from Customer"},"op":"parse_query"}]}

@@ -23,7 +23,7 @@ from bpa.store import Store                              # noqa: E402
 
 OUT = os.path.join(REPO, 'standard', 'vectors')
 AREAS = ['fnd', 'obj', 'cls', 'kind', 'ver', 'time', 'txn', 'proof', 'err', 'model', 'history', 'proofs', 'language', 'execution',
-         'sheets']
+         'sheets', 'rules', 'core1b']
 # Stateful operations whose expected results are stripped of implementation-dependent members
 # and compared as subsets by default (STD-CONF-005, rule 6); the operations of step 1b keep
 # exact matching.
@@ -32,7 +32,7 @@ STRIPPED = ('commit', 'read', 'read_ledger', 'merge', 'diff', 'export_state', 'c
             'tag', 'tag_info', 'release', 'revert', 'process_info', 'lineage', 'derivation', 'impact', 'outbox',
             'bulk', 'commit_record', 'prove', 'consistency_proof', 'tenant_root', 'export_archive',
             'import_archive', 'resolve', 'query', 'execute', 'journal', 'metering', 'metering_total', 'replay',
-            'verify_asset', 'bpu_descriptor', 'bpu_state', 'verify_bpu', 'cascade', 'explain_cascade')
+            'verify_asset', 'bpu_descriptor', 'bpu_state', 'verify_bpu', 'cascade', 'explain_cascade', 'decide')
 
 
 # The time-zone vectors use only transitions that are stable in every tz database release
@@ -45,6 +45,7 @@ class Gen:
         self.catalogue = clauses()
         self.next = {}
         self.vectors = []
+        self.frozen = {}      # vector id -> reason, for vectors a later release supersedes
 
     def vector(self, clause, description, steps, setup=(), also=(), prototype=True, determinism=None):
         cl = self.catalogue[clause]
@@ -64,6 +65,13 @@ class Gen:
                     step['input_text'] = s['input_text']
                 else:
                     step['input'] = s.get('input', {})
+                if s.get('frozen'):
+                    # A released vector that a later release supersedes (DEC-067): its
+                    # expectation is kept as released, the oracle is not consulted.
+                    step['expect'] = {'error_code': s['error']}
+                    vec['steps'].append(step)
+                    self.frozen[vec['id']] = s['frozen']
+                    continue
                 out = run_step(store, step, results)
                 if 'label' in s:
                     step['label'] = s['label']
@@ -94,9 +102,10 @@ class Gen:
             vec['tags'] = tags
         if determinism:
             vec['determinism'] = determinism
-        problems = run_vector(vec)
-        if problems:
-            raise SystemExit('%s does not replay on the oracle: %r' % (vec['id'], problems))
+        if vec['id'] not in self.frozen:
+            problems = run_vector(vec)
+            if problems:
+                raise SystemExit('%s does not replay on the oracle: %r' % (vec['id'], problems))
         self.vectors.append(vec)
         return vec
 
@@ -125,6 +134,11 @@ def main():
         os.makedirs(d, exist_ok=True)
         with open(os.path.join(d, v['id'] + '.json'), 'w', encoding='utf-8') as fh:
             fh.write(canonical(v) + '\n')
+    with open(os.path.join(OUT, 'superseded.txt'), 'w', encoding='utf-8') as fh:
+        fh.write('# Vectors of a released BPA version that the release in development supersedes\n'
+                 '# (DEC-067): kept as released, excluded from the release in development.\n')
+        for vid in sorted(g.frozen):
+            fh.write('%s %s\n' % (vid, g.frozen[vid]))
     per = {}
     for v in g.vectors:
         per[v['profile']] = per.get(v['profile'], 0) + 1

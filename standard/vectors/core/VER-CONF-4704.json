@@ -1,0 +1,1 @@
+{"clauses":["STD-EXPR-010"],"description":"limit sets the page size","id":"VER-CONF-4704","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"from":"Customer","limit":10}},"input":{"text":"from Customer limit 10"},"op":"parse_query"}]}

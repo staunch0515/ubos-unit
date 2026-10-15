@@ -123,7 +123,9 @@ SCALAR = {'text': 'text', 'enum': 'text', 'reference': 'text', 'integer': 'integ
 CTX_TYPES = {'principal': 'text', 'principal_kind': 'text', 'on_behalf_of': ('list', 'text'), 'auth_level': 'text',
              'tenant': 'text', 'vae': 'text', 'branch': 'text', 'asof': 'any', 'time': 'text', 'now': 'instant',
              'locale': 'text', 'time_zone': 'text', 'process_id': 'text', 'trigger': 'any', 'channel': 'text',
-             'input': 'any', 'profile': 'text', 'budget_remaining': 'any', 'replay': 'boolean'}
+             'input': 'any', 'profile': 'text', 'budget_remaining': 'any', 'replay': 'boolean',
+             # since 1.0-rc2 (DEC-067): the role the decisions of STD-LGS-031 condition on
+             'role': 'text'}
 
 
 def field_type(f, custom=None):

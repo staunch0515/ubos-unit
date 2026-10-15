@@ -1,0 +1,1 @@
+{"clauses":["STD-EXPR-010"],"description":"a class name is capitalised","id":"VER-CONF-4708","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"QRY.INVALID_QUERY"},"input":{"text":"from customer"},"op":"parse_query"}]}

@@ -1,0 +1,1 @@
+{"clauses":["STD-EXPR-010"],"description":"whitespace is free","id":"VER-CONF-4706","polarity":"positive","profile":"Core","setup":[],"steps":[{"expect":{"match":"exact","result":{"from":"Customer","limit":1,"where":"this.balance > 0"}},"input":{"text":"  from   Customer\n  where this.balance > 0\n  limit 1 "},"op":"parse_query"}]}

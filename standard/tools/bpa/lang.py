@@ -12,6 +12,50 @@ MAX_LIMIT = 1000
 DEFAULT_LIMIT = 100
 
 
+def parse_query(text):
+    """STD-EXPR-010 (1.0-rc2, DEC-067): the `DAT-Query` of the textual form
+    `from <Class> [only] where <expr> order by <path> [asc|desc], ... limit n`."""
+    import re
+    if not isinstance(text, str):
+        raise BpaError('QRY.INVALID_QUERY', 'a query text is text')
+    s = text.strip()
+    m = re.match(r'from\s+([A-Z][A-Za-z0-9]*)(\s+only)?(?=\s|$)', s)
+    if not m:
+        raise BpaError('QRY.INVALID_QUERY', 'a query starts with from <Class>')
+    out = {'from': m.group(1)}
+    if m.group(2):
+        out['only'] = True
+    rest = s[m.end():].strip()
+    where, order, limit = None, None, None
+    mo = re.search(r'(?:^|\s)order\s+by\s', rest)
+    ml = re.search(r'(?:^|\s)limit\s+(\d+)\s*$', rest)
+    if ml:
+        limit = int(ml.group(1))
+        rest = rest[:ml.start()].strip()
+    if mo and (not ml or mo.start() < ml.start()):
+        order = rest[mo.end():].strip()
+        rest = rest[:mo.start()].strip()
+    if rest:
+        if not rest.startswith('where '):
+            raise BpaError('QRY.INVALID_QUERY', 'unexpected text %r' % rest[:20])
+        where = rest[len('where '):].strip()
+        if not where:
+            raise BpaError('QRY.INVALID_QUERY', 'where needs an expression')
+    if where is not None:
+        out['where'] = where
+    if order is not None:
+        items = []
+        for part in order.split(','):
+            toks = part.split()
+            if not toks or len(toks) > 2 or (len(toks) == 2 and toks[1] not in ('asc', 'desc')):
+                raise BpaError('QRY.INVALID_QUERY', 'order by takes <path> [asc|desc]')
+            items.append({'path': toks[0], 'dir': toks[1] if len(toks) == 2 else 'asc'})
+        out['order_by'] = items
+    if limit is not None:
+        out['limit'] = limit
+    return out
+
+
 def check_value_type(d, known=()):
     """DAT-ValueTypeDecl (STD-FND-026)."""
     for k in ('name', 'base', 'description'):
@@ -165,6 +209,8 @@ class Lang:
         return read
 
     def query(self, i):
+        if i.get('text') is not None:
+            i = dict(parse_query(i['text']), **{k: v for k, v in i.items() if k != 'text'})
         spec = {k: i.get(k) for k in ('from', 'only', 'where', 'order_by', 'limit', 'asof')}
         qhash = content_id('ubos.chunk.v1', spec)
         offset = 0

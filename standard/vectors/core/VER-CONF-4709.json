@@ -1,0 +1,1 @@
+{"clauses":["STD-EXPR-010"],"description":"where needs an expression","id":"VER-CONF-4709","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"QRY.INVALID_QUERY"},"input":{"text":"from Customer where"},"op":"parse_query"}]}

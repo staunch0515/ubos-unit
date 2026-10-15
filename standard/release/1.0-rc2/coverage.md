@@ -6,13 +6,13 @@
 
 | Profile | MUST clauses with a range | Covered | Coverage | Vectors | Prototype vectors |
 |---|---|---|---|---|---|
-| Core | 122 | 118 | 97% | 1038 | 355 |
+| Core | 122 | 122 | 100% | 1104 | 355 |
 | Bitemporal | 10 | 10 | 100% | 61 | 30 |
 | Ledger | 9 | 9 | 100% | 55 | 52 |
 | Proof | 9 | 9 | 100% | 73 | 16 |
-| Governance | 9 | 7 | 78% | 157 | 0 |
+| Governance | 9 | 9 | 100% | 205 | 0 |
 | Protocol | 6 | 0 | 0% | 0 | 0 |
-| **All** | **165** | **153** | **93%** | **1384** | **453** |
+| **All** | **165** | **159** | **96%** | **1498** | **453** |
 
 ## Clauses
 
@@ -43,7 +43,7 @@
 | STD-OBJ-012 | Core | yes | 5 (VER-CONF-0405…VER-CONF-0409) |
 | STD-CLS-001 | Core | yes | 16 (VER-CONF-0500…VER-CONF-0515) |
 | STD-CLS-002 | Core | yes | 25 (VER-CONF-0530…VER-CONF-0554) |
-| STD-CLS-003 | Core | yes | **none** |
+| STD-CLS-003 | Core | yes | 20 (VER-CONF-0560…VER-CONF-0579) |
 | STD-CLS-010 | Core | yes | 5 (VER-CONF-0600…VER-CONF-0604) |
 | STD-CLS-011 | Core | yes | 11 (VER-CONF-0605…VER-CONF-0615) |
 | STD-CLS-012 | Core | yes | 4 (VER-CONF-0630…VER-CONF-0633) |
@@ -54,7 +54,7 @@
 | STD-CLS-021 | Core | yes | 10 (VER-CONF-0740…VER-CONF-0749) |
 | STD-CLS-022 | Core | yes | 12 (VER-CONF-0755…VER-CONF-0766) |
 | STD-CLS-030 | Core | yes | 15 (VER-CONF-0780…VER-CONF-0794) |
-| STD-CLS-031 | Core | yes | **none** |
+| STD-CLS-031 | Core | yes | 10 (VER-CONF-0800…VER-CONF-0809) |
 | STD-CLS-040 | Core | yes | 18 (VER-CONF-0810…VER-CONF-0827) |
 | STD-CLS-041 | Core | yes | 13 (VER-CONF-0840…VER-CONF-0852) |
 | STD-KIND-001 | Core | yes | 4 (VER-CONF-1000…VER-CONF-1003) |
@@ -132,7 +132,7 @@
 | STD-PROOF-070 | Proof | yes | 11 (VER-CONF-2510…VER-CONF-2520) |
 | STD-BPU-001 | Core | yes | 4 (VER-CONF-2600…VER-CONF-2603) |
 | STD-BPU-002 | Core | yes | 4 (VER-CONF-2610…VER-CONF-2613) |
-| STD-BPU-003 | Core | yes | **none** |
+| STD-BPU-003 | Core | yes | 6 (VER-CONF-2625…VER-CONF-2630) |
 | STD-BPU-004 | Core | yes | 3 (VER-CONF-2635…VER-CONF-2637) |
 | STD-BPU-010 | Core | yes | 3 (VER-CONF-2650…VER-CONF-2652) |
 | STD-BPU-011 | Core | yes | 4 (VER-CONF-2660…VER-CONF-2663) |
@@ -155,18 +155,18 @@
 | STD-ISA-031 | Core | no | 1 (VER-CONF-3330…VER-CONF-3330) |
 | STD-ISA-032 | Core | no | 1 (VER-CONF-3340…VER-CONF-3340) |
 | STD-ISA-033 | Core | no | 1 (VER-CONF-3350…VER-CONF-3350) |
-| STD-ISA-034 | Core | no | 2 (VER-CONF-3360…VER-CONF-3361) |
-| STD-ISA-035 | Core | no | **none** |
+| STD-ISA-034 | Core | no | 1 (VER-CONF-3360…VER-CONF-3360) |
+| STD-ISA-035 | Core | no | 6 (VER-CONF-3370…VER-CONF-3375) |
 | STD-ISA-050 | Core | yes | 4 (VER-CONF-3400…VER-CONF-3403) |
 | STD-ISA-051 | Core | no | 2 (VER-CONF-3430…VER-CONF-3431) |
 | STD-ISA-052 | Core | no | 2 (VER-CONF-3440…VER-CONF-3441) |
-| STD-ISA-054 | Core | no | **none** |
+| STD-ISA-054 | Core | no | 3 (VER-CONF-3470…VER-CONF-3472) |
 | STD-ISA-055 | Core | no | 1 (VER-CONF-3480…VER-CONF-3480) |
 | STD-ISA-070 | Core | no | **none** |
-| STD-ISA-080 | Core | no | **none** |
+| STD-ISA-080 | Core | no | 6 (VER-CONF-3600…VER-CONF-3605) |
 | STD-CTX-001 | Core | yes | 6 (VER-CONF-4000…VER-CONF-4005) |
 | STD-CTX-002 | Core | no | 3 (VER-CONF-4020…VER-CONF-4022) |
-| STD-CTX-003 | Core | yes | 7 (VER-CONF-4030…VER-CONF-4036) |
+| STD-CTX-003 | Core | yes | 6 (VER-CONF-4030…VER-CONF-4035) |
 | STD-CTX-004 | Core | yes | 11 (VER-CONF-4050…VER-CONF-4060) |
 | STD-CTX-005 | Core | yes | 4 (VER-CONF-4080…VER-CONF-4083) |
 | STD-CTX-006 | Core | yes | 3 (VER-CONF-4100…VER-CONF-4102) |
@@ -183,7 +183,7 @@
 | STD-EXPR-003 | Core | yes | 16 (VER-CONF-4500…VER-CONF-4515) |
 | STD-EXPR-004 | Core | yes | 11 (VER-CONF-4520…VER-CONF-4530) |
 | STD-EXPR-005 | Core | yes | 48 (VER-CONF-4540…VER-CONF-4587) |
-| STD-EXPR-010 | Core | yes | **none** |
+| STD-EXPR-010 | Core | yes | 17 (VER-CONF-4700…VER-CONF-4716) |
 | STD-EXPR-011 | Core | yes | 11 (VER-CONF-4750…VER-CONF-4760) |
 | STD-ADDR-001 | Core | yes | 16 (VER-CONF-5200…VER-CONF-5215) |
 | STD-ADDR-002 | Core | yes | 7 (VER-CONF-5240…VER-CONF-5246) |
@@ -206,8 +206,8 @@
 | STD-LGS-021 | Governance | yes | 12 (VER-CONF-4970…VER-CONF-4981) |
 | STD-LGS-022 | Governance | yes | 28 (VER-CONF-4985…VER-CONF-5012) |
 | STD-LGS-023 | Governance | yes | 7 (VER-CONF-5025…VER-CONF-5031) |
-| STD-LGS-030 | Governance | yes | **none** |
-| STD-LGS-031 | Governance | yes | **none** |
+| STD-LGS-030 | Governance | yes | 28 (VER-CONF-5035…VER-CONF-5062) |
+| STD-LGS-031 | Governance | yes | 20 (VER-CONF-5065…VER-CONF-5084) |
 | STD-PROTO-001 | Protocol | yes | **none** |
 | STD-PROTO-002 | Protocol | yes | **none** |
 | STD-PROTO-010 | Protocol | yes | **none** |

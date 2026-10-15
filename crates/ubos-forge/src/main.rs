@@ -108,6 +108,7 @@ fn conform(args: &[String]) -> Result<bool, String> {
     let mut paths = Vec::new();
     files(Path::new(dir), &mut paths).map_err(|e| e.to_string())?;
     paths.sort();
+    let superseded = ubos_forge::runner::superseded(Path::new(dir));
     let mut results = Vec::new();
     let mut summary: BTreeMap<String, BTreeMap<&str, u64>> = BTreeMap::new();
     let mut failed = 0;
@@ -116,7 +117,9 @@ fn conform(args: &[String]) -> Result<bool, String> {
             serde_json::from_str(&std::fs::read_to_string(p).map_err(|e| e.to_string())?)
                 .map_err(|e| e.to_string())?;
         let profile = v["profile"].as_str().unwrap_or_default().to_string();
-        let outcome = if profiles.contains(&profile) {
+        let outcome = if superseded.contains(v["id"].as_str().unwrap_or_default()) {
+            Outcome::NotApplicable("superseded by a later release".into())
+        } else if profiles.contains(&profile) {
             run_vector(&mut adapter, &v, opts.get("--tag").map(String::as_str))
         } else {
             Outcome::NotApplicable("profile not claimed".into())

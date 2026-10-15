@@ -8,7 +8,7 @@ import hmac
 from .classes import linearize, effective_class, public, dispatch, type_selector
 from .store import Store
 from . import crypto, proofs, expr, addr, isa, sheets
-from .lang import custom_value, check_value_type
+from .lang import custom_value, check_value_type, parse_query as lang_parse_query
 from .tree import tree_root
 
 ENVELOPE_REQUIRED = ('object_id', 'class', 'class_version', 'schema_version', 'kind', 'slug', 'valid')
@@ -102,11 +102,13 @@ PURE = {
 }
 # BPA 1.0-rc2, PH-1 step 10b (DEC-066)
 PURE.update(sheets.sheet_ops())
+PURE['parse_query'] = lambda i: lang_parse_query(i['text'])
 
 STATEFUL = {
     'reset': lambda s, i: s.reset(),
     'set_now': lambda s, i: s.set_now(i['now']),
-    'set_limits': lambda s, i: s.set_limits(i.get('max_body_bytes'), i.get('max_derivation_inputs')),
+    'set_limits': lambda s, i: s.set_limits(i.get('max_body_bytes'), i.get('max_derivation_inputs'),
+                                            i.get('max_violations')),
     'load_genesis': lambda s, i: s.load_genesis(i['classes'], i.get('value_types')),
     'create_branch': lambda s, i: s.create_branch(i['name'], i.get('from', 'main'), i.get('time'), i.get('parent_line')),
     'commit': lambda s, i: s.commit(i['branch'], i['changes'], i.get('process'), i.get('tx_time')),
@@ -166,6 +168,10 @@ STATEFUL = {
     'cascade': lambda s, i: s.cascade(i.get('branch', 'main'), i['object_id'], i.get('ctx'), i),
     'explain_cascade': lambda s, i: s.explain_cascade(i.get('branch', 'main'), i['object_id'], i['property'],
                                                       i.get('ctx'), i),
+    # BPA 1.0-rc2, PH-1 step 10c (DEC-067)
+    'validate': lambda s, i: s.validate(i.get('branch', 'main'), i['changes'], i.get('process')),
+    'decide': lambda s, i: s.decide(i.get('branch', 'main'), i['object_id'], i['port'], i.get('params'),
+                                    i.get('ctx'), i),
 }
 
 OPERATIONS = set(PURE) | set(STATEFUL)

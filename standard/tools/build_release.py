@@ -139,9 +139,13 @@ def main():
             continue
         write(os.path.join(schema_dir, d + '.schema.json'), json.dumps(json_schema(d, dats[d]), indent=2, sort_keys=True) + '\n')
 
-    # 4. vectors
+    # 4. vectors; those a later release supersedes stay as released and are left out (DEC-067)
     vec_dir = os.path.join(STD, 'vectors')
     vectors = []
+    superseded = set()
+    sup_path = os.path.join(vec_dir, 'superseded.txt')
+    if os.path.exists(sup_path):
+        superseded = {l.split()[0] for l in open(sup_path, encoding='utf-8') if l.strip() and not l.startswith('#')}
     for prof in sorted(os.listdir(vec_dir)):
         pdir = os.path.join(vec_dir, prof)
         if not os.path.isdir(pdir):
@@ -150,6 +154,8 @@ def main():
             path = os.path.join(pdir, f)
             raw = open(path, encoding='utf-8').read()
             v = json.loads(raw)
+            if v.get('id') in superseded:
+                continue
             vectors.append(v)
             where = 'vectors/%s/%s' % (prof, f)
             if raw != canonical(v) + '\n':
@@ -217,7 +223,7 @@ def main():
     for root in ('spec', 'vectors'):
         for dirpath, _, names in os.walk(os.path.join(STD, root)):
             for n in sorted(names):
-                if n == '.gitkeep':
+                if n == '.gitkeep' or n[:-5] in superseded:
                     continue
                 p = os.path.join(dirpath, n)
                 files.append({'path': os.path.relpath(p, STD).replace(os.sep, '/'),

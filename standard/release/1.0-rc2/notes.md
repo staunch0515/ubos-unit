@@ -22,6 +22,14 @@ range is covered. BPA 1.0-rc1 stays frozen as tagged (DEC-045).
   of the kernel properties, matching, specificity, the cascade with its authoring checks, the
   explanation; adapter operations `parse_sheet`, `check_sheet`, `specificity`, `cascade` and
   `explain_cascade`; error code `RULE.PARSE_ERROR`; 157 vectors.
+- Part 10c (DEC-067): validations, invariants and decisions as kernel properties with commit
+  enforcement, the validation preview and the decisions before command ports; port declaration
+  checks, overlay policy, the textual query form; the instructions `read.explain`,
+  `run.validate`, `search.query` and `read.effective declarations`; adapter operations
+  `validate`, `decide`, `parse_query` and `query.text`; `set_limits.max_violations`; the members
+  `message` and `reason` of `DAT-Process`; error code `RULE.VALIDATION_FAILED`; the supersession
+  of released vectors (`superseded.txt`, STD-CONF-030): VER-CONF-3361 and VER-CONF-4036 of
+  1.0-rc1; 116 vectors.
 
 ## Known limits
 

@@ -1,0 +1,1 @@
+{"clauses":["STD-EXPR-010"],"description":"order by takes asc or desc only","id":"VER-CONF-4710","polarity":"negative","profile":"Core","setup":[],"steps":[{"expect":{"error_code":"QRY.INVALID_QUERY"},"input":{"text":"from Customer order by this.name up"},"op":"parse_query"}]}
