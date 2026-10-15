@@ -33,6 +33,7 @@ ubos-expr.workspace = true
 ubos-rules.workspace = true
 ubos-flow.workspace = true
 ubos-query.workspace = true
+ubos-authz.workspace = true
 ubos-runtime.workspace = true
 ubos-store.workspace = true
 ubos-version.workspace = true

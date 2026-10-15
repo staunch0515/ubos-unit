@@ -45,6 +45,10 @@ pub struct Engine {
     /// The largest unindexed scan of a query, when lowered below the profile's budget
     /// (DSN-DVM-903, adapter `set_limits.max_scan`).
     pub max_scan: Option<u64>,
+    /// The entity model and the compiled policy sets (DSN-DVM-803, step 13b).
+    pub authz: crate::authz::Cache,
+    /// Decision records not yet delivered to the host (DSN-DVM-805).
+    pub decision_log: Vec<Value>,
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
@@ -72,6 +76,8 @@ impl Engine {
             l2: false,
             services: None,
             max_scan: None,
+            authz: Default::default(),
+            decision_log: Vec::new(),
         };
         e.reset()?;
         Ok(e)
@@ -94,6 +100,8 @@ impl Engine {
             l2: false,
             services: None,
             max_scan: None,
+            authz: Default::default(),
+            decision_log: Vec::new(),
         };
         e.load_genesis(classes, None)?;
         Ok(e)
@@ -104,6 +112,8 @@ impl Engine {
         self.store.reset()?;
         self.registry = crate::expressions::registry();
         self.max_scan = None;
+        self.authz.clear();
+        self.decision_log.clear();
         self.now = DEFAULT_NOW.into();
         self.instances.clear();
         self.rules.clear();
@@ -157,6 +167,7 @@ impl Engine {
         }
         self.registry = next;
         self.rules.clear();
+        self.authz.clear();
         // the declarations persist with the VAE, so that a host reopens it (step 7a)
         self.store.put_meta(
             "genesis",
@@ -183,6 +194,8 @@ impl Engine {
             l2: false,
             services: None,
             max_scan: None,
+            authz: Default::default(),
+            decision_log: Vec::new(),
         };
         if e.store.branch("main")?.is_none() {
             Repo::new(e.store.as_mut(), &e.registry).init()?;
@@ -267,6 +280,8 @@ impl Engine {
         if ubos_version::expires_of(&meta)?.is_some_and(|exp| now >= exp) {
             return Err(BpaError::new("VER.BRANCH_ARCHIVED", branch));
         }
+        // DSN-DVM-801, -807 (step 13b): a host commit with a principal is authorized
+        self.enforce_commit(input, &branch)?;
         if p.p.get("abort") == Some(&json!(true)) {
             crate::versioning::record(self.store.as_mut(), &p, "aborted", None, 0)?;
             return Ok(json!({"state": "aborted"}));
@@ -459,6 +474,15 @@ impl Engine {
         let branch = s(input, "branch").unwrap_or("main");
         let oid = s(input, "object_id").unwrap_or_default();
         let (o, prov, ev, st) = self.object_view(branch, input, oid)?;
+        // DSN-DVM-804 (step 13b): a host read with a principal sees only what it may read
+        if let Some(principal) = Engine::principal_of(input)
+            && let Some(set) = self.policy_set_at(branch, None)?
+        {
+            let v = Repo::new(self.store.as_mut(), &self.registry).version(&o.head)?;
+            let resource = self.object_resource(branch, oid, &o, &v)?;
+            let ctx = self.access_ctx(input, branch)?;
+            self.enforce(&set, branch, &principal, "read", &resource, &ctx)?;
+        }
         let a = s(input, "asof")
             .map(str::to_string)
             .unwrap_or_else(|| self.default_valid(&o.class));
@@ -1264,6 +1288,7 @@ pub(crate) fn commit_on(
             })
             .unwrap_or_default();
         lcs.check_written(&mut repo, &tx, reg, &written)?;
+        crate::authz::check_written(&mut repo, &tx, reg, &written)?;
     }
     let appended_ops: Vec<(String, String)> = tx
         .appended

@@ -438,6 +438,18 @@ impl Engine {
     pub fn merge(&mut self, input: &Value) -> Result<Value, BpaError> {
         let source = s(input, "source").unwrap_or_default().to_string();
         let target = s(input, "target").unwrap_or("main").to_string();
+        // DSN-DVM-807 (step 13b): a host merge with a principal is authorized on the target
+        if let Some(principal) = Engine::principal_of(input)
+            && let Some(set) = self.policy_set_at(&target, None)?
+        {
+            let kind = self.branch_meta(&target)?.kind;
+            let ctx = self.access_ctx(input, &target)?;
+            let res = ubos_authz::Resource::Branch {
+                name: target.clone(),
+                kind,
+            };
+            self.enforce(&set, &target, &principal, "merge", &res, &ctx)?;
+        }
         self.merge_into(&source, &target, input, None)
     }
 
