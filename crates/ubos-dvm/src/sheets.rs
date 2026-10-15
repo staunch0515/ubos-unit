@@ -6,7 +6,6 @@ use crate::relations::{extensions_of, resolve, uri_of};
 use crate::stateful::Engine;
 use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, BTreeSet};
-use ubos_expr::{Env, Evaluator, Val, from_json};
 use ubos_model::Registry;
 use ubos_rules::{Matcher, SheetRef};
 use ubos_types::error::invalid;
@@ -38,12 +37,12 @@ pub fn sheet_body(class: &str, body: &mut Map<String, Value>) -> Result<(), BpaE
 
 /// Live sheet and property-declaration bodies of a state at a coordinate: the head
 /// versions in a transaction, or the versions at `asof`.
-struct SheetSet {
+pub(crate) struct SheetSet {
     sheets: Vec<(String, String, String, Value)>,
     properties: Vec<Value>,
 }
 
-fn live_versions(
+pub(crate) fn live_versions(
     repo: &mut Repo<'_>,
     tx: Option<&Tx>,
     st: &State,
@@ -64,10 +63,7 @@ fn live_versions(
                 None => continue,
             },
         };
-        let v = match tx {
-            Some(tx) => repo.version_in(tx, &vh)?,
-            None => repo.version(&vh)?,
-        };
+        let v = version_of(repo, tx, &vh)?;
         if v["tombstone"] == json!(true) {
             continue;
         }
@@ -129,20 +125,18 @@ pub fn check_sheets(
 /// True when a qualifier expression holds on an object; an evaluation failure (a type
 /// error at run time, a null access) does not match (STD-LGS-020).
 fn eval_bool(reg: &Registry, class: &str, body: &Value, expr: &str) -> Result<bool, BpaError> {
-    let run = || -> Result<Val, BpaError> {
-        let ast = ubos_expr::parse(&Value::String(expr.to_string()))?;
-        let t = ubos_expr::class_type(reg, class)?;
-        let mut env = Env::new(Some(t.clone()), None, None, None);
-        ubos_expr::check(&ast, &mut env)?;
-        let mut ev = Evaluator::new(&env);
-        ev.this = Some(from_json(&t, body));
-        ev.eval(&ast)
-    };
-    match run() {
-        Ok(Val::Bool(true)) => Ok(true),
-        Ok(_) => Ok(false),
-        Err(e) if matches!(e.code, "LOGIC.TYPE_ERROR" | "LOGIC.NULL_ACCESS") => Ok(false),
-        Err(e) => Err(e),
+    crate::rules::eval_rule(reg, class, expr, body, None, None, None)
+}
+
+/// A version record, looking first at the versions of an open transaction.
+pub(crate) fn version_of(
+    repo: &mut Repo<'_>,
+    tx: Option<&Tx>,
+    vh: &str,
+) -> Result<Value, BpaError> {
+    match tx {
+        Some(tx) => repo.version_in(tx, vh),
+        None => repo.version(vh),
     }
 }
 
@@ -151,6 +145,7 @@ struct StateMatcher<'a, 'r> {
     reg: &'r Registry,
     st: &'r State,
     repo: &'r mut Repo<'a>,
+    tx: Option<&'r Tx>,
     asof: String,
     authority: String,
 }
@@ -175,19 +170,51 @@ impl Matcher for StateMatcher<'_, '_> {
                 continue;
             };
             let t = &self.st.objects[&tid];
-            if self.repo.version(&t.head)?["tombstone"] == json!(true) {
+            if version_of(self.repo, self.tx, &t.head)?["tombstone"] == json!(true) {
                 continue;
             }
             let Some(seg) = at(&t.timeline, &self.asof) else {
                 continue;
             };
-            let tbody = self.repo.version(&seg.version)?["body"].clone();
+            let tbody = version_of(self.repo, self.tx, &seg.version)?["body"].clone();
             if eval_bool(self.reg, &t.class, &tbody, expr)? {
                 return Ok(true);
             }
         }
         Ok(false)
     }
+}
+
+/// The cascade of an object body of `class` over a state at `asof` in a context: the
+/// effective values with their candidates, the sheet versions bound and the property
+/// registry of the coordinate (STD-LGS-020, -022). The object itself need not exist in
+/// the state (the defaults of a create, STD-LGS-011 `field_default`).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn cascade_state(
+    repo: &mut Repo<'_>,
+    tx: Option<&Tx>,
+    st: &State,
+    reg_ext: &Registry,
+    class: &str,
+    body: &Value,
+    asof: &str,
+    ctx: &Map<String, Value>,
+) -> Result<(ubos_rules::Effective, Vec<String>, ubos_rules::Registry), BpaError> {
+    let set = live_versions(repo, tx, st, Some(asof))?;
+    let reg = ubos_rules::Registry::new(&set.properties)?;
+    let lin = reg_ext.class(class)?.linearization.clone();
+    let authority = repo.store.authority();
+    let mut m = StateMatcher {
+        reg: reg_ext,
+        st,
+        repo,
+        tx,
+        asof: asof.to_string(),
+        authority,
+    };
+    let (out, bindings) =
+        ubos_rules::cascade(&reg, reg_ext, &refs(&set), class, &lin, body, ctx, &mut m)?;
+    Ok((out, bindings, reg))
 }
 
 /// The cascade of an object: `(effective, bindings, evaluated_at, object URI, version)`.
@@ -242,28 +269,9 @@ impl Engine {
             .unwrap_or_default();
         ctx.entry("branch_kind".to_string())
             .or_insert_with(|| Value::String(kind));
-        let set = live_versions(&mut repo, None, &st, Some(&asof))?;
-        let reg = ubos_rules::Registry::new(&set.properties)?;
-        let lin = reg_ext.class(&o.class)?.linearization.clone();
-        let authority = repo.store.authority();
-        let uri = uri_of(&authority, &o.class, &o.slug);
-        let mut m = StateMatcher {
-            reg: &reg_ext,
-            st: &st,
-            repo: &mut repo,
-            asof: asof.clone(),
-            authority,
-        };
-        let (out, bindings) = ubos_rules::cascade(
-            &reg,
-            &reg_ext,
-            &refs(&set),
-            &o.class,
-            &lin,
-            &body,
-            &ctx,
-            &mut m,
-        )?;
+        let uri = uri_of(&repo.store.authority(), &o.class, &o.slug);
+        let (out, bindings, reg) =
+            cascade_state(&mut repo, None, &st, &reg_ext, &o.class, &body, &asof, &ctx)?;
         Ok((out, bindings, ev, uri, version, reg))
     }
 

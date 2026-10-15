@@ -35,6 +35,7 @@ pub fn ctx_type() -> Ty {
             ("process_id", "text"),
             ("trigger", "any"),
             ("channel", "text"),
+            ("role", "text"),
             ("input", "any"),
             ("profile", "text"),
             ("budget_remaining", "any"),

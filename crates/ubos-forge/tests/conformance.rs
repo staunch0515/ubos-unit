@@ -19,7 +19,8 @@ static ALLOC: cap::Cap<std::alloc::System> = cap::Cap::new(std::alloc::System, u
 const CLAIMED_RELEASE: &str = "1.0-rc1";
 
 /// The release in implementation (PH-1 steps 11–14): a vector of it runs when every clause
-/// it verifies is implemented (DEC-070: the governance sheets of step 11b).
+/// it verifies is implemented (DEC-070: the governance sheets of step 11b, the rules and
+/// the Core clauses of step 11c).
 const NEXT_RELEASE: &str = "1.0-rc2";
 const RC2_CLAUSES: &[&str] = &[
     "STD-LGS-001",
@@ -30,6 +31,13 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-LGS-021",
     "STD-LGS-022",
     "STD-LGS-023",
+    "STD-LGS-030",
+    "STD-LGS-031",
+    "STD-CLS-003",
+    "STD-CLS-031",
+    "STD-BPU-003",
+    "STD-ISA-035",
+    "STD-ISA-054",
 ];
 
 /// The clauses a vector verifies.

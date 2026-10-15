@@ -65,6 +65,8 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "import_archive",
     "cascade",
     "explain_cascade",
+    "validate",
+    "decide",
 ];
 
 const ENVELOPE_REQUIRED: &[&str] = &[
@@ -301,6 +303,8 @@ impl Adapter {
             "check_expr" => ubos_expr::check_expr(i)?,
             "parse_sheet" => ubos_rules::ops::parse_sheet(i)?,
             "cascade" => self.engine.cascade(i)?,
+            "validate" => self.engine.validate(i)?,
+            "decide" => self.engine.decide(i)?,
             "explain_cascade" => self.engine.explain_cascade(i)?,
             "check_sheet" => ubos_rules::ops::check_sheet(i)?,
             "specificity" => ubos_rules::ops::specificity(i)?,
@@ -420,7 +424,7 @@ impl Adapter {
                 ))
             }
             "set_limits" => {
-                for k in ["max_body_bytes", "max_derivation_inputs"] {
+                for k in ["max_body_bytes", "max_derivation_inputs", "max_violations"] {
                     if let Some(v) = i.get(k)
                         && !v.is_null()
                         && !v.as_u64().is_some_and(|n| n >= 1 && !v.is_boolean())
@@ -433,6 +437,9 @@ impl Adapter {
                 }
                 if let Some(n) = i.get("max_derivation_inputs").and_then(Value::as_u64) {
                     self.engine.max_inputs = n;
+                }
+                if let Some(n) = i.get("max_violations").and_then(Value::as_u64) {
+                    self.engine.max_violations = n;
                 }
                 Value::Bool(true)
             }

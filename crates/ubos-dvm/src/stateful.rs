@@ -26,6 +26,8 @@ pub struct Engine {
     pub instances: BTreeSet<String>,
     /// Largest number of derivation inputs (STD-TXN-030, adapter `set_limits`).
     pub max_inputs: u64,
+    /// Largest number of violations reported (FR-RULE-034, adapter `set_limits`).
+    pub max_violations: u64,
     /// Counter for generated process identifiers.
     pub next_process: u64,
     /// Branch metadata read in this adapter (invalidated when it changes).
@@ -57,6 +59,7 @@ impl Engine {
             now: DEFAULT_NOW.into(),
             instances: BTreeSet::new(),
             max_inputs: 10_000,
+            max_violations: crate::rules::MAX_VIOLATIONS,
             next_process: 0,
             branch_cache: Default::default(),
             principal: crate::versioning::PRINCIPAL.into(),
@@ -76,6 +79,7 @@ impl Engine {
             now: DEFAULT_NOW.into(),
             instances: BTreeSet::new(),
             max_inputs: 10_000,
+            max_violations: crate::rules::MAX_VIOLATIONS,
             next_process: 0,
             branch_cache: Default::default(),
             principal: crate::versioning::PRINCIPAL.into(),
@@ -159,6 +163,7 @@ impl Engine {
             now: DEFAULT_NOW.into(),
             instances: BTreeSet::new(),
             max_inputs: 10_000,
+            max_violations: crate::rules::MAX_VIOLATIONS,
             next_process: 0,
             branch_cache: Default::default(),
             principal: crate::versioning::PRINCIPAL.into(),
@@ -230,6 +235,8 @@ impl Engine {
             &meta,
             self.max_inputs,
             idem,
+            false,
+            self.max_violations,
         );
         let (r, classes, effects) = match r {
             Ok(x) => x,
@@ -297,6 +304,8 @@ impl Engine {
                 &meta,
                 self.max_inputs,
                 None,
+                false,
+                self.max_violations,
             ) {
                 Ok((r, c, _)) => {
                     out.push(Ok(r));
@@ -682,6 +691,7 @@ fn create(
     default_valid: &dyn Fn(&str) -> String,
     result: &mut Value,
     provenance: Option<&str>,
+    rule_ctx: &Map<String, Value>,
 ) -> Result<(), BpaError> {
     let oid = s(ch, "object_id").unwrap_or_default().to_string();
     let class = s(ch, "class").unwrap_or_default().to_string();
@@ -703,6 +713,15 @@ fn create(
     names::check_name("slug", &slug)?;
     let mut given = object(ch.get("body").unwrap_or(&json!({})));
     crate::sheets::sheet_body(&class, &mut given)?;
+    crate::rules::apply_defaults(
+        repo,
+        tx,
+        repo.reg,
+        &class,
+        &mut given,
+        &default_valid(&class),
+        rule_ctx,
+    )?;
     let body = repo.reg.check_body(&class, &Value::Object(given), false)?;
     let a = ch
         .get("valid")
@@ -848,6 +867,8 @@ pub(crate) fn commit_on(
     meta: &ubos_version::BranchMeta,
     max_inputs: u64,
     idempotency: Option<(String, String, String)>,
+    dry: bool,
+    max_violations: u64,
 ) -> Result<(Value, Vec<String>, u32), BpaError> {
     let changes = input
         .get("changes")
@@ -944,6 +965,7 @@ pub(crate) fn commit_on(
             }
         }
     }
+    let rule_ctx = crate::rules::rule_ctx(&process.p, &meta.kind, &repo.store.authority());
     let mut stale = Vec::new();
     for ch in &changes {
         if matches!(s(ch, "op"), Some("update" | "end" | "hide"))
@@ -968,7 +990,15 @@ pub(crate) fn commit_on(
         }
         match s(ch, "op").unwrap_or_default() {
             "create" => {
-                create(&mut repo, &mut tx, ch, &default_valid, &mut result, rid)?;
+                create(
+                    &mut repo,
+                    &mut tx,
+                    ch,
+                    &default_valid,
+                    &mut result,
+                    rid,
+                    &rule_ctx,
+                )?;
                 let oid = s(ch, "object_id").unwrap_or_default();
                 if let Some(d) = &deriv {
                     let vh = result["versions"][oid]
@@ -1129,6 +1159,37 @@ pub(crate) fn commit_on(
         .cloned()
         .chain(tx.appended.iter().map(|e| e.class.clone()))
         .collect();
+    // STD-LGS-011, -030: commit properties, validations and invariants (DEC-067).
+    {
+        let written: Vec<(String, String)> = changes
+            .iter()
+            .filter_map(|c| s(c, "object_id"))
+            .filter_map(|oid| {
+                result["versions"]
+                    .get(oid)
+                    .and_then(Value::as_str)
+                    .map(|v| (oid.to_string(), v.to_string()))
+            })
+            .collect();
+        let warnings = crate::rules::enforce(
+            &mut repo,
+            &tx,
+            reg,
+            &crate::rules::Enforce {
+                process: &process.p,
+                via_change_set,
+                branch_kind: &meta.kind,
+                protected: ubos_version::PROTECTED.contains(&meta.kind.as_str()),
+                written: &written,
+                ended: &ended,
+                default_valid: &default_valid,
+                max_violations,
+            },
+        )?;
+        if !warnings.is_empty() {
+            result["warnings"] = Value::Array(warnings);
+        }
+    }
     // STD-VER-012: write policy on protected branches.
     if !via_change_set && ubos_version::PROTECTED.contains(&meta.kind.as_str()) {
         for c in &classes {
@@ -1147,6 +1208,10 @@ pub(crate) fn commit_on(
         &logic,
     )?;
     tx.extra.insert("rule_binding".into(), binding);
+    if dry {
+        // the validation preview (FR-RULE-035): the same evaluation, nothing written
+        return Ok((result, classes, 0));
+    }
     if !derived.is_empty() {
         tx.extra.insert("derived".into(), Value::Array(derived));
     }
