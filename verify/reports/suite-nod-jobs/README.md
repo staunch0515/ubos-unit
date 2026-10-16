@@ -9,8 +9,8 @@ keys).
 
 | Backend | Result | Time |
 |---|---|---|
-| memory | **13 of 13 cases pass** | 47.0 s |
-| PostgreSQL | **13 of 13 cases pass** | 60.7 s |
+| memory | **13 of 13 cases pass** | 37.9 s |
+| PostgreSQL | **13 of 13 cases pass** | 60.2 s |
 
 How the cases run:
 
@@ -26,19 +26,19 @@ How the cases run:
 
 | Case | Clause | memory / PostgreSQL | ms |
 |---|---|---|---|
-| jobs_are_objects | DSN-NOD-220 | pass / pass | 95 / 317 |
-| lease_fencing | DSN-NOD-221 | pass / pass | 450 / 467 |
-| retries_and_poison | DSN-NOD-223 | pass / pass | 0 / 24 |
-| priorities_and_limits | DSN-NOD-229 | pass / pass | 0 / 18 |
-| sweeper_restores | FR-EVT-032 | pass / pass | 69 / 221 |
-| bulk_cancel | DSN-NOD-230 | pass / pass | 979 / 4952 |
-| idempotent_execution | DSN-NOD-221 | pass / pass | 18 / 283 |
+| jobs_are_objects | DSN-NOD-220 | pass / pass | 82 / 452 |
+| lease_fencing | DSN-NOD-221 | pass / pass | 450 / 466 |
+| retries_and_poison | DSN-NOD-223 | pass / pass | 0 / 33 |
+| priorities_and_limits | DSN-NOD-229 | pass / pass | 0 / 22 |
+| sweeper_restores | FR-EVT-032 | pass / pass | 69 / 273 |
+| bulk_cancel | DSN-NOD-230 | pass / pass | 1022 / 4355 |
+| idempotent_execution | DSN-NOD-221 | pass / pass | 18 / 280 |
 | schedule_rules | FR-EVT-041 | pass / pass | 0 / 0 |
-| schedule_exactly_once | DSN-NOD-224 | pass / pass | 17 / 170 |
-| schedule_missed_slots | DSN-NOD-226 | pass / pass | 0 / 67 |
-| schedule_pause_resume | DSN-NOD-225 | pass / pass | 1 / 58 |
-| schedule_hot_change | FR-EVT-042 | pass / pass | 27 / 142 |
-| schedule_through_server | DSN-NOD-224 | pass / pass | 44873 / 53245 |
+| schedule_exactly_once | DSN-NOD-224 | pass / pass | 31 / 162 |
+| schedule_missed_slots | DSN-NOD-226 | pass / pass | 0 / 44 |
+| schedule_pause_resume | DSN-NOD-225 | pass / pass | 1 / 63 |
+| schedule_hot_change | FR-EVT-042 | pass / pass | 38 / 160 |
+| schedule_through_server | DSN-NOD-224 | pass / pass | 35808 / 52628 |
 
 What the cases show:
 
@@ -56,13 +56,16 @@ What the cases show:
   - Queue concurrency 1 and the tenant limit each hold back a second claim.
   - A re-prioritised job goes first.
 - **sweeper_restores** (FR-EVT-032): the pending `Job` object of an operator's port job in a paused queue survives the loss of its row. The sweeper rebuilds the row from the object, leaves an existing row alone, and the job runs once the queue resumes.
-- **bulk_cancel** (DSN-NOD-230): an operator's bulk job of 200 batches is cancelled while it runs. It stops between batches: after 35 batches in memory and 9 on PostgreSQL.
+- **bulk_cancel** (DSN-NOD-230): an operator's bulk job of 200 batches is cancelled while it runs. It stops between batches: after 36 batches in memory and 8 on PostgreSQL.
 - **idempotent_execution** (DSN-NOD-221 with STD-TXN-040): two runs of the same job's process with the same idempotency key commit once. The second run replays the first commit, and the head does not move.
 - **schedule_rules** (FR-EVT-041 acceptance 1):
   - "18:00 America/New_York on business days" keeps 18:00 local across the DST change (22:00 UTC, then 23:00 UTC). A holiday has no slot.
   - The nth business day, and cron steps, ranges and weekdays.
   - No slot in the spring-forward gap, and one slot at the earlier instant in the fall-back overlap. A bad rule is refused.
-- **schedule_exactly_once** (DSN-NOD-224 acceptance 1, FR-EVT-043): two evaluators, as two nodes during a lease handover, evaluate the same schedule at once over 20 slots. They fire 20 times with 20 distinct job identifiers, each derived from its slot.
+- **schedule_exactly_once** (DSN-NOD-224 acceptance 1, FR-EVT-043): two evaluators, as two nodes during a lease handover, evaluate the same schedule at once over 20 slots.
+  - Each slot is recorded once and fired.
+  - Every enqueue carries the job identifier derived from its slot. An evaluator that finds a slot still `firing` (another leader between its record and its enqueue, or a crash) enqueues it again with the same identifier.
+  - All the enqueues, repeated ones included, make 20 jobs in the job store.
 - **schedule_missed_slots** (DSN-NOD-226 acceptance 1): after a 3-hour outage over an hourly schedule, `fire_all` runs three jobs in slot order, `fire_once` runs the latest slot and `skip` runs none. Every missed slot is recorded.
 - **schedule_pause_resume** (DSN-NOD-225 acceptance 1, FR-EVT-044 acceptance 1):
   - A pause over 3 slots records them paused and fires nothing.
@@ -78,6 +81,8 @@ What the cases show:
   - The suite disables its schedules at the end, so their cursors are forgotten.
 
 ## Defects found and fixed
+
+- **The exactly-once check counted enqueues, not jobs.** CI saw 21 enqueues for 20 slots: one evaluator re-enqueued a slot that the other had recorded and not yet marked fired. That enqueue carries the slot's job identifier, so it is the same job. The case now checks the identifiers and counts the jobs in the job store.
 
 - **An operator's port job had no principal** and was dead at its first attempt. It now runs as the operator who enqueued it.
 - **The sweeper read every `Job` object** of `main` every 30 s. It now reads only the objects without a row (see `verify/reports/exit-1-17/nod/`).

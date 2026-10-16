@@ -20,9 +20,9 @@
       "case": "jobs_are_objects",
       "clause": "DSN-NOD-220",
       "result": "pass",
-      "ms": 95,
+      "ms": 82,
       "evidence": {
-        "job_id": "cc3f08f2-5919-415a-8e18-6027e60cbdd8",
+        "job_id": "b4dd9cf1-8238-4de7-9568-aa3de3463c75",
         "object_state": "succeeded",
         "refused": "LOGIC.FORBIDDEN_TARGET"
       }
@@ -60,7 +60,7 @@
       "result": "pass",
       "ms": 0,
       "evidence": {
-        "queue": "q-527fd3d9"
+        "queue": "q-54d913f7"
       }
     },
     {
@@ -69,16 +69,16 @@
       "result": "pass",
       "ms": 69,
       "evidence": {
-        "job_id": "bcddae65-8b18-4488-827d-f709f656530e"
+        "job_id": "89347814-a5f2-4ea1-8c2a-11a746cdab95"
       }
     },
     {
       "case": "bulk_cancel",
       "clause": "DSN-NOD-230",
       "result": "pass",
-      "ms": 979,
+      "ms": 1022,
       "evidence": {
-        "batches_before_cancel": 35,
+        "batches_before_cancel": 36,
         "of": 200
       }
     },
@@ -88,7 +88,7 @@
       "result": "pass",
       "ms": 18,
       "evidence": {
-        "cseq": 43,
+        "cseq": 44,
         "replayed": true
       }
     },
@@ -109,11 +109,12 @@
       "case": "schedule_exactly_once",
       "clause": "DSN-NOD-224",
       "result": "pass",
-      "ms": 17,
+      "ms": 31,
       "evidence": {
         "evaluators": 2,
         "slots": 20,
-        "firings": 20
+        "jobs": 20,
+        "enqueues": 20
       }
     },
     {
@@ -155,7 +156,7 @@
       "case": "schedule_hot_change",
       "clause": "FR-EVT-042",
       "result": "pass",
-      "ms": 27,
+      "ms": 38,
       "evidence": {
         "before": [
           "2026-10-17T06:00:00.000000Z",
@@ -163,9 +164,9 @@
           "2026-10-19T06:00:00.000000Z"
         ],
         "after": [
-          "2026-10-16T15:00:00.000000Z",
           "2026-10-16T16:00:00.000000Z",
-          "2026-10-16T17:00:00.000000Z"
+          "2026-10-16T17:00:00.000000Z",
+          "2026-10-16T18:00:00.000000Z"
         ]
       }
     },
@@ -173,17 +174,17 @@
       "case": "schedule_through_server",
       "clause": "DSN-NOD-224",
       "result": "pass",
-      "ms": 44873,
+      "ms": 35808,
       "evidence": {
-        "slot": "2026-10-16T14:20:00.000000Z",
-        "observed_ms_after_slot": 220
+        "slot": "2026-10-16T15:32:00.000000Z",
+        "observed_ms_after_slot": 738
       }
     }
   ],
-  "seconds": 47.0,
+  "seconds": 37.9,
   "signature": {
     "alg": "ed25519",
-    "key": "2ac896763a5f1ec2a00f3debb9e012246d1c4c0f21c662726afd0e38eae98d98",
-    "sig": "f07991133ec97f55ef099deb546a32c176c074cf9599e74ac5b0488ded76f6cd008434f0268057f0e4fa9b7daf9a1e18584ac98d0e287fe4bf0a7968419b5e0d"
+    "key": "4b83fbf74a3000bf43bdc2d55ea951d51d3ea4de6935f28850467d803dd81af1",
+    "sig": "997c8bcbedd8001c26e0a2b85b4e67d68746527084e3386afaebcc85942ed63a5f37946c749bce1991c1f88e36c5316fc2ff31e97b5b5be1b08d39069ca7240c"
   }
 }

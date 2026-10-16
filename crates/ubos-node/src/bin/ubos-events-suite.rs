@@ -1576,15 +1576,17 @@ fn sched_body(rule: &str, misfire: &str) -> Value {
         "target": {"kind": "port", "branch": BR, "port": "mark", "target": "ubos://acme/Account/x", "params": {"tag": "$event.slot"}}})
 }
 
-/// DSN-NOD-224, FR-EVT-043: two leaders evaluating at once (a lease handover) fire each
-/// slot once, with one job identifier per slot.
+/// DSN-NOD-224, FR-EVT-043: two leaders evaluating at once (a lease handover) create one
+/// job per slot. Each slot is recorded once; an evaluator that finds a slot still `firing`
+/// (left by a crash, or another leader between its record and its enqueue) enqueues it
+/// again with the same job identifier, derived from the slot, so it remains one job.
 fn schedule_exactly_once(e: &Env) -> Result<Value, BpaError> {
     let st = sched_store(e)?;
     let sid = uuid();
     let b = sched_body("* * * * *", "fire_once");
     let base = schedule::parse("2026-10-16T12:00:30.000000Z")?;
     st.set_cursor(&sid, base)?;
-    let mut ids = Vec::new();
+    let mut specs = Vec::new();
     for round in 1..=20 {
         let at = base + chrono::Duration::minutes(round);
         let hs: Vec<_> = (0..2)
@@ -1598,28 +1600,51 @@ fn schedule_exactly_once(e: &Env) -> Result<Value, BpaError> {
             })
             .collect();
         for h in hs {
-            ids.extend(
-                h.join()
-                    .map_err(|_| err("thread"))??
-                    .into_iter()
-                    .map(|s| s["job_id"].clone()),
-            );
+            specs.extend(h.join().map_err(|_| err("thread"))??);
         }
     }
-    let distinct: std::collections::BTreeSet<String> = ids.iter().map(|x| x.to_string()).collect();
+    // every enqueue carries its slot's job identifier
+    for sp in &specs {
+        let slot = sp["payload"]["slot"].as_str().unwrap_or_default();
+        check_v(
+            sp["job_id"] == json!(ubos_node::platform::schedule_job_id(&sid, slot)?),
+            "the job identifier is the slot's",
+            sp,
+        )?;
+    }
+    let jobs: std::collections::BTreeSet<String> = specs
+        .iter()
+        .map(|x| x["job_id"].as_str().unwrap_or_default().to_string())
+        .collect();
     check_v(
-        ids.len() == 20 && distinct.len() == 20,
-        "20 slots, 20 firings",
-        &json!(ids.len()),
-    )?;
-    let again = ubos_node::platform::schedule_job_id(&sid, "2026-10-16T12:01:00.000000Z")?;
-    check(
-        ids.contains(&json!(again)),
-        "the job identifier is the slot's",
+        jobs.len() == 20,
+        "20 slots, 20 jobs",
+        &json!({"jobs": jobs.len(), "enqueues": specs.len()}),
     )?;
     let fired = st.slots(&sid, Some("fired"), 100)?;
-    check(fired.len() == 20, "20 slots recorded fired")?;
-    Ok(json!({"evaluators": 2, "slots": 20, "firings": ids.len()}))
+    check(
+        fired.len() == 20 && st.slots(&sid, None, 100)?.len() == 20,
+        "20 slots recorded, each fired",
+    )?;
+    // every enqueue, repeated ones included, into the job store: one job per slot
+    let q = store(e)?;
+    let kind = format!("suite-{}", &uuid()[..8]);
+    for sp in &specs {
+        let mut sp = sp.clone();
+        sp["kind"] = json!(kind);
+        q.enqueue(&sp)?;
+    }
+    let rows = q.list(&ubos_node::services::JobFilter {
+        kind: Some(kind.clone()),
+        limit: 1000,
+        ..Default::default()
+    })?;
+    check_v(
+        rows.len() == 20,
+        "20 jobs in the job store",
+        &json!(rows.len()),
+    )?;
+    Ok(json!({"evaluators": 2, "slots": 20, "jobs": jobs.len(), "enqueues": specs.len()}))
 }
 
 /// DSN-NOD-226, FR-EVT-041: after a 3-hour outage over an hourly schedule, `fire_all` runs

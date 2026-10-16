@@ -20,9 +20,9 @@
       "case": "jobs_are_objects",
       "clause": "DSN-NOD-220",
       "result": "pass",
-      "ms": 317,
+      "ms": 452,
       "evidence": {
-        "job_id": "3d358a27-61cb-47f8-9ea7-a2ff68ec2138",
+        "job_id": "e9bb5342-72a5-4e01-abdc-28022dd76e0a",
         "object_state": "succeeded",
         "refused": "LOGIC.FORBIDDEN_TARGET"
       }
@@ -31,7 +31,7 @@
       "case": "lease_fencing",
       "clause": "DSN-NOD-221",
       "result": "pass",
-      "ms": 467,
+      "ms": 466,
       "evidence": {
         "tokens": [
           1,
@@ -43,7 +43,7 @@
       "case": "retries_and_poison",
       "clause": "DSN-NOD-223",
       "result": "pass",
-      "ms": 24,
+      "ms": 33,
       "evidence": {
         "delays_ms": [
           1000,
@@ -58,27 +58,27 @@
       "case": "priorities_and_limits",
       "clause": "DSN-NOD-229",
       "result": "pass",
-      "ms": 18,
+      "ms": 22,
       "evidence": {
-        "queue": "q-0ecdf4c6"
+        "queue": "q-5e494e99"
       }
     },
     {
       "case": "sweeper_restores",
       "clause": "FR-EVT-032",
       "result": "pass",
-      "ms": 221,
+      "ms": 273,
       "evidence": {
-        "job_id": "9c9f45d1-9531-437b-8123-26c7f4adeee2"
+        "job_id": "07402968-d093-493c-8bae-849e1db1136e"
       }
     },
     {
       "case": "bulk_cancel",
       "clause": "DSN-NOD-230",
       "result": "pass",
-      "ms": 4952,
+      "ms": 4355,
       "evidence": {
-        "batches_before_cancel": 9,
+        "batches_before_cancel": 8,
         "of": 200
       }
     },
@@ -86,9 +86,9 @@
       "case": "idempotent_execution",
       "clause": "DSN-NOD-221",
       "result": "pass",
-      "ms": 283,
+      "ms": 280,
       "evidence": {
-        "cseq": 17,
+        "cseq": 16,
         "replayed": true
       }
     },
@@ -109,18 +109,19 @@
       "case": "schedule_exactly_once",
       "clause": "DSN-NOD-224",
       "result": "pass",
-      "ms": 170,
+      "ms": 162,
       "evidence": {
         "evaluators": 2,
         "slots": 20,
-        "firings": 20
+        "jobs": 20,
+        "enqueues": 21
       }
     },
     {
       "case": "schedule_missed_slots",
       "clause": "DSN-NOD-226",
       "result": "pass",
-      "ms": 67,
+      "ms": 44,
       "evidence": {
         "fire_all": [
           "2026-10-16T11:00:00.000000Z",
@@ -137,7 +138,7 @@
       "case": "schedule_pause_resume",
       "clause": "DSN-NOD-225",
       "result": "pass",
-      "ms": 58,
+      "ms": 63,
       "evidence": {
         "fire_once": [
           "skipped",
@@ -155,7 +156,7 @@
       "case": "schedule_hot_change",
       "clause": "FR-EVT-042",
       "result": "pass",
-      "ms": 142,
+      "ms": 160,
       "evidence": {
         "before": [
           "2026-10-17T06:00:00.000000Z",
@@ -163,9 +164,9 @@
           "2026-10-19T06:00:00.000000Z"
         ],
         "after": [
-          "2026-10-16T15:00:00.000000Z",
           "2026-10-16T16:00:00.000000Z",
-          "2026-10-16T17:00:00.000000Z"
+          "2026-10-16T17:00:00.000000Z",
+          "2026-10-16T18:00:00.000000Z"
         ]
       }
     },
@@ -173,17 +174,17 @@
       "case": "schedule_through_server",
       "clause": "DSN-NOD-224",
       "result": "pass",
-      "ms": 53245,
+      "ms": 52628,
       "evidence": {
-        "slot": "2026-10-16T14:21:00.000000Z",
-        "observed_ms_after_slot": 791
+        "slot": "2026-10-16T15:33:00.000000Z",
+        "observed_ms_after_slot": 680
       }
     }
   ],
-  "seconds": 60.7,
+  "seconds": 60.2,
   "signature": {
     "alg": "ed25519",
-    "key": "8353886aad3187faa4eeb76dd8118d78dc7130709f6d86145544212740e5868e",
-    "sig": "b6dbd885dd1f4b1f9d021c841414ae848b8dfcec12ed5f86ff824b50eebfc705f36324df4896859e3ac3d8ba1434b2406bcecbd7d4360b069ef426808aef5706"
+    "key": "721314db5f42e8fbacad6cb8f5afa7c1971a35c77de6e28ce639b8105a278dfa",
+    "sig": "8b7fae71fe8b8fb310a4e77d798046dd7e4665a3dbc99e39e49c132d73f1b5632dfcc10753aa40e1ed7ff66a67c68f09bc70d5007028bf65f00fd8eb9546de09"
   }
 }
