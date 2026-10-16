@@ -1703,6 +1703,33 @@ impl Engine {
             &self.principal,
         )?;
         self.next_process = next;
+        // STD-TXN-040 for executions (PH-1 step 15c, DEC-076): a process naming an
+        // idempotency key commits once; a repeated request returns the stored result. The
+        // request hash is over what was asked, not over the changes it produced.
+        let idem = match (
+            replay.is_none(),
+            p.p.get("idempotency_key").filter(|k| !k.is_null()),
+        ) {
+            (true, Some(k)) => {
+                let mut req = Map::new();
+                for key in [
+                    "branch", "target", "port", "params", "asset", "function", "args",
+                ] {
+                    if let Some(v) = i.get(key) {
+                        req.insert(key.into(), v.clone());
+                    }
+                }
+                let h = content_id("ubos.chunk.v1", &Value::Object(req))?;
+                let scope = s(&p.p, "initiator").unwrap_or_default().to_string();
+                Some((scope, canonical(k)?, h))
+            }
+            _ => None,
+        };
+        if let Some((scope, key, hash)) = &idem
+            && let Some(result) = self.replay(scope, key, hash)?
+        {
+            return Ok(result);
+        }
         let seed0 = match (
             &self.services,
             i.get("entropy_seed").filter(|v| !v.is_null()),
@@ -1803,12 +1830,13 @@ impl Engine {
                         false,
                         &meta,
                         self.max_inputs,
-                        None,
+                        idem.clone(),
                         false,
                         self.max_violations,
                         &mut self.rules,
                         Some(&flow),
                     );
+
                     // staged → flushing → committed; a conflict re-runs or aborts, a storage
                     // failure aborts, any other error is the pre-lock validation failing
                     use crate::process::Event;
@@ -1854,6 +1882,15 @@ impl Engine {
                 Err(e) => {
                     if replay.is_some() {
                         return Err(e);
+                    }
+                    // another execution of the same request committed meanwhile (its
+                    // idempotency record was written first): its result stands, and this
+                    // execution is not committed (DEC-076)
+                    if RETRY_CODES.contains(&e.code)
+                        && let Some((scope, key, hash)) = &idem
+                        && let Some(result) = self.replay(scope, key, hash)?
+                    {
+                        return Ok(result);
                     }
                     if RETRY_CODES.contains(&e.code) && retryable && attempt < max_attempts {
                         continue;

@@ -125,7 +125,7 @@ Reading order:
   1. Given the runtime store wiped, when the sweeper runs, then all pending jobs resume.
 - **Verification:** FAULT
 - **Origin:** FR-EVT-031, FR-EVT-032
-- **Phase note:** PH-1 step 7a (DEC-060): jobs in the `job` table with `enqueue`, `claim`, `complete` and `fail` through the `Jobs` service; jobs as governed objects and schedules follow with the Server of gate 1b. PH-1 step 15 (DEC-076): jobs are System-kind `Job` objects of the platform namespace; the lease, heartbeat and fencing token stay in the `job` table as the runtime hint.
+- **Phase note:** PH-1 step 7a (DEC-060): jobs in the `job` table with `enqueue`, `claim`, `complete` and `fail` through the `Jobs` service; jobs as governed objects and schedules follow with the Server of gate 1b. PH-1 step 15 (DEC-076): jobs are System-kind `Job` objects of the platform namespace; the lease, heartbeat and fencing token stay in the `job` table as the runtime hint. PH-1 step 15c: the platform writes `Job` objects through the host operation `system_commit`, which ordinary commits cannot imitate; the sweeper restores missing rows every 30 s.
 
 ### DSN-NOD-221 — Leases and heartbeats
 - **Statement:** A job MUST be claimed with `UPDATE … SET lease_holder, lease_until WHERE state = ready AND (lease_until < now) … FOR UPDATE SKIP LOCKED` and heartbeated every lease/3 (FR-EVT-033). Results MUST be committed with a fencing check on the lease token.
@@ -136,7 +136,7 @@ Reading order:
   1. Given a paused node whose lease expired and was re-claimed, when it resumes and tries to commit, then its commit is rejected.
 - **Verification:** SIM, FAULT
 - **Origin:** FR-EVT-033
-- **Phase note:** PH-1 step 7a (DEC-060): claims under a lease (`FOR UPDATE SKIP LOCKED`), expired leases reclaimable; heartbeats and fencing tokens follow with the Server of gate 1b. PH-1 step 15c (DEC-076): heartbeats every lease/3 and fencing tokens on result commits.
+- **Phase note:** PH-1 step 7a (DEC-060): claims under a lease (`FOR UPDATE SKIP LOCKED`), expired leases reclaimable; heartbeats and fencing tokens follow with the Server of gate 1b. PH-1 step 15c (DEC-076): heartbeats every lease/3 and fencing tokens on result commits. The handler's own commit is made once through the job's idempotency key, whose record the store writes with the commit and refuses a second time, so a holder that lost its lease neither commits again nor overwrites the result.
 
 ### DSN-NOD-222 — Fairness and limits
 - **Statement:** Job claiming MUST round-robin across tenants and queues and respect per-tenant concurrency limits (FR-EVT-034).
@@ -219,6 +219,7 @@ Reading order:
   1. Given a cancelled running job, when cancelled, then its process is cancelled within NR-PERF-019, and the audit log records the operator.
 - **Verification:** CONF
 - **Origin:** FR-EVT-052, NR-PERF-019, CR-SOX-004
+- **Phase note:** PH-1 step 15c (DEC-076): cancelling a running job stops a bulk job between batches; a job of one process ends with its running attempt and is not retried.
 
 ### DSN-NOD-230 — Bulk and saga coordination
 - **Statement:** Bulk processes (DSN-DVM-560) and saga coordinators (DSN-DVM-564) MUST run as jobs, so they resume after node failure through the lease mechanism.

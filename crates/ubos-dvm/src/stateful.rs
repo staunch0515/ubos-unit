@@ -14,12 +14,17 @@ use ubos_version::{ObjectState, Repo, Tx, at};
 /// Default adapter clock (STD-CONF-002 `set_now`).
 pub const DEFAULT_NOW: &str = "2026-01-01T00:00:00.000000Z";
 
+/// The member that marks a change of the platform (`system_commit`).
+pub(crate) const SYSTEM_MARK: &str = "__platform";
+
 /// State of the adapter besides the store.
 pub struct Engine {
     /// The store (memory or PostgreSQL).
     pub store: Box<dyn Store>,
     /// Loaded classes.
     pub registry: Registry,
+    /// Set by `system_commit` for the one commit it makes.
+    pub(crate) system_write: bool,
     /// Adapter clock.
     pub now: String,
     /// Classes that have instances on some branch (STD-KIND-080).
@@ -68,6 +73,7 @@ impl Engine {
     /// A new engine over a store, reset.
     pub fn new(store: Box<dyn Store>) -> Result<Engine, BpaError> {
         let mut e = Engine {
+            system_write: false,
             store,
             registry: crate::expressions::registry(),
             now: DEFAULT_NOW.into(),
@@ -94,6 +100,7 @@ impl Engine {
     /// dataset), with the given class declarations; nothing is reset.
     pub fn attach(store: Box<dyn Store>, classes: &Value) -> Result<Engine, BpaError> {
         let mut e = Engine {
+            system_write: false,
             store,
             registry: crate::expressions::registry(),
             now: DEFAULT_NOW.into(),
@@ -154,6 +161,46 @@ impl Engine {
         self.default_valid(class)
     }
 
+    /// `system_commit {branch?, changes, process?}` (host-internal, PH-1 step 15c,
+    /// DEC-076): a commit of the platform that may create and update System-kind objects
+    /// (jobs, FR-EVT-031), which ordinary commits may not; only System-kind classes are
+    /// accepted, and an update without `base` is based on the current head.
+    pub fn system_commit(&mut self, input: &Value) -> Result<Value, BpaError> {
+        let branch = s(input, "branch").unwrap_or("main").to_string();
+        let mut changes = input["changes"].as_array().cloned().unwrap_or_default();
+        for c in changes.iter_mut() {
+            let oid = s(c, "object_id").unwrap_or_default().to_string();
+            let existing = match s(c, "op") {
+                Some("create") => None,
+                _ => Some(self.object_view(&branch, &json!({}), &oid)?.0),
+            };
+            let class = match (s(c, "class"), &existing) {
+                (Some(k), _) => k.to_string(),
+                (None, Some(o)) => o.class.clone(),
+                (None, None) => String::new(),
+            };
+            if self.registry.class(&class)?.kind.as_deref() != Some("system") {
+                return Err(BpaError::new(
+                    "LOGIC.FORBIDDEN_TARGET",
+                    format!("{class} is not a System-kind class"),
+                ));
+            }
+            if s(c, "op") == Some("update")
+                && c.get("base").is_none()
+                && let Some(o) = &existing
+            {
+                c["base"] = json!(o.head);
+            }
+            c[SYSTEM_MARK] = json!(true);
+        }
+        let mut i = input.clone();
+        i["changes"] = Value::Array(changes);
+        self.system_write = true;
+        let r = self.commit(&i);
+        self.system_write = false;
+        r
+    }
+
     /// `load_genesis` (STD-KIND-080: a kind does not change while instances exist).
     pub fn load_genesis(
         &mut self,
@@ -192,6 +239,7 @@ impl Engine {
     /// without `main` is initialised (CTR-001 `open_vae`, step 7a).
     pub fn open_existing(store: Box<dyn Store>) -> Result<Engine, BpaError> {
         let mut e = Engine {
+            system_write: false,
             store,
             registry: crate::expressions::registry(),
             now: DEFAULT_NOW.into(),
@@ -344,6 +392,17 @@ impl Engine {
 
     /// `commit` (STD-TXN-001…024, STD-KIND-020…025, STD-TIME-011, -030).
     pub fn commit(&mut self, input: &Value) -> Result<Value, BpaError> {
+        let platform = std::mem::take(&mut self.system_write);
+        if !platform
+            && input["changes"]
+                .as_array()
+                .is_some_and(|cs| cs.iter().any(|c| c.get(SYSTEM_MARK).is_some()))
+        {
+            return Err(BpaError::new(
+                "MODEL.INVALID_VALUE",
+                "a change does not carry the platform's mark",
+            ));
+        }
         let branch = s(input, "branch").unwrap_or("main").to_string();
         let mut next = self.next_process;
         // the principal of a host input is the initiator unless the process names one
@@ -893,7 +952,9 @@ fn create(
         return Err(BpaError::new("MODEL.ABSTRACT_INSTANTIATION", class));
     }
     let kind = c.kind.clone().unwrap_or_default();
-    if kind == "system" || kind == "ledger" {
+    // System-kind objects are written by the platform only (`system_commit`)
+    let platform = ch.get(SYSTEM_MARK) == Some(&json!(true));
+    if (kind == "system" && !platform) || kind == "ledger" {
         return Err(BpaError::new("LOGIC.FORBIDDEN_TARGET", class));
     }
     if repo.obj(tx, &oid)?.is_some() || repo.find_entry(tx, &oid)?.is_some() {
@@ -982,7 +1043,7 @@ fn update(
             BpaError::new("IAM.NOT_FOUND", "unknown object")
         });
     };
-    if o.kind == "system" {
+    if o.kind == "system" && ch.get(SYSTEM_MARK) != Some(&json!(true)) {
         return Err(BpaError::new("LOGIC.FORBIDDEN_TARGET", oid));
     }
     if s(ch, "base").is_none() {

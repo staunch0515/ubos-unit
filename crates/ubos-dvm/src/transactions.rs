@@ -779,10 +779,12 @@ impl Engine {
             .and_then(|r| r.get("bulk_state").filter(|b| b.is_object()).cloned());
         let mut b = match bulk_state {
             Some(b) if i.get("resume") == Some(&json!(true)) => {
-                if s(&b, "state") != Some("failed") {
+                // a failed process resumes after its last committed child; a suspended
+                // one (`max_chunks`, the host's job runner, DEC-076) continues
+                if !matches!(s(&b, "state"), Some("failed" | "suspended")) {
                     return Err(BpaError::new(
                         "FLOW.TRANSITION_NOT_ALLOWED",
-                        "only a failed bulk process is resumed",
+                        "only a failed or suspended bulk process is resumed",
                     ));
                 }
                 b
@@ -821,7 +823,23 @@ impl Engine {
             .unwrap_or_else(|| s(&b, "branch").unwrap_or("main"))
             .to_string();
         let done = b["children"].as_array().map(Vec::len).unwrap_or_default();
+        // `max_chunks`: at most this many chunks in this call; the process is then
+        // suspended, so a host can stop it between batches (DSN-NOD-229, -230)
+        let max_chunks = i
+            .get("max_chunks")
+            .and_then(Value::as_u64)
+            .map(|n| n as usize);
+        if b["state"] == json!("suspended") {
+            b["state"] = json!("running");
+        }
         for (n, chunk) in chunks.iter().enumerate().skip(done) {
+            if max_chunks.is_some_and(|m| n >= done + m) {
+                b["state"] = json!("suspended");
+                self.put_bulk_state(&pid, &b)?;
+                return Ok(
+                    json!({"state": "suspended", "children": b["children"], "remaining": chunks.len() - n}),
+                );
+            }
             b["attempts"] = json!(b["attempts"].as_u64().unwrap_or_default() + 1);
             self.put_bulk_state(&pid, &b)?;
             let input = json!({"branch": target, "changes": chunk,

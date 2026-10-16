@@ -2374,8 +2374,14 @@ impl PgStore {
                 // Metadata written with the commit (DEC-054): effects, the idempotency
                 // record, derivation records and edges, timers.
                 tx.outbox_append(p.branch_id, &p.outbox).await?;
-                if let Some(r) = &p.idempotency {
-                    tx.idempotency_put(r).await?;
+                // a request whose idempotency record another transaction wrote meanwhile
+                // is not committed twice: the flush fails like a moved head and the caller
+                // replays (STD-TXN-040; the fencing of PH-1 step 15c, DEC-076)
+                if let Some(r) = &p.idempotency
+                    && !tx.idempotency_put(r).await?
+                {
+                    tx.rollback().await?;
+                    return Ok(false);
                 }
                 tx.put_chunks(&p.chunks).await?;
                 tx.put_derivation_edges(&p.edges).await?;

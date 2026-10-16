@@ -158,6 +158,14 @@ subscription's service principal, with a process identifier derived from the sub
 and the event so that a committed delivery never runs twice; exhausted deliveries are dead
 letters that operators retry, cancel or annotate under `/api/v1/admin/jobs`.
 
+Jobs of step 15c: every job is a System-kind `Job` object on `main`, written only through the
+host operation `system_commit`, with a row of the `job` table holding its lease, fencing
+token, heartbeat, queue and priority; deliveries, the kernel's `run.async` effects and
+operators' bulk and port jobs all run through the Server's job worker (tenants round-robin,
+queue and tenant limits, heartbeats every lease/3, poison after the same error three times,
+a sweeper that restores lost rows). The kernel's `execute` honours idempotency keys, and the
+stores refuse a second idempotency record at the flush, so a job's work commits once.
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh

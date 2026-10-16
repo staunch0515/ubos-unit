@@ -458,7 +458,13 @@ impl OutboxSink for EventLog {
     }
 }
 
-// ---- jobs (DSN-NOD-220, -221, -223; step 15b: deliveries and dead letters) ----
+// ---- jobs (DSN-NOD-220…-223, -229; FR-EVT-031…-034, -051…-053; steps 15b, 15c) ----
+
+/// Failures with the same error signature after which a job is poison (FR-EVT-053,
+/// DSN-NOD-223).
+pub const POISON_AFTER: i64 = 3;
+/// Running jobs of a tenant at once when the tenant sets no limit (FR-EVT-034).
+pub const TENANT_CONCURRENCY: i64 = 16;
 
 /// The retry policy of a job (FR-EVT-051): `max_attempts` attempts with an exponential
 /// backoff from `backoff_ms`, at most `max_backoff_ms`, with jitter. The standard default
@@ -517,6 +523,16 @@ impl RetryPolicy {
     }
 }
 
+/// The signature of an error for poison detection: its text with digits folded and cut to
+/// 160 characters, so the same failure counts as one whatever its numbers.
+pub fn error_signature(error: &str) -> String {
+    error
+        .chars()
+        .map(|c| if c.is_ascii_digit() { '#' } else { c })
+        .take(160)
+        .collect()
+}
+
 /// What a job listing selects.
 #[derive(Debug, Clone, Default)]
 pub struct JobFilter {
@@ -524,45 +540,100 @@ pub struct JobFilter {
     pub state: Option<String>,
     /// Kind.
     pub kind: Option<String>,
+    /// Queue.
+    pub queue: Option<String>,
     /// At most this many (1…1,000; 100 by default).
     pub limit: i64,
 }
 
-/// The jobs of a VAE: enqueue (with an optional dedupe key and earliest start), claim under a
-/// lease, complete, fail with a backoff or into `dead`, and the operator actions on dead
-/// letters (FR-EVT-052: re-drive, cancel, annotate; payloads are never edited).
+/// The outcome of a failed attempt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Failed {
+    /// `queued` (retried after its delay), `dead` or `cancelled`.
+    pub state: String,
+    /// Whether the job is poison (the same error `POISON_AFTER` times).
+    pub poison: bool,
+}
+
+/// The jobs of a VAE (the runtime hint beside the `Job` objects, DEC-076): enqueue with
+/// an identifier, queue, priority, dedupe key and earliest start; claim under a lease whose
+/// token fences the result (DSN-NOD-221); heartbeats; retries with backoff, poison
+/// detection and dead letters; the operator actions (DSN-NOD-229, FR-EVT-052); queue pause
+/// and concurrency limits per queue and tenant (FR-EVT-034); restore from an object (the
+/// sweeper, FR-EVT-032). A `None` token is an unfenced write (the operator, gate 1a).
 pub trait JobStore: Jobs {
-    /// Claim the next ready job of `kind` (any kind when `None`) for `worker`.
-    fn claim(
-        &self,
-        kind: Option<&str>,
-        worker: &str,
-        lease_ms: i64,
-    ) -> Result<Option<Value>, BpaError>;
-    /// Complete a job with its result.
-    fn complete(&self, job_id: &str, result: &Value) -> Result<(), BpaError>;
-    /// Fail an attempt: requeue after `retry_ms`, or `dead` when the attempts are spent or
-    /// `final_` is set; returns the new state.
+    /// Claim the next ready job of one of `kinds` for `worker`: the highest priority, then
+    /// the earliest start, in unpaused queues within the queue's and the tenant's limits.
+    fn claim(&self, kinds: &[&str], worker: &str, lease_ms: i64)
+    -> Result<Option<Value>, BpaError>;
+    /// Extend the lease of a running job whose token still matches.
+    fn heartbeat(&self, job_id: &str, token: i64, lease_ms: i64) -> Result<bool, BpaError>;
+    /// Complete a job; `false` when the token no longer holds (fenced).
+    fn complete(&self, job_id: &str, token: Option<i64>, result: &Value) -> Result<bool, BpaError>;
+    /// Fail an attempt: requeue after `retry_ms`, or `dead` when the attempts are spent,
+    /// the error repeats `POISON_AFTER` times or `final_` is set, or `cancelled` when an
+    /// operator asked for it; `None` when fenced.
     fn fail(
         &self,
         job_id: &str,
+        token: Option<i64>,
         error: &str,
         retry_ms: i64,
         final_: bool,
-    ) -> Result<String, BpaError>;
+    ) -> Result<Option<Failed>, BpaError>;
     /// A job.
     fn job(&self, job_id: &str) -> Result<Option<Value>, BpaError>;
     /// Jobs by filter, newest first.
     fn list(&self, f: &JobFilter) -> Result<Vec<Value>, BpaError>;
     /// Re-drive a dead or cancelled job: queued now with a fresh attempt budget.
     fn retry(&self, job_id: &str) -> Result<bool, BpaError>;
-    /// Cancel a queued or dead job.
+    /// Cancel a queued or dead job at once, or ask a running one to stop (its attempt ends
+    /// as `cancelled`); returns whether anything changed.
     fn cancel(&self, job_id: &str) -> Result<bool, BpaError>;
+    /// End a running job whose cancellation was asked (fenced by the token).
+    fn finish_cancelled(&self, job_id: &str, token: i64) -> Result<bool, BpaError>;
     /// Add an operator's note.
     fn annotate(&self, job_id: &str, by: &str, text: &str) -> Result<bool, BpaError>;
+    /// Change a job's priority.
+    fn reprioritise(&self, job_id: &str, priority: i64) -> Result<bool, BpaError>;
+    /// The queues with their settings and counts by state.
+    fn queues(&self) -> Result<Vec<Value>, BpaError>;
+    /// Pause or resume a queue, or set (`Some(None)` clears) its concurrency limit.
+    fn set_queue(
+        &self,
+        queue: &str,
+        paused: Option<bool>,
+        concurrency: Option<Option<i64>>,
+    ) -> Result<(), BpaError>;
+    /// Set (`None` clears) the tenant's concurrency limit.
+    fn set_tenant_limit(&self, concurrency: Option<i64>) -> Result<(), BpaError>;
+    /// Insert the row of a job object that has none (the sweeper); `true` when inserted.
+    fn restore(&self, job: &Value) -> Result<bool, BpaError>;
 }
 
-const JOB_COLUMNS: &str = "job_id::text AS job_id, kind, payload, state, attempts, max_attempts, worker, result, error, dedupe_key, annotations, to_char(not_before AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS not_before, to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS created_at";
+fn job_spec(job: &Value) -> (String, String, Value, i64, String, String, i64, i64) {
+    let text = |k: &str, d: &str| job.get(k).and_then(Value::as_str).unwrap_or(d).to_string();
+    (
+        job.get("job_id")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .unwrap_or_default(),
+        text("kind", "job"),
+        job.get("payload").cloned().unwrap_or(json!({})),
+        job.get("max_attempts").and_then(Value::as_i64).unwrap_or(3),
+        text("dedupe_key", ""),
+        text("queue", "default"),
+        job.get("priority").and_then(Value::as_i64).unwrap_or(0),
+        job.get("delay_ms")
+            .and_then(Value::as_i64)
+            .unwrap_or(0)
+            .max(0),
+    )
+}
+
+const JOB_COLUMNS: &str = "job_id::text AS job_id, kind, queue, priority, payload, state, attempts, max_attempts, worker, lease_token, result, error, poison, cancel_requested, dedupe_key, annotations, \
+    to_char(not_before AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS not_before, \
+    to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS created_at";
 
 /// Jobs of a VAE in the `job` table.
 pub struct JobQueue {
@@ -581,96 +652,142 @@ impl JobQueue {
         }
     }
 
-    /// Claim the next ready job of any kind for `worker` under a lease of `lease_seconds`.
+    /// Claim the next ready job of any kind for `worker` under a lease of `lease_seconds`
+    /// (gate 1a).
     pub fn claim(&self, worker: &str, lease_seconds: i64) -> Result<Option<Value>, BpaError> {
-        JobStore::claim(self, None, worker, lease_seconds * 1000)
+        let kinds: Vec<String> = self
+            .db
+            .query(
+                "SELECT DISTINCT kind FROM job WHERE tenant_id = $1::uuid AND vae_id = $2::uuid",
+                &[Param::Text(&self.tenant), Param::Text(&self.vae)],
+            )?
+            .iter()
+            .filter_map(|r| r["kind"].as_str().map(str::to_string))
+            .collect();
+        let k: Vec<&str> = kinds.iter().map(String::as_str).collect();
+        JobStore::claim(self, &k, worker, lease_seconds * 1000)
     }
 
-    /// Complete a job.
+    /// Complete a job (unfenced, gate 1a).
     pub fn complete(&self, job_id: &str, result: &Value) -> Result<(), BpaError> {
-        JobStore::complete(self, job_id, result)
+        JobStore::complete(self, job_id, None, result).map(|_| ())
     }
 
     /// Fail an attempt with no delay (gate 1a): requeued, or dead when spent.
     pub fn fail(&self, job_id: &str, error: &str) -> Result<String, BpaError> {
-        JobStore::fail(self, job_id, error, 0, false)
+        Ok(JobStore::fail(self, job_id, None, error, 0, false)?
+            .map(|f| f.state)
+            .unwrap_or_default())
     }
 
     /// A job.
     pub fn job(&self, job_id: &str) -> Result<Option<Value>, BpaError> {
         JobStore::job(self, job_id)
     }
+
+    fn params<'a>(&'a self, rest: Vec<Param<'a>>) -> Vec<Param<'a>> {
+        let mut p = vec![Param::Text(&self.tenant), Param::Text(&self.vae)];
+        p.extend(rest);
+        p
+    }
+}
+
+fn token_text(t: Option<i64>) -> i64 {
+    t.unwrap_or(-1)
 }
 
 impl JobStore for JobQueue {
     fn claim(
         &self,
-        kind: Option<&str>,
+        kinds: &[&str],
         worker: &str,
         lease_ms: i64,
     ) -> Result<Option<Value>, BpaError> {
-        let k = kind.unwrap_or_default().to_string();
+        let k = kinds.join(",");
         let rows = self.db.query(
-            &format!("UPDATE job SET state = 'running', worker = $3, attempts = attempts + 1, \
-             lease_until = now() + make_interval(secs => $4::bigint / 1000.0), updated_at = now() \
-             WHERE (tenant_id, job_id) = (SELECT tenant_id, job_id FROM job \
-               WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND ($5 = '' OR kind = $5) \
-                 AND ((state = 'queued' AND not_before <= now()) OR (state = 'running' AND lease_until < now())) \
-               ORDER BY not_before, created_at LIMIT 1 FOR UPDATE SKIP LOCKED) \
+            &format!("UPDATE job SET state = 'running', worker = $3, attempts = attempts + 1, lease_token = lease_token + 1, \
+               lease_until = now() + make_interval(secs => $4::bigint / 1000.0), heartbeat_at = now(), updated_at = now() \
+             WHERE (tenant_id, job_id) = (SELECT j.tenant_id, j.job_id FROM job j \
+               WHERE j.tenant_id = $1::uuid AND j.vae_id = $2::uuid AND j.kind = ANY(string_to_array($5, ',')) \
+                 AND ((j.state = 'queued' AND j.not_before <= now()) OR (j.state = 'running' AND j.lease_until < now())) \
+                 AND NOT EXISTS (SELECT 1 FROM job_queue q WHERE q.tenant_id = j.tenant_id AND q.vae_id = j.vae_id AND q.queue = j.queue AND q.paused) \
+                 AND (SELECT count(*) FROM job r WHERE r.tenant_id = j.tenant_id AND r.vae_id = j.vae_id AND r.queue = j.queue AND r.state = 'running' AND r.lease_until > now()) \
+                     < coalesce((SELECT q.concurrency FROM job_queue q WHERE q.tenant_id = j.tenant_id AND q.vae_id = j.vae_id AND q.queue = j.queue), 1000000) \
+                 AND (SELECT count(*) FROM job r WHERE r.tenant_id = j.tenant_id AND r.state = 'running' AND r.lease_until > now()) \
+                     < coalesce((SELECT t.concurrency FROM job_tenant t WHERE t.tenant_id = j.tenant_id), $6) \
+               ORDER BY j.priority DESC, j.not_before, j.created_at LIMIT 1 FOR UPDATE OF j SKIP LOCKED) \
              RETURNING {JOB_COLUMNS}"),
-            &[
-                Param::Text(&self.tenant),
-                Param::Text(&self.vae),
-                Param::Text(worker),
-                Param::Int(lease_ms),
-                Param::Text(&k),
-            ],
+            &self.params(vec![Param::Text(worker), Param::Int(lease_ms), Param::Text(&k), Param::Int(TENANT_CONCURRENCY)]),
         )?;
         Ok(rows.into_iter().next())
     }
 
-    fn complete(&self, job_id: &str, result: &Value) -> Result<(), BpaError> {
-        self.db.execute(
-            "UPDATE job SET state = 'done', result = $3, error = NULL, lease_until = NULL, updated_at = now() WHERE tenant_id = $1::uuid AND job_id = $2::uuid",
-            &[Param::Text(&self.tenant), Param::Text(job_id), Param::Json(result)],
+    fn heartbeat(&self, job_id: &str, token: i64, lease_ms: i64) -> Result<bool, BpaError> {
+        let n = self.db.execute(
+            "UPDATE job SET lease_until = now() + make_interval(secs => $4::bigint / 1000.0), heartbeat_at = now() \
+             WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND job_id = $5::uuid AND state = 'running' AND lease_token = $3",
+            &self.params(vec![Param::Int(token), Param::Int(lease_ms), Param::Text(job_id)]),
         )?;
-        Ok(())
+        Ok(n == 1)
+    }
+
+    fn complete(&self, job_id: &str, token: Option<i64>, result: &Value) -> Result<bool, BpaError> {
+        let n = self.db.execute(
+            "UPDATE job SET state = 'done', result = $4, error = NULL, lease_until = NULL, updated_at = now() \
+             WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND job_id = $3::uuid AND ($5 = -1 OR (lease_token = $5 AND state = 'running'))",
+            &self.params(vec![Param::Text(job_id), Param::Json(result), Param::Int(token_text(token))]),
+        )?;
+        Ok(n == 1)
     }
 
     fn fail(
         &self,
         job_id: &str,
+        token: Option<i64>,
         error: &str,
         retry_ms: i64,
         final_: bool,
-    ) -> Result<String, BpaError> {
+    ) -> Result<Option<Failed>, BpaError> {
+        let sig = error_signature(error);
         let rows = self.db.query(
-            "UPDATE job SET state = CASE WHEN $5 = 'true' OR attempts >= max_attempts THEN 'dead' ELSE 'queued' END, \
-             error = $3, lease_until = NULL, not_before = now() + make_interval(secs => $4::bigint / 1000.0), updated_at = now() \
-             WHERE tenant_id = $1::uuid AND job_id = $2::uuid RETURNING state",
-            &[Param::Text(&self.tenant), Param::Text(job_id), Param::Text(error), Param::Int(retry_ms), Param::Text(if final_ { "true" } else { "false" })],
+            "UPDATE job SET \
+               signature_count = CASE WHEN error_signature = $5 THEN signature_count + 1 ELSE 1 END, \
+               poison = (CASE WHEN error_signature = $5 THEN signature_count + 1 ELSE 1 END) >= $8, \
+               state = CASE WHEN $7 = 'true' OR attempts >= max_attempts OR (CASE WHEN error_signature = $5 THEN signature_count + 1 ELSE 1 END) >= $8 THEN 'dead' \
+                            WHEN cancel_requested THEN 'cancelled' ELSE 'queued' END, \
+               error_signature = $5, error = $4, lease_until = NULL, \
+               not_before = now() + make_interval(secs => $6::bigint / 1000.0), updated_at = now() \
+             WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND job_id = $3::uuid AND ($9 = -1 OR (lease_token = $9 AND state = 'running')) \
+             RETURNING state, poison",
+            &self.params(vec![
+                Param::Text(job_id),
+                Param::Text(error),
+                Param::Text(&sig),
+                Param::Int(retry_ms),
+                Param::Text(if final_ { "true" } else { "false" }),
+                Param::Int(POISON_AFTER),
+                Param::Int(token_text(token)),
+            ]),
         )?;
-        Ok(rows
-            .first()
-            .and_then(|r| r["state"].as_str())
-            .unwrap_or_default()
-            .to_string())
+        Ok(rows.first().map(|r| Failed {
+            state: r["state"].as_str().unwrap_or_default().to_string(),
+            poison: r["poison"].as_bool().unwrap_or(false),
+        }))
     }
 
     fn job(&self, job_id: &str) -> Result<Option<Value>, BpaError> {
         let rows = self.db.query(
-            &format!(
-                "SELECT {JOB_COLUMNS} FROM job WHERE tenant_id = $1::uuid AND job_id = $2::uuid"
-            ),
-            &[Param::Text(&self.tenant), Param::Text(job_id)],
+            &format!("SELECT {JOB_COLUMNS} FROM job WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND job_id = $3::uuid"),
+            &self.params(vec![Param::Text(job_id)]),
         )?;
         Ok(rows.into_iter().next())
     }
 
     fn list(&self, f: &JobFilter) -> Result<Vec<Value>, BpaError> {
-        let (st, k) = (
+        let (st, k, q) = (
             f.state.clone().unwrap_or_default(),
             f.kind.clone().unwrap_or_default(),
+            f.queue.clone().unwrap_or_default(),
         );
         let limit = if f.limit <= 0 {
             100
@@ -679,25 +796,36 @@ impl JobStore for JobQueue {
         };
         self.db.query(
             &format!("SELECT {JOB_COLUMNS} FROM job WHERE tenant_id = $1::uuid AND vae_id = $2::uuid \
-              AND ($3 = '' OR state = $3) AND ($4 = '' OR kind = $4) ORDER BY created_at DESC LIMIT $5"),
-            &[Param::Text(&self.tenant), Param::Text(&self.vae), Param::Text(&st), Param::Text(&k), Param::Int(limit)],
+              AND ($3 = '' OR state = $3) AND ($4 = '' OR kind = $4) AND ($5 = '' OR queue = $5) ORDER BY created_at DESC LIMIT $6"),
+            &self.params(vec![Param::Text(&st), Param::Text(&k), Param::Text(&q), Param::Int(limit)]),
         )
     }
 
     fn retry(&self, job_id: &str) -> Result<bool, BpaError> {
         let n = self.db.execute(
-            "UPDATE job SET state = 'queued', attempts = 0, not_before = now(), lease_until = NULL, updated_at = now() \
-             WHERE tenant_id = $1::uuid AND job_id = $2::uuid AND state IN ('dead', 'cancelled')",
-            &[Param::Text(&self.tenant), Param::Text(job_id)],
+            "UPDATE job SET state = 'queued', attempts = 0, not_before = now(), lease_until = NULL, signature_count = 0, \
+               poison = false, cancel_requested = false, updated_at = now() \
+             WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND job_id = $3::uuid AND state IN ('dead', 'cancelled')",
+            &self.params(vec![Param::Text(job_id)]),
         )?;
         Ok(n == 1)
     }
 
     fn cancel(&self, job_id: &str) -> Result<bool, BpaError> {
         let n = self.db.execute(
+            "UPDATE job SET state = CASE WHEN state = 'running' THEN 'running' ELSE 'cancelled' END, \
+               cancel_requested = (state = 'running'), updated_at = now() \
+             WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND job_id = $3::uuid AND state IN ('queued', 'dead', 'running')",
+            &self.params(vec![Param::Text(job_id)]),
+        )?;
+        Ok(n == 1)
+    }
+
+    fn finish_cancelled(&self, job_id: &str, token: i64) -> Result<bool, BpaError> {
+        let n = self.db.execute(
             "UPDATE job SET state = 'cancelled', lease_until = NULL, updated_at = now() \
-             WHERE tenant_id = $1::uuid AND job_id = $2::uuid AND state IN ('queued', 'dead')",
-            &[Param::Text(&self.tenant), Param::Text(job_id)],
+             WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND job_id = $3::uuid AND state = 'running' AND lease_token = $4",
+            &self.params(vec![Param::Text(job_id), Param::Int(token)]),
         )?;
         Ok(n == 1)
     }
@@ -705,8 +833,78 @@ impl JobStore for JobQueue {
     fn annotate(&self, job_id: &str, by: &str, text: &str) -> Result<bool, BpaError> {
         let note = json!([{"at": ubos_dvm::types::time::format_instant(&chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::now())), "by": by, "text": text}]);
         let n = self.db.execute(
-            "UPDATE job SET annotations = annotations || $3, updated_at = now() WHERE tenant_id = $1::uuid AND job_id = $2::uuid",
-            &[Param::Text(&self.tenant), Param::Text(job_id), Param::Json(&note)],
+            "UPDATE job SET annotations = annotations || $4, updated_at = now() WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND job_id = $3::uuid",
+            &self.params(vec![Param::Text(job_id), Param::Json(&note)]),
+        )?;
+        Ok(n == 1)
+    }
+
+    fn reprioritise(&self, job_id: &str, priority: i64) -> Result<bool, BpaError> {
+        let n = self.db.execute(
+            "UPDATE job SET priority = $4, updated_at = now() WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND job_id = $3::uuid",
+            &self.params(vec![Param::Text(job_id), Param::Int(priority)]),
+        )?;
+        Ok(n == 1)
+    }
+
+    fn queues(&self) -> Result<Vec<Value>, BpaError> {
+        self.db.query(
+            "SELECT q.queue, coalesce(c.paused, false) AS paused, c.concurrency, \
+               count(*) FILTER (WHERE j.state = 'queued')::bigint AS queued, \
+               count(*) FILTER (WHERE j.state = 'running')::bigint AS running, \
+               count(*) FILTER (WHERE j.state = 'dead')::bigint AS dead \
+             FROM (SELECT queue FROM job WHERE tenant_id = $1::uuid AND vae_id = $2::uuid \
+                   UNION SELECT queue FROM job_queue WHERE tenant_id = $1::uuid AND vae_id = $2::uuid) q \
+             LEFT JOIN job_queue c ON c.tenant_id = $1::uuid AND c.vae_id = $2::uuid AND c.queue = q.queue \
+             LEFT JOIN job j ON j.tenant_id = $1::uuid AND j.vae_id = $2::uuid AND j.queue = q.queue \
+             GROUP BY q.queue, c.paused, c.concurrency ORDER BY q.queue",
+            &self.params(vec![]),
+        )
+    }
+
+    fn set_queue(
+        &self,
+        queue: &str,
+        paused: Option<bool>,
+        concurrency: Option<Option<i64>>,
+    ) -> Result<(), BpaError> {
+        self.db.execute(
+            "INSERT INTO job_queue (tenant_id, vae_id, queue) VALUES ($1::uuid, $2::uuid, $3) ON CONFLICT DO NOTHING",
+            &self.params(vec![Param::Text(queue)]),
+        )?;
+        if let Some(p) = paused {
+            self.db.execute(
+                "UPDATE job_queue SET paused = ($4 = 'true') WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND queue = $3",
+                &self.params(vec![Param::Text(queue), Param::Text(if p { "true" } else { "false" })]),
+            )?;
+        }
+        if let Some(c) = concurrency {
+            self.db.execute(
+                "UPDATE job_queue SET concurrency = nullif($4, 0) WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND queue = $3",
+                &self.params(vec![Param::Text(queue), Param::Int(c.unwrap_or(0).max(0))]),
+            )?;
+        }
+        Ok(())
+    }
+
+    fn set_tenant_limit(&self, concurrency: Option<i64>) -> Result<(), BpaError> {
+        match concurrency {
+            Some(c) => self.db.execute(
+                "INSERT INTO job_tenant (tenant_id, concurrency) VALUES ($1::uuid, $2) ON CONFLICT (tenant_id) DO UPDATE SET concurrency = EXCLUDED.concurrency",
+                &[Param::Text(&self.tenant), Param::Int(c.max(1))],
+            )?,
+            None => self.db.execute("DELETE FROM job_tenant WHERE tenant_id = $1::uuid", &[Param::Text(&self.tenant)])?,
+        };
+        Ok(())
+    }
+
+    fn restore(&self, job: &Value) -> Result<bool, BpaError> {
+        let (id, kind, payload, max, dedupe, queue, priority, _) = job_spec(job);
+        let attempts = job.get("attempts").and_then(Value::as_i64).unwrap_or(0);
+        let n = self.db.execute(
+            "INSERT INTO job (tenant_id, job_id, vae_id, kind, payload, max_attempts, attempts, dedupe_key, queue, priority) \
+             VALUES ($1::uuid, $3::uuid, $2::uuid, $4, $5, $6, $7, nullif($8, ''), $9, $10) ON CONFLICT DO NOTHING",
+            &self.params(vec![Param::Text(&id), Param::Text(&kind), Param::Json(&payload), Param::Int(max), Param::Int(attempts), Param::Text(&dedupe), Param::Text(&queue), Param::Int(priority)]),
         )?;
         Ok(n == 1)
     }
@@ -714,30 +912,19 @@ impl JobStore for JobQueue {
 
 impl Jobs for JobQueue {
     fn enqueue(&self, job: &Value) -> Result<String, BpaError> {
-        let id = crate::uuid()?;
-        let kind = job
-            .get("kind")
-            .and_then(Value::as_str)
-            .unwrap_or("job")
-            .to_string();
-        let payload = job.get("payload").cloned().unwrap_or(json!({}));
-        let max = job.get("max_attempts").and_then(Value::as_i64).unwrap_or(3);
-        let dedupe = job
-            .get("dedupe_key")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_string();
+        let (id, kind, payload, max, dedupe, queue, priority, delay) = job_spec(job);
+        let id = if id.is_empty() { crate::uuid()? } else { id };
         let rows = self.db.query(
-            "INSERT INTO job (tenant_id, job_id, vae_id, kind, payload, max_attempts, dedupe_key) \
-             VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, $6, nullif($7, '')) \
-             ON CONFLICT (tenant_id, vae_id, dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING RETURNING job_id::text AS job_id",
-            &[Param::Text(&self.tenant), Param::Text(&id), Param::Text(&self.vae), Param::Text(&kind), Param::Json(&payload), Param::Int(max), Param::Text(&dedupe)],
+            "INSERT INTO job (tenant_id, job_id, vae_id, kind, payload, max_attempts, dedupe_key, queue, priority, not_before) \
+             VALUES ($1::uuid, $3::uuid, $2::uuid, $4, $5, $6, nullif($7, ''), $8, $9, now() + make_interval(secs => $10::bigint / 1000.0)) \
+             ON CONFLICT DO NOTHING RETURNING job_id::text AS job_id",
+            &self.params(vec![Param::Text(&id), Param::Text(&kind), Param::Json(&payload), Param::Int(max), Param::Text(&dedupe), Param::Text(&queue), Param::Int(priority), Param::Int(delay)]),
         )?;
-        if rows.is_empty() {
+        if rows.is_empty() && !dedupe.is_empty() {
             // a job with this dedupe key exists: its identifier
             let r = self.db.query(
                 "SELECT job_id::text AS job_id FROM job WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND dedupe_key = $3",
-                &[Param::Text(&self.tenant), Param::Text(&self.vae), Param::Text(&dedupe)],
+                &self.params(vec![Param::Text(&dedupe)]),
             )?;
             return Ok(r
                 .first()
@@ -753,6 +940,8 @@ impl Jobs for JobQueue {
 #[derive(Default)]
 pub struct MemJobQueue {
     rows: Mutex<Vec<Value>>,
+    queues: Mutex<BTreeMap<String, (bool, Option<i64>)>>,
+    tenant_limit: Mutex<Option<i64>>,
     fixed_now: Mutex<Option<i64>>,
 }
 
@@ -787,36 +976,56 @@ impl MemJobQueue {
             .find(|r| r["job_id"] == json!(job_id))
             .map(f))
     }
+
+    fn row(spec: &Value, now: i64, id: &str) -> Value {
+        let (_, kind, payload, max, dedupe, queue, priority, delay) = job_spec(spec);
+        json!({"job_id": id, "kind": kind, "queue": queue, "priority": priority, "payload": payload, "state": "queued",
+            "attempts": spec.get("attempts").and_then(Value::as_i64).unwrap_or(0), "max_attempts": max, "worker": null,
+            "lease_token": 0, "result": null, "error": null, "poison": false, "cancel_requested": false,
+            "dedupe_key": if dedupe.is_empty() { Value::Null } else { json!(dedupe) }, "annotations": [],
+            "error_signature": null, "signature_count": 0,
+            "not_before_ms": now + delay, "lease_until_ms": 0, "created_ms": now})
+    }
 }
 
 fn public_job(r: &Value) -> Value {
     let mut v = r.clone();
     if let Some(m) = v.as_object_mut() {
-        m.remove("not_before_ms");
-        m.remove("lease_until_ms");
+        for k in [
+            "not_before_ms",
+            "lease_until_ms",
+            "created_ms",
+            "error_signature",
+            "signature_count",
+        ] {
+            m.remove(k);
+        }
     }
     v
 }
 
+fn token_ok(r: &Value, token: Option<i64>) -> bool {
+    match token {
+        None => true,
+        Some(t) => r["state"] == "running" && r["lease_token"].as_i64() == Some(t),
+    }
+}
+
 impl Jobs for MemJobQueue {
     fn enqueue(&self, job: &Value) -> Result<String, BpaError> {
-        let dedupe = job
-            .get("dedupe_key")
-            .and_then(Value::as_str)
-            .map(str::to_string);
         let now = self.now_ms();
         let mut rows = self.rows.lock().map_err(|_| mem_err())?;
-        if let Some(d) = &dedupe
-            && let Some(r) = rows.iter().find(|r| r["dedupe_key"] == json!(d))
+        let (id, _, _, _, dedupe, ..) = job_spec(job);
+        if !dedupe.is_empty()
+            && let Some(r) = rows.iter().find(|r| r["dedupe_key"] == json!(dedupe))
         {
             return Ok(r["job_id"].as_str().unwrap_or_default().to_string());
         }
-        let id = crate::uuid()?;
-        rows.push(json!({"job_id": id, "kind": job.get("kind").and_then(Value::as_str).unwrap_or("job"),
-            "payload": job.get("payload").cloned().unwrap_or(json!({})), "state": "queued", "attempts": 0,
-            "max_attempts": job.get("max_attempts").and_then(Value::as_i64).unwrap_or(3), "worker": null,
-            "result": null, "error": null, "dedupe_key": dedupe, "annotations": [], "not_before_ms": now,
-            "lease_until_ms": 0, "created_ms": now}));
+        if !id.is_empty() && rows.iter().any(|r| r["job_id"] == json!(id)) {
+            return Ok(id);
+        }
+        let id = if id.is_empty() { crate::uuid()? } else { id };
+        rows.push(MemJobQueue::row(job, now, &id));
         Ok(id)
     }
 }
@@ -824,62 +1033,129 @@ impl Jobs for MemJobQueue {
 impl JobStore for MemJobQueue {
     fn claim(
         &self,
-        kind: Option<&str>,
+        kinds: &[&str],
         worker: &str,
         lease_ms: i64,
     ) -> Result<Option<Value>, BpaError> {
         let now = self.now_ms();
+        let queues = self.queues.lock().map_err(|_| mem_err())?.clone();
+        let limit = self
+            .tenant_limit
+            .lock()
+            .map_err(|_| mem_err())?
+            .unwrap_or(TENANT_CONCURRENCY);
         let mut rows = self.rows.lock().map_err(|_| mem_err())?;
-        let mut ready: Vec<&mut Value> = rows
-            .iter_mut()
-            .filter(|r| kind.is_none_or(|k| r["kind"] == json!(k)))
-            .filter(|r| {
-                (r["state"] == "queued" && r["not_before_ms"].as_i64().unwrap_or(0) <= now)
-                    || (r["state"] == "running" && r["lease_until_ms"].as_i64().unwrap_or(0) < now)
-            })
-            .collect();
-        ready.sort_by_key(|r| {
-            (
-                r["not_before_ms"].as_i64().unwrap_or(0),
-                r["created_ms"].as_i64().unwrap_or(0),
-            )
-        });
-        let Some(r) = ready.into_iter().next() else {
+        let live =
+            |r: &Value| r["state"] == "running" && r["lease_until_ms"].as_i64().unwrap_or(0) > now;
+        let running = rows.iter().filter(|r| live(r)).count() as i64;
+        if running >= limit {
             return Ok(None);
+        }
+        let per_queue = |q: &str, rows: &Vec<Value>| {
+            rows.iter()
+                .filter(|r| live(r) && r["queue"] == json!(q))
+                .count() as i64
         };
+        let mut best: Option<usize> = None;
+        for (i, r) in rows.iter().enumerate() {
+            let ready = (r["state"] == "queued" && r["not_before_ms"].as_i64().unwrap_or(0) <= now)
+                || (r["state"] == "running" && r["lease_until_ms"].as_i64().unwrap_or(0) < now);
+            let kind_ok = kinds.iter().any(|k| r["kind"] == json!(k));
+            let q = r["queue"].as_str().unwrap_or("default");
+            let (paused, conc) = queues.get(q).cloned().unwrap_or((false, None));
+            if !ready || !kind_ok || paused || conc.is_some_and(|c| per_queue(q, &rows) >= c) {
+                continue;
+            }
+            let key = |x: &Value| {
+                (
+                    -x["priority"].as_i64().unwrap_or(0),
+                    x["not_before_ms"].as_i64().unwrap_or(0),
+                    x["created_ms"].as_i64().unwrap_or(0),
+                )
+            };
+            if best.is_none_or(|b| key(r) < key(&rows[b])) {
+                best = Some(i);
+            }
+        }
+        let Some(i) = best else { return Ok(None) };
+        let r = &mut rows[i];
         r["state"] = json!("running");
         r["worker"] = json!(worker);
         r["attempts"] = json!(r["attempts"].as_i64().unwrap_or(0) + 1);
+        r["lease_token"] = json!(r["lease_token"].as_i64().unwrap_or(0) + 1);
         r["lease_until_ms"] = json!(now + lease_ms);
         Ok(Some(public_job(r)))
     }
-    fn complete(&self, job_id: &str, result: &Value) -> Result<(), BpaError> {
-        self.with(job_id, |r| {
-            r["state"] = json!("done");
-            r["result"] = result.clone();
-            r["error"] = Value::Null;
-        })?;
-        Ok(())
+    fn heartbeat(&self, job_id: &str, token: i64, lease_ms: i64) -> Result<bool, BpaError> {
+        let now = self.now_ms();
+        Ok(self
+            .with(job_id, |r| {
+                if token_ok(r, Some(token)) {
+                    r["lease_until_ms"] = json!(now + lease_ms);
+                    true
+                } else {
+                    false
+                }
+            })?
+            .unwrap_or(false))
+    }
+    fn complete(&self, job_id: &str, token: Option<i64>, result: &Value) -> Result<bool, BpaError> {
+        Ok(self
+            .with(job_id, |r| {
+                if !token_ok(r, token) {
+                    return false;
+                }
+                r["state"] = json!("done");
+                r["result"] = result.clone();
+                r["error"] = Value::Null;
+                r["lease_until_ms"] = json!(0);
+                true
+            })?
+            .unwrap_or(false))
     }
     fn fail(
         &self,
         job_id: &str,
+        token: Option<i64>,
         error: &str,
         retry_ms: i64,
         final_: bool,
-    ) -> Result<String, BpaError> {
+    ) -> Result<Option<Failed>, BpaError> {
         let now = self.now_ms();
+        let sig = error_signature(error);
         Ok(self
             .with(job_id, |r| {
+                if !token_ok(r, token) {
+                    return None;
+                }
+                let count = if r["error_signature"] == json!(sig) {
+                    r["signature_count"].as_i64().unwrap_or(0) + 1
+                } else {
+                    1
+                };
+                let poison = count >= POISON_AFTER;
                 let spent =
                     r["attempts"].as_i64().unwrap_or(0) >= r["max_attempts"].as_i64().unwrap_or(0);
-                let st = if final_ || spent { "dead" } else { "queued" };
+                let st = if final_ || spent || poison {
+                    "dead"
+                } else if r["cancel_requested"] == json!(true) {
+                    "cancelled"
+                } else {
+                    "queued"
+                };
                 r["state"] = json!(st);
                 r["error"] = json!(error);
+                r["error_signature"] = json!(sig);
+                r["signature_count"] = json!(count);
+                r["poison"] = json!(poison);
                 r["not_before_ms"] = json!(now + retry_ms);
-                st.to_string()
+                r["lease_until_ms"] = json!(0);
+                Some(Failed {
+                    state: st.to_string(),
+                    poison,
+                })
             })?
-            .unwrap_or_default())
+            .flatten())
     }
     fn job(&self, job_id: &str) -> Result<Option<Value>, BpaError> {
         let rows = self.rows.lock().map_err(|_| mem_err())?;
@@ -900,6 +1176,7 @@ impl JobStore for MemJobQueue {
             .rev()
             .filter(|r| f.state.as_ref().is_none_or(|s| r["state"] == json!(s)))
             .filter(|r| f.kind.as_ref().is_none_or(|k| r["kind"] == json!(k)))
+            .filter(|r| f.queue.as_ref().is_none_or(|q| r["queue"] == json!(q)))
             .take(limit)
             .map(public_job)
             .collect())
@@ -911,6 +1188,9 @@ impl JobStore for MemJobQueue {
                 if r["state"] == "dead" || r["state"] == "cancelled" {
                     r["state"] = json!("queued");
                     r["attempts"] = json!(0);
+                    r["signature_count"] = json!(0);
+                    r["poison"] = json!(false);
+                    r["cancel_requested"] = json!(false);
                     r["not_before_ms"] = json!(now);
                     true
                 } else {
@@ -921,9 +1201,25 @@ impl JobStore for MemJobQueue {
     }
     fn cancel(&self, job_id: &str) -> Result<bool, BpaError> {
         Ok(self
-            .with(job_id, |r| {
-                if r["state"] == "queued" || r["state"] == "dead" {
+            .with(job_id, |r| match r["state"].as_str() {
+                Some("queued" | "dead") => {
                     r["state"] = json!("cancelled");
+                    true
+                }
+                Some("running") => {
+                    r["cancel_requested"] = json!(true);
+                    true
+                }
+                _ => false,
+            })?
+            .unwrap_or(false))
+    }
+    fn finish_cancelled(&self, job_id: &str, token: i64) -> Result<bool, BpaError> {
+        Ok(self
+            .with(job_id, |r| {
+                if token_ok(r, Some(token)) {
+                    r["state"] = json!("cancelled");
+                    r["lease_until_ms"] = json!(0);
                     true
                 } else {
                     false
@@ -943,6 +1239,61 @@ impl JobStore for MemJobQueue {
                 true
             })?
             .unwrap_or(false))
+    }
+    fn reprioritise(&self, job_id: &str, priority: i64) -> Result<bool, BpaError> {
+        Ok(self
+            .with(job_id, |r| r["priority"] = json!(priority))?
+            .is_some())
+    }
+    fn queues(&self) -> Result<Vec<Value>, BpaError> {
+        let rows = self.rows.lock().map_err(|_| mem_err())?;
+        let settings = self.queues.lock().map_err(|_| mem_err())?;
+        let mut names: std::collections::BTreeSet<String> = settings.keys().cloned().collect();
+        for r in rows.iter() {
+            names.insert(r["queue"].as_str().unwrap_or("default").to_string());
+        }
+        Ok(names
+            .into_iter()
+            .map(|q| {
+                let count = |st: &str| rows.iter().filter(|r| r["queue"] == json!(q) && r["state"] == json!(st)).count();
+                let (paused, conc) = settings.get(&q).cloned().unwrap_or((false, None));
+                json!({"queue": q, "paused": paused, "concurrency": conc, "queued": count("queued"), "running": count("running"), "dead": count("dead")})
+            })
+            .collect())
+    }
+    fn set_queue(
+        &self,
+        queue: &str,
+        paused: Option<bool>,
+        concurrency: Option<Option<i64>>,
+    ) -> Result<(), BpaError> {
+        let mut q = self.queues.lock().map_err(|_| mem_err())?;
+        let e = q.entry(queue.to_string()).or_insert((false, None));
+        if let Some(p) = paused {
+            e.0 = p;
+        }
+        if let Some(c) = concurrency {
+            e.1 = c.filter(|x| *x > 0);
+        }
+        Ok(())
+    }
+    fn set_tenant_limit(&self, concurrency: Option<i64>) -> Result<(), BpaError> {
+        *self.tenant_limit.lock().map_err(|_| mem_err())? = concurrency.map(|c| c.max(1));
+        Ok(())
+    }
+    fn restore(&self, job: &Value) -> Result<bool, BpaError> {
+        let now = self.now_ms();
+        let mut rows = self.rows.lock().map_err(|_| mem_err())?;
+        let id = job
+            .get("job_id")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        if id.is_empty() || rows.iter().any(|r| r["job_id"] == json!(id)) {
+            return Ok(false);
+        }
+        rows.push(MemJobQueue::row(job, now, &id));
+        Ok(true)
     }
 }
 
