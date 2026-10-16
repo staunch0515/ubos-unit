@@ -349,8 +349,8 @@ fn run(url: &str) -> Result<Suite, BpaError> {
         let c2 = q.claim("w2", 60)?.ok_or_else(|| err("claim 2"))?;
         check(c2["attempts"] == json!(2), "second attempt")?;
         check(
-            q.fail(&id, "boom")? == "poison",
-            "exhausted attempts are poison",
+            q.fail(&id, "boom")? == "dead",
+            "exhausted attempts are dead (a dead letter; poison until step 15b, DEC-076)",
         )?;
         let id2 = q.enqueue(&json!({"kind": "report", "payload": {}}))?;
         let c3 = q.claim("w1", 60)?.ok_or_else(|| err("claim 3"))?;

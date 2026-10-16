@@ -38,7 +38,7 @@
 
 use crate::identity::{Authenticated, Identity};
 use crate::leases::{Leases, MemLeases};
-use crate::services::{EventFilter, EventStore, MemEventLog};
+use crate::services::{EventFilter, EventStore, JobFilter, JobStore, MemEventLog, MemJobQueue};
 use axum::body::Bytes;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{ConnectInfo, DefaultBodyLimit, Path, Query, State};
@@ -67,6 +67,10 @@ pub const RELEASE_BATCH: usize = 500;
 pub const RELEASE_LEASE_MS: i64 = 30_000;
 /// The releaser's poll interval; a commit through the Server wakes it at once.
 pub const RELEASE_POLL_MS: u64 = 200;
+/// Deliveries a worker runs per VAE per round.
+pub const DELIVERY_BATCH: usize = 100;
+/// The lease of a claimed delivery.
+pub const DELIVERY_LEASE_MS: i64 = 60_000;
 /// The interval of the scan for VAEs with work.
 pub const WORK_SCAN_SECS: u64 = 30;
 /// Timers due within this horizon open their VAE (a scan interval and a margin).
@@ -305,16 +309,44 @@ fn host_call(vae: &mut Vae, op: &str, input: &Value) -> Result<Value, BpaError> 
                 input["claimed_release"].as_bool().unwrap_or(true),
                 input["auto_tick"].as_bool().unwrap_or(false),
             );
-            Ok(Value::Bool(true))
+            // the platform classes of step 15b (DEC-076)
+            let platform = crate::platform::ensure(vae).err().map(|e| e.to_string());
+            Ok(json!({"ok": true, "platform_error": platform}))
         }
         "host.tick" => vae.tick().map(|n| json!({"pending": n})),
-        "host.release" => vae
-            .release_claimed(
-                input["holder"].as_str().unwrap_or("node"),
-                input["n"].as_u64().unwrap_or(RELEASE_BATCH as u64) as usize,
-                input["lease_ms"].as_i64().unwrap_or(RELEASE_LEASE_MS),
-            )
-            .map(|n| json!({"released": n})),
+        "host.release" => {
+            // claim, deliver to the event log, enqueue the subscriptions' deliveries, then
+            // acknowledge: a crash before the acknowledgement repeats the round, and the
+            // dedupe keys keep each delivery single (DSN-NOD-201, -204)
+            let rows = vae.call(
+                "outbox_claim",
+                &json!({"holder": input["holder"].as_str().unwrap_or("node"),
+                    "n": input["n"].as_u64().unwrap_or(RELEASE_BATCH as u64),
+                    "lease_ms": input["lease_ms"].as_i64().unwrap_or(RELEASE_LEASE_MS)}),
+            )?;
+            let mut effects: Vec<Value> = rows["rows"].as_array().cloned().unwrap_or_default();
+            if effects.is_empty() {
+                return Ok(json!({"released": 0, "deliveries": 0}));
+            }
+            for e in effects.iter_mut() {
+                if let Some(m) = e.as_object_mut() {
+                    m.remove("attempts");
+                }
+            }
+            vae.services().outbox.release(&effects)?;
+            let deliveries = crate::platform::dispatch(vae, &effects)?;
+            let ids: Vec<Value> = effects.iter().map(|e| e["effect_id"].clone()).collect();
+            vae.call("outbox_ack", &json!({"ids": ids}))?;
+            Ok(json!({"released": effects.len(), "deliveries": deliveries}))
+        }
+        "host.deliver" => crate::platform::deliver(vae, &input["job"], &input["principal"]),
+        "host.listeners" => crate::platform::listeners(
+            vae,
+            input["branch"].as_str().unwrap_or("main"),
+            input["type"].as_str(),
+            input["handler"].as_str(),
+        )
+        .map(|l| json!({"items": l})),
         _ => vae.call(op, input),
     }
 }
@@ -362,6 +394,10 @@ pub trait VaeSource: Send + Sync {
     ) -> Result<Option<Arc<dyn EventStore>>, BpaError> {
         Ok(None)
     }
+    /// The jobs of a VAE (deliveries and dead letters); `None` when the source keeps none.
+    fn jobs(&self, _tenant: &str, _authority: &str) -> Result<Option<Arc<dyn JobStore>>, BpaError> {
+        Ok(None)
+    }
 }
 
 /// One VAE already open (suites, the memory preset): every tenant and authority maps to
@@ -373,6 +409,8 @@ pub struct SingleVae {
     pub identity: Arc<Identity>,
     /// Its event log, when the VAE releases into one (the memory preset).
     pub events: Option<Arc<MemEventLog>>,
+    /// Its job queue, when the VAE enqueues into one (the memory preset).
+    pub jobs: Option<Arc<MemJobQueue>>,
     /// Leases in memory.
     pub leases: Arc<MemLeases>,
 }
@@ -394,6 +432,9 @@ impl VaeSource for SingleVae {
         _authority: &str,
     ) -> Result<Option<Arc<dyn EventStore>>, BpaError> {
         Ok(self.events.clone().map(|e| e as Arc<dyn EventStore>))
+    }
+    fn jobs(&self, _tenant: &str, _authority: &str) -> Result<Option<Arc<dyn JobStore>>, BpaError> {
+        Ok(self.jobs.clone().map(|j| j as Arc<dyn JobStore>))
     }
 }
 
@@ -442,6 +483,15 @@ impl VaeSource for NodeVaes {
             .0
             .events(&t, authority)?
             .map(|e| Arc::new(e) as Arc<dyn EventStore>))
+    }
+    fn jobs(&self, tenant: &str, authority: &str) -> Result<Option<Arc<dyn JobStore>>, BpaError> {
+        let Some(t) = self.0.tenant(tenant)? else {
+            return Ok(None);
+        };
+        Ok(self
+            .0
+            .jobs(&t, authority)?
+            .map(|j| Arc::new(j) as Arc<dyn JobStore>))
     }
 }
 
@@ -499,6 +549,10 @@ pub struct Server {
     leaders: Mutex<HashMap<String, Leader>>,
     /// Event logs per VAE (opened once).
     event_stores: Mutex<HashMap<String, Arc<dyn EventStore>>>,
+    /// Job stores per VAE (opened once).
+    job_stores: Mutex<HashMap<String, Arc<dyn JobStore>>>,
+    /// Wakes the delivery worker after a release that enqueued deliveries.
+    deliver_now: tokio::sync::Notify,
     /// Wakes the releaser after a commit.
     release_now: tokio::sync::Notify,
 }
@@ -528,6 +582,8 @@ impl Server {
             node_id: crate::uuid().unwrap_or_else(|_| "node".into()),
             leaders: Mutex::new(HashMap::new()),
             event_stores: Mutex::new(HashMap::new()),
+            job_stores: Mutex::new(HashMap::new()),
+            deliver_now: tokio::sync::Notify::new(),
             release_now: tokio::sync::Notify::new(),
         })
     }
@@ -541,7 +597,7 @@ impl Server {
         tenant: &str,
         authority: &str,
     ) -> Shared {
-        Server::single_with(handle, identity, None, preset, tenant, authority)
+        Server::single_with(handle, identity, None, None, preset, tenant, authority)
     }
 
     /// A single-VAE Server whose VAE releases into a memory event log.
@@ -549,6 +605,7 @@ impl Server {
         handle: VaeHandle,
         identity: Arc<Identity>,
         events: Option<Arc<MemEventLog>>,
+        jobs: Option<Arc<MemJobQueue>>,
         preset: Preset,
         tenant: &str,
         authority: &str,
@@ -558,6 +615,7 @@ impl Server {
                 handle,
                 identity: identity.clone(),
                 events,
+                jobs,
                 leases: Arc::new(MemLeases::default()),
             }),
             preset,
@@ -573,6 +631,8 @@ impl Server {
             node_id: crate::uuid().unwrap_or_else(|_| "node".into()),
             leaders: Mutex::new(HashMap::new()),
             event_stores: Mutex::new(HashMap::new()),
+            job_stores: Mutex::new(HashMap::new()),
+            deliver_now: tokio::sync::Notify::new(),
             release_now: tokio::sync::Notify::new(),
         })
     }
@@ -636,6 +696,8 @@ impl Server {
             let _ = tokio::task::spawn_blocking(move || m2.open_with_work()).await;
             let r = me.clone();
             tokio::spawn(async move { r.release_loop().await });
+            let d = me.clone();
+            tokio::spawn(async move { d.delivery_loop().await });
             let w = me.clone();
             tokio::spawn(async move {
                 loop {
@@ -743,6 +805,11 @@ impl Server {
                     let r = h
                         .call("host.release", json!({"holder": self.node_id, "n": RELEASE_BATCH, "lease_ms": RELEASE_LEASE_MS}))
                         .await;
+                    if r.as_ref()
+                        .is_ok_and(|v| v["deliveries"].as_u64().unwrap_or(0) > 0)
+                    {
+                        self.deliver_now.notify_one();
+                    }
                     match r {
                         Ok(v) if v["released"].as_u64().unwrap_or(0) as usize == RELEASE_BATCH => {
                             continue;
@@ -756,6 +823,125 @@ impl Server {
                 }
             }
         }
+    }
+
+    /// The job store of a VAE (opened once).
+    fn jobs_of(&self, key: &str) -> Result<Option<Arc<dyn JobStore>>, BpaError> {
+        if let Some(j) = self.job_stores.lock().expect("jobs").get(key) {
+            return Ok(Some(j.clone()));
+        }
+        let (t, a) = key.split_once('/').unwrap_or((key, ""));
+        let j = self.source.jobs(t, a)?;
+        if let Some(j) = &j {
+            self.job_stores
+                .lock()
+                .expect("jobs")
+                .insert(key.to_string(), j.clone());
+        }
+        Ok(j)
+    }
+
+    /// The delivery worker (DSN-NOD-204, -209; FR-EVT-051): every `RELEASE_POLL_MS` and at
+    /// once after a release with deliveries, each open VAE's delivery jobs are claimed under
+    /// a lease and run as their subscription's service principal; a failed attempt waits for
+    /// its backoff, and one that spends the policy, or whose principal cannot act, is dead.
+    async fn delivery_loop(self: Shared) {
+        loop {
+            let _ = tokio::time::timeout(
+                std::time::Duration::from_millis(RELEASE_POLL_MS),
+                self.deliver_now.notified(),
+            )
+            .await;
+            let vaes: Vec<(String, VaeHandle)> = self
+                .vaes
+                .lock()
+                .expect("vaes")
+                .iter()
+                .map(|(k, h)| (k.clone(), h.clone()))
+                .collect();
+            for (key, h) in vaes {
+                for _ in 0..DELIVERY_BATCH {
+                    match self.deliver_one(&key, &h).await {
+                        Ok(true) => continue,
+                        Ok(false) => break,
+                        Err(e) => {
+                            eprintln!("ubos-server: delivery {key}: {e}");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Claim and run one delivery of a VAE; `false` when none is ready.
+    async fn deliver_one(self: &Shared, key: &str, h: &VaeHandle) -> Result<bool, BpaError> {
+        let (me, k) = (self.clone(), key.to_string());
+        let Some(jobs) = blocking(move || me.jobs_of(&k)).await? else {
+            return Ok(false);
+        };
+        let (j2, holder) = (jobs.clone(), self.node_id.clone());
+        let Some(job) =
+            blocking(move || j2.claim(Some("delivery"), &holder, DELIVERY_LEASE_MS)).await?
+        else {
+            return Ok(false);
+        };
+        let job_id = job["job_id"].as_str().unwrap_or_default().to_string();
+        let tenant = key.split('/').next().unwrap_or_default().to_string();
+        let run_as = job["payload"]["run_as"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string();
+        // the service principal must exist in the tenant and be active (DSN-NOD-110)
+        let principal = match self.identity_async(&tenant).await {
+            Ok(id) => {
+                let ra = run_as.clone();
+                blocking(move || id.principal(&ra)).await
+            }
+            Err(e) => Err(e),
+        };
+        let outcome = match principal {
+            Ok(p)
+                if p["state"] == "active"
+                    && matches!(p["kind"].as_str(), Some("service" | "agent")) =>
+            {
+                let pr = json!({"did": p["did"], "kind": p["kind"], "role": p.get("role").cloned().unwrap_or(Value::Null),
+                    "grants": p.get("grants").cloned().unwrap_or(Value::Null)});
+                h.call("host.deliver", json!({"job": job, "principal": pr}))
+                    .await
+                    .map_err(|e| (e, false))
+            }
+            Ok(p) => Err((
+                BpaError::with_details(
+                    "IAM.DENIED",
+                    json!({"reason": "run_as_not_an_active_service_principal", "run_as": run_as, "state": p["state"], "kind": p["kind"]}),
+                ),
+                true,
+            )),
+            Err(e) => Err((e, true)),
+        };
+        let policy = crate::services::RetryPolicy::from_json(&job["payload"]["policy"]);
+        let attempts = job["attempts"].as_i64().unwrap_or(1);
+        let jid = job_id.clone();
+        match outcome {
+            Ok(r) => blocking(move || jobs.complete(&jid, &r)).await?,
+            Err((e, final_)) => {
+                let text = match &e.details {
+                    Some(d) => format!("{}: {d}", e.code),
+                    None => format!("{}: {}", e.code, e.message),
+                };
+                let delay = policy.delay_ms(attempts);
+                let state = blocking(move || jobs.fail(&jid, &text, delay, final_)).await?;
+                if state == "dead"
+                    && let Ok(id) = self.identity_async(&tenant).await
+                {
+                    let rec = json!({"vae": key, "job_id": job_id, "subscription": job["payload"]["subscription"],
+                        "event_id": job["payload"]["event"]["event_id"], "code": e.code, "attempts": attempts});
+                    let _ = blocking(move || id.log("delivery.dead", rec)).await;
+                }
+            }
+        }
+        Ok(true)
     }
 
     /// The leader's loop (DSN-NOD-208, -228): every second each VAE's lease is renewed
@@ -855,6 +1041,16 @@ impl Server {
         }
         let (me, t) = (self.clone(), tenant.to_string());
         blocking(move || me.identity(&t)).await
+    }
+
+    /// A VAE, opened off the runtime.
+    async fn vae_async(
+        self: &Shared,
+        tenant: &str,
+        authority: &str,
+    ) -> Result<VaeHandle, BpaError> {
+        let (me, t, a) = (self.clone(), tenant.to_string(), authority.to_string());
+        blocking(move || me.vae(&t, &a)).await
     }
 
     /// The secret store of a tenant, opened off the runtime.
@@ -1859,6 +2055,9 @@ fn lease_name(key: &str) -> String {
 /// | `GET events/retention`, `PUT events/retention` | `{type, days}` (`days: null` removes the rule; `*` for the other types) |
 /// | `POST events/sweep` | `{now?}` — apply the retention now |
 /// | `GET leaders` | this node's leadership of each open VAE (DSN-NOD-228) |
+/// | `GET listeners` | `?vae&branch&type&handler` — the listener registry (FR-EVT-022) |
+/// | `GET jobs`, `GET jobs/{id}` | `?vae&state&kind&limit` — jobs and dead letters |
+/// | `POST jobs/{id}/retry`, `…/cancel`, `…/annotate` | `{text}` for a note — operator actions on dead letters (FR-EVT-052), audited |
 async fn admin_api(
     State(s): State<Shared>,
     ConnectInfo(peer): ConnectInfo<SocketAddr>,
@@ -1910,6 +2109,82 @@ async fn admin_api(
             .map(|(k, l)| json!({"vae": k, "leader": l.held, "token": l.token, "node": s.node_id}))
             .collect();
         return Json(json!({"items": items})).into_response();
+    }
+    if (method.as_str(), p.as_slice()) == ("GET", &["listeners"][..]) {
+        let h = match s.vae_async(&tenant, &vae).await {
+            Ok(h) => h,
+            Err(e) => return problem_response(&e),
+        };
+        let input = json!({"branch": q.get("branch").cloned().unwrap_or_else(|| "main".into()),
+            "type": q.get("type"), "handler": q.get("handler")});
+        return match h.call("host.listeners", input).await {
+            Ok(v) => Json(v).into_response(),
+            Err(e) => problem_response(&e),
+        };
+    }
+    if p.first() == Some(&"jobs") {
+        let (me2, key2, m, segs2, by) = (
+            s.clone(),
+            key.clone(),
+            method.clone(),
+            segs.clone(),
+            me.did.clone(),
+        );
+        let id2 = s.identity_async(&tenant).await.ok();
+        let out = blocking(move || {
+            let jobs = me2.jobs_of(&key2)?.ok_or_else(|| {
+                BpaError::new(
+                    "LOGIC.NOT_AVAILABLE",
+                    "this server keeps no jobs for the VAE",
+                )
+            })?;
+            let p: Vec<&str> = segs2.iter().map(String::as_str).collect();
+            let audit = |action: &str, job: &str, ok: bool| {
+                if let Some(id) = &id2 {
+                    let _ = id.log(
+                        &format!("admin.job_{action}"),
+                        json!({"vae": key2, "job_id": job, "by": by, "ok": ok}),
+                    );
+                }
+            };
+            match (m.as_str(), p.as_slice()) {
+                ("GET", ["jobs"]) => {
+                    let f = JobFilter {
+                        state: q.get("state").cloned(),
+                        kind: q.get("kind").cloned(),
+                        limit: q.get("limit").and_then(|x| x.parse().ok()).unwrap_or(100),
+                    };
+                    Ok(json!({"items": jobs.list(&f)?}))
+                }
+                ("GET", ["jobs", j]) => jobs
+                    .job(j)?
+                    .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown job")),
+                ("POST", ["jobs", j, "retry"]) => {
+                    let ok = jobs.retry(j)?;
+                    audit("retry", j, ok);
+                    Ok(json!({"ok": ok}))
+                }
+                ("POST", ["jobs", j, "cancel"]) => {
+                    let ok = jobs.cancel(j)?;
+                    audit("cancel", j, ok);
+                    Ok(json!({"ok": ok}))
+                }
+                ("POST", ["jobs", j, "annotate"]) => {
+                    let ok = jobs.annotate(j, &by, text(&body, "text")?)?;
+                    audit("annotate", j, ok);
+                    Ok(json!({"ok": ok}))
+                }
+                _ => Err(BpaError::new("IAM.NOT_FOUND", "unknown admin route")),
+            }
+        })
+        .await;
+        if out.as_ref().is_ok_and(|v| v["ok"] == true) {
+            s.deliver_now.notify_one();
+        }
+        return match out {
+            Ok(v) => Json(v).into_response(),
+            Err(e) => problem_response(&e),
+        };
     }
     let me2 = s.clone();
     let m = method.clone();
@@ -2238,13 +2513,14 @@ fn identity_call(
 /// A memory VAE for the `memory` preset and the suites: an engine over the memory store
 /// with the system clock and OS entropy, the genesis classes loaded when given.
 pub fn memory_vae(classes: Option<&Value>) -> Result<Vae, BpaError> {
-    memory_vae_with(classes, None)
+    memory_vae_with(classes, None, None)
 }
 
 /// A memory VAE whose outbox is released into `events` (the memory preset's event log).
 pub fn memory_vae_with(
     classes: Option<&Value>,
     events: Option<Arc<MemEventLog>>,
+    jobs: Option<Arc<MemJobQueue>>,
 ) -> Result<Vae, BpaError> {
     use ubos_dvm::host::{
         NoConnectors, NoModels, OsEntropy, OutboxSink, Recorder, Services, SystemClock,
@@ -2264,7 +2540,10 @@ pub fn memory_vae_with(
         connectors: Arc::new(NoConnectors),
         models: Arc::new(NoModels),
         outbox,
-        jobs: rec.clone(),
+        jobs: match jobs {
+            Some(j) => j,
+            None => rec.clone(),
+        },
         telemetry: rec,
     };
     Ok(Vae::open(engine, services))
