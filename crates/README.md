@@ -176,6 +176,13 @@ and the job's identifier is derived from the slot, so a slot fires once whatever
 of leaders. Missed slots after an outage and slots recorded while paused follow the misfire
 policy; operators list, pause and resume schedules under `/api/v1/admin/schedules`.
 
+SUITE-NOD-EVENTS and SUITE-NOD-JOBS of step 15e run in `ubos-events-suite` (memory, or a
+fresh tenant on PostgreSQL; the crash and failover cases run nodes as child processes with
+`--serve` and kill them), and `ubos-events-suite --bench` measures MET-PERF-017, NR-PERF-012
+and NR-DUR-006 (`verify/reports/suite-nod-events/`, `suite-nod-jobs/`, `exit-1-17/nod/`). A
+node keeps one database pool per tenant (`TENANT_POOL`), shared by the tenant's stores and
+services; the kernel store of each VAE keeps its own.
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh

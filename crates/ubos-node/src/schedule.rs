@@ -542,6 +542,9 @@ pub trait ScheduleStore: Send + Sync {
         status: Option<&str>,
         limit: i64,
     ) -> Result<Vec<Value>, BpaError>;
+    /// Forget the cursors of the schedules not in `live` (deleted or disabled ones: their
+    /// next evaluation starts afresh, and a VAE without live schedules has no schedule work).
+    fn retain(&self, live: &[String]) -> Result<(), BpaError>;
 }
 
 fn iso(t: DateTime<Utc>) -> String {
@@ -636,6 +639,19 @@ impl ScheduleStore for PgScheduleStore {
             &[Param::Text(&self.tenant), Param::Text(&self.vae), Param::Text(schedule), Param::Text(status.unwrap_or_default()), Param::Int(limit.clamp(1, 10_000))],
         )
     }
+    fn retain(&self, live: &[String]) -> Result<(), BpaError> {
+        let ids = serde_json::to_string(live).unwrap_or_else(|_| "[]".into());
+        self.db.execute(
+            "DELETE FROM schedule_cursor WHERE tenant_id = $1::uuid AND vae_id = $2::uuid \
+             AND schedule_id NOT IN (SELECT jsonb_array_elements_text($3::jsonb))",
+            &[
+                Param::Text(&self.tenant),
+                Param::Text(&self.vae),
+                Param::Text(&ids),
+            ],
+        )?;
+        Ok(())
+    }
 }
 
 /// Slots by `(schedule, slot)`: status and job.
@@ -716,5 +732,12 @@ impl ScheduleStore for MemScheduleStore {
             .take(limit.clamp(1, 10_000) as usize)
             .map(|((_, t), (st, j))| json!({"slot": iso(*t), "status": st, "job_id": j}))
             .collect())
+    }
+    fn retain(&self, live: &[String]) -> Result<(), BpaError> {
+        self.cursors
+            .lock()
+            .map_err(|_| lock_err())?
+            .retain(|k, _| live.contains(k));
+        Ok(())
     }
 }

@@ -24,14 +24,14 @@ pub struct Db {
 }
 
 impl Db {
-    fn open(url: &str, setup: Option<String>) -> Result<Db, BpaError> {
+    fn open(url: &str, setup: Option<String>, max: u32) -> Result<Db, BpaError> {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .map_err(err)?;
         let opts = pg_options(url)?;
         let pool = rt.block_on(async {
-            let mut b = PgPoolOptions::new().max_connections(4);
+            let mut b = PgPoolOptions::new().max_connections(max);
             if let Some(sql) = setup {
                 b = b.after_connect(move |conn, _| {
                     let sql = sql.clone();
@@ -49,16 +49,22 @@ impl Db {
     /// The owner role: the registry tables (`tenant`, `vae`), which row-level security
     /// hides from `ubos_app`.
     pub fn owner(url: &str) -> Result<Db, BpaError> {
-        Db::open(url, Some("SET TIME ZONE 'UTC'".into()))
+        Db::open(url, Some("SET TIME ZONE 'UTC'".into()), 4)
     }
 
     /// The application role in one tenant: the tenant tables under row-level security.
     pub fn tenant(url: &str, tenant_id: &str) -> Result<Db, BpaError> {
+        Db::tenant_with(url, tenant_id, 4)
+    }
+
+    /// The application role in one tenant with a pool of at most `max` connections.
+    pub fn tenant_with(url: &str, tenant_id: &str, max: u32) -> Result<Db, BpaError> {
         Db::open(
             url,
             Some(format!(
                 "SET ROLE ubos_app; SET ubos.tenant = '{tenant_id}'; SET TIME ZONE 'UTC'"
             )),
+            max,
         )
     }
 

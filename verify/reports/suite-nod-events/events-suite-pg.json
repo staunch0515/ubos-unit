@@ -1,0 +1,139 @@
+{
+  "suite": "SUITE-NOD-EVENTS",
+  "step": "PH-1 15e",
+  "decision": "DEC-076",
+  "implementation": {
+    "crate": "ubos-node",
+    "version": "0.0.0"
+  },
+  "environment": {
+    "backend": "postgresql",
+    "os": "linux",
+    "arch": "x86_64",
+    "cpus": 4
+  },
+  "cases": 10,
+  "passed": 10,
+  "skipped": 0,
+  "results": [
+    {
+      "case": "release_order",
+      "clause": "DSN-NOD-201",
+      "result": "pass",
+      "ms": 5459,
+      "evidence": {
+        "objects": 3,
+        "effects": 30
+      }
+    },
+    {
+      "case": "outbox_claims",
+      "clause": "DSN-NOD-201",
+      "result": "pass",
+      "ms": 478,
+      "evidence": {
+        "claimed_a": 4,
+        "claimed_b": 4,
+        "after_lease": 6
+      }
+    },
+    {
+      "case": "subscription_scope",
+      "clause": "DSN-NOD-203",
+      "result": "pass",
+      "ms": 365,
+      "evidence": {
+        "listeners": [
+          "closed-feature"
+        ],
+        "deliveries": [
+          "closed-feature"
+        ]
+      }
+    },
+    {
+      "case": "handler_process_once",
+      "clause": "DSN-NOD-204",
+      "result": "pass",
+      "ms": 334,
+      "evidence": {
+        "process_id": "6d8939d5-9b17-840b-830d-f1699433b8b8",
+        "redelivery": "already_done",
+        "trigger": {
+          "type": "event"
+        }
+      }
+    },
+    {
+      "case": "dead_letters",
+      "clause": "DSN-NOD-209",
+      "result": "pass",
+      "ms": 1039,
+      "evidence": {
+        "job_id": "6cd1f53a-2fc2-87f7-8ec0-eed4ca15e02c",
+        "attempts": 2,
+        "redriven": true
+      }
+    },
+    {
+      "case": "became_effective",
+      "clause": "DSN-NOD-208",
+      "result": "pass",
+      "ms": 3715,
+      "evidence": {
+        "lag_ms": 180
+      }
+    },
+    {
+      "case": "event_log_query_retention",
+      "clause": "DSN-NOD-202",
+      "result": "pass",
+      "ms": 338,
+      "evidence": {
+        "removed": 2
+      }
+    },
+    {
+      "case": "leader_leases",
+      "clause": "DSN-NOD-228",
+      "result": "pass",
+      "ms": 408,
+      "evidence": {
+        "tokens": [
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "case": "crash_recovery",
+      "clause": "NR-DUR-006",
+      "result": "pass",
+      "ms": 13703,
+      "evidence": {
+        "effects": 60,
+        "down_ms": 553,
+        "delivered_s_after_restart": 1.3
+      }
+    },
+    {
+      "case": "failover",
+      "clause": "DSN-NOD-228",
+      "result": "pass",
+      "ms": 17414,
+      "evidence": {
+        "takeover_s": 14.9,
+        "tokens": [
+          1,
+          2
+        ]
+      }
+    }
+  ],
+  "seconds": 43.9,
+  "signature": {
+    "alg": "ed25519",
+    "key": "b5e22d6e70dc581ce6493d6d5c2b3cfc72af69a538c2167f61258c2b0da5efea",
+    "sig": "c1c02f13b430b9d10f79da4c3e020ab1fa867574195225c68ffa345faa1aebb9dec6a7a90d65df69643b484bd68a02755bdab9003d06c83e699ed0254eddac07"
+  }
+}

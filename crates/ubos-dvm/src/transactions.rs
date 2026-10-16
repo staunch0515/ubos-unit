@@ -341,6 +341,9 @@ impl Engine {
         }
         let mut fired = Vec::new();
         let mut events = Vec::new();
+        // the state of each branch, read once per tick whatever the number of due timers
+        let mut views: std::collections::HashMap<String, Option<State>> =
+            std::collections::HashMap::new();
         for item in timers {
             let key = &item["key"];
             let (branch, oid, from, vh) = (
@@ -354,12 +357,15 @@ impl Engine {
                 continue;
             }
             fired.push(text_of(&item["id"]));
-            let mut repo = Repo::new(self.store.as_mut(), &self.registry);
-            let Ok((view, _)) = repo.view(&branch, &json!({})) else {
+            if !views.contains_key(&branch) {
+                let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+                let st = repo.view(&branch, &json!({})).ok().map(|(v, _)| v.state);
+                views.insert(branch.clone(), st);
+            }
+            let Some(Some(state)) = views.get(&branch) else {
                 continue;
             };
-            if view
-                .state
+            if state
                 .objects
                 .get(&oid)
                 .is_some_and(|o| o.timeline.iter().any(|x| x.from == from && x.version == vh))

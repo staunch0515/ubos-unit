@@ -24,6 +24,10 @@ path = "src/bin/ubos-auth-suite.rs"
 name = "ubos-proto-suite"
 path = "src/bin/ubos-proto-suite.rs"
 
+[[bin]]
+name = "ubos-events-suite"
+path = "src/bin/ubos-events-suite.rs"
+
 [dependencies]
 ubos-dvm.workspace = true
 ubos-proto.workspace = true
