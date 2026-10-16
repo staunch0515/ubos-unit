@@ -46,6 +46,10 @@ jobs:
         run: cargo test -p ubos-forge -p ubos-dvm --locked
         env:
           UBOS_TEST_DATABASE: "host=127.0.0.1 user=postgres dbname=bpa"
+      - name: node suites — UBTP over every binding and local identity (SUITE-NOD-PROTO, SUITE-NOD-AUTH, VER-CONF-7000, EXIT-1-15)
+        run: cargo test -p ubos-node --locked
+        env:
+          UBOS_TEST_DATABASE: "host=127.0.0.1 user=postgres dbname=bpa"
       - name: BPA 0.1 vectors tagged prototype (EXIT-0-03, DEC-033)
         run: |
           cargo build --release --locked -p ubos-forge

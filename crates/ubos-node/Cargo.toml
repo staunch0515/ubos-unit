@@ -16,6 +16,14 @@ path = "src/bin/ubos-node-suite.rs"
 name = "ubos-server"
 path = "src/bin/ubos-server.rs"
 
+[[bin]]
+name = "ubos-auth-suite"
+path = "src/bin/ubos-auth-suite.rs"
+
+[[bin]]
+name = "ubos-proto-suite"
+path = "src/bin/ubos-proto-suite.rs"
+
 [dependencies]
 ubos-dvm.workspace = true
 ubos-proto.workspace = true
@@ -25,6 +33,7 @@ sqlx.workspace = true
 tokio.workspace = true
 axum.workspace = true
 futures-util.workspace = true
+tokio-tungstenite.workspace = true
 cap.workspace = true
 argon2.workspace = true
 sha1.workspace = true

@@ -364,6 +364,21 @@ pub trait Store {
             })
             .collect())
     }
+    /// The effects a commit released, acknowledged or not, in release order (the events
+    /// subscriptions of UBTP, STD-PROTO-012: a host acknowledges the outbox after every
+    /// operation, so the pending list alone loses them).
+    fn outbox_released(&mut self, branch: &str, cseq: u64) -> Result<Vec<Value>, BpaError> {
+        Ok(self
+            .meta("outbox")?
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|e| {
+                e.get("branch").and_then(Value::as_str) == Some(branch)
+                    && e.get("cseq").and_then(Value::as_u64) == Some(cseq)
+            })
+            .collect())
+    }
     /// Release effects outside a flush (BecameEffective events).
     fn outbox_push(&mut self, items: &[Value]) -> Result<(), BpaError> {
         let mut all = self
@@ -1149,6 +1164,9 @@ impl Store for Group {
     }
     fn outbox_pending(&mut self) -> Result<Vec<Value>, BpaError> {
         self.inner.outbox_pending()
+    }
+    fn outbox_released(&mut self, branch: &str, cseq: u64) -> Result<Vec<Value>, BpaError> {
+        self.inner.outbox_released(branch, cseq)
     }
     fn outbox_push(&mut self, items: &[Value]) -> Result<(), BpaError> {
         self.inner.outbox_push(items)

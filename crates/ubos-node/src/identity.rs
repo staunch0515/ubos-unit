@@ -664,6 +664,20 @@ impl Identity {
         )
     }
 
+    /// A stored record as is (suites: hashed tokens, sealed secrets).
+    pub fn backend_record(&self, kind: &str, key: &str) -> Result<Option<Value>, BpaError> {
+        self.backend.get(kind, key)
+    }
+
+    /// The first stored record of a kind matching `f` (suites).
+    pub fn backend_record_by(
+        &self,
+        kind: &str,
+        f: impl Fn(&Value) -> bool,
+    ) -> Result<Option<Value>, BpaError> {
+        Ok(self.backend.list(kind)?.into_iter().find(|r| f(r)))
+    }
+
     // ---- security log (DSN-NOD-111) ----
 
     /// Append an entry to the hash-chained log; returns its sequence number.
@@ -1065,6 +1079,25 @@ impl Identity {
             .unwrap_or_else(|| json!({"source": source, "failures": 0})))
     }
 
+    /// An attempt refused while delayed counts as a failure on the source and the account;
+    /// a refusal while locked does not extend the lock. Returns the refusal.
+    fn refused(
+        &self,
+        username: &str,
+        cred: Option<&mut Value>,
+        source: &str,
+        refusal: BpaError,
+    ) -> Result<BpaError, BpaError> {
+        let throttled = refusal
+            .details
+            .as_ref()
+            .is_some_and(|d| d["reason"] == "throttled");
+        if throttled {
+            self.fail(username, cred, source, "throttled")?;
+        }
+        Ok(refusal)
+    }
+
     /// Count a failed attempt on the source and, when the account exists, on the account
     /// (under the lock; the log entries follow outside it) and return the error to give.
     fn fail(
@@ -1106,12 +1139,19 @@ impl Identity {
         device: Option<&str>,
     ) -> Result<SignedIn, BpaError> {
         let username = username.trim();
-        self.check_throttle("source", source, &self.source_record(source)?)?;
-        let Some(mut c) = self.backend.get("credential", username)? else {
+        let mut cred = self.backend.get("credential", username)?;
+        // an attempt refused during a delay still counts towards the lock, so that
+        // hammering through the delays reaches it (DSN-NOD-101 acceptance 1)
+        if let Err(e) = self.check_throttle("source", source, &self.source_record(source)?) {
+            return Err(self.refused(username, cred.as_mut(), source, e)?);
+        }
+        let Some(mut c) = cred else {
             verify_password(dummy_hash(), password);
             return Err(self.fail(username, None, source, "unknown_account")?);
         };
-        self.check_throttle("account", username, &c)?;
+        if let Err(e) = self.check_throttle("account", username, &c) {
+            return Err(self.refused(username, Some(&mut c), source, e)?);
+        }
         let hash = s(&c, "hash").unwrap_or_default().to_string();
         if !verify_password(&hash, password) {
             return Err(self.fail(username, Some(&mut c), source, "password")?);

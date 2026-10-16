@@ -654,6 +654,8 @@ pub trait StoreRead {
     async fn derivation_edges(&self, binding_id: &Hash) -> Result<Vec<DerivationEdge>, BpaError>;
     /// Released effects not yet acknowledged, in release order (`payload` bytes).
     async fn outbox_pending(&self) -> Result<Vec<Vec<u8>>, BpaError>;
+    /// The effects one commit of a branch released, acknowledged or not, in release order.
+    async fn outbox_of_commit(&self, branch_id: i64, cseq: i64) -> Result<Vec<Vec<u8>>, BpaError>;
     /// Pending timers.
     async fn timers(&self) -> Result<Vec<TimerRow>, BpaError>;
     /// An idempotency record: `(request hash, outcome)`.

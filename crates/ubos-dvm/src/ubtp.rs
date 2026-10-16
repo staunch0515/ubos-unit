@@ -759,11 +759,12 @@ impl Engine {
                 .filter_map(Value::as_str)
                 .map(str::to_string)
                 .collect();
+            // released effects, acknowledged or not: a host acknowledges the outbox
+            // after every operation
             let evs: Vec<Value> = self
                 .store
-                .outbox_pending()?
+                .outbox_released(&branch, cseq)?
                 .into_iter()
-                .filter(|e| s(e, "branch") == Some(branch.as_str()) && e["cseq"].as_u64() == Some(cseq))
                 .filter(|e| types.is_empty() || s(e, "type").is_some_and(|t| types.iter().any(|x| x == t)))
                 .map(|e| {
                     json!({"event_id": e["effect_id"], "type": e["type"], "object_id": e.get("object_id").cloned().unwrap_or(Value::Null),

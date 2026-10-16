@@ -72,7 +72,7 @@ cap = "0.1"
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "macros", "migrate"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync", "time", "net", "signal"] }
 axum = { version = "0.8", features = ["ws"] }
-tokio-tungstenite = "0.26"
+tokio-tungstenite = "0.29"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 # physical form of stored bytes: zstd, then XChaCha20-Poly1305 (DSN-DVM-002, DEC-048)
 zstd = { version = "0.13", default-features = false }
