@@ -20,6 +20,7 @@ pub mod identity;
 pub mod keys;
 pub mod leases;
 pub mod platform;
+pub mod schedule;
 pub mod server;
 pub mod services;
 
@@ -248,15 +249,19 @@ impl Node {
     }
 
     /// The `(tenant slug, authority)` of the active VAEs with work for the Server: effects
-    /// released but not acknowledged, or became-effective timers due within `horizon_secs`
-    /// (NR-DUR-006, NR-PERF-012). The owner role reads across tenants.
+    /// released but not acknowledged, became-effective timers due within `horizon_secs`
+    /// (NR-DUR-006, NR-PERF-012), jobs queued or running, or schedules (step 15d: missed
+    /// slots are computed after a full outage, DSN-NOD-226). The owner role reads across
+    /// tenants.
     pub fn vaes_with_work(&self, horizon_secs: i64) -> Result<Vec<(String, String)>, BpaError> {
         let rows = self.db.query(
             "SELECT t.slug, v.authority FROM vae v JOIN tenant t ON t.tenant_id = v.tenant_id \
              WHERE t.state = 'active' AND ( \
                EXISTS (SELECT 1 FROM outbox o WHERE o.tenant_id = v.tenant_id AND o.vae_id = v.vae_id AND o.released_at IS NULL) \
                OR EXISTS (SELECT 1 FROM timer m WHERE m.tenant_id = v.tenant_id AND m.vae_id = v.vae_id AND m.fired_at IS NULL \
-                          AND m.due_at < now() + make_interval(secs => $1::bigint))) \
+                          AND m.due_at < now() + make_interval(secs => $1::bigint)) \
+               OR EXISTS (SELECT 1 FROM job j WHERE j.tenant_id = v.tenant_id AND j.vae_id = v.vae_id AND j.state IN ('queued', 'running')) \
+               OR EXISTS (SELECT 1 FROM schedule_cursor c WHERE c.tenant_id = v.tenant_id AND c.vae_id = v.vae_id)) \
              ORDER BY t.slug, v.authority",
             &[db::Param::Int(horizon_secs)],
         )?;
@@ -301,6 +306,21 @@ impl Node {
         };
         let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
         Ok(Some(services::JobQueue::new(scoped, &tenant.id, &vae_id)))
+    }
+
+    /// The schedule state of a tenant's VAE (step 15d); `None` when the VAE is unknown.
+    pub fn schedules(
+        &self,
+        tenant: &Tenant,
+        authority: &str,
+    ) -> Result<Option<schedule::PgScheduleStore>, BpaError> {
+        let Some(vae_id) = self.vae(tenant, authority)? else {
+            return Ok(None);
+        };
+        let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
+        Ok(Some(schedule::PgScheduleStore::new(
+            scoped, &tenant.id, &vae_id,
+        )))
     }
 
     /// The key hierarchy of a tenant.

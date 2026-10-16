@@ -38,6 +38,7 @@
 
 use crate::identity::{Authenticated, Identity};
 use crate::leases::{Leases, MemLeases};
+use crate::schedule::{MemScheduleStore, ScheduleStore};
 use crate::services::{EventFilter, EventStore, JobFilter, JobStore, MemEventLog, MemJobQueue};
 use axum::body::Bytes;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
@@ -72,7 +73,7 @@ pub const DELIVERY_BATCH: usize = 100;
 /// The lease of a claimed job (heartbeated every third of it).
 pub const DELIVERY_LEASE_MS: i64 = 60_000;
 /// The job kinds the worker runs.
-pub const JOB_KINDS: &[&str] = &["delivery", "port", "bulk"];
+pub const JOB_KINDS: &[&str] = &["delivery", "port", "bulk", "schedule"];
 /// The interval of the job sweeper (FR-EVT-032).
 pub const JOB_SWEEP_SECS: u64 = 30;
 /// The interval of the scan for VAEs with work.
@@ -345,6 +346,16 @@ fn host_call(vae: &mut Vae, op: &str, input: &Value) -> Result<Value, BpaError> 
         }
         "host.deliver" => crate::platform::deliver(vae, &input["job"], &input["principal"]),
         "host.run_port" => crate::platform::run_port(vae, &input["job"], &input["principal"]),
+        "host.run_schedule" => {
+            crate::platform::run_schedule(vae, &input["job"], &input["principal"])
+        }
+        "host.schedules" => crate::platform::schedules(vae, input["known"].as_str()),
+        "host.set_paused" => crate::platform::set_paused(
+            vae,
+            input["schedule"].as_str().unwrap_or_default(),
+            input["paused"].as_bool().unwrap_or(false),
+            input["by"].as_str().unwrap_or_default(),
+        ),
         "host.run_bulk" => crate::platform::run_bulk(
             vae,
             &input["job"],
@@ -421,6 +432,15 @@ pub trait VaeSource: Send + Sync {
     }
     /// The jobs of a VAE (deliveries and dead letters); `None` when the source keeps none.
     fn jobs(&self, _tenant: &str, _authority: &str) -> Result<Option<Arc<dyn JobStore>>, BpaError> {
+        Ok(None)
+    }
+    /// The schedule state of a VAE (step 15d); `None` when the source keeps none (the
+    /// Server then keeps it in memory).
+    fn schedules(
+        &self,
+        _tenant: &str,
+        _authority: &str,
+    ) -> Result<Option<Arc<dyn ScheduleStore>>, BpaError> {
         Ok(None)
     }
 }
@@ -518,6 +538,19 @@ impl VaeSource for NodeVaes {
             .jobs(&t, authority)?
             .map(|j| Arc::new(j) as Arc<dyn JobStore>))
     }
+    fn schedules(
+        &self,
+        tenant: &str,
+        authority: &str,
+    ) -> Result<Option<Arc<dyn ScheduleStore>>, BpaError> {
+        let Some(t) = self.0.tenant(tenant)? else {
+            return Ok(None);
+        };
+        Ok(self
+            .0
+            .schedules(&t, authority)?
+            .map(|j| Arc::new(j) as Arc<dyn ScheduleStore>))
+    }
 }
 
 /// This node's view of a VAE's leadership (DSN-NOD-228).
@@ -576,6 +609,10 @@ pub struct Server {
     event_stores: Mutex<HashMap<String, Arc<dyn EventStore>>>,
     /// Job stores per VAE (opened once).
     job_stores: Mutex<HashMap<String, Arc<dyn JobStore>>>,
+    /// Schedule stores per VAE (opened once).
+    schedule_stores: Mutex<HashMap<String, Arc<dyn ScheduleStore>>>,
+    /// The schedules of each VAE's `main` as last read, with main's head (FR-EVT-042).
+    schedule_cache: Mutex<HashMap<String, (String, Vec<Value>)>>,
     /// Wakes the delivery worker after a release that enqueued deliveries.
     deliver_now: tokio::sync::Notify,
     /// Wakes the releaser after a commit.
@@ -608,6 +645,8 @@ impl Server {
             leaders: Mutex::new(HashMap::new()),
             event_stores: Mutex::new(HashMap::new()),
             job_stores: Mutex::new(HashMap::new()),
+            schedule_stores: Mutex::new(HashMap::new()),
+            schedule_cache: Mutex::new(HashMap::new()),
             deliver_now: tokio::sync::Notify::new(),
             release_now: tokio::sync::Notify::new(),
         })
@@ -657,6 +696,8 @@ impl Server {
             leaders: Mutex::new(HashMap::new()),
             event_stores: Mutex::new(HashMap::new()),
             job_stores: Mutex::new(HashMap::new()),
+            schedule_stores: Mutex::new(HashMap::new()),
+            schedule_cache: Mutex::new(HashMap::new()),
             deliver_now: tokio::sync::Notify::new(),
             release_now: tokio::sync::Notify::new(),
         })
@@ -1020,6 +1061,19 @@ impl Server {
                 }
             }
             "bulk" => self.run_bulk_job(&jobs, h, &job, token).await,
+            "schedule" => {
+                let run_as = job["payload"]["run_as"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string();
+                match self.job_principal(&tenant, &run_as, true).await {
+                    Ok(pr) => h
+                        .call("host.run_schedule", json!({"job": job, "principal": pr}))
+                        .await
+                        .map_err(|e| (e, false)),
+                    Err(e) => Err(e),
+                }
+            }
             other => Err((
                 BpaError::new(
                     "LOGIC.NOT_AVAILABLE",
@@ -1170,6 +1224,9 @@ impl Server {
                 if let Err(e) = h.call("host.tick", json!({})).await {
                     eprintln!("ubos-server: tick {key}: {e}");
                 }
+                if let Err(e) = self.evaluate_schedules(&key, &h).await {
+                    eprintln!("ubos-server: schedules {key}: {e}");
+                }
                 if sweep_jobs && let Err(e) = self.sweep_jobs(&key, &h).await {
                     eprintln!("ubos-server: job sweep {key}: {e}");
                 }
@@ -1186,6 +1243,112 @@ impl Server {
                 }
             }
         }
+    }
+
+    /// The schedule store of a VAE (opened once; in memory when the source keeps none).
+    fn schedules_of(&self, key: &str) -> Result<Arc<dyn ScheduleStore>, BpaError> {
+        if let Some(st) = self.schedule_stores.lock().expect("schedules").get(key) {
+            return Ok(st.clone());
+        }
+        let (t, a) = key.split_once('/').unwrap_or((key, ""));
+        let st = match self.source.schedules(t, a)? {
+            Some(st) => st,
+            None => Arc::new(MemScheduleStore::default()) as Arc<dyn ScheduleStore>,
+        };
+        self.schedule_stores
+            .lock()
+            .expect("schedules")
+            .insert(key.to_string(), st.clone());
+        Ok(st)
+    }
+
+    /// The schedules of a VAE's `main`, read again only when main's head moved.
+    async fn schedules_now(
+        self: &Shared,
+        key: &str,
+        h: &VaeHandle,
+    ) -> Result<Vec<Value>, BpaError> {
+        let known = self
+            .schedule_cache
+            .lock()
+            .expect("schedule cache")
+            .get(key)
+            .map(|c| c.0.clone());
+        let r = h.call("host.schedules", json!({"known": known})).await?;
+        if r["unchanged"] != json!(true) {
+            let items = r["items"].as_array().cloned().unwrap_or_default();
+            self.schedule_cache.lock().expect("schedule cache").insert(
+                key.to_string(),
+                (r["head"].as_str().unwrap_or_default().to_string(), items),
+            );
+        }
+        Ok(self
+            .schedule_cache
+            .lock()
+            .expect("schedule cache")
+            .get(key)
+            .map(|c| c.1.clone())
+            .unwrap_or_default())
+    }
+
+    /// Evaluate a VAE's schedules as its leader (DSN-NOD-224…-226; FR-EVT-041…-044): each
+    /// second, the schedules of `main` as committed now (a change takes effect at the next
+    /// evaluation), their slots since the cursor recorded in the schedule state before their
+    /// jobs are enqueued, missed and paused slots by the misfire policy. Returns the jobs
+    /// enqueued.
+    pub async fn evaluate_schedules(
+        self: &Shared,
+        key: &str,
+        h: &VaeHandle,
+    ) -> Result<usize, BpaError> {
+        let items = self.schedules_now(key, h).await?;
+        if items.is_empty() {
+            return Ok(0);
+        }
+        let (me, k) = (self.clone(), key.to_string());
+        let id = self
+            .identity_async(key.split('/').next().unwrap_or_default())
+            .await
+            .ok();
+        let now = chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::now());
+        let done = blocking(move || {
+            let store = me.schedules_of(&k)?;
+            let mut out = Vec::new();
+            for it in &items {
+                let sid = it["schedule_id"].as_str().unwrap_or_default();
+                match crate::schedule::evaluate(store.as_ref(), sid, &it["body"], now) {
+                    Ok(ev) => {
+                        if ev.dropped > 0
+                            && let Some(id) = &id
+                        {
+                            let _ = id.log(
+                                "schedule.slots_dropped",
+                                json!({"vae": k, "schedule": sid, "dropped": ev.dropped}),
+                            );
+                        }
+                        if !ev.specs.is_empty() {
+                            out.push((sid.to_string(), ev));
+                        }
+                    }
+                    // a schedule whose rule does not parse has no slots until it is fixed
+                    Err(e) => eprintln!("ubos-server: schedule {k} {sid}: {e}"),
+                }
+            }
+            Ok((store, out))
+        })
+        .await?;
+        let (store, fired) = done;
+        let mut n = 0;
+        for (sid, ev) in fired {
+            h.call("host.enqueue", json!({"specs": ev.specs})).await?;
+            n += ev.specs.len();
+            let (st, slots) = (store.clone(), ev.firing);
+            blocking(move || crate::schedule::mark_fired(st.as_ref(), &sid, &slots)).await?;
+        }
+        if n > 0 {
+            self.deliver_now.notify_one();
+        }
+        Ok(n)
     }
 
     /// The job sweeper (FR-EVT-032, DSN-NOD-220): every pending `Job` object without a row
@@ -2293,6 +2456,8 @@ fn lease_name(key: &str) -> String {
 /// | `POST jobs/{id}/priority` | `{priority}` — re-prioritise (DSN-NOD-229) |
 /// | `GET queues`, `POST queues/{q}/pause`, `…/resume`, `PUT queues/{q}` | `{concurrency}` — queue controls and limits |
 /// | `PUT jobs-limit` | `{concurrency}` — the tenant's limit of running jobs (FR-EVT-034) |
+/// | `GET schedules`, `GET schedules/{id}/slots` | `?status&limit` — schedules with their cursor and next slots, and their recorded slots |
+/// | `POST schedules/{id}/pause`, `…/resume` | pause or resume a schedule (FR-EVT-044), committed and audited |
 async fn admin_api(
     State(s): State<Shared>,
     ConnectInfo(peer): ConnectInfo<SocketAddr>,
@@ -2353,6 +2518,12 @@ async fn admin_api(
         let input = json!({"branch": q.get("branch").cloned().unwrap_or_else(|| "main".into()),
             "type": q.get("type"), "handler": q.get("handler")});
         return match h.call("host.listeners", input).await {
+            Ok(v) => Json(v).into_response(),
+            Err(e) => problem_response(&e),
+        };
+    }
+    if p.first() == Some(&"schedules") {
+        return match admin_schedules(&s, &tenant, &vae, &key, &method, &p, &q, &me.did).await {
             Ok(v) => Json(v).into_response(),
             Err(e) => problem_response(&e),
         };
@@ -2521,6 +2692,87 @@ async fn admin_api(
     match out {
         Ok(v) => Json(v).into_response(),
         Err(e) => problem_response(&e),
+    }
+}
+
+/// The schedule routes of the operator API (step 15d).
+#[allow(clippy::too_many_arguments)]
+async fn admin_schedules(
+    s: &Shared,
+    tenant: &str,
+    vae: &str,
+    key: &str,
+    method: &Method,
+    p: &[&str],
+    q: &HashMap<String, String>,
+    by: &str,
+) -> Result<Value, BpaError> {
+    let h = s.vae_async(tenant, vae).await?;
+    match (method.as_str(), p) {
+        ("GET", ["schedules"]) => {
+            let items = s.schedules_now(key, &h).await?;
+            let (me, k) = (s.clone(), key.to_string());
+            blocking(move || {
+                let store = me.schedules_of(&k)?;
+                let now = chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::now());
+                let mut out = Vec::new();
+                for it in &items {
+                    let sid = it["schedule_id"].as_str().unwrap_or_default();
+                    let b = &it["body"];
+                    let cursor = store.cursor(sid)?;
+                    let (next, error) = match crate::schedule::Rule::from_body(b) {
+                        Ok(r) => {
+                            let mut t = cursor.unwrap_or(now).max(now);
+                            let mut n = Vec::new();
+                            for _ in 0..3 {
+                                match r.next_after(t) {
+                                    Some(x) => {
+                                        n.push(json!(ubos_dvm::types::time::format_instant(&x)));
+                                        t = x;
+                                    }
+                                    None => break,
+                                }
+                            }
+                            (n, Value::Null)
+                        }
+                        Err(e) => (Vec::new(), json!(e.to_string())),
+                    };
+                    out.push(json!({"schedule_id": sid, "name": b["name"], "rule": b["rule"], "time_zone": b["time_zone"],
+                        "misfire": crate::schedule::misfire_of(b).unwrap_or("fire_once"),
+                        "enabled": b.get("enabled").and_then(Value::as_bool).unwrap_or(true),
+                        "paused": b.get("paused").and_then(Value::as_bool).unwrap_or(false),
+                        "cursor": cursor.map(|c| ubos_dvm::types::time::format_instant(&c)), "next": next, "error": error}));
+                }
+                Ok(json!({"items": out}))
+            })
+            .await
+        }
+        ("GET", ["schedules", sid, "slots"]) => {
+            let (me, k, sid) = (s.clone(), key.to_string(), sid.to_string());
+            let status = q.get("status").cloned();
+            let limit = q.get("limit").and_then(|x| x.parse().ok()).unwrap_or(100);
+            blocking(move || {
+                let store = me.schedules_of(&k)?;
+                Ok(json!({"items": store.slots(&sid, status.as_deref(), limit)?}))
+            })
+            .await
+        }
+        ("POST", ["schedules", sid, action @ ("pause" | "resume")]) => {
+            let paused = *action == "pause";
+            let r = h
+                .call(
+                    "host.set_paused",
+                    json!({"schedule": sid, "paused": paused, "by": by}),
+                )
+                .await;
+            if let Ok(id) = s.identity_async(tenant).await {
+                let rec = json!({"vae": key, "schedule": sid, "by": by, "ok": r.is_ok()});
+                let name = format!("admin.schedule_{action}");
+                let _ = blocking(move || id.log(&name, rec)).await;
+            }
+            r.map(|c| json!({"ok": true, "commit_id": c["commit_id"]}))
+        }
+        _ => Err(BpaError::new("IAM.NOT_FOUND", "unknown admin route")),
     }
 }
 

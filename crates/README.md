@@ -166,6 +166,16 @@ queue and tenant limits, heartbeats every lease/3, poison after the same error t
 a sweeper that restores lost rows). The kernel's `execute` honours idempotency keys, and the
 stores refuse a second idempotency record at the flush, so a job's work commits once.
 
+Schedules of step 15d (`ubos-node/src/schedule.rs`): the platform class `Schedule` holds a
+cron or business-calendar rule in an IANA time zone, an active window, a misfire policy
+(`skip`, `fire_once`, `fire_all`), a port or logic target and a service principal. The
+leader evaluates the schedules of `main` every second (read again when main's head moves,
+so a committed change applies at the next evaluation); each slot is recorded in
+`schedule_slot` (unique per schedule and slot, migration 0012) before its job is enqueued,
+and the job's identifier is derived from the slot, so a slot fires once whatever the number
+of leaders. Missed slots after an outage and slots recorded while paused follow the misfire
+policy; operators list, pause and resume schedules under `/api/v1/admin/schedules`.
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh
