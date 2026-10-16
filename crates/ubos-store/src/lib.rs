@@ -117,8 +117,32 @@ pub trait Store {
     fn reset(&mut self) -> Result<(), BpaError>;
     /// A version record by hash.
     fn version(&mut self, hash: &str) -> Result<Value, BpaError>;
+    /// Several versions at once (the candidates of a query; step 13d): `(hash, version)`
+    /// for every hash found. The default reads them one by one.
+    fn versions(&mut self, hashes: &[String]) -> Result<Vec<(String, Value)>, BpaError> {
+        let mut out = Vec::with_capacity(hashes.len());
+        for h in hashes {
+            if let Ok(v) = self.version(h) {
+                out.push((h.clone(), v));
+            }
+        }
+        Ok(out)
+    }
     /// A commit record by identifier.
     fn commit(&mut self, id: u64) -> Result<Value, BpaError>;
+    /// The small members of a commit record without its write set: `{branch, cseq,
+    /// commit_id, tx_time, parents}` (history walks and snapshot selection read these
+    /// alone; step 13d). The default reads the full record.
+    fn commit_meta(&mut self, id: u64) -> Result<Value, BpaError> {
+        let c = self.commit(id)?;
+        let mut out = serde_json::Map::new();
+        for k in ["branch", "cseq", "commit_id", "tx_time", "parents"] {
+            if let Some(v) = c.get(k) {
+                out.insert(k.to_string(), v.clone());
+            }
+        }
+        Ok(Value::Object(out))
+    }
     /// The commit identifier (content ID) of a commit, without the rest of its record
     /// (the evaluation evidence of a read, STD-TIME-015).
     fn commit_id(&mut self, id: u64) -> Result<String, BpaError> {
@@ -207,6 +231,20 @@ pub trait Store {
         _limit: usize,
     ) -> Result<Option<FieldRows>, BpaError> {
         Ok(None)
+    }
+    /// Write field-index rows `(class, field, value key, object)` open from `cseq` for
+    /// objects whose heads exist (the rebuild of a declared index over existing objects,
+    /// DSN-DVM-902; PH-1 step 13d). No open row is closed: the rows of other fields stand.
+    fn put_field_rows(
+        &mut self,
+        _branch: &str,
+        _cseq: u64,
+        _rows: &[(String, String, Vec<u8>, String)],
+    ) -> Result<(), BpaError> {
+        Err(BpaError::new(
+            "NOD.STORAGE_UNAVAILABLE",
+            "the store cannot rebuild field indexes",
+        ))
     }
     /// Local ledger entries up to `cseq` in append order, optionally of one ledger key or
     /// with one entry identifier.
@@ -490,6 +528,8 @@ pub struct MemStore {
     versions: HashMap<String, Value>,
     commits: HashMap<u64, Value>,
     commit_ids: HashMap<u64, String>,
+    /// The small members of each commit record (`commit_meta`).
+    commit_metas: HashMap<u64, Value>,
     /// Object identifiers by branch and class (the class of an object never changes).
     by_class: HashMap<String, HashMap<String, Vec<String>>>,
     by_cseq: HashMap<(String, u64), u64>,
@@ -536,6 +576,21 @@ impl Store for MemStore {
             .get(&id)
             .cloned()
             .ok_or_else(|| missing("commit"))
+    }
+    fn commit_meta(&mut self, id: u64) -> Result<Value, BpaError> {
+        match self.commit_metas.get(&id) {
+            Some(m) => Ok(m.clone()),
+            None => {
+                let c = self.commit(id)?;
+                let mut out = serde_json::Map::new();
+                for k in ["branch", "cseq", "commit_id", "tx_time", "parents"] {
+                    if let Some(v) = c.get(k) {
+                        out.insert(k.to_string(), v.clone());
+                    }
+                }
+                Ok(Value::Object(out))
+            }
+        }
     }
     fn commit_at(&mut self, branch: &str, cseq: u64) -> Result<Option<u64>, BpaError> {
         Ok(self.by_cseq.get(&(branch.to_string(), cseq)).copied())
@@ -588,6 +643,13 @@ impl Store for MemStore {
             self.versions.insert(h.clone(), v.clone());
         }
         self.commits.insert(f.commit_id, f.commit.clone());
+        let mut meta = serde_json::Map::new();
+        for k in ["branch", "cseq", "commit_id", "tx_time", "parents"] {
+            if let Some(v) = f.commit.get(k) {
+                meta.insert(k.to_string(), v.clone());
+            }
+        }
+        self.commit_metas.insert(f.commit_id, Value::Object(meta));
         self.commit_ids.insert(
             f.commit_id,
             f.commit["commit_id"]
@@ -661,6 +723,24 @@ impl Store for MemStore {
         }
         apply_metadata(self, f)?;
         Ok(true)
+    }
+    fn put_field_rows(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        rows: &[(String, String, Vec<u8>, String)],
+    ) -> Result<(), BpaError> {
+        let fi = self.field_index.entry(branch.to_string()).or_default();
+        let open = self.open_fields.entry(branch.to_string()).or_default();
+        for (c, field, key, oid) in rows {
+            fi.entry((c.clone(), field.clone(), key.clone(), oid.clone()))
+                .or_default()
+                .push((cseq, None));
+            open.entry(oid.clone())
+                .or_default()
+                .push((c.clone(), field.clone(), key.clone()));
+        }
+        Ok(())
     }
     fn field_scan(
         &mut self,
@@ -887,10 +967,30 @@ impl Store for Group {
             None => self.inner.version(hash),
         }
     }
+    fn versions(&mut self, hashes: &[String]) -> Result<Vec<(String, Value)>, BpaError> {
+        let mut out = Vec::with_capacity(hashes.len());
+        let mut rest = Vec::new();
+        for h in hashes {
+            match self.overlay.versions.get(h) {
+                Some(v) => out.push((h.clone(), v.clone())),
+                None => rest.push(h.clone()),
+            }
+        }
+        if !rest.is_empty() {
+            out.extend(self.inner.versions(&rest)?);
+        }
+        Ok(out)
+    }
     fn commit(&mut self, id: u64) -> Result<Value, BpaError> {
         match self.overlay.commits.get(&id) {
             Some(v) => Ok(v.clone()),
             None => self.inner.commit(id),
+        }
+    }
+    fn commit_meta(&mut self, id: u64) -> Result<Value, BpaError> {
+        match self.overlay.commit_metas.get(&id) {
+            Some(v) => Ok(v.clone()),
+            None => self.inner.commit_meta(id),
         }
     }
     fn commit_id(&mut self, id: u64) -> Result<String, BpaError> {

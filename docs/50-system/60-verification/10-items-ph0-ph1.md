@@ -390,7 +390,7 @@ Numbers follow UBS-VER-00 §3.
 - **Procedure:**
   1. Run indexed queries with row filters over 10 M objects; 10,000-block sheet evaluation; commit-to-handler latency under WL-MIXED-OLTP; became-effective timing with 1,000 future changes.
 - **Pass criterion:** MET-PERF-016, MET-PERF-017, NR-PERF-009 and NR-PERF-012 met.
-- **Evidence:** benchmark report (NR-PERF-009 on the workstation at PH-1 step 11d, DEC-070: `verify/reports/exit-1-14/workstation/`, `ubos-bench sheets` with 10,000 blocks and 20 candidates — warm p95 0.41 ms per object; the reference run follows at step 19).
+- **Evidence:** benchmark report (NR-PERF-009 on the workstation at PH-1 step 11d, DEC-070: `verify/reports/exit-1-14/workstation/`, `ubos-bench sheets` with 10,000 blocks and 20 candidates — warm p95 0.41 ms per object; NR-PERF-008 on the workstation at step 13d, DEC-074: `verify/reports/exit-1-17/workstation/`, `ubos-bench query` at 300,000 objects — indexed pages p95 `eq` 7.3 ms / `key` 3.4 ms in memory and 36.4 ms / 6.4 ms on PostgreSQL at 300,000 objects, independent of the number of objects; a policy-filtered page p50 58 ms on PostgreSQL, but a page the policy denies entirely evaluates the whole key range (p95 819 ms at 300,000 objects, the scan budget at 10,000,000); the reference runs follow at step 19).
 - **Supports:** EXIT-1-17
 
 ### VER-FAULT-2000 — Installation, backup and point-in-time restore

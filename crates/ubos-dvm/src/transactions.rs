@@ -505,7 +505,7 @@ impl Engine {
             }
         }
         out.sort_by_key(|e| e["cseq"].as_u64().unwrap_or_default());
-        let head_id = repo.commit(head)?.commit_id;
+        let head_id = repo.meta(head)?.commit_id;
         Ok(json!({"commits": out, "evaluated_at": {branch: head_id}}))
     }
 
@@ -967,7 +967,7 @@ impl Engine {
             let mut line = repo.first_parents(snap.commit)?;
             line.reverse();
             for c in line {
-                let cseq = repo.commit(c)?.cseq;
+                let cseq = repo.meta(c)?.cseq;
                 if let Some(h) = repo.object_at(&branch, Some(cseq), &oid)?
                     && heads.last() != Some(&h.head)
                 {

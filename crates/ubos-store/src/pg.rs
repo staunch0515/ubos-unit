@@ -1919,6 +1919,8 @@ pub struct PgStore {
     nodes: Cache<String>,
     versions: Cache<String>,
     commits: Cache<u64>,
+    /// The small members of the commit records read so far (`commit_meta`, step 13d).
+    commit_metas: HashMap<u64, Value>,
 }
 
 impl PgStore {
@@ -1966,6 +1968,7 @@ impl PgStore {
             nodes: Cache::default(),
             versions: Cache::default(),
             commits: Cache::default(),
+            commit_metas: HashMap::new(),
         })
     }
 
@@ -2705,6 +2708,44 @@ impl Store for PgStore {
         remember(&mut self.versions, hash.to_string(), &v);
         Ok(v)
     }
+    fn versions(&mut self, hashes: &[String]) -> Result<Vec<(String, Value)>, BpaError> {
+        let mut out = Vec::with_capacity(hashes.len());
+        let mut want: HashMap<Vec<u8>, String> = HashMap::new();
+        for h in hashes {
+            if let Some(v) = self.versions.get(h) {
+                out.push((h.clone(), v.clone()));
+            } else {
+                want.insert(hash_of(h)?.to_vec(), h.clone());
+            }
+        }
+        if want.is_empty() {
+            return Ok(out);
+        }
+        let ids: Vec<Vec<u8>> = want.keys().cloned().collect();
+        let tenant = self.backend.scope.tenant.clone();
+        let pool = self.backend.pool.clone();
+        let rows: Vec<(Vec<u8>, Vec<u8>)> = self.rt.block_on(async move {
+            let rows = sqlx::query("SELECT version_id, envelope FROM object_version WHERE tenant_id = $1::uuid AND version_id = ANY($2::bytea[])")
+                .bind(&tenant)
+                .bind(&ids)
+                .fetch_all(&pool)
+                .await
+                .map_err(db)?;
+            rows.into_iter()
+                .map(|r| Ok((r.try_get(0).map_err(db)?, r.try_get(1).map_err(db)?)))
+                .collect::<Result<Vec<_>, BpaError>>()
+        })?;
+        for (id_bytes, b) in rows {
+            let Some(h) = want.get(&id_bytes) else {
+                continue;
+            };
+            let id = hash_of(h)?;
+            let v = json(&self.physical.open(&id, &b)?)?;
+            remember(&mut self.versions, h.clone(), &v);
+            out.push((h.clone(), v));
+        }
+        Ok(out)
+    }
     fn commit(&mut self, id: u64) -> Result<Value, BpaError> {
         if let Some(v) = self.commits.get(&id) {
             return Ok(v.clone());
@@ -2716,6 +2757,21 @@ impl Store for PgStore {
         let v = json(&b)?;
         remember(&mut self.commits, id, &v);
         Ok(v)
+    }
+    fn commit_meta(&mut self, id: u64) -> Result<Value, BpaError> {
+        if let Some(m) = self.commit_metas.get(&id) {
+            return Ok(m.clone());
+        }
+        let c = self.commit(id)?;
+        let mut out = serde_json::Map::new();
+        for k in ["branch", "cseq", "commit_id", "tx_time", "parents"] {
+            if let Some(v) = c.get(k) {
+                out.insert(k.to_string(), v.clone());
+            }
+        }
+        let m = Value::Object(out);
+        self.commit_metas.insert(id, m.clone());
+        Ok(m)
     }
     fn commit_at(&mut self, branch: &str, cseq: u64) -> Result<Option<u64>, BpaError> {
         let Some(bid) = self.branch_id(branch)? else {
@@ -2837,6 +2893,44 @@ impl Store for PgStore {
         };
         self.rt
             .block_on(self.backend.count_objects(bid, cseq, class))
+    }
+    fn put_field_rows(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        rows: &[(String, String, Vec<u8>, String)],
+    ) -> Result<(), BpaError> {
+        if rows.is_empty() {
+            return Ok(());
+        }
+        let Some(bid) = self.branch_id(branch)? else {
+            return Err(db(format!("unknown branch {branch}")));
+        };
+        let backend = self.backend.clone();
+        let classes: Vec<String> = rows.iter().map(|r| r.0.clone()).collect();
+        let fields: Vec<String> = rows.iter().map(|r| r.1.clone()).collect();
+        let keys: Vec<Vec<u8>> = rows.iter().map(|r| r.2.clone()).collect();
+        let ids: Vec<String> = rows.iter().map(|r| r.3.clone()).collect();
+        self.rt.block_on(async move {
+            let mut tx = backend.begin().await?;
+            for start in (0..ids.len()).step_by(10_000) {
+                let end = (start + 10_000).min(ids.len());
+                sqlx::query("INSERT INTO field_index (tenant_id, vae_id, branch_id, class_name, field, value_key, object_id, cseq_from, cseq_to) SELECT $1::uuid, $2::uuid, $3, t.c, t.f, t.k, t.o::uuid, $4, $5 FROM unnest($6::text[], $7::text[], $8::bytea[], $9::text[]) AS t(c, f, k, o)")
+                    .bind(&backend.scope.tenant)
+                    .bind(&backend.scope.vae)
+                    .bind(bid)
+                    .bind(int(cseq))
+                    .bind(int(OPEN))
+                    .bind(&classes[start..end])
+                    .bind(&fields[start..end])
+                    .bind(&keys[start..end])
+                    .bind(&ids[start..end])
+                    .execute(&mut *tx.tx)
+                    .await
+                    .map_err(db)?;
+            }
+            tx.commit().await
+        })
     }
     fn field_scan(
         &mut self,

@@ -169,7 +169,7 @@ impl Repo<'_> {
         }
         let mut best = Vec::new();
         for c in common.difference(&dominated) {
-            best.push((self.commit(*c)?.commit_id, *c));
+            best.push((self.meta(*c)?.commit_id, *c));
         }
         best.sort();
         Ok(best.into_iter().map(|(_, c)| c).collect())
@@ -206,8 +206,16 @@ impl Repo<'_> {
         tx: &mut Tx,
         ids: Option<&BTreeSet<String>>,
     ) -> Result<State, BpaError> {
-        let mut acc = self.state_of(best[0], ids)?;
-        let mut tips: BTreeSet<u64> = [best[0]].into();
+        let Some(&first) = best.first() else {
+            // step 13d: branches without a common ancestor (an overlay and a branch of
+            // another line) have no merge base
+            return Err(BpaError::new(
+                "VER.MERGE_NOT_ALLOWED",
+                "the branches share no history: no merge base",
+            ));
+        };
+        let mut acc = self.state_of(first, ids)?;
+        let mut tips: BTreeSet<u64> = [first].into();
         for c in best.iter().skip(1) {
             let b = self.base_state_in(&tips, &[*c].into(), tx, ids)?;
             let other = self.state_of(*c, ids)?;
@@ -707,7 +715,7 @@ impl Repo<'_> {
             );
             stack.extend(rec.parents);
         }
-        let cseq = self.commit(source_head)?.cseq;
+        let cseq = self.meta(source_head)?.cseq;
         let mut out = BTreeSet::new();
         for id in &entry_ids {
             let Some(e) = self
@@ -757,7 +765,7 @@ impl Repo<'_> {
             let (st, conflicts) = self.merge_result(source, target, tx)?;
             return Ok((bases, tstate, st, conflicts));
         };
-        let (sc, tc) = (self.commit(s)?.cseq, self.commit(t)?.cseq);
+        let (sc, tc) = (self.meta(s)?.cseq, self.meta(t)?.cseq);
         let mut sstate = self.state_of(s, Some(&ids))?;
         let mut tstate = self.state_of(t, Some(&ids))?;
         for (class, key) in &queues {
@@ -821,7 +829,7 @@ impl Repo<'_> {
     pub fn merge(&mut self, source: &str, target: &str) -> Result<Value, BpaError> {
         let Some(plan) = self.merge_prepare(source, target, &[])? else {
             let t = self.head(target)?;
-            return Ok(json!({"cseq": self.commit(t)?.cseq, "merged": false}));
+            return Ok(json!({"cseq": self.meta(t)?.cseq, "merged": false}));
         };
         let cseq = plan.tx.cseq;
         let appended = plan.appended.clone();

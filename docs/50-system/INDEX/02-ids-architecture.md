@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (73)
+## DEC (74)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -167,4 +167,5 @@ depends_on: [UBS-IDX-00]
 | DEC-071 | BPA 1.0-rc3 opened; PH-1 step 12: lifecycles, ports and guards, parts 12a–12c | `90-decisions/000-index.md` |
 | DEC-072 | Release of BPA 1.0-rc3 (step 12, part 12c) | `90-decisions/000-index.md` |
 | DEC-073 | PH-1 step 13: authorization and queries, parts 13a–13d | `90-decisions/000-index.md` |
+| DEC-074 | Row filters for list queries: residual post-filter with the order-by pushdown (step 13, part 13d) | `90-decisions/000-index.md` |
 

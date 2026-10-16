@@ -25,7 +25,7 @@ pub fn verify_roots(
     let mut seen: BTreeSet<String> = BTreeSet::new();
     let mut repo = Repo::new(engine.store.as_mut(), &engine.registry);
     let head = repo.commit_at(branch, None)?;
-    let head_cseq = repo.commit(head)?.cseq;
+    let head_cseq = repo.meta(head)?.cseq;
     for cseq in from..=to.min(head_cseq) {
         let id = repo.commit_at(branch, Some(cseq))?;
         let rec = repo.commit(id)?;

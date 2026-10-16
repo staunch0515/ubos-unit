@@ -49,6 +49,9 @@ pub struct Engine {
     pub authz: crate::authz::Cache,
     /// Decision records not yet delivered to the host (DSN-DVM-805).
     pub decision_log: Vec<Value>,
+    /// The commit from which a rebuilt field index serves a branch (`class.field` →
+    /// branch → cseq; DSN-DVM-902, step 13d): queries at an earlier commit scan.
+    pub index_since: BTreeMap<String, BTreeMap<String, u64>>,
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
@@ -78,6 +81,7 @@ impl Engine {
             max_scan: None,
             authz: Default::default(),
             decision_log: Vec::new(),
+            index_since: BTreeMap::new(),
         };
         e.reset()?;
         Ok(e)
@@ -102,6 +106,7 @@ impl Engine {
             max_scan: None,
             authz: Default::default(),
             decision_log: Vec::new(),
+            index_since: BTreeMap::new(),
         };
         e.load_genesis(classes, None)?;
         Ok(e)
@@ -114,6 +119,7 @@ impl Engine {
         self.max_scan = None;
         self.authz.clear();
         self.decision_log.clear();
+        self.index_since.clear();
         self.now = DEFAULT_NOW.into();
         self.instances.clear();
         self.rules.clear();
@@ -196,6 +202,7 @@ impl Engine {
             max_scan: None,
             authz: Default::default(),
             decision_log: Vec::new(),
+            index_since: BTreeMap::new(),
         };
         if e.store.branch("main")?.is_none() {
             Repo::new(e.store.as_mut(), &e.registry).init()?;
@@ -214,30 +221,103 @@ impl Engine {
         if let Some(ix) = e.store.meta("indexes")? {
             e.registry.restore_indexes(&ix);
         }
+        if let Some(since) = e.store.meta("index_since")? {
+            e.index_since = serde_json::from_value(since).unwrap_or_default();
+        }
         e.next_process = e.store.process_ids()?.len() as u64;
         Ok(e)
     }
 
     /// Declare a field index of a class (DSN-DVM-902, FR-ANL-014): an index of a class
     /// serves its subclasses; the fields of unique `keys` are indexed without a
-    /// declaration. Indexes are declared before the class has instances (the rows are
-    /// written at flush; rebuilding an index over existing objects comes with step 13d).
+    /// declaration. The rows of later heads are written at flush; when the class already
+    /// has instances, the index is rebuilt over the head objects of every branch (step
+    /// 13d) and serves each branch from its head commit at the rebuild (`index_since`):
+    /// a query at an earlier commit scans instead.
     pub fn declare_index(&mut self, class: &str, field: &str) -> Result<Value, BpaError> {
-        if self
-            .registry
-            .subclasses(class)
-            .iter()
-            .any(|c| self.instances.contains(c))
-        {
-            return Err(BpaError::new(
-                "MODEL.INVALID_VALUE",
-                format!("{class} has instances: declare indexes before the first commit"),
-            ));
-        }
+        let subclasses = self.registry.subclasses(class);
+        let populated = subclasses.iter().any(|c| self.instances.contains(c));
         self.registry.declare_index(class, field)?;
         self.store
             .put_meta("indexes", &self.registry.declared_indexes())?;
-        Ok(Value::Bool(true))
+        if !populated {
+            return Ok(Value::Bool(true));
+        }
+        let mut rebuilt = Map::new();
+        let branches = self.store.branch_names()?;
+        for branch in branches {
+            let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+            let head = repo.head(&branch)?;
+            let cseq = repo.meta(head)?.cseq;
+            let mut rows: Vec<(String, String, Vec<u8>, String)> = Vec::new();
+            for c in &subclasses {
+                for (oid, o) in repo.objects_in(&branch, cseq, Some(c))? {
+                    let v = repo.version(&o.head)?;
+                    if v["tombstone"] == json!(true) {
+                        continue;
+                    }
+                    for (f, key) in ubos_version::state::index_rows(&self.registry, &o.class, &v) {
+                        if f == field {
+                            rows.push((o.class.clone(), f, key, oid.clone()));
+                        }
+                    }
+                }
+            }
+            let n = rows.len();
+            self.store.put_field_rows(&branch, cseq, &rows)?;
+            self.index_since
+                .entry(format!("{class}.{field}"))
+                .or_default()
+                .insert(branch.clone(), cseq);
+            rebuilt.insert(branch, json!({"cseq": cseq, "rows": n}));
+        }
+        let since = serde_json::to_value(&self.index_since).unwrap_or_default();
+        self.store.put_meta("index_since", &since)?;
+        Ok(json!({"rebuilt": rebuilt}))
+    }
+
+    /// Whether the index of `field` declared on a class of `lineage` serves `branch` at
+    /// `cseq`: always when it was declared before the class had instances; from the
+    /// rebuild commit of the branch otherwise, and for a branch created after the rebuild
+    /// of the branch it was created from.
+    pub(crate) fn index_usable(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        lineage: &[String],
+        field: &str,
+    ) -> Result<bool, BpaError> {
+        let keys: Vec<String> = lineage
+            .iter()
+            .map(|c| format!("{c}.{field}"))
+            .filter(|k| self.index_since.contains_key(k))
+            .collect();
+        if keys.is_empty() {
+            return Ok(true);
+        }
+        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+        for k in keys {
+            let since = &self.index_since[&k];
+            let (mut b, mut c) = (branch.to_string(), cseq);
+            // walk to the branch the index was rebuilt on
+            let mut hops = 0;
+            loop {
+                if let Some(s_) = since.get(&b) {
+                    if c < *s_ {
+                        return Ok(false);
+                    }
+                    break;
+                }
+                let from = repo.branch_meta(&b)?.created_from;
+                let fc = repo.meta(from)?;
+                if fc.branch == b || hops > 64 {
+                    return Ok(false);
+                }
+                (b, c) = (fc.branch, fc.cseq);
+                hops += 1;
+            }
+        }
+        Ok(true)
     }
 
     /// The key of the signed query cursors (DSN-DVM-908): derived from the VAE
@@ -1048,7 +1128,7 @@ pub(crate) fn commit_on(
     let exts = {
         let mut r = Repo::new(&mut *store, registry);
         let head = r.head(&branch)?;
-        let cseq = r.commit(head)?.cseq;
+        let cseq = r.meta(head)?.cseq;
         let objs = r.objects_in(&branch, cseq, Some("ClassExtension"))?;
         let mut exts = Vec::new();
         for o in objs.values() {

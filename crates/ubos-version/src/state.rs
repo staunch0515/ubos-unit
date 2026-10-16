@@ -196,6 +196,27 @@ pub struct CommitRecord {
     pub extra: Map<String, Value>,
 }
 
+/// The small members of a commit record (`Store::commit_meta`): what history walks and
+/// snapshot selection need without the write set.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CommitMeta {
+    /// Parent commits; the first is the previous head of the branch.
+    #[serde(default)]
+    pub parents: Vec<u64>,
+    /// Commit ordinal on its branch.
+    #[serde(default)]
+    pub cseq: u64,
+    /// Branch the commit was made on.
+    #[serde(default)]
+    pub branch: String,
+    /// Content ID of the canonical commit record.
+    #[serde(default)]
+    pub commit_id: String,
+    /// Transaction time; `None` for a genesis commit.
+    #[serde(default)]
+    pub tx_time: Option<String>,
+}
+
 pub(crate) fn storage(e: impl std::fmt::Display) -> BpaError {
     BpaError::new("NOD.STORAGE_UNAVAILABLE", e.to_string())
 }
@@ -321,6 +342,7 @@ pub struct Repo<'a> {
     /// The class registry.
     pub reg: &'a Registry,
     pub(crate) cache: HashMap<u64, CommitRecord>,
+    pub(crate) metas: HashMap<u64, CommitMeta>,
     /// Branch references as first read by this view, so that one operation sees one
     /// snapshot of every branch (DSN-DVM-008).
     pub(crate) branches: HashMap<String, BranchRef>,
@@ -333,6 +355,7 @@ impl<'a> Repo<'a> {
             store,
             reg,
             cache: HashMap::new(),
+            metas: HashMap::new(),
             branches: HashMap::new(),
         }
     }
@@ -343,14 +366,39 @@ impl<'a> Repo<'a> {
             return Ok(c.clone());
         }
         let c: CommitRecord = parse(self.store.commit(id)?)?;
+        self.metas.insert(
+            id,
+            CommitMeta {
+                parents: c.parents.clone(),
+                cseq: c.cseq,
+                branch: c.branch.clone(),
+                commit_id: c.commit_id.clone(),
+                tx_time: c.tx_time.clone(),
+            },
+        );
         self.cache.insert(id, c.clone());
         Ok(c)
     }
 
+    /// Several versions at once, by hash (the candidates of a query; step 13d).
+    pub fn versions(&mut self, hashes: &[String]) -> Result<HashMap<String, Value>, BpaError> {
+        Ok(self.store.versions(hashes)?.into_iter().collect())
+    }
+
+    /// The small members of a commit record, without its write set (step 13d).
+    pub fn meta(&mut self, id: u64) -> Result<CommitMeta, BpaError> {
+        if let Some(m) = self.metas.get(&id) {
+            return Ok(m.clone());
+        }
+        let m: CommitMeta = parse(self.store.commit_meta(id)?)?;
+        self.metas.insert(id, m.clone());
+        Ok(m)
+    }
+
     /// The commit identifier of a commit, without the rest of its record.
     pub fn commit_id(&mut self, id: u64) -> Result<String, BpaError> {
-        if let Some(c) = self.cache.get(&id) {
-            return Ok(c.commit_id.clone());
+        if let Some(m) = self.metas.get(&id) {
+            return Ok(m.commit_id.clone());
         }
         self.store.commit_id(id)
     }
@@ -887,7 +935,7 @@ impl<'a> Repo<'a> {
         let w = ubos_tree::update(&mut StoreNodes(&mut *self.store), &prev, &tree)?;
         let id = self.store.next_commit_id()?;
         let prev_tx = match parents.first() {
-            Some(p) => self.commit(*p)?.tx_time,
+            Some(p) => self.meta(*p)?.tx_time,
             None => None,
         };
         let parent_ids: Vec<String> = parents
