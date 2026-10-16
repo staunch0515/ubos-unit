@@ -37,6 +37,8 @@
 //! security logs once a second (DSN-NOD-111).
 
 use crate::identity::{Authenticated, Identity};
+use crate::leases::{Leases, MemLeases};
+use crate::services::{EventFilter, EventStore, MemEventLog};
 use axum::body::Bytes;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{ConnectInfo, DefaultBodyLimit, Path, Query, State};
@@ -59,6 +61,18 @@ pub const MAX_FRAME: usize = 16 * 1024 * 1024;
 pub const QUEUE: usize = 1_000;
 /// The WebSocket subprotocol (STD-PROTO-020).
 pub const SUBPROTOCOL: &str = "ubtp.v1";
+/// Effects a releaser claims at once (DSN-NOD-201).
+pub const RELEASE_BATCH: usize = 500;
+/// The releaser's claim lease (DSN-NOD-201: 30 s by default).
+pub const RELEASE_LEASE_MS: i64 = 30_000;
+/// The releaser's poll interval; a commit through the Server wakes it at once.
+pub const RELEASE_POLL_MS: u64 = 200;
+/// The interval of the scan for VAEs with work.
+pub const WORK_SCAN_SECS: u64 = 30;
+/// Timers due within this horizon open their VAE (a scan interval and a margin).
+pub const WORK_HORIZON_SECS: i64 = 60;
+/// The retention sweep's interval (DSN-NOD-202).
+pub const SWEEP_SECS: u64 = 600;
 /// Seconds between re-validations of a session's credential (DSN-NOD-106: a local cache
 /// no longer than the NR-SEC-005 bound).
 pub const RECHECK_SECS: i64 = 5;
@@ -238,7 +252,7 @@ impl VaeHandle {
                     }
                 };
                 while let Ok(call) = rx.recv() {
-                    let r = vae.call(&call.op, &call.input);
+                    let r = host_call(&mut vae, &call.op, &call.input);
                     let _ = call.reply.send(r);
                 }
             })
@@ -282,6 +296,29 @@ impl VaeHandle {
     }
 }
 
+/// The operations of the VAE actor: the host's own (`host.mode`, `host.tick`,
+/// `host.release`; step 15a) and every operation of the host API.
+fn host_call(vae: &mut Vae, op: &str, input: &Value) -> Result<Value, BpaError> {
+    match op {
+        "host.mode" => {
+            vae.set_server_mode(
+                input["claimed_release"].as_bool().unwrap_or(true),
+                input["auto_tick"].as_bool().unwrap_or(false),
+            );
+            Ok(Value::Bool(true))
+        }
+        "host.tick" => vae.tick().map(|n| json!({"pending": n})),
+        "host.release" => vae
+            .release_claimed(
+                input["holder"].as_str().unwrap_or("node"),
+                input["n"].as_u64().unwrap_or(RELEASE_BATCH as u64) as usize,
+                input["lease_ms"].as_i64().unwrap_or(RELEASE_LEASE_MS),
+            )
+            .map(|n| json!({"released": n})),
+        _ => vae.call(op, input),
+    }
+}
+
 // ---- the server ----
 
 /// The edition preset (DSN-NOD-004): `dev` accepts `dev` credentials besides those of
@@ -307,6 +344,24 @@ pub trait VaeSource: Send + Sync {
     fn secrets(&self, _tenant: &str) -> Result<Option<crate::keys::SecretStore>, BpaError> {
         Ok(None)
     }
+    /// The `(tenant, authority)` of the VAEs with work: unacknowledged effects or timers due
+    /// within `horizon_secs`. The Server opens them at start and on every rescan, so that
+    /// the releaser delivers what a crash left pending (NR-DUR-006) and due timers fire on
+    /// time (NR-PERF-012) without a session. `None` when the source cannot tell (the
+    /// Server then opens its default VAE).
+    fn with_work(&self, _horizon_secs: i64) -> Result<Option<Vec<(String, String)>>, BpaError> {
+        Ok(None)
+    }
+    /// The leadership leases (DSN-NOD-228).
+    fn leases(&self) -> Arc<dyn Leases>;
+    /// The event log of a VAE (DSN-NOD-202); `None` when the source keeps none.
+    fn events(
+        &self,
+        _tenant: &str,
+        _authority: &str,
+    ) -> Result<Option<Arc<dyn EventStore>>, BpaError> {
+        Ok(None)
+    }
 }
 
 /// One VAE already open (suites, the memory preset): every tenant and authority maps to
@@ -316,6 +371,10 @@ pub struct SingleVae {
     pub handle: VaeHandle,
     /// Its identity (memory).
     pub identity: Arc<Identity>,
+    /// Its event log, when the VAE releases into one (the memory preset).
+    pub events: Option<Arc<MemEventLog>>,
+    /// Leases in memory.
+    pub leases: Arc<MemLeases>,
 }
 
 impl VaeSource for SingleVae {
@@ -325,6 +384,16 @@ impl VaeSource for SingleVae {
     fn identity(&self, _tenant: &str) -> Result<Option<Identity>, BpaError> {
         // the Server's fallback identity (`Server::single`) serves every tenant name
         Ok(None)
+    }
+    fn leases(&self) -> Arc<dyn Leases> {
+        self.leases.clone()
+    }
+    fn events(
+        &self,
+        _tenant: &str,
+        _authority: &str,
+    ) -> Result<Option<Arc<dyn EventStore>>, BpaError> {
+        Ok(self.events.clone().map(|e| e as Arc<dyn EventStore>))
     }
 }
 
@@ -355,6 +424,33 @@ impl VaeSource for NodeVaes {
             None => Ok(None),
         }
     }
+    fn with_work(&self, horizon_secs: i64) -> Result<Option<Vec<(String, String)>>, BpaError> {
+        self.0.vaes_with_work(horizon_secs).map(Some)
+    }
+    fn leases(&self) -> Arc<dyn Leases> {
+        self.0.leases()
+    }
+    fn events(
+        &self,
+        tenant: &str,
+        authority: &str,
+    ) -> Result<Option<Arc<dyn EventStore>>, BpaError> {
+        let Some(t) = self.0.tenant(tenant)? else {
+            return Ok(None);
+        };
+        Ok(self
+            .0
+            .events(&t, authority)?
+            .map(|e| Arc::new(e) as Arc<dyn EventStore>))
+    }
+}
+
+/// This node's view of a VAE's leadership (DSN-NOD-228).
+#[derive(Debug, Clone)]
+struct Leader {
+    held: bool,
+    token: i64,
+    renewed: std::time::Instant,
 }
 
 /// The identity credential a Server session was opened with.
@@ -397,6 +493,14 @@ pub struct Server {
     facade_sessions: Mutex<HashMap<String, String>>,
     /// The kernel security-log sequence mirrored so far, per VAE.
     mirrored: Mutex<HashMap<String, u64>>,
+    /// This node's identity as a lease and claim holder.
+    node_id: String,
+    /// Leadership per VAE.
+    leaders: Mutex<HashMap<String, Leader>>,
+    /// Event logs per VAE (opened once).
+    event_stores: Mutex<HashMap<String, Arc<dyn EventStore>>>,
+    /// Wakes the releaser after a commit.
+    release_now: tokio::sync::Notify,
 }
 
 type Shared = Arc<Server>;
@@ -421,6 +525,10 @@ impl Server {
             fallback_identity: None,
             facade_sessions: Mutex::new(HashMap::new()),
             mirrored: Mutex::new(HashMap::new()),
+            node_id: crate::uuid().unwrap_or_else(|_| "node".into()),
+            leaders: Mutex::new(HashMap::new()),
+            event_stores: Mutex::new(HashMap::new()),
+            release_now: tokio::sync::Notify::new(),
         })
     }
 
@@ -433,10 +541,24 @@ impl Server {
         tenant: &str,
         authority: &str,
     ) -> Shared {
+        Server::single_with(handle, identity, None, preset, tenant, authority)
+    }
+
+    /// A single-VAE Server whose VAE releases into a memory event log.
+    pub fn single_with(
+        handle: VaeHandle,
+        identity: Arc<Identity>,
+        events: Option<Arc<MemEventLog>>,
+        preset: Preset,
+        tenant: &str,
+        authority: &str,
+    ) -> Shared {
         Arc::new(Server {
             source: Box::new(SingleVae {
                 handle,
                 identity: identity.clone(),
+                events,
+                leases: Arc::new(MemLeases::default()),
             }),
             preset,
             default_tenant: tenant.to_string(),
@@ -448,7 +570,16 @@ impl Server {
             fallback_identity: Some(identity),
             facade_sessions: Mutex::new(HashMap::new()),
             mirrored: Mutex::new(HashMap::new()),
+            node_id: crate::uuid().unwrap_or_else(|_| "node".into()),
+            leaders: Mutex::new(HashMap::new()),
+            event_stores: Mutex::new(HashMap::new()),
+            release_now: tokio::sync::Notify::new(),
         })
+    }
+
+    /// This node's identifier (lease and claim holder).
+    pub fn node_id(&self) -> &str {
+        &self.node_id
     }
 
     /// The identity of a tenant (opened once; `IAM.NOT_FOUND` for an unknown tenant).
@@ -479,6 +610,7 @@ impl Server {
             .route("/api/v1/{vae}/{class}/{slug}", get(rest_read))
             .route("/api/v1/{vae}/{class}/{slug}/{port}", post(rest_mutate))
             .route("/api/v1/identity/{*rest}", axum::routing::any(identity_api))
+            .route("/api/v1/admin/{*rest}", axum::routing::any(admin_api))
             .layer(DefaultBodyLimit::max(MAX_FRAME))
             .with_state(self.clone())
     }
@@ -496,6 +628,24 @@ impl Server {
     ) -> std::io::Result<()> {
         let poll = self.clone();
         tokio::spawn(async move { poll.poll_loop().await });
+        let me = self.clone();
+        tokio::spawn(async move {
+            // the VAEs with work open at start and on every rescan, so that what a crash
+            // left in the outboxes is delivered without waiting for a session (NR-DUR-006)
+            let m2 = me.clone();
+            let _ = tokio::task::spawn_blocking(move || m2.open_with_work()).await;
+            let r = me.clone();
+            tokio::spawn(async move { r.release_loop().await });
+            let w = me.clone();
+            tokio::spawn(async move {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(WORK_SCAN_SECS)).await;
+                    let w2 = w.clone();
+                    let _ = tokio::task::spawn_blocking(move || w2.open_with_work()).await;
+                }
+            });
+            me.leader_loop().await;
+        });
         axum::serve(
             listener,
             self.router()
@@ -514,8 +664,187 @@ impl Server {
             .source
             .open(tenant, authority)?
             .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown tenant or VAE"))?;
+        // server mode: the releaser claims the outbox; only the leader fires timers
+        let held = self.source.leases().acquire(
+            &lease_name(&key),
+            &self.node_id,
+            crate::leases::LEASE_MS,
+        )?;
+        h.call_blocking(
+            "host.mode",
+            json!({"claimed_release": true, "auto_tick": held.is_some()}),
+        )?;
+        self.leaders.lock().expect("leaders").insert(
+            key.clone(),
+            Leader {
+                held: held.is_some(),
+                token: held.unwrap_or(0),
+                renewed: std::time::Instant::now(),
+            },
+        );
         self.vaes.lock().expect("vaes").insert(key, h.clone());
         Ok(h)
+    }
+
+    /// Open the VAEs with work (or, when the source cannot tell, the default one).
+    fn open_with_work(&self) {
+        let list = match self.source.with_work(WORK_HORIZON_SECS) {
+            Ok(Some(l)) => l,
+            Ok(None) => vec![(self.default_tenant.clone(), self.default_authority.clone())],
+            Err(e) => {
+                eprintln!("ubos-server: work scan: {e}");
+                return;
+            }
+        };
+        for (t, a) in list {
+            if self
+                .vaes
+                .lock()
+                .expect("vaes")
+                .contains_key(&format!("{t}/{a}"))
+            {
+                continue;
+            }
+            if let Err(e) = self.vae(&t, &a) {
+                eprintln!("ubos-server: cannot open {t}/{a}: {e}");
+            }
+        }
+    }
+
+    /// The event log of a VAE (opened once).
+    fn events_of(&self, key: &str) -> Result<Option<Arc<dyn EventStore>>, BpaError> {
+        if let Some(e) = self.event_stores.lock().expect("events").get(key) {
+            return Ok(Some(e.clone()));
+        }
+        let (t, a) = key.split_once('/').unwrap_or((key, ""));
+        let e = self.source.events(t, a)?;
+        if let Some(e) = &e {
+            self.event_stores
+                .lock()
+                .expect("events")
+                .insert(key.to_string(), e.clone());
+        }
+        Ok(e)
+    }
+
+    /// The releaser (DSN-NOD-201): every open VAE's outbox is claimed with a lease,
+    /// delivered to its event log and acknowledged, every `RELEASE_POLL_MS` and at once
+    /// after a commit through the Server.
+    async fn release_loop(self: Shared) {
+        loop {
+            let _ = tokio::time::timeout(
+                std::time::Duration::from_millis(RELEASE_POLL_MS),
+                self.release_now.notified(),
+            )
+            .await;
+            let vaes: Vec<VaeHandle> = self.vaes.lock().expect("vaes").values().cloned().collect();
+            for h in vaes {
+                loop {
+                    let r = h
+                        .call("host.release", json!({"holder": self.node_id, "n": RELEASE_BATCH, "lease_ms": RELEASE_LEASE_MS}))
+                        .await;
+                    match r {
+                        Ok(v) if v["released"].as_u64().unwrap_or(0) as usize == RELEASE_BATCH => {
+                            continue;
+                        }
+                        Ok(_) => break,
+                        Err(e) => {
+                            eprintln!("ubos-server: release: {e}");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// The leader's loop (DSN-NOD-208, -228): every second each VAE's lease is renewed
+    /// when due (every `RENEW_MS`), the holder fires the due became-effective timers, and
+    /// sweeps the event log every `SWEEP_SECS`. A node whose renewal fails stops acting
+    /// once its lease would have expired.
+    async fn leader_loop(self: Shared) {
+        let mut last_sweep = std::time::Instant::now();
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            let vaes: Vec<(String, VaeHandle)> = self
+                .vaes
+                .lock()
+                .expect("vaes")
+                .iter()
+                .map(|(k, h)| (k.clone(), h.clone()))
+                .collect();
+            let sweep = last_sweep.elapsed().as_secs() >= SWEEP_SECS;
+            if sweep {
+                last_sweep = std::time::Instant::now();
+            }
+            for (key, h) in vaes {
+                let held = self.renew(&key, &h).await;
+                if !held {
+                    continue;
+                }
+                if let Err(e) = h.call("host.tick", json!({})).await {
+                    eprintln!("ubos-server: tick {key}: {e}");
+                }
+                if sweep {
+                    let (me, k) = (self.clone(), key.clone());
+                    let now = ubos_dvm::types::time::format_instant(
+                        &chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::now()),
+                    );
+                    let _ = blocking(move || match me.events_of(&k)? {
+                        Some(e) => e.sweep(&now).map(|_| ()),
+                        None => Ok(()),
+                    })
+                    .await;
+                }
+            }
+        }
+    }
+
+    /// Renew (or try to take) a VAE's leadership when due; returns whether this node may act.
+    async fn renew(self: &Shared, key: &str, h: &VaeHandle) -> bool {
+        let cur = self.leaders.lock().expect("leaders").get(key).cloned();
+        let ms = |c: &Leader| c.renewed.elapsed().as_millis() as i64;
+        let due = cur
+            .as_ref()
+            .is_none_or(|c| !c.held || ms(c) >= crate::leases::RENEW_MS);
+        if !due {
+            return true;
+        }
+        let (leases, name, holder) = (self.source.leases(), lease_name(key), self.node_id.clone());
+        let r = blocking(move || leases.acquire(&name, &holder, crate::leases::LEASE_MS)).await;
+        let was = cur.as_ref().is_some_and(|c| c.held);
+        let now = match r {
+            Ok(Some(token)) => Leader {
+                held: true,
+                token,
+                renewed: std::time::Instant::now(),
+            },
+            Ok(None) => Leader {
+                held: false,
+                token: cur.as_ref().map_or(0, |c| c.token),
+                renewed: std::time::Instant::now(),
+            },
+            // the store did not answer: keep acting only while the lease cannot have expired
+            Err(_) => match cur {
+                Some(c) if c.held && ms(&c) < crate::leases::LEASE_MS => return true,
+                Some(c) => Leader { held: false, ..c },
+                None => return false,
+            },
+        };
+        let held = now.held;
+        if held != was {
+            let _ = h
+                .call(
+                    "host.mode",
+                    json!({"claimed_release": true, "auto_tick": held}),
+                )
+                .await;
+        }
+        self.leaders
+            .lock()
+            .expect("leaders")
+            .insert(key.to_string(), now);
+        held
     }
 
     /// The identity of a tenant, opened off the runtime (the node's registry blocks on
@@ -728,6 +1057,7 @@ impl Server {
             }
         }
         if type_ == "mutate" {
+            self.release_now.notify_one();
             let me = self.clone();
             let k = key.clone();
             tokio::spawn(async move { me.fan_out(Some(&k)).await });
@@ -1515,6 +1845,124 @@ async fn identity_api(
     }
 }
 
+/// The lease name of a VAE's leadership.
+fn lease_name(key: &str) -> String {
+    format!("vae-leader:{key}")
+}
+
+/// The operator API under `/api/v1/admin` (an administrator's bearer token; the tenant is
+/// the token's):
+///
+/// | Method and path | Body or query |
+/// |---|---|
+/// | `GET events` | `?vae&type&object&from&to&after&limit` — the event log (DSN-NOD-202) |
+/// | `GET events/retention`, `PUT events/retention` | `{type, days}` (`days: null` removes the rule; `*` for the other types) |
+/// | `POST events/sweep` | `{now?}` — apply the retention now |
+/// | `GET leaders` | this node's leadership of each open VAE (DSN-NOD-228) |
+async fn admin_api(
+    State(s): State<Shared>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    method: Method,
+    headers: HeaderMap,
+    Path(rest): Path<String>,
+    Query(q): Query<HashMap<String, String>>,
+    body: Bytes,
+) -> Response {
+    let Some(token) = bearer_token(&headers) else {
+        return problem_response(&BpaError::with_details(
+            "IAM.DENIED",
+            json!({"reason": "bearer_required"}),
+        ));
+    };
+    let tenant = token.split('.').next().unwrap_or_default().to_string();
+    let id = match s.identity_async(&tenant).await {
+        Ok(i) => i,
+        Err(e) => return problem_response(&e),
+    };
+    let src = peer.ip().to_string();
+    let t2 = token.clone();
+    let me = match blocking(move || id.validate(&t2, &src)).await {
+        Ok(a) => a,
+        Err(e) => return problem_response(&e),
+    };
+    if let Err(e) = need_admin(Some(&me)) {
+        return problem_response(&e);
+    }
+    let body: Value = if body.is_empty() {
+        json!({})
+    } else {
+        serde_json::from_slice(&body).unwrap_or(json!({}))
+    };
+    let vae = q
+        .get("vae")
+        .cloned()
+        .unwrap_or_else(|| s.default_authority.clone());
+    let key = format!("{tenant}/{vae}");
+    let segs: Vec<String> = rest.split('/').map(str::to_string).collect();
+    let p: Vec<&str> = segs.iter().map(String::as_str).collect();
+    if (method.as_str(), p.as_slice()) == ("GET", &["leaders"][..]) {
+        let items: Vec<Value> = s
+            .leaders
+            .lock()
+            .expect("leaders")
+            .iter()
+            .filter(|(k, _)| k.starts_with(&format!("{tenant}/")))
+            .map(|(k, l)| json!({"vae": k, "leader": l.held, "token": l.token, "node": s.node_id}))
+            .collect();
+        return Json(json!({"items": items})).into_response();
+    }
+    let me2 = s.clone();
+    let m = method.clone();
+    let out = blocking(move || {
+        let ev = me2.events_of(&key)?.ok_or_else(|| {
+            BpaError::new(
+                "LOGIC.NOT_AVAILABLE",
+                "this server keeps no event log for the VAE",
+            )
+        })?;
+        let p: Vec<&str> = segs.iter().map(String::as_str).collect();
+        match (m.as_str(), p.as_slice()) {
+            ("GET", ["events"]) => {
+                let f = EventFilter {
+                    type_: q.get("type").cloned(),
+                    object_id: q.get("object").cloned(),
+                    from: q.get("from").cloned(),
+                    to: q.get("to").cloned(),
+                    after: q.get("after").and_then(|x| x.parse().ok()).unwrap_or(0),
+                    limit: q.get("limit").and_then(|x| x.parse().ok()).unwrap_or(100),
+                };
+                Ok(json!({"items": ev.query(&f)?}))
+            }
+            ("GET", ["events", "retention"]) => {
+                let rules: Vec<Value> = ev
+                    .retention()?
+                    .into_iter()
+                    .map(|(t, d)| json!({"type": t, "days": d}))
+                    .collect();
+                Ok(json!({"rules": rules}))
+            }
+            ("PUT", ["events", "retention"]) => {
+                ev.set_retention(text(&body, "type")?, body["days"].as_i64())?;
+                Ok(json!({"ok": true}))
+            }
+            ("POST", ["events", "sweep"]) => {
+                let now = body["now"].as_str().map(str::to_string).unwrap_or_else(|| {
+                    ubos_dvm::types::time::format_instant(&chrono::DateTime::<chrono::Utc>::from(
+                        std::time::SystemTime::now(),
+                    ))
+                });
+                Ok(json!({"removed": ev.sweep(&now)?}))
+            }
+            _ => Err(BpaError::new("IAM.NOT_FOUND", "unknown admin route")),
+        }
+    })
+    .await;
+    match out {
+        Ok(v) => Json(v).into_response(),
+        Err(e) => problem_response(&e),
+    }
+}
+
 fn need_admin(me: Option<&Authenticated>) -> Result<&Authenticated, BpaError> {
     match me {
         Some(a) if a.is_admin() => Ok(a),
@@ -1790,18 +2238,32 @@ fn identity_call(
 /// A memory VAE for the `memory` preset and the suites: an engine over the memory store
 /// with the system clock and OS entropy, the genesis classes loaded when given.
 pub fn memory_vae(classes: Option<&Value>) -> Result<Vae, BpaError> {
-    use ubos_dvm::host::{NoConnectors, NoModels, OsEntropy, Recorder, Services, SystemClock};
+    memory_vae_with(classes, None)
+}
+
+/// A memory VAE whose outbox is released into `events` (the memory preset's event log).
+pub fn memory_vae_with(
+    classes: Option<&Value>,
+    events: Option<Arc<MemEventLog>>,
+) -> Result<Vae, BpaError> {
+    use ubos_dvm::host::{
+        NoConnectors, NoModels, OsEntropy, OutboxSink, Recorder, Services, SystemClock,
+    };
     let mut engine = ubos_dvm::Engine::new(Box::new(ubos_dvm::store::MemStore::default()))?;
     if let Some(c) = classes {
         engine.load_genesis(c, None)?;
     }
     let rec = Arc::new(Recorder::default());
+    let outbox: Arc<dyn OutboxSink> = match events {
+        Some(e) => e,
+        None => rec.clone(),
+    };
     let services = Services {
         clock: Arc::new(SystemClock),
         entropy: Arc::new(OsEntropy),
         connectors: Arc::new(NoConnectors),
         models: Arc::new(NoModels),
-        outbox: rec.clone(),
+        outbox,
         jobs: rec.clone(),
         telemetry: rec,
     };

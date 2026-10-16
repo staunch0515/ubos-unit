@@ -1812,6 +1812,67 @@ impl StoreTx for PgTx {
             .map_err(db)?;
         Ok(())
     }
+    async fn outbox_claim(
+        &mut self,
+        holder: &str,
+        lease_ms: i64,
+        n: usize,
+    ) -> Result<Vec<(Vec<u8>, i64)>, BpaError> {
+        // the pending rows in release order, locked: releasers serialise here, which keeps
+        // the per-object order (a row skipped by SKIP LOCKED could be overtaken)
+        let rows = sqlx::query("SELECT id, payload, coalesce(claimed_by, ''), coalesce(claim_until > now(), false) FROM outbox WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND released_at IS NULL ORDER BY id LIMIT 10000 FOR UPDATE")
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .fetch_all(&mut *self.tx)
+            .await
+            .map_err(db)?;
+        let mut blocked: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut pick: Vec<i64> = Vec::new();
+        for r in &rows {
+            if pick.len() >= n {
+                break;
+            }
+            let id: i64 = r.try_get(0).map_err(db)?;
+            let payload: Vec<u8> = r.try_get(1).map_err(db)?;
+            let by: String = r.try_get(2).map_err(db)?;
+            let live: bool = r.try_get(3).map_err(db)?;
+            let v: Value = serde_json::from_slice(&payload).unwrap_or(Value::Null);
+            let key = v
+                .get("object_id")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .unwrap_or_else(|| format!("#{id}"));
+            if live && by != holder {
+                blocked.insert(key);
+                continue;
+            }
+            if blocked.contains(&key) {
+                continue;
+            }
+            pick.push(id);
+        }
+        if pick.is_empty() {
+            return Ok(Vec::new());
+        }
+        let out = sqlx::query("UPDATE outbox SET claimed_by = $3, claim_until = now() + make_interval(secs => $4::float8 / 1000), attempts = attempts + 1 WHERE tenant_id = $1::uuid AND id = ANY($5::bigint[]) RETURNING id, payload, attempts")
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .bind(holder)
+            .bind(lease_ms as f64)
+            .bind(&pick)
+            .fetch_all(&mut *self.tx)
+            .await
+            .map_err(db)?;
+        let mut rows: Vec<(i64, Vec<u8>, i64)> = Vec::new();
+        for r in out {
+            let id: i64 = r.try_get(0).map_err(db)?;
+            let p: Vec<u8> = r.try_get(1).map_err(db)?;
+            let a: i32 = r.try_get(2).map_err(db)?;
+            rows.push((id, p, i64::from(a)));
+        }
+        rows.sort_by_key(|x| x.0);
+        Ok(rows.into_iter().map(|(_, p, a)| (p, a)).collect())
+    }
     async fn outbox_ack(&mut self, ids: &[String]) -> Result<bool, BpaError> {
         let n: i64 = sqlx::query("SELECT count(*) FROM outbox WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND effect_id = ANY($3::text[])")
             .bind(&self.scope.tenant)
@@ -3288,6 +3349,29 @@ impl Store for PgStore {
     fn outbox_pending(&mut self) -> Result<Vec<Value>, BpaError> {
         let rows = self.rt.block_on(self.backend.outbox_pending())?;
         rows.iter().map(|b| json(b)).collect()
+    }
+    fn outbox_claim(
+        &mut self,
+        holder: &str,
+        _now_ms: i64,
+        lease_ms: i64,
+        n: usize,
+    ) -> Result<Vec<Value>, BpaError> {
+        let backend = self.backend.clone();
+        let holder = holder.to_string();
+        let rows = self.rt.block_on(async move {
+            let mut tx = backend.begin().await?;
+            let rows = tx.outbox_claim(&holder, lease_ms, n).await?;
+            tx.commit().await?;
+            Ok::<_, BpaError>(rows)
+        })?;
+        rows.iter()
+            .map(|(b, a)| {
+                let mut v = json(b)?;
+                v["attempts"] = Value::from(*a);
+                Ok(v)
+            })
+            .collect()
     }
     fn outbox_released(&mut self, branch: &str, cseq: u64) -> Result<Vec<Value>, BpaError> {
         let Some(bid) = self.branch_id(branch)? else {

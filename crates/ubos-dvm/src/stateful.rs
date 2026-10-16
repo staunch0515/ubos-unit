@@ -758,6 +758,22 @@ impl Engine {
                 drop(repo);
                 self.ack(input.get("effect_ids").unwrap_or(&Value::Null))
             }
+            "outbox_claim" => {
+                drop(repo);
+                self.outbox_claim(input)
+            }
+            "outbox_ack" => {
+                drop(repo);
+                let ids = input
+                    .get("ids")
+                    .or_else(|| input.get("effect_ids"))
+                    .unwrap_or(&Value::Null);
+                self.ack(ids).map(|_| json!({"acked": true}))
+            }
+            "due_effective" => {
+                drop(repo);
+                self.due_effective(input)
+            }
             "bulk" => {
                 drop(repo);
                 self.bulk(input)

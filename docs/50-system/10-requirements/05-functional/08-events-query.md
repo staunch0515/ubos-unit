@@ -74,6 +74,7 @@ depends_on: [UBS-REQ-05, UBS-REQ-05-04]
   1. Given a new subscription merged to `main`, when a matching event occurs, then the handler runs.
 - **Verification:** CONF
 - **Origin:** EXT-TRI, L40:SPEC-20
+- **Phase note:** PH-1 step 15 (DEC-076): handlers of kind port and logic in PH-1; webhook, connector and workflow handlers follow in PH-2 with delivery masking (DSN-NOD-205).
 
 ### FR-EVT-022 — Listener registry
 - **Statement:** The platform MUST answer "who listens to event type X" and "what does handler H listen to", including inherited and overlay subscriptions.

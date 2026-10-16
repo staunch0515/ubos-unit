@@ -142,6 +142,14 @@ on memory or, with `--database`, PostgreSQL. Both are test bodies of `cargo test
 ubos-node`. The vector-matching helpers both conformance runners use are in
 `ubos_dvm::vectors`.
 
+Events of step 15a: the Server releases each open VAE's outbox through the kernel's
+`outbox_claim` and `outbox_ack` (a lease per claim, per-object order) into the event log,
+every 200 ms and at once after a commit; a leader per VAE (`leases`, the `node_lease` table
+with fencing tokens) fires the due became-effective timers every second and applies the
+retention per event type. At start and every 30 s the Server opens the VAEs with work
+(unacknowledged effects or timers due within a minute). Operators query the event log and
+its retention under `/api/v1/admin`.
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh

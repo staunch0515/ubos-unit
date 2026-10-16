@@ -29,7 +29,7 @@ Reading order:
   1. Given 3 nodes and 100,000 events over 1,000 keys, when released, then every event is delivered at least once, and per-key order holds.
 - **Verification:** SIM, FAULT
 - **Origin:** FR-TXN-052, FR-EVT-014, NR-DUR-006
-- **Phase note:** PH-1 step 7a (DEC-060): the in-process host releases the pending effects after every operation (`Vae::release_outbox`) to the `OutboxSink` service and acknowledges them; the polling releaser with claims follows with the Server of gate 1b.
+- **Phase note:** PH-1 step 7a (DEC-060): the in-process host releases the pending effects after every operation (`Vae::release_outbox`) to the `OutboxSink` service and acknowledges them; the polling releaser with claims follows with the Server of gate 1b. PH-1 step 15a (DEC-076): the Server releases through `outbox_claim` and `outbox_ack` with a lease and per-key order, and delivers what a crash left pending after recovery.
 
 ### DSN-NOD-202 — Event log
 - **Statement:** Declared events (FR-EVT-011) and standard lifecycle events (FR-EVT-012) MUST be appended to an event log table after release, retained per event-type policy (FR-EVT-015), and queryable by type, object and time.
@@ -40,7 +40,7 @@ Reading order:
   1. Given an event type with 90-day retention, when the sweep runs, then older events are removed, and newer ones stay.
 - **Verification:** CONF
 - **Origin:** FR-EVT-011, FR-EVT-012, FR-EVT-015
-- **Phase note:** PH-1 step 7a (DEC-060): released effects are appended to the `event_log` table once per effect identifier; subscriptions and fan-out follow with the Server of gate 1b.
+- **Phase note:** PH-1 step 7a (DEC-060): released effects are appended to the `event_log` table once per effect identifier; subscriptions and fan-out follow with the Server of gate 1b. PH-1 step 15a (DEC-076): the event log is queryable by type, object and time, with a retention sweep per event type.
 
 ### DSN-NOD-203 — Subscriptions and listener registry
 - **Statement:** Subscription objects (FR-EVT-021) MUST be compiled into a listener registry keyed by event type and branch scope (FR-EVT-023), rebuilt on commit of any subscription object.
@@ -101,6 +101,7 @@ Reading order:
   1. Given a leader failover at the due minute, when resolved, then exactly one event is emitted.
 - **Verification:** FAULT
 - **Origin:** FR-TIME-052, NR-PERF-012
+- **Phase note:** PH-1 step 15 (DEC-076): the leader drives became-effective events every second, not every minute, to meet NR-PERF-012 (at most 5 s).
 
 ### DSN-NOD-209 — Dead letters
 - **Statement:** Deliveries failing after their retry policy MUST move to a dead-letter set with the last error, visible to operators with retry, skip and edit-and-retry actions (FR-EVT-052).
@@ -111,6 +112,7 @@ Reading order:
   1. Given a dead-lettered event, when retried after a fix, then it is delivered once.
 - **Verification:** CONF
 - **Origin:** FR-EVT-052
+- **Phase note:** PH-1 step 15 (DEC-076): a dead letter is a job in state `dead`; operators retry, cancel or annotate it, and its payload is never edited (FR-EVT-052).
 
 ## Jobs, schedules and timers
 
@@ -123,7 +125,7 @@ Reading order:
   1. Given the runtime store wiped, when the sweeper runs, then all pending jobs resume.
 - **Verification:** FAULT
 - **Origin:** FR-EVT-031, FR-EVT-032
-- **Phase note:** PH-1 step 7a (DEC-060): jobs in the `job` table with `enqueue`, `claim`, `complete` and `fail` through the `Jobs` service; jobs as governed objects and schedules follow with the Server of gate 1b.
+- **Phase note:** PH-1 step 7a (DEC-060): jobs in the `job` table with `enqueue`, `claim`, `complete` and `fail` through the `Jobs` service; jobs as governed objects and schedules follow with the Server of gate 1b. PH-1 step 15 (DEC-076): jobs are System-kind `Job` objects of the platform namespace; the lease, heartbeat and fencing token stay in the `job` table as the runtime hint.
 
 ### DSN-NOD-221 — Leases and heartbeats
 - **Statement:** A job MUST be claimed with `UPDATE … SET lease_holder, lease_until WHERE state = ready AND (lease_until < now) … FOR UPDATE SKIP LOCKED` and heartbeated every lease/3 (FR-EVT-033). Results MUST be committed with a fencing check on the lease token.
@@ -134,7 +136,7 @@ Reading order:
   1. Given a paused node whose lease expired and was re-claimed, when it resumes and tries to commit, then its commit is rejected.
 - **Verification:** SIM, FAULT
 - **Origin:** FR-EVT-033
-- **Phase note:** PH-1 step 7a (DEC-060): claims under a lease (`FOR UPDATE SKIP LOCKED`), expired leases reclaimable; heartbeats and fencing tokens follow with the Server of gate 1b.
+- **Phase note:** PH-1 step 7a (DEC-060): claims under a lease (`FOR UPDATE SKIP LOCKED`), expired leases reclaimable; heartbeats and fencing tokens follow with the Server of gate 1b. PH-1 step 15c (DEC-076): heartbeats every lease/3 and fencing tokens on result commits.
 
 ### DSN-NOD-222 — Fairness and limits
 - **Statement:** Job claiming MUST round-robin across tenants and queues and respect per-tenant concurrency limits (FR-EVT-034).
@@ -155,7 +157,7 @@ Reading order:
   1. Given a job that crashes its process deterministically, when retried, then it is marked poison after 3 attempts.
 - **Verification:** CONF
 - **Origin:** FR-EVT-051, FR-EVT-053
-- **Phase note:** PH-1 step 7a (DEC-060): a failed attempt requeues the job until `max_attempts`, after which it is poison; backoff policies follow with the Server of gate 1b.
+- **Phase note:** PH-1 step 7a (DEC-060): a failed attempt requeues the job until `max_attempts`, after which it is poison; backoff policies follow with the Server of gate 1b. PH-1 step 15c (DEC-076): backoff policies with jitter; poison is the same error signature three times across the attempts of one node.
 
 ### DSN-NOD-224 — Schedules
 - **Statement:** Schedule objects (FR-EVT-041) with cron or business-calendar rules MUST be evaluated by a leader per VAE. Each slot MUST be recorded in `schedule_state` with a unique `(schedule, slot)` key before its job is enqueued, guaranteeing exactly one firing per slot (FR-EVT-043).
@@ -176,6 +178,7 @@ Reading order:
   1. Given a schedule paused for 3 slots with catch-up "last", when resumed, then one job runs.
 - **Verification:** CONF
 - **Origin:** FR-EVT-042, FR-EVT-044
+- **Phase note:** PH-1 step 15 (DEC-076): the catch-up policies are FR-EVT-041's `skip`, `fire_once` and `fire_all` (none, last and all).
 
 ### DSN-NOD-226 — Missed slots after outage
 - **Statement:** After a full outage, the leader MUST compute missed slots since the last recorded slot and apply the catch-up policy.
@@ -226,6 +229,7 @@ Reading order:
   1. Given a saga coordinator node killed mid-saga, when the lease expires, then another node continues the saga.
 - **Verification:** FAULT
 - **Origin:** FR-TXN-015, FR-TXN-061
+- **Phase note:** PH-1 step 15 (DEC-076): bulk processes run as jobs in PH-1; saga coordinators follow DSN-DVM-564 in PH-2.
 
 ### DSN-NOD-231 — Due-date and SLA jobs
 - **Statement:** The node MUST run periodic jobs that evaluate task due dates and escalation chains (DSN-DVM-744) and emit reminders.

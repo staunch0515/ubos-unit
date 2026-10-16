@@ -555,6 +555,14 @@ pub trait StoreTx {
     async fn fire_timers(&mut self, ids: &[String]) -> Result<(), BpaError>;
     /// Acknowledge released effects; false when one is unknown.
     async fn outbox_ack(&mut self, ids: &[String]) -> Result<bool, BpaError>;
+    /// Claim up to `n` unacknowledged effects for `holder` for `lease_ms` with per-object
+    /// order (IF-DVM-033); returns `(payload, attempts)` in release order.
+    async fn outbox_claim(
+        &mut self,
+        holder: &str,
+        lease_ms: i64,
+        n: usize,
+    ) -> Result<Vec<(Vec<u8>, i64)>, BpaError>;
     /// Make the writes durable and visible.
     async fn commit(self) -> Result<(), BpaError>;
     /// Discard the writes.
