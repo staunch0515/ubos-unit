@@ -76,6 +76,7 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "view",
     "security_log",
     "verify_security_log",
+    "ubtp",
     "validate",
     "decide",
 ];
@@ -328,6 +329,7 @@ impl Adapter {
             "view" => self.engine.view(i)?,
             "security_log" => self.engine.security_log(i)?,
             "verify_security_log" => self.engine.verify_security_log()?,
+            "ubtp" => self.engine.ubtp(i)?,
             "declare_index" => {
                 let r = self
                     .engine

@@ -1,0 +1,17 @@
+[package]
+name = "ubos-proto"
+description = "UBTP message schemas and codecs: the envelope, the handshake, the request and frame types of STD-PROTO (PH-1 step 14a, DEC-075)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+ubos-types.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

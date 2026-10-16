@@ -101,6 +101,15 @@ commit (`index_since`). `ubos-bench query` is the MET-PERF-016 suite (`eq`, `ran
 `eq_filter`, `page2`, `key`; memory or PostgreSQL); the workstation report is
 `verify/reports/exit-1-17/workstation/`.
 
+`ubos-proto` (step 14a, DEC-075) holds what every UBTP binding shares: the envelope checks
+of STD-PROTO-001, the request and frame types, the handshake negotiation of the in-process
+credentials, the frame builders and the subscription cursor. The kernel's in-process binding
+(`ubos-dvm/src/ubtp.rs`, adapter operation `ubtp {session, messages}`) gives the messages
+their semantics over the engine — mutate as a process or a raw commit, the query kinds,
+subscriptions with cursors, the window of unacknowledged emits — and the Server of step 14b
+hands its transport frames to the same binding. The conformance test claims the Protocol
+profile (88 vectors).
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh
