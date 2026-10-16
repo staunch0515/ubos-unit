@@ -150,6 +150,14 @@ retention per event type. At start and every 30 s the Server opens the VAEs with
 (unacknowledged effects or timers due within a minute). Operators query the event log and
 its retention under `/api/v1/admin`.
 
+The event platform of step 15b (`ubos-node/src/platform.rs`): the node declares the
+platform class `Subscription` (namespace `ubos.platform`) in every VAE it opens; the
+releaser enqueues one delivery job per subscription and event before it acknowledges the
+outbox; the delivery worker runs each port or logic handler as a process of the
+subscription's service principal, with a process identifier derived from the subscription
+and the event so that a committed delivery never runs twice; exhausted deliveries are dead
+letters that operators retry, cancel or annotate under `/api/v1/admin/jobs`.
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh

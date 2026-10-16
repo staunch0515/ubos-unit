@@ -19,6 +19,7 @@ pub mod db;
 pub mod identity;
 pub mod keys;
 pub mod leases;
+pub mod platform;
 pub mod server;
 pub mod services;
 
@@ -286,6 +287,20 @@ impl Node {
         };
         let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
         Ok(Some(services::EventLog::new(scoped, &tenant.id, &vae_id)))
+    }
+
+    /// The jobs of a tenant's VAE (deliveries and dead letters); `None` when the VAE is
+    /// unknown.
+    pub fn jobs(
+        &self,
+        tenant: &Tenant,
+        authority: &str,
+    ) -> Result<Option<services::JobQueue>, BpaError> {
+        let Some(vae_id) = self.vae(tenant, authority)? else {
+            return Ok(None);
+        };
+        let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
+        Ok(Some(services::JobQueue::new(scoped, &tenant.id, &vae_id)))
     }
 
     /// The key hierarchy of a tenant.

@@ -16,7 +16,7 @@
 use serde_json::Value;
 use std::sync::Arc;
 use ubos_node::server::{NodeVaes, Preset, Server, VaeHandle, memory_vae_with};
-use ubos_node::services::MemEventLog;
+use ubos_node::services::{MemEventLog, MemJobQueue};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -52,12 +52,14 @@ fn main() {
     });
     let server = if flag("--memory") || opt("--database").is_none() {
         let events = Arc::new(MemEventLog::default());
-        let ev = events.clone();
-        let handle = VaeHandle::spawn(move || memory_vae_with(classes.as_ref(), Some(ev)))
-            .unwrap_or_else(|e| {
-                eprintln!("{e}");
-                std::process::exit(1)
-            });
+        let jobs = Arc::new(MemJobQueue::default());
+        let (ev, jb) = (events.clone(), jobs.clone());
+        let handle =
+            VaeHandle::spawn(move || memory_vae_with(classes.as_ref(), Some(ev), Some(jb)))
+                .unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1)
+                });
         let identity =
             ubos_node::identity::Identity::memory(&tenant, &authority).unwrap_or_else(|e| {
                 eprintln!("{e}");
@@ -67,6 +69,7 @@ fn main() {
             handle,
             Arc::new(identity),
             Some(events),
+            Some(jobs),
             preset,
             &tenant,
             &authority,
