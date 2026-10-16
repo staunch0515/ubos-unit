@@ -75,11 +75,41 @@ pub fn job_class() -> Value {
     ]})
 }
 
+/// The declaration of `Schedule` (FR-EVT-041, DSN-NOD-224): a Definition object with a
+/// rule (`{cron}` or `{calendar, at, nth?}`), a time zone, an active window
+/// (`{from?, to?}`), a misfire policy (`skip`, `fire_once` or `fire_all`; `fire_once` when
+/// absent), a target (`{kind: "port", target, port, params?}` or `{kind: "logic", asset,
+/// function, args?}`, on `main` unless it names a `branch`; workflow targets in PH-2,
+/// DEC-076), the service principal it runs
+/// as, and whether it is enabled and paused.
+pub fn schedule_class() -> Value {
+    json!({"name": "Schedule", "label": "Schedule", "namespace": NAMESPACE,
+    "description": "A schedule of the platform: rule, time zone, active window, misfire policy, target and service principal (FR-EVT-041)",
+    "parent": "DataObject", "kind": "definition", "schema_version": 1,
+    "fields": [
+        field("name", "text", true),
+        field("rule", "json", true),
+        field("time_zone", "text", false),
+        field("window", "json", false),
+        field("misfire", "text", false),
+        field("target", "json", true),
+        field("run_as", "text", true),
+        field("policy", "json", false),
+        field("owner", "text", false),
+        field("enabled", "boolean", false),
+        field("paused", "boolean", false),
+    ]})
+}
+
 /// Declare the platform classes in a VAE that lacks them (an existing class of the same
 /// name in another namespace is left alone and reported).
 pub fn ensure(vae: &mut Vae) -> Result<(), BpaError> {
     let mut missing = Vec::new();
-    for (name, decl) in [("Subscription", subscription_class()), ("Job", job_class())] {
+    for (name, decl) in [
+        ("Subscription", subscription_class()),
+        ("Job", job_class()),
+        ("Schedule", schedule_class()),
+    ] {
         match vae.engine_mut().registry.decl(name) {
             Ok(c) if c["namespace"] == json!(NAMESPACE) => {}
             Ok(_) => {
@@ -447,7 +477,31 @@ pub fn deliver(vae: &mut Vae, job: &Value, principal: &Value) -> Result<Value, B
         process["role"] = json!(r);
         ctx["role"] = json!(r);
     }
-    let h = &p["handler"];
+    run_handler(
+        vae,
+        &p["handler"],
+        event,
+        branch,
+        process,
+        ctx,
+        principal,
+        &pid,
+    )
+}
+
+/// Run a handler or a schedule's target (`{kind: "port" | "logic", …}`) as the process
+/// `process`; parameters may refer to `event` (`$event.<path>`).
+#[allow(clippy::too_many_arguments)]
+fn run_handler(
+    vae: &mut Vae,
+    h: &Value,
+    event: &Value,
+    branch: &str,
+    process: Value,
+    ctx: Value,
+    principal: &Value,
+    pid: &str,
+) -> Result<Value, BpaError> {
     let mut input = match h["kind"].as_str() {
         Some("port") => {
             let port = h["port"].as_str().ok_or_else(|| {
@@ -567,4 +621,120 @@ pub fn run_bulk(vae: &mut Vae, job: &Value, max_chunks: u64) -> Result<Value, Bp
     input["max_chunks"] = json!(max_chunks);
     input["resume"] = json!(known.is_some());
     vae.call("bulk", &input)
+}
+
+// ---- schedules (step 15d) ----
+
+/// The `Schedule` objects of `main` (`{schedule_id, body}`) and main's head, or `None` when
+/// main's head is `known` (nothing changed since the caller's last read; FR-EVT-042).
+pub fn schedules(vae: &mut Vae, known: Option<&str>) -> Result<Value, BpaError> {
+    let head = vae.call("branch_info", &json!({"branch": "main"}))?["head"].clone();
+    if known.is_some_and(|k| head == json!(k)) {
+        return Ok(json!({"head": head, "unchanged": true}));
+    }
+    let ids = match vae.call(
+        "list_objects",
+        &json!({"class": "Schedule", "branch": "main"}),
+    ) {
+        Ok(v) => v["objects"].as_array().cloned().unwrap_or_default(),
+        Err(_) => Vec::new(),
+    };
+    let mut items = Vec::new();
+    for id in ids {
+        let oid = id.as_str().unwrap_or_default();
+        let b = vae.call("read", &json!({"branch": "main", "object_id": oid}))?["body"].clone();
+        items.push(json!({"schedule_id": oid, "body": b}));
+    }
+    Ok(json!({"head": head, "items": items}))
+}
+
+/// The job identifier of a schedule's slot: one job per `(schedule, slot)` (DSN-NOD-224).
+pub fn schedule_job_id(schedule: &str, slot: &str) -> Result<String, BpaError> {
+    derived_uuid("schedule", &format!("{schedule}@{slot}"))
+}
+
+/// The job specification of a slot that fires.
+pub fn schedule_job(
+    schedule: &str,
+    body: &Value,
+    slot: &str,
+    caught_up: bool,
+) -> Result<Value, BpaError> {
+    let id = schedule_job_id(schedule, slot)?;
+    let policy = body.get("policy").cloned().unwrap_or(Value::Null);
+    let max = crate::services::RetryPolicy::from_json(&policy).max_attempts;
+    Ok(
+        json!({"job_id": id, "kind": "schedule", "queue": "schedules", "max_attempts": max,
+        "dedupe_key": format!("schedule:{schedule}@{slot}"),
+        "payload": {"schedule": schedule, "slot": slot, "caught_up": caught_up, "target": body["target"],
+            "run_as": body["run_as"], "policy": policy}}),
+    )
+}
+
+/// Run a scheduled firing: the schedule's target as one process with the job's identifier
+/// (so a slot starts one process, FR-EVT-043), triggered by `{type: "schedule", schedule,
+/// slot}`, as the schedule's service principal; `already_done` when it committed before.
+pub fn run_schedule(vae: &mut Vae, job: &Value, principal: &Value) -> Result<Value, BpaError> {
+    let p = &job["payload"];
+    let job_id = job["job_id"].as_str().unwrap_or_default().to_string();
+    if let Ok(info) = vae.call("process_info", &json!({"process_id": job_id}))
+        && info["state"] == "committed"
+    {
+        return Ok(json!({"status": "already_done", "process_id": job_id}));
+    }
+    let did = principal["did"].as_str().unwrap_or_default();
+    let kind = principal["kind"].as_str().unwrap_or("service");
+    let slot = json!({"schedule": p["schedule"], "slot": p["slot"], "caught_up": p["caught_up"]});
+    let mut process = json!({"process_id": job_id, "kind": "action", "initiator": did, "principal_kind": kind,
+        "channel": "schedule", "idempotency_key": format!("job:{job_id}"),
+        "trigger": {"type": "schedule", "source": "schedule", "schedule": p["schedule"], "slot": p["slot"], "job_id": job_id}});
+    let mut ctx = json!({"principal": did, "principal_kind": kind, "channel": "schedule"});
+    if let Some(r) = principal["role"].as_str() {
+        process["role"] = json!(r);
+        ctx["role"] = json!(r);
+    }
+    // a target's parameters may refer to the slot as `$event.slot`; it runs on `main`
+    // unless it names its branch
+    let branch = p["target"]["branch"].as_str().unwrap_or("main").to_string();
+    run_handler(
+        vae,
+        &p["target"],
+        &slot,
+        &branch,
+        process,
+        ctx,
+        principal,
+        &job_id,
+    )
+}
+
+/// Commit a schedule's `paused` flag on `main` as an operator (FR-EVT-044).
+pub fn set_paused(
+    vae: &mut Vae,
+    schedule: &str,
+    paused: bool,
+    by: &str,
+) -> Result<Value, BpaError> {
+    let known = vae.call(
+        "list_objects",
+        &json!({"class": "Schedule", "branch": "main"}),
+    )?;
+    if !known["objects"]
+        .as_array()
+        .is_some_and(|a| a.contains(&json!(schedule)))
+    {
+        return Err(BpaError::new("IAM.NOT_FOUND", "no such schedule"));
+    }
+    let cur = vae.call("read", &json!({"branch": "main", "object_id": schedule}))?;
+    let message = if paused {
+        "schedule paused"
+    } else {
+        "schedule resumed"
+    };
+    vae.call(
+        "commit",
+        &json!({"branch": "main", "changes": [{"op": "update", "object_id": schedule, "base": cur["version_hash"], "body": {"paused": paused}}],
+            "process": {"kind": "action", "initiator": by, "channel": "admin", "message": message},
+            "ctx": {"principal": by, "channel": "admin"}}),
+    )
 }

@@ -159,6 +159,7 @@ depends_on: [UBS-REQ-05, UBS-REQ-05-04]
   1. Given "18:00 America/New_York on business days", when DST changes, then the local firing time is preserved.
 - **Verification:** CONF
 - **Origin:** EXT-TRI, L40:SPEC-20
+- **Phase note:** PH-1 step 15 (DEC-076): schedule targets of kind port and logic in PH-1; workflow targets follow in PH-2 with the workflow handlers.
 
 ### FR-EVT-042 — Hot schedule changes
 - **Statement:** A committed change to a schedule MUST take effect for the next firing without restart.
