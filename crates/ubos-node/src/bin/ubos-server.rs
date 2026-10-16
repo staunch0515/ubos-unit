@@ -4,6 +4,9 @@
 //! ubos-server [--listen 127.0.0.1:8080] [--database URL | --memory [--genesis FILE]]
 //!             [--tenant SLUG] [--vae AUTHORITY] [--preset dev|server]
 //!             [--admin USERNAME:PASSWORD]
+//!
+//! `--genesis FILE` declares its classes in the memory VAE, or with `--database` in the
+//! default VAE when the first start creates it.
 //! ```
 //!
 //! With `--database` the Server serves the VAEs of the node's tenancy registry on
@@ -12,7 +15,8 @@
 
 use serde_json::Value;
 use std::sync::Arc;
-use ubos_node::server::{NodeVaes, Preset, Server, VaeHandle, memory_vae};
+use ubos_node::server::{NodeVaes, Preset, Server, VaeHandle, memory_vae_with};
+use ubos_node::services::MemEventLog;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -36,27 +40,37 @@ fn main() {
     };
     let tenant = opt("--tenant").unwrap_or_else(|| "acme".into());
     let authority = opt("--vae").unwrap_or_else(|| "acme".into());
+    let classes: Option<Value> = opt("--genesis").map(|p| {
+        serde_json::from_str(&std::fs::read_to_string(&p).unwrap_or_else(|e| {
+            eprintln!("{p}: {e}");
+            std::process::exit(2)
+        }))
+        .unwrap_or_else(|e| {
+            eprintln!("{p}: {e}");
+            std::process::exit(2)
+        })
+    });
     let server = if flag("--memory") || opt("--database").is_none() {
-        let classes: Option<Value> = opt("--genesis").map(|p| {
-            serde_json::from_str(&std::fs::read_to_string(&p).unwrap_or_else(|e| {
-                eprintln!("{p}: {e}");
-                std::process::exit(2)
-            }))
+        let events = Arc::new(MemEventLog::default());
+        let ev = events.clone();
+        let handle = VaeHandle::spawn(move || memory_vae_with(classes.as_ref(), Some(ev)))
             .unwrap_or_else(|e| {
-                eprintln!("{p}: {e}");
-                std::process::exit(2)
-            })
-        });
-        let handle = VaeHandle::spawn(move || memory_vae(classes.as_ref())).unwrap_or_else(|e| {
-            eprintln!("{e}");
-            std::process::exit(1)
-        });
+                eprintln!("{e}");
+                std::process::exit(1)
+            });
         let identity =
             ubos_node::identity::Identity::memory(&tenant, &authority).unwrap_or_else(|e| {
                 eprintln!("{e}");
                 std::process::exit(1)
             });
-        Server::single(handle, Arc::new(identity), preset, &tenant, &authority)
+        Server::single_with(
+            handle,
+            Arc::new(identity),
+            Some(events),
+            preset,
+            &tenant,
+            &authority,
+        )
     } else {
         let url = opt("--database").unwrap_or_default();
         let node = ubos_node::Node::connect(&url).unwrap_or_else(|e| {
@@ -70,6 +84,11 @@ fn main() {
                 None => node.create_tenant(&tenant)?,
             };
             node.create_vae(&t, &authority)?;
+            // the genesis classes of a VAE created on the first start
+            if let Some(c) = &classes {
+                node.open_vae(&t, &authority)?
+                    .call("load_genesis", &serde_json::json!({"classes": c}))?;
+            }
             Ok(true)
         })()
         .unwrap_or_else(|e| {

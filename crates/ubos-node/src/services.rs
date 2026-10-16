@@ -133,6 +133,67 @@ impl Connectors for BoundConnectors {
 
 // ---- event log (DSN-NOD-201, -202) ----
 
+/// What an event-log query selects (DSN-NOD-202): every member optional.
+#[derive(Debug, Clone, Default)]
+pub struct EventFilter {
+    /// Event type.
+    pub type_: Option<String>,
+    /// Object identifier.
+    pub object_id: Option<String>,
+    /// Released at or after this instant.
+    pub from: Option<String>,
+    /// Released before this instant.
+    pub to: Option<String>,
+    /// Sequence numbers after this one (paging).
+    pub after: i64,
+    /// At most this many (1…1,000; 100 by default).
+    pub limit: i64,
+}
+
+impl EventFilter {
+    fn limit(&self) -> i64 {
+        if self.limit <= 0 {
+            100
+        } else {
+            self.limit.min(1_000)
+        }
+    }
+}
+
+/// The event log of a VAE: the sink of the releaser, queries and the retention sweep.
+pub trait EventStore: OutboxSink {
+    /// Events matching a filter, by sequence number.
+    fn query(&self, f: &EventFilter) -> Result<Vec<Value>, BpaError>;
+    /// The retention rules `(type, days)` of the tenant (`*` for the other types).
+    fn retention(&self) -> Result<Vec<(String, i64)>, BpaError>;
+    /// Set (or with `None` remove) the retention of an event type.
+    fn set_retention(&self, type_: &str, days: Option<i64>) -> Result<(), BpaError>;
+    /// Remove the events older than their type's retention at `now` (canonical instant);
+    /// returns how many were removed (FR-EVT-015, DSN-NOD-202 acceptance 1).
+    fn sweep(&self, now: &str) -> Result<u64, BpaError>;
+}
+
+fn check_retention(type_: &str, days: Option<i64>) -> Result<(), BpaError> {
+    if type_.is_empty() || type_.len() > 200 {
+        return Err(BpaError::new(
+            "MODEL.INVALID_VALUE",
+            "an event type is 1 to 200 characters",
+        ));
+    }
+    if days.is_some_and(|d| d <= 0 || d > 36_500) {
+        return Err(BpaError::new("MODEL.INVALID_VALUE", "days is 1 to 36,500"));
+    }
+    Ok(())
+}
+
+/// The instant `days` before `now`.
+fn cutoff(now: &str, days: i64) -> Result<String, BpaError> {
+    let t = ubos_dvm::types::time::parse_instant(now)?;
+    Ok(ubos_dvm::types::time::format_instant(
+        &(t - chrono::Duration::days(days)),
+    ))
+}
+
 /// Released effects of a VAE in the `event_log` table.
 pub struct EventLog {
     db: Arc<Db>,
@@ -156,6 +217,211 @@ impl EventLog {
             "SELECT seq, effect_id, type, branch, cseq, object_id, payload FROM event_log WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND seq > $3 ORDER BY seq LIMIT $4",
             &[Param::Text(&self.tenant), Param::Text(&self.vae), Param::Int(after), Param::Int(limit)],
         )
+    }
+}
+
+const RELEASED_AT: &str =
+    "to_char(released_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS released_at";
+
+impl EventStore for EventLog {
+    fn query(&self, f: &EventFilter) -> Result<Vec<Value>, BpaError> {
+        let (t, o) = (
+            f.type_.clone().unwrap_or_default(),
+            f.object_id.clone().unwrap_or_default(),
+        );
+        let (from, to) = (
+            f.from.clone().unwrap_or_default(),
+            f.to.clone().unwrap_or_default(),
+        );
+        self.db.query(
+            &format!("SELECT seq, effect_id, type, branch, cseq, object_id, payload, {RELEASED_AT} FROM event_log \
+              WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND seq > $3 \
+                AND ($4 = '' OR type = $4) AND ($5 = '' OR object_id = $5) \
+                AND ($6 = '' OR released_at >= nullif($6, '')::timestamptz) \
+                AND ($7 = '' OR released_at < nullif($7, '')::timestamptz) \
+              ORDER BY seq LIMIT $8"),
+            &[
+                Param::Text(&self.tenant),
+                Param::Text(&self.vae),
+                Param::Int(f.after),
+                Param::Text(&t),
+                Param::Text(&o),
+                Param::Text(&from),
+                Param::Text(&to),
+                Param::Int(f.limit()),
+            ],
+        )
+    }
+    fn retention(&self) -> Result<Vec<(String, i64)>, BpaError> {
+        Ok(self
+            .db
+            .query(
+                "SELECT type, days FROM event_retention WHERE tenant_id = $1::uuid ORDER BY type",
+                &[Param::Text(&self.tenant)],
+            )?
+            .iter()
+            .map(|r| {
+                (
+                    r["type"].as_str().unwrap_or_default().to_string(),
+                    r["days"].as_i64().unwrap_or(0),
+                )
+            })
+            .collect())
+    }
+    fn set_retention(&self, type_: &str, days: Option<i64>) -> Result<(), BpaError> {
+        check_retention(type_, days)?;
+        match days {
+            Some(d) => self.db.execute(
+                "INSERT INTO event_retention (tenant_id, type, days) VALUES ($1::uuid, $2, $3) ON CONFLICT (tenant_id, type) DO UPDATE SET days = EXCLUDED.days",
+                &[Param::Text(&self.tenant), Param::Text(type_), Param::Int(d)],
+            )?,
+            None => self.db.execute(
+                "DELETE FROM event_retention WHERE tenant_id = $1::uuid AND type = $2",
+                &[Param::Text(&self.tenant), Param::Text(type_)],
+            )?,
+        };
+        Ok(())
+    }
+    fn sweep(&self, now: &str) -> Result<u64, BpaError> {
+        let rules = self.retention()?;
+        let named: Vec<String> = rules
+            .iter()
+            .filter(|(t, _)| t != "*")
+            .map(|(t, _)| t.clone())
+            .collect();
+        let mut removed = 0;
+        for (t, days) in &rules {
+            let before = cutoff(now, *days)?;
+            removed += if t == "*" {
+                self.db.execute(
+                    "DELETE FROM event_log WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND released_at < $3::timestamptz AND NOT (type = ANY(string_to_array($4, chr(31))))",
+                    &[Param::Text(&self.tenant), Param::Text(&self.vae), Param::Text(&before), Param::Text(&named.join("\u{1f}"))],
+                )?
+            } else {
+                self.db.execute(
+                    "DELETE FROM event_log WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND type = $3 AND released_at < $4::timestamptz",
+                    &[Param::Text(&self.tenant), Param::Text(&self.vae), Param::Text(t), Param::Text(&before)],
+                )?
+            };
+        }
+        Ok(removed)
+    }
+}
+
+/// An event log in memory (the `memory` preset, suites): the same queries and sweep.
+#[derive(Default)]
+pub struct MemEventLog {
+    rows: Mutex<Vec<Value>>,
+    retention: Mutex<BTreeMap<String, i64>>,
+    fixed_now: Mutex<Option<String>>,
+}
+
+impl MemEventLog {
+    /// Fix the release time stamps (suites); `None` returns to the system clock.
+    pub fn set_now(&self, at: Option<&str>) {
+        if let Ok(mut g) = self.fixed_now.lock() {
+            *g = at.map(str::to_string);
+        }
+    }
+
+    fn now(&self) -> String {
+        if let Ok(g) = self.fixed_now.lock()
+            && let Some(t) = g.clone()
+        {
+            return t;
+        }
+        ubos_dvm::types::time::format_instant(&chrono::DateTime::<chrono::Utc>::from(
+            std::time::SystemTime::now(),
+        ))
+    }
+
+    /// Every event, in order (suites).
+    pub fn all(&self) -> Vec<Value> {
+        self.rows.lock().map(|r| r.clone()).unwrap_or_default()
+    }
+}
+
+fn mem_err() -> BpaError {
+    BpaError::new("NOD.STORAGE_UNAVAILABLE", "event log lock")
+}
+
+impl OutboxSink for MemEventLog {
+    fn release(&self, effects: &[Value]) -> Result<(), BpaError> {
+        let now = self.now();
+        let mut rows = self.rows.lock().map_err(|_| mem_err())?;
+        for e in effects {
+            if rows.iter().any(|r| r["effect_id"] == e["effect_id"]) {
+                continue;
+            }
+            let seq = rows.last().and_then(|r| r["seq"].as_i64()).unwrap_or(0) + 1;
+            rows.push(json!({"seq": seq, "effect_id": e["effect_id"], "type": e["type"], "branch": e["branch"],
+                "cseq": e.get("cseq").cloned().unwrap_or(Value::Null), "object_id": e.get("object_id").cloned().unwrap_or(Value::Null),
+                "payload": e.get("payload").cloned().unwrap_or(Value::Null), "released_at": now}));
+        }
+        Ok(())
+    }
+}
+
+impl EventStore for MemEventLog {
+    fn query(&self, f: &EventFilter) -> Result<Vec<Value>, BpaError> {
+        let rows = self.rows.lock().map_err(|_| mem_err())?;
+        Ok(rows
+            .iter()
+            .filter(|r| r["seq"].as_i64().unwrap_or(0) > f.after)
+            .filter(|r| f.type_.as_ref().is_none_or(|t| r["type"] == json!(t)))
+            .filter(|r| {
+                f.object_id
+                    .as_ref()
+                    .is_none_or(|o| r["object_id"] == json!(o))
+            })
+            .filter(|r| {
+                f.from
+                    .as_ref()
+                    .is_none_or(|t| r["released_at"].as_str().unwrap_or_default() >= t.as_str())
+            })
+            .filter(|r| {
+                f.to.as_ref()
+                    .is_none_or(|t| r["released_at"].as_str().unwrap_or_default() < t.as_str())
+            })
+            .take(f.limit() as usize)
+            .cloned()
+            .collect())
+    }
+    fn retention(&self) -> Result<Vec<(String, i64)>, BpaError> {
+        Ok(self
+            .retention
+            .lock()
+            .map_err(|_| mem_err())?
+            .iter()
+            .map(|(k, v)| (k.clone(), *v))
+            .collect())
+    }
+    fn set_retention(&self, type_: &str, days: Option<i64>) -> Result<(), BpaError> {
+        check_retention(type_, days)?;
+        let mut r = self.retention.lock().map_err(|_| mem_err())?;
+        match days {
+            Some(d) => r.insert(type_.to_string(), d),
+            None => r.remove(type_),
+        };
+        Ok(())
+    }
+    fn sweep(&self, now: &str) -> Result<u64, BpaError> {
+        let rules = self.retention()?;
+        let mut cut: BTreeMap<String, String> = BTreeMap::new();
+        for (t, d) in &rules {
+            cut.insert(t.clone(), cutoff(now, *d)?);
+        }
+        let mut rows = self.rows.lock().map_err(|_| mem_err())?;
+        let before = rows.len();
+        rows.retain(|r| {
+            let t = r["type"].as_str().unwrap_or_default();
+            let at = r["released_at"].as_str().unwrap_or_default();
+            match cut.get(t).or_else(|| cut.get("*")) {
+                Some(c) => at >= c.as_str(),
+                None => true,
+            }
+        });
+        Ok((before - rows.len()) as u64)
     }
 }
 

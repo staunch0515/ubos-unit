@@ -53,6 +53,9 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "impact",
     "outbox",
     "ack",
+    "outbox_claim",
+    "outbox_ack",
+    "due_effective",
     "bulk",
     "resolve",
     "did_document",
@@ -290,7 +293,9 @@ impl Adapter {
             | "change_set" | "tag" | "delete_tag" | "tag_info" | "release" | "revert"
             | "branch_info" | "set_parent_line" | "commit_info" | "tree_diff" | "process_info"
             | "lineage" | "read_range" | "history" | "derivation" | "impact" | "outbox" | "ack"
-            | "bulk" | "resolve" => self.engine.other(op, i)?,
+            | "outbox_claim" | "outbox_ack" | "due_effective" | "bulk" | "resolve" => {
+                self.engine.other(op, i)?
+            }
             "parse_uri" => ubos_types::addr::parse_uri(field(i, "uri")?)?,
             "parse_did" => ubos_types::addr::parse_did(field(i, "did")?)?,
             "key_did" => Value::String(ubos_types::addr::key_did(field(i, "public_key")?)?),

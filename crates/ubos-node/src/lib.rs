@@ -18,6 +18,7 @@
 pub mod db;
 pub mod identity;
 pub mod keys;
+pub mod leases;
 pub mod server;
 pub mod services;
 
@@ -231,6 +232,60 @@ impl Node {
                 Ok(r.map(|(id,)| id))
             })
         })
+    }
+
+    /// The authorities of a tenant's VAEs.
+    pub fn vaes(&self, tenant: &Tenant) -> Result<Vec<String>, BpaError> {
+        let rows = self.db.query(
+            "SELECT authority FROM vae WHERE tenant_id = $1::uuid ORDER BY authority",
+            &[db::Param::Text(&tenant.id)],
+        )?;
+        Ok(rows
+            .iter()
+            .filter_map(|r| r["authority"].as_str().map(str::to_string))
+            .collect())
+    }
+
+    /// The `(tenant slug, authority)` of the active VAEs with work for the Server: effects
+    /// released but not acknowledged, or became-effective timers due within `horizon_secs`
+    /// (NR-DUR-006, NR-PERF-012). The owner role reads across tenants.
+    pub fn vaes_with_work(&self, horizon_secs: i64) -> Result<Vec<(String, String)>, BpaError> {
+        let rows = self.db.query(
+            "SELECT t.slug, v.authority FROM vae v JOIN tenant t ON t.tenant_id = v.tenant_id \
+             WHERE t.state = 'active' AND ( \
+               EXISTS (SELECT 1 FROM outbox o WHERE o.tenant_id = v.tenant_id AND o.vae_id = v.vae_id AND o.released_at IS NULL) \
+               OR EXISTS (SELECT 1 FROM timer m WHERE m.tenant_id = v.tenant_id AND m.vae_id = v.vae_id AND m.fired_at IS NULL \
+                          AND m.due_at < now() + make_interval(secs => $1::bigint))) \
+             ORDER BY t.slug, v.authority",
+            &[db::Param::Int(horizon_secs)],
+        )?;
+        Ok(rows
+            .iter()
+            .map(|r| {
+                (
+                    r["slug"].as_str().unwrap_or_default().to_string(),
+                    r["authority"].as_str().unwrap_or_default().to_string(),
+                )
+            })
+            .collect())
+    }
+
+    /// The leadership leases of the node (DSN-NOD-228).
+    pub fn leases(&self) -> Arc<leases::PgLeases> {
+        Arc::new(leases::PgLeases::new(self.db.clone()))
+    }
+
+    /// The event log of a tenant's VAE (DSN-NOD-202); `None` when the VAE is unknown.
+    pub fn events(
+        &self,
+        tenant: &Tenant,
+        authority: &str,
+    ) -> Result<Option<services::EventLog>, BpaError> {
+        let Some(vae_id) = self.vae(tenant, authority)? else {
+            return Ok(None);
+        };
+        let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
+        Ok(Some(services::EventLog::new(scoped, &tenant.id, &vae_id)))
     }
 
     /// The key hierarchy of a tenant.

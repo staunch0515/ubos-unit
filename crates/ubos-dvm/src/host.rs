@@ -264,6 +264,12 @@ pub struct Context {
 pub struct Vae {
     adapter: Adapter,
     services: Services,
+    /// The host's releaser claims the outbox (`release_claimed`) instead of the outbox
+    /// being released after every operation (DSN-NOD-201).
+    claimed_release: bool,
+    /// Fire due became-effective timers when the clock moves before an operation; off when
+    /// a leader drives them (`tick`, DSN-NOD-208).
+    auto_tick: bool,
 }
 
 impl Vae {
@@ -274,7 +280,61 @@ impl Vae {
         Vae {
             adapter: Adapter::from_engine(engine),
             services,
+            claimed_release: false,
+            auto_tick: true,
         }
+    }
+
+    /// Host mode of a Server (DSN-NOD-201, -208): the host's releaser claims the outbox
+    /// instead of every operation releasing it, and a leader drives the became-effective
+    /// timers instead of every operation firing them.
+    pub fn set_server_mode(&mut self, claimed_release: bool, auto_tick: bool) {
+        self.claimed_release = claimed_release;
+        self.auto_tick = auto_tick;
+    }
+
+    /// Read the clock and fire the due became-effective timers (the leader's tick);
+    /// returns how many effects are pending afterwards.
+    pub fn tick(&mut self) -> Result<usize, BpaError> {
+        let now = self.services.clock.now();
+        let e = self.adapter.engine_mut();
+        e.now = now;
+        e.tick()?;
+        Ok(e.outbox()?["effects"].as_array().map_or(0, Vec::len))
+    }
+
+    /// One round of the releaser (DSN-NOD-201, IF-DVM-033): claim up to `n` effects for
+    /// `holder` with a lease, deliver them to the host's sink and acknowledge them. A
+    /// failed delivery leaves the claims to expire, so the effects are delivered again
+    /// (at least once). Returns the number delivered.
+    pub fn release_claimed(
+        &mut self,
+        holder: &str,
+        n: usize,
+        lease_ms: i64,
+    ) -> Result<usize, BpaError> {
+        let now = self.services.clock.now();
+        let now_ms = ubos_types::time::parse_instant(&now)
+            .map(|t| t.timestamp_millis())
+            .unwrap_or_default();
+        let e = self.adapter.engine_mut();
+        e.now = now;
+        let rows = e.outbox_claim(
+            &json!({"holder": holder, "n": n, "lease_ms": lease_ms, "now_ms": now_ms}),
+        )?;
+        let mut effects: Vec<Value> = rows["rows"].as_array().cloned().unwrap_or_default();
+        if effects.is_empty() {
+            return Ok(0);
+        }
+        for f in effects.iter_mut() {
+            if let Some(m) = f.as_object_mut() {
+                m.remove("attempts");
+            }
+        }
+        self.services.outbox.release(&effects)?;
+        let ids: Vec<Value> = effects.iter().map(|e| e["effect_id"].clone()).collect();
+        self.adapter.engine_mut().ack(&Value::Array(ids))?;
+        Ok(effects.len())
     }
 
     /// The services.
@@ -296,10 +356,13 @@ impl Vae {
     /// Read the clock, fire due timers, run one operation and release the outbox.
     pub fn call(&mut self, op: &str, input: &Value) -> Result<Value, BpaError> {
         let now = self.services.clock.now();
+        let auto_tick = self.auto_tick;
         let e = self.adapter.engine_mut();
         if e.now != now {
             e.now = now;
-            e.tick()?;
+            if auto_tick {
+                e.tick()?;
+            }
         }
         let started = std::time::Instant::now();
         let out = self.adapter.execute(op, input);
@@ -309,7 +372,9 @@ impl Vae {
             "code": out.as_ref().err().map(|e| e.code),
         }));
         let out = out?;
-        self.release_outbox()?;
+        if !self.claimed_release {
+            self.release_outbox()?;
+        }
         Ok(out)
     }
 

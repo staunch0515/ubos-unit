@@ -377,6 +377,65 @@ impl Engine {
         self.store.remove_timers(&fired)
     }
 
+    /// `outbox_claim {holder, n?, lease_ms?, now_ms?}` (IF-DVM-033): claim unacknowledged
+    /// effects for a releaser with per-object order; `{rows}` with their `attempts`.
+    pub fn outbox_claim(&mut self, i: &Value) -> Result<Value, BpaError> {
+        let holder = i
+            .get("holder")
+            .and_then(Value::as_str)
+            .filter(|h| !h.is_empty())
+            .ok_or_else(|| invalid("holder is required"))?;
+        let n = i
+            .get("n")
+            .and_then(Value::as_u64)
+            .unwrap_or(100)
+            .clamp(1, 10_000) as usize;
+        let lease = i
+            .get("lease_ms")
+            .and_then(Value::as_i64)
+            .unwrap_or(30_000)
+            .clamp(1, 3_600_000);
+        let now_ms = match i.get("now_ms").and_then(Value::as_i64) {
+            Some(t) => t,
+            None => ubos_types::time::parse_instant(&self.now)
+                .map(|t| t.timestamp_millis())
+                .unwrap_or_default(),
+        };
+        let rows = self.store.outbox_claim(holder, now_ms, lease, n)?;
+        Ok(json!({ "rows": rows }))
+    }
+
+    /// `due_effective {branch?, from, to}` (IF-DVM-030): the future segment starts of
+    /// classes that emit `BecameEffective` with `from <= valid_from <= to`, in order.
+    pub fn due_effective(&mut self, i: &Value) -> Result<Value, BpaError> {
+        let branch = i.get("branch").and_then(Value::as_str);
+        let from = i.get("from").and_then(Value::as_str).unwrap_or("");
+        let to = i
+            .get("to")
+            .and_then(Value::as_str)
+            .ok_or_else(|| invalid("to is required"))?;
+        let mut segments: Vec<Value> = self
+            .store
+            .timers()?
+            .into_iter()
+            .filter_map(|t| {
+                let k = &t["key"];
+                let (b, oid, vf, vh) = (
+                    text_of(&k[0]),
+                    text_of(&k[1]),
+                    text_of(&k[2]),
+                    text_of(&k[3]),
+                );
+                let in_range = vf.as_str() >= from && vf.as_str() <= to;
+                (in_range && branch.is_none_or(|x| x == b)).then(
+                    || json!({"branch": b, "object_id": oid, "version_id": vh, "valid_from": vf}),
+                )
+            })
+            .collect();
+        segments.sort_by(|a, b| text_of(&a["valid_from"]).cmp(&text_of(&b["valid_from"])));
+        Ok(json!({ "segments": segments }))
+    }
+
     /// `outbox`: the released effects not yet acknowledged, in release order (STD-TXN-050).
     pub fn outbox(&mut self) -> Result<Value, BpaError> {
         self.tick()?;

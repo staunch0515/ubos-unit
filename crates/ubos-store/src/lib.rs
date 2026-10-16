@@ -379,6 +379,63 @@ pub trait Store {
             })
             .collect())
     }
+    /// Claim up to `n` released effects that are not acknowledged and not under another
+    /// holder's live claim, for `holder` until `now_ms + lease_ms` (IF-DVM-033). Per-key
+    /// order: an effect is claimable only when no earlier unacknowledged effect of the same
+    /// object is held by another holder, so releasers on several nodes keep each object's
+    /// order. Each row carries its `attempts`.
+    fn outbox_claim(
+        &mut self,
+        holder: &str,
+        now_ms: i64,
+        lease_ms: i64,
+        n: usize,
+    ) -> Result<Vec<Value>, BpaError> {
+        let pending = self.outbox_pending()?;
+        let mut claims = self
+            .meta("outbox_claims")?
+            .and_then(|v| v.as_object().cloned())
+            .unwrap_or_default();
+        let mut blocked: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut out = Vec::new();
+        for e in pending {
+            if out.len() >= n {
+                break;
+            }
+            let id = e
+                .get("effect_id")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+            let key = e
+                .get("object_id")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .unwrap_or_else(|| id.clone());
+            let c = claims.get(&id).cloned().unwrap_or(Value::Null);
+            let live_other = c.get("until").and_then(Value::as_i64).unwrap_or(0) > now_ms
+                && c.get("holder").and_then(Value::as_str) != Some(holder);
+            if live_other {
+                blocked.insert(key);
+                continue;
+            }
+            if blocked.contains(&key) {
+                continue;
+            }
+            let attempts = c.get("attempts").and_then(Value::as_u64).unwrap_or(0) + 1;
+            claims.insert(
+                id,
+                serde_json::json!({"holder": holder, "until": now_ms + lease_ms, "attempts": attempts}),
+            );
+            let mut row = e;
+            row["attempts"] = Value::from(attempts);
+            out.push(row);
+        }
+        if !out.is_empty() {
+            self.put_meta("outbox_claims", &Value::Object(claims))?;
+        }
+        Ok(out)
+    }
     /// Release effects outside a flush (BecameEffective events).
     fn outbox_push(&mut self, items: &[Value]) -> Result<(), BpaError> {
         let mut all = self
@@ -1167,6 +1224,15 @@ impl Store for Group {
     }
     fn outbox_released(&mut self, branch: &str, cseq: u64) -> Result<Vec<Value>, BpaError> {
         self.inner.outbox_released(branch, cseq)
+    }
+    fn outbox_claim(
+        &mut self,
+        holder: &str,
+        now_ms: i64,
+        lease_ms: i64,
+        n: usize,
+    ) -> Result<Vec<Value>, BpaError> {
+        self.inner.outbox_claim(holder, now_ms, lease_ms, n)
     }
     fn outbox_push(&mut self, items: &[Value]) -> Result<(), BpaError> {
         self.inner.outbox_push(items)
