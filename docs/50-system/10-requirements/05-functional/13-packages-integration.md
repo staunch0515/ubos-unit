@@ -254,6 +254,7 @@ depends_on: [UBS-REQ-05, UBS-REQ-05-02]
   1. Given an offline node, when bootstrapped, then both Buks are installed.
 - **Verification:** SCN
 - **Origin:** L40:SPEC-28
+- **Phase note:** PH-1 step 16 (DEC-077): the genesis Buks have a PH-1 form, an embedded manifest signed by the platform publisher and installed by one signed commit on `main`; `ontology` carries the party–role core, and its full content (FR-MODEL-091) follows in PH-2 with the Buk format.
 
 ### FR-PKG-072 — Idempotent genesis
 - **Statement:** Genesis installation MUST be idempotent and resumable (SCN-001 A1).

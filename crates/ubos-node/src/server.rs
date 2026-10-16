@@ -36,6 +36,7 @@
 //! ([`identity_api`]). The node's security log receives the kernel's decision and
 //! security logs once a second (DSN-NOD-111).
 
+use crate::config::Config;
 use crate::identity::{Authenticated, Identity};
 use crate::leases::{Leases, MemLeases};
 use crate::schedule::{MemScheduleStore, ScheduleStore};
@@ -203,6 +204,37 @@ const STATUS: &[(&str, u16)] = &[
     ("NOD.STORAGE_UNAVAILABLE", 503),
     ("NOD.BLOB_UNAVAILABLE", 503),
 ];
+
+/// Log levels of the node (`log.level`, reloadable).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum LogLevel {
+    /// Errors only.
+    Error = 0,
+    /// And warnings.
+    Warn = 1,
+    /// And information.
+    Info = 2,
+    /// And each request.
+    Debug = 3,
+    /// Everything.
+    Trace = 4,
+}
+
+static LOG_LEVEL: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(2);
+
+/// Set the log level by name (`error` … `trace`).
+pub fn set_log_level(name: &str) {
+    let l = crate::config::LEVELS
+        .iter()
+        .position(|x| *x == name)
+        .unwrap_or(2) as u8;
+    LOG_LEVEL.store(l, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Whether messages of a level are logged.
+pub fn log_enabled(level: LogLevel) -> bool {
+    level as u8 <= LOG_LEVEL.load(std::sync::atomic::Ordering::Relaxed)
+}
 
 /// The HTTP status of an error code: the registered status, else 500.
 pub fn status_of(code: &str) -> u16 {
@@ -442,6 +474,16 @@ pub trait VaeSource: Send + Sync {
     fn jobs(&self, _tenant: &str, _authority: &str) -> Result<Option<Arc<dyn JobStore>>, BpaError> {
         Ok(None)
     }
+    /// Record an applied configuration version (FR-OPS-093); `false` when the source keeps
+    /// no log (the Server then keeps it in memory).
+    fn record_config(&self, _version: &Value) -> Result<bool, BpaError> {
+        Ok(false)
+    }
+    /// The configuration versions applied by this node, newest first; `None` when the
+    /// source keeps no log.
+    fn config_versions(&self, _node: &str, _limit: i64) -> Result<Option<Vec<Value>>, BpaError> {
+        Ok(None)
+    }
     /// The schedule state of a VAE (step 15d); `None` when the source keeps none (the
     /// Server then keeps it in memory).
     fn schedules(
@@ -546,6 +588,12 @@ impl VaeSource for NodeVaes {
             .jobs(&t, authority)?
             .map(|j| Arc::new(j) as Arc<dyn JobStore>))
     }
+    fn record_config(&self, version: &Value) -> Result<bool, BpaError> {
+        self.0.record_config(version).map(|_| true)
+    }
+    fn config_versions(&self, node: &str, limit: i64) -> Result<Option<Vec<Value>>, BpaError> {
+        self.0.config_versions(Some(node), limit).map(Some)
+    }
     fn schedules(
         &self,
         tenant: &str,
@@ -619,6 +667,14 @@ pub struct Server {
     job_stores: Mutex<HashMap<String, Arc<dyn JobStore>>>,
     /// Schedule stores per VAE (opened once).
     schedule_stores: Mutex<HashMap<String, Arc<dyn ScheduleStore>>>,
+    /// The running configuration (DSN-NOD-603).
+    config: std::sync::RwLock<Arc<Config>>,
+    /// The file the configuration is read from, if any.
+    config_file: Mutex<Option<std::path::PathBuf>>,
+    /// The applied versions when the source keeps no log.
+    config_log: Mutex<Vec<Value>>,
+    /// Request budgets per principal: tokens and the time of the last refill.
+    budgets: Mutex<HashMap<String, (f64, std::time::Instant)>>,
     /// The schedules of each VAE's `main` as last read, with main's head (FR-EVT-042).
     schedule_cache: Mutex<HashMap<String, (String, Vec<Value>)>>,
     /// Wakes the delivery worker after a release that enqueued deliveries.
@@ -654,6 +710,10 @@ impl Server {
             event_stores: Mutex::new(HashMap::new()),
             job_stores: Mutex::new(HashMap::new()),
             schedule_stores: Mutex::new(HashMap::new()),
+            config: std::sync::RwLock::new(Arc::new(Config::defaults())),
+            config_file: Mutex::new(None),
+            config_log: Mutex::new(Vec::new()),
+            budgets: Mutex::new(HashMap::new()),
             schedule_cache: Mutex::new(HashMap::new()),
             deliver_now: tokio::sync::Notify::new(),
             release_now: tokio::sync::Notify::new(),
@@ -705,6 +765,10 @@ impl Server {
             event_stores: Mutex::new(HashMap::new()),
             job_stores: Mutex::new(HashMap::new()),
             schedule_stores: Mutex::new(HashMap::new()),
+            config: std::sync::RwLock::new(Arc::new(Config::defaults())),
+            config_file: Mutex::new(None),
+            config_log: Mutex::new(Vec::new()),
+            budgets: Mutex::new(HashMap::new()),
             schedule_cache: Mutex::new(HashMap::new()),
             deliver_now: tokio::sync::Notify::new(),
             release_now: tokio::sync::Notify::new(),
@@ -714,6 +778,160 @@ impl Server {
     /// This node's identifier (lease and claim holder).
     pub fn node_id(&self) -> &str {
         &self.node_id
+    }
+
+    // ---- configuration (DSN-NOD-603…-605, step 16a) ----
+
+    /// The running configuration.
+    pub fn config(&self) -> Arc<Config> {
+        self.config.read().expect("config").clone()
+    }
+
+    /// Start with a configuration (read from `file`, if any): it becomes the running one
+    /// and is recorded as applied by `author`.
+    pub fn configure(
+        self: &Shared,
+        cfg: Config,
+        file: Option<std::path::PathBuf>,
+        author: &str,
+    ) -> Result<Value, BpaError> {
+        *self.config_file.lock().expect("config file") = file;
+        let old = Config::defaults();
+        let diff = cfg.diff(&old);
+        *self.config.write().expect("config") = Arc::new(cfg.clone());
+        set_log_level(cfg.text("log.level").unwrap_or("info"));
+        self.record_version(&cfg, author, "start", diff, Vec::new())
+    }
+
+    /// Apply a new configuration (FR-OPS-091, -092, DSN-NOD-604): its reloadable keys take
+    /// effect at once and the others at the next start (reported as `restart_required`).
+    /// The version is recorded with its hash, author and diff (FR-OPS-093).
+    pub fn apply_config(
+        self: &Shared,
+        new: Config,
+        author: &str,
+        source: &str,
+    ) -> Result<Value, BpaError> {
+        let cur = self.config();
+        let diff = new.diff(&cur);
+        let restart: Vec<Value> = diff
+            .iter()
+            .filter(|d| d["reloadable"] == json!(false))
+            .map(|d| d["key"].clone())
+            .collect();
+        let running = cur.reloaded(&new);
+        set_log_level(running.text("log.level").unwrap_or("info"));
+        *self.config.write().expect("config") = Arc::new(running);
+        self.budgets.lock().expect("budgets").clear();
+        self.record_version(&new, author, source, diff, restart)
+    }
+
+    /// Read the configuration file again and apply it (SIGHUP); an invalid file is
+    /// rejected and the running configuration stays.
+    pub fn reload(self: &Shared, author: &str) -> Result<Value, BpaError> {
+        let path = self
+            .config_file
+            .lock()
+            .expect("config file")
+            .clone()
+            .ok_or_else(|| {
+                BpaError::new(
+                    "MODEL.INVALID_VALUE",
+                    "the node runs without a configuration file",
+                )
+            })?;
+        let text = std::fs::read_to_string(&path).map_err(|e| {
+            BpaError::new("MODEL.INVALID_VALUE", format!("{}: {e}", path.display()))
+        })?;
+        match Config::parse(&text) {
+            Ok(c) => self.apply_config(c, author, "file"),
+            Err(e) => {
+                self.audit(
+                    "config.rejected",
+                    json!({"author": author, "source": "file", "errors": e.details}),
+                );
+                Err(e)
+            }
+        }
+    }
+
+    fn record_version(
+        &self,
+        cfg: &Config,
+        author: &str,
+        source: &str,
+        diff: Vec<Value>,
+        restart: Vec<Value>,
+    ) -> Result<Value, BpaError> {
+        let v = json!({"node": self.node_id, "hash": cfg.hash(), "author": author, "source": source,
+            "document": cfg.document(), "diff": diff, "restart_required": restart});
+        if !self.source.record_config(&v)? {
+            let mut log = self.config_log.lock().expect("config log");
+            let mut e = v.clone();
+            e["seq"] = json!(log.len() + 1);
+            e["applied_at"] = json!(ubos_dvm::types::time::format_instant(&chrono::DateTime::<
+                chrono::Utc,
+            >::from(
+                std::time::SystemTime::now()
+            )));
+            log.push(e);
+        }
+        self.audit(
+            "config.applied",
+            json!({"node": self.node_id, "hash": cfg.hash(), "author": author,
+            "source": source, "diff": diff, "restart_required": restart}),
+        );
+        Ok(json!({"hash": cfg.hash(), "diff": diff, "restart_required": restart}))
+    }
+
+    /// The configuration versions applied by this node, newest first.
+    pub fn config_versions(&self, limit: i64) -> Result<Vec<Value>, BpaError> {
+        if let Some(v) = self.source.config_versions(&self.node_id, limit)? {
+            return Ok(v);
+        }
+        let log = self.config_log.lock().expect("config log");
+        Ok(log
+            .iter()
+            .rev()
+            .take(limit.max(1) as usize)
+            .map(|e| {
+                let mut e = e.clone();
+                if let Some(m) = e.as_object_mut() {
+                    m.remove("document");
+                }
+                e
+            })
+            .collect())
+    }
+
+    /// An entry of the default tenant's security log (node events: configuration).
+    fn audit(&self, kind: &str, record: Value) {
+        if let Ok(id) = self.identity(&self.default_tenant) {
+            let _ = id.log(kind, record);
+        }
+    }
+
+    /// Whether a principal may make one more request (DSN-NOD-604): a token bucket of
+    /// `limits.requests_per_second` and `limits.burst`; `limits.requests_per_second = 0`
+    /// has no limit.
+    fn allow(&self, principal: &str) -> bool {
+        let cfg = self.config();
+        let rate = cfg.int("limits.requests_per_second") as f64;
+        if rate <= 0.0 {
+            return true;
+        }
+        let burst = cfg.int("limits.burst").max(1) as f64;
+        let now = std::time::Instant::now();
+        let mut b = self.budgets.lock().expect("budgets");
+        let e = b.entry(principal.to_string()).or_insert((burst, now));
+        e.0 = (e.0 + now.duration_since(e.1).as_secs_f64() * rate).min(burst);
+        e.1 = now;
+        if e.0 >= 1.0 {
+            e.0 -= 1.0;
+            true
+        } else {
+            false
+        }
     }
 
     /// The identity of a tenant (opened once; `IAM.NOT_FOUND` for an unknown tenant).
@@ -1643,9 +1861,32 @@ impl Server {
             self.close_session(&key);
             return (key.clone(), vec![self.own_error(&key, &e, rid.as_deref())]);
         }
+        // the request limit per principal (DSN-NOD-604): the session's principal, else
+        // the session
+        let principal = self
+            .sessions
+            .lock()
+            .expect("sessions")
+            .get(&key)
+            .and_then(|e| e.auth.as_ref().map(|a| a.principal.clone()))
+            .unwrap_or_else(|| key.clone());
+        if !is_handshake && !self.allow(&principal) {
+            let e = BpaError::with_details(
+                "LOGIC.LIMIT_EXCEEDED",
+                json!({"reason": "rate_limited", "requests_per_second": self.config().int("limits.requests_per_second")}),
+            );
+            return (key.clone(), vec![self.own_error(&key, &e, rid.as_deref())]);
+        }
+        let started = std::time::Instant::now();
         let out = handle
             .call("ubtp", json!({"session": key, "messages": [message]}))
             .await;
+        if log_enabled(LogLevel::Debug) {
+            eprintln!(
+                "ubos-server: debug {type_} session={key} {} us",
+                started.elapsed().as_micros()
+            );
+        }
         let mut frames = match out {
             Ok(v) => v["responses"].as_array().cloned().unwrap_or_default(),
             Err(e) => vec![self.own_error(&key, &e, rid.as_deref())],
@@ -2381,6 +2622,12 @@ async fn identity_api(
     let tenant = bearer
         .as_ref()
         .and_then(|t| t.split('.').next().map(str::to_string))
+        // an invitation link names its tenant in its token
+        .or_else(|| {
+            rest.strip_prefix("invitations/")
+                .and_then(|t| t.split('.').next())
+                .map(str::to_string)
+        })
         .or_else(|| header(&headers, "ubtp-tenant"))
         .unwrap_or_else(|| s.default_tenant.clone());
     let body: Value = if body.is_empty() {
@@ -2545,6 +2792,12 @@ async fn admin_api(
         let input = json!({"branch": q.get("branch").cloned().unwrap_or_else(|| "main".into()),
             "type": q.get("type"), "handler": q.get("handler")});
         return match h.call("host.listeners", input).await {
+            Ok(v) => Json(v).into_response(),
+            Err(e) => problem_response(&e),
+        };
+    }
+    if p.first() == Some(&"config") {
+        return match admin_config(&s, &method, &p, &q, &body, &me.did).await {
             Ok(v) => Json(v).into_response(),
             Err(e) => problem_response(&e),
         };
@@ -2727,6 +2980,64 @@ async fn admin_api(
     }
 }
 
+/// The configuration routes of the operator API (step 16a): `GET config` (the running
+/// configuration, references only, and the schema), `GET config/versions`, `POST config`
+/// `{document}` (validate, write the file when the node has one, apply).
+async fn admin_config(
+    s: &Shared,
+    method: &Method,
+    p: &[&str],
+    q: &HashMap<String, String>,
+    body: &Value,
+    by: &str,
+) -> Result<Value, BpaError> {
+    match (method.as_str(), p) {
+        ("GET", ["config"]) => {
+            let c = s.config();
+            Ok(json!({"hash": c.hash(), "values": c.values(), "schema": crate::config::schema()}))
+        }
+        ("GET", ["config", "versions"]) => {
+            let limit = q.get("limit").and_then(|x| x.parse().ok()).unwrap_or(50);
+            let me = s.clone();
+            Ok(json!({"items": blocking(move || me.config_versions(limit)).await?}))
+        }
+        ("POST", ["config"]) => {
+            let text = body["document"]
+                .as_str()
+                .ok_or_else(|| BpaError::new("MODEL.INVALID_VALUE", "document is the TOML text"))?
+                .to_string();
+            let (me, by) = (s.clone(), by.to_string());
+            blocking(move || {
+                let cfg = match Config::parse(&text) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        me.audit(
+                            "config.rejected",
+                            json!({"author": by, "source": "api", "errors": e.details}),
+                        );
+                        return Err(e);
+                    }
+                };
+                // the file stays the source of truth: it is replaced first, atomically
+                if let Some(path) = me.config_file.lock().expect("config file").clone() {
+                    let tmp = path.with_extension("toml.new");
+                    std::fs::write(&tmp, &text)
+                        .and_then(|_| std::fs::rename(&tmp, &path))
+                        .map_err(|e| {
+                            BpaError::new(
+                                "NOD.STORAGE_UNAVAILABLE",
+                                format!("{}: {e}", path.display()),
+                            )
+                        })?;
+                }
+                me.apply_config(cfg, &by, "api")
+            })
+            .await
+        }
+        _ => Err(BpaError::new("IAM.NOT_FOUND", "unknown admin route")),
+    }
+}
+
 /// The schedule routes of the operator API (step 15d).
 #[allow(clippy::too_many_arguments)]
 async fn admin_schedules(
@@ -2874,6 +3185,8 @@ fn identity_call(
     let num = |k: &str| q.get(k).and_then(|v| v.parse::<u64>().ok());
     let not_found = || BpaError::new("IAM.NOT_FOUND", "unknown identity route");
     match (method.as_str(), p.as_slice()) {
+        // the one-time administrator link of a bootstrap (DSN-NOD-602)
+        ("POST", ["invitations", token]) => id.accept_invitation(token, text(body, "password")?),
         ("POST", ["sign-in"]) => {
             let signed = id.sign_in(
                 text(body, "username")?,

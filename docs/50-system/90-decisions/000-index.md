@@ -60,6 +60,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-074 | Row filters for list queries (DEC-065 item 3, DSN-DVM-820; PH-1 step 13d): the policy set is applied to the candidate rows as a residual post-filter after the index scan, the order-by pushdown bounding the rows read (`offset + limit` index rows in key order, four times more while rows are filtered, up to the scan budget); partial evaluation and residual predicates pushed into the scan are revisited when `cedar-policy`'s partial evaluation stabilises or the ENV-REF-SERVER run of VER-BENCH-2000 fails MET-PERF-016; a field index declared after the class has instances is rebuilt over the heads of every branch and serves a branch from its rebuild commit (`index_since`); branches without a common ancestor have no merge base (`VER.MERGE_NOT_ALLOWED`) | Accepted |
 | DEC-075 | PH-1 step 14 (single-node Server and local identity) in parts 14a–14d: 14a the crate `ubos-proto` (UBTP envelope, message and frame types, handshake negotiation, cursors; moved to the engine layer so the kernel's in-process binding and the Server share it) and the kernel's in-process binding (`ubtp` adapter operation; the Protocol profile claimed, 88 vectors), the implicit process identifiers aligned with the reference model; 14b the Server's request pipeline and the WebSocket and HTTP/SSE bindings on `axum` and `tokio-tungstenite`; 14c local identity (Argon2id and TOTP, sessions, revocation, principal keys and lifecycle, service principals, the node's security log, API keys and scopes; WebAuthn deferred to PH-2); 14d SUITE-NOD-PROTO over every binding, version-skew cases, the EXIT-1-15 report | Accepted |
 | DEC-076 | PH-1 step 15 (events, jobs and schedules) in parts 15a–15e: jobs as System-kind `Job` objects with leases, heartbeats and fencing tokens in the `job` table as the runtime hint; a handler delivery is a job and a dead letter is a job in `dead`; the platform classes `Subscription`, `Schedule` and `Job` in the namespace `ubos.platform`, provided by the node and outside BPA 1.0; handlers of kind port and logic in PH-1, webhook, connector and workflow handlers with delivery masking in PH-2; dead letters retried, cancelled or annotated, never edited; FR-EVT-041 misfire names; became-effective driven every second; tenant round-robin and concurrency limits now; poison by repeated error signature; bulk as a job, sagas in PH-2 | Accepted |
+| DEC-077 | PH-1 step 16 (operations and configuration) in parts 16a–16f: a versioned `ubos.toml` with a schema, secret references only, hot reload and an audit of every applied version; `ubos-server bootstrap` with prerequisite checks and a one-time administrator invitation; genesis Buks in a PH-1 form (an embedded signed manifest of declarations installed by one signed commit on `main`, no loader branch), `system` with the platform classes and `ontology` with the party–role core; a self-written OTLP/HTTP exporter; backups to a local or mounted directory with a separate backup key, the S3 object store in PH-2; Box installers in PH-4 (DEC-024); the isolation suite at step 19; a per-principal request rate limit; the ENV-REF-SMALL runs of EXIT-1-18 with step 19 | Accepted |
 
 ---
 
@@ -734,3 +735,57 @@ The table rows and records of DEC-001 … DEC-029 are in `01-records-dec-001-029
 - **Consequences:** Phase notes on DSN-NOD-201, -202, -208, -209, -220, -221, -223, -225, -230, FR-EVT-021 and FR-EVT-041. The kernel gains `outbox_claim`, `outbox_ack` and `due_effective`; migration 0009 and later ones add the releaser's claims, the leadership leases and the schedule state. The benchmark report lives in `verify/reports/exit-1-17/` beside step 13d's; the reference-environment runs remain in step 19.
 - **Alternatives considered:** Jobs as table rows only (gate 1a) were rejected (FR-EVT-031 asks for objects, and a lost table would lose jobs); a commit per heartbeat was rejected (write amplification with no evidence value); adding the platform classes to BPA 1.0 was rejected (the release is near and these are host behaviours); webhooks in PH-1 without masking were rejected (payloads would leave unmasked).
 - **Affects:** DSN-NOD-201, DSN-NOD-202, DSN-NOD-208, DSN-NOD-209, DSN-NOD-220, DSN-NOD-221, DSN-NOD-222, DSN-NOD-223, DSN-NOD-225, DSN-NOD-230, FR-EVT-021, FR-EVT-034, FR-EVT-041, FR-EVT-052, EXIT-1-17, NR-DUR-006, DEC-063
+
+### DEC-077 — PH-1 step 16: operations and configuration, parts 16a–16f
+- **Date:** 2026-10-16 · **Status:** Accepted
+- **Context:**
+  - **The step.** Step 16 of gate 1b (DEC-063) makes the single-node Server installable, configurable, observable and recoverable: CAP-OPS-04, -05, -09 and CAP-TEN (DSN-NOD-401…-406, -420, -601…-605, -610…-616, -620, -623, -633) with EXIT-1-18 (installed from the guide on ENV-REF-SMALL, PITR verified at 10 points, a diagnostic bundle in ≤ 5 minutes).
+  - **Existing.** Steps 7a and 14 left the tenant registry, migrations at start, the `--admin` bootstrap and an in-memory telemetry ring.
+  - **Missing.** No configuration file, health endpoints, OTLP export, backup, packages or genesis Buks.
+  - **Requirements ahead of their PH-1 basis:**
+    - FR-PKG-071 asks PH-1 to embed and install the `system` and `ontology` Buks, while the Buk format and loader-branch installation (FR-PKG-011…-061) and the ontology's content (FR-MODEL-091, DSN-NOD-424) are PH-2.
+    - FR-OPS-011 lists Box installers, while the Box is PH-4 (DEC-024).
+    - DSN-NOD-620 and DSN-NOD-602 name an object store, while PH-1 keeps blobs in PostgreSQL.
+- **Decision:**
+  1. **Parts.** One pull request per part.
+     - 16a: configuration and bootstrap (DSN-NOD-602…-605; FR-OPS-091…-093; NR-OPER-003).
+     - 16b: the tenant registry and creation, isolation enforcement and the genesis Buks (DSN-NOD-401, -402, -404, -405, -420; FR-PKG-071, -072).
+     - 16c: telemetry, health, self-checks and degraded modes (DSN-NOD-610, -611, -613, -614, -616; NR-OBS-001).
+     - 16d: diagnostic bundles (DSN-NOD-615; NR-OPER-005).
+     - 16e: backup, point-in-time restore and upgrade (DSN-NOD-620, -623, -633; SCN-017).
+     - 16f: packages, the installation guide, SUITE-NOD-OPS (PH-1 part) and the EXIT-1-18 report (DSN-NOD-601; FR-OPS-011; SCN-001).
+  2. **Configuration.**
+     - Node configuration is a versioned `ubos.toml` with a schema (type, range, reloadable or not), validated at start and on reload. An invalid version is rejected and the running one stays.
+     - Each applied version is recorded with its hash, author and diff.
+     - Secrets appear only as `env:`, `file:` or `kms:` references; an inline value is refused.
+     - Reload is by SIGHUP or the operator API; keys that are not reloadable report "restart required".
+     - A per-principal request rate limit is added as a reloadable key (DSN-NOD-604 acceptance 1).
+  3. **Bootstrap.**
+     - `ubos-server bootstrap` checks the prerequisites and applies the migrations.
+     - It creates the first tenant and VAE, installs the genesis Buks and prints a one-time administrator invitation.
+     - `--admin` stays for development.
+  4. **Genesis Buks in PH-1.**
+     - Form: a genesis Buk is a manifest of declarations and objects with its content hash and the platform publisher's Ed25519 signature, embedded in the binary.
+     - Installation: one signed commit on `main` that records the installed Buk and its version; there is no loader branch (FR-PKG-031 stays PH-2).
+     - Failure and repeats: an invalid signature stops with `PKG.SIGNATURE_INVALID` and leaves the store empty. A second installation of the same version changes nothing.
+     - `system`: the platform classes `Subscription`, `Schedule`, `Job` and `Tenant` (DEC-076 item 4).
+     - `ontology`: the party–role core `Party` (abstract), `Person`, `Organisation`, `Role` and `PartyRole`. The full content of FR-MODEL-091 follows in PH-2 with the Buk format.
+  5. **Telemetry.**
+     - A self-written OTLP/HTTP exporter (JSON encoding, bounded batches) sends traces, metrics and logs, with no OpenTelemetry dependency tree.
+     - `traceparent` propagates from HTTP and UBTP through the edge, the DVM operation, the flush steps, storage and jobs, with the process ID as an attribute.
+  6. **Backups.**
+     - Base backups and the continuous WAL archive go to a local or mounted directory chosen by the operator, encrypted with a backup key separate from the tenant KEKs; the retention defaults to 35 days.
+     - The S3 object store, and its versioning in backups, follow in PH-2; PH-1 blobs live in PostgreSQL and are covered by point-in-time restore.
+  7. **Scope kept elsewhere.**
+     - Box installers follow the Box in PH-4 (DEC-024).
+     - The isolation suite (DSN-NOD-406, VER-SEC-2000) stays at step 19; step 16 enforces DSN-NOD-405.
+     - EXIT-1-18 runs on the workstation in step 16, and on ENV-REF-SMALL with the reference runs of step 19, as for EXIT-1-15 and EXIT-1-17.
+- **Consequences:**
+  - Phase notes on FR-OPS-011, FR-OPS-012, FR-PKG-071, DSN-NOD-420, DSN-NOD-601, DSN-NOD-602, DSN-NOD-620 and SCN-001.
+  - Migration 0013 and later ones add the configuration log and the tenant setup steps.
+  - Reports live in `verify/reports/exit-1-18/`.
+- **Alternatives considered:**
+  - The OpenTelemetry crates were rejected: a large dependency tree for three OTLP/HTTP endpoints.
+  - A Buk format ahead of FR-PKG-011 was rejected: the format is PH-2 and would be redesigned.
+  - An S3 target in PH-1 was rejected: no object store exists before PH-2.
+- **Affects:** DSN-NOD-401, DSN-NOD-402, DSN-NOD-405, DSN-NOD-406, DSN-NOD-420, DSN-NOD-601, DSN-NOD-602, DSN-NOD-603, DSN-NOD-604, DSN-NOD-605, DSN-NOD-610, DSN-NOD-620, FR-OPS-011, FR-OPS-012, FR-PKG-071, SCN-001, EXIT-1-18, DEC-063

@@ -25,6 +25,7 @@ depends_on: [UBS-REQ-04]
 - **Postconditions (observable):** 1. The history of `main` shows exactly two genesis merges. 2. Every genesis commit verifies against the publisher key. 3. The Merkle root of `main` is reported.
 - **Business rules exercised:** FR-OPS-011, FR-PKG-071, FR-TEN-011, FR-IAM-031, FR-PROOF-021
 - **Verification:** SCN, FAULT, CONF
+- **Phase note:** PH-1 step 16 (DEC-077): each genesis Buk installs by one signed commit on `main` recording the Buk; installation through a loader branch follows in PH-2 (FR-PKG-031).
 
 ### SCN-002 — Define a class hierarchy and create instances
 - **Goal:** A builder defines a base class and a subclass, and users create instances that are validated on commit.
