@@ -3,6 +3,7 @@
 //! ```text
 //! ubos-server [--listen 127.0.0.1:8080] [--database URL | --memory [--genesis FILE]]
 //!             [--tenant SLUG] [--vae AUTHORITY] [--preset dev|server]
+//!             [--admin USERNAME:PASSWORD]
 //! ```
 //!
 //! With `--database` the Server serves the VAEs of the node's tenancy registry on
@@ -10,7 +11,8 @@
 //! its genesis classes from `--genesis` (a JSON list of class declarations).
 
 use serde_json::Value;
-use ubos_node::server::{NodeVaes, Preset, Server, SingleVae, VaeHandle, memory_vae};
+use std::sync::Arc;
+use ubos_node::server::{NodeVaes, Preset, Server, VaeHandle, memory_vae};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -49,20 +51,61 @@ fn main() {
             eprintln!("{e}");
             std::process::exit(1)
         });
-        Server::new(Box::new(SingleVae(handle)), preset, &tenant, &authority)
+        let identity =
+            ubos_node::identity::Identity::memory(&tenant, &authority).unwrap_or_else(|e| {
+                eprintln!("{e}");
+                std::process::exit(1)
+            });
+        Server::single(handle, Arc::new(identity), preset, &tenant, &authority)
     } else {
         let url = opt("--database").unwrap_or_default();
         let node = ubos_node::Node::connect(&url).unwrap_or_else(|e| {
             eprintln!("{e}");
             std::process::exit(1)
         });
+        // the default tenant and its VAE exist (created on the first start)
+        let created = (|| -> Result<bool, ubos_dvm::types::BpaError> {
+            let t = match node.tenant(&tenant)? {
+                Some(_) => return Ok(false),
+                None => node.create_tenant(&tenant)?,
+            };
+            node.create_vae(&t, &authority)?;
+            Ok(true)
+        })()
+        .unwrap_or_else(|e| {
+            eprintln!("{e}");
+            std::process::exit(1)
+        });
+        if created {
+            eprintln!("tenant {tenant} with VAE {authority} created");
+        }
         Server::new(
-            Box::new(NodeVaes(std::sync::Arc::new(node))),
+            Box::new(NodeVaes(Arc::new(node))),
             preset,
             &tenant,
             &authority,
         )
     };
+    // the first administrator of the default tenant (`--admin` or `UBOS_ADMIN`), when the
+    // username is free
+    let admin = opt("--admin").or_else(|| std::env::var("UBOS_ADMIN").ok());
+    if let Some(a) = admin {
+        let Some((user, password)) = a.split_once(':') else {
+            eprintln!("--admin takes USERNAME:PASSWORD");
+            std::process::exit(2)
+        };
+        match server
+            .identity(&tenant)
+            .and_then(|id| id.bootstrap_admin(user, password))
+        {
+            Ok(Some(did)) => eprintln!("administrator {user} created as {did}"),
+            Ok(None) => eprintln!("administrator {user} exists"),
+            Err(e) => {
+                eprintln!("{e}");
+                std::process::exit(1)
+            }
+        }
+    }
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

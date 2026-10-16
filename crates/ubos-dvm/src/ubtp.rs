@@ -59,6 +59,9 @@ pub struct Session {
     kind: String,
     role: Option<String>,
     grants: Option<Vec<String>>,
+    /// The authentication level the host established (the `auth_level` of the decision
+    /// context, DSN-NOD-105), if any.
+    auth_level: Option<String>,
     window: u64,
     ids: BTreeSet<String>,
     next_id: u64,
@@ -105,6 +108,9 @@ impl Session {
         if let Some(r) = &self.role {
             p["role"] = json!(r);
         }
+        if let Some(a) = &self.auth_level {
+            p["auth_level"] = json!(a);
+        }
         for (k, v) in extra {
             p[k] = v;
         }
@@ -117,6 +123,9 @@ impl Session {
             json!({"principal": self.principal, "principal_kind": self.kind, "channel": "api"});
         if let Some(r) = &self.role {
             c["role"] = json!(r);
+        }
+        if let Some(a) = &self.auth_level {
+            c["auth_level"] = json!(a);
         }
         c
     }
@@ -235,11 +244,13 @@ impl Engine {
             kind,
             role,
             grants,
+            auth_level,
         } = ubos_proto::negotiate(body)?;
         session.principal = principal.unwrap_or_else(|| self.principal.clone());
         session.kind = kind;
         session.role = role;
         session.grants = grants;
+        session.auth_level = auth_level;
         session.open = true;
         let limits = Limits {
             window: session.window,
@@ -552,6 +563,9 @@ impl Engine {
                 let mut ctx = json!({"principal_kind": session.kind, "channel": "api"});
                 if let Some(r) = &session.role {
                     ctx["role"] = json!(r);
+                }
+                if let Some(a) = &session.auth_level {
+                    ctx["auth_level"] = json!(a);
                 }
                 let mut i = json!({"branch": branch, "object_id": oid, "ctx": ctx});
                 for (k, v) in &sel {

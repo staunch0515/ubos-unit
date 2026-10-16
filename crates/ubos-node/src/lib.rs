@@ -6,6 +6,9 @@
 //! * [`Node`]: the tenant registry (DSN-NOD-401, -402) and `open_vae`.
 //! * [`keys`]: the key hierarchy root KEK → tenant KEK → data keys and node signing keys
 //!   (DSN-NOD-131, -134), the secret store (DSN-NOD-130).
+//! * [`identity`]: local identity (step 14c): principals, Argon2id and TOTP credentials,
+//!   sessions, API keys and scopes, principal keys, the node's security log
+//!   (DSN-NOD-101, -105, -106, -108…-111, -150, -153).
 //! * [`services`]: the blob service, connectors with an allow-list, the event log that
 //!   receives released effects, jobs with leases and retries, telemetry without business
 //!   data (DSN-NOD-201, -202, -220, -221, -223, -301, -320, -610, -611).
@@ -13,6 +16,7 @@
 //! The Server of gate 1b (UBTP, sessions, schedules, backup) builds on these services.
 
 pub mod db;
+pub mod identity;
 pub mod keys;
 pub mod server;
 pub mod services;
@@ -281,6 +285,26 @@ impl Node {
         let engine = Engine::open_existing(Box::new(store))?;
         let services = self.vae_services(tenant, &vae_id)?;
         Ok(Vae::open(engine, services))
+    }
+
+    /// The local identity of a tenant (DSN-NOD-101…-153): records in the tenant tables,
+    /// TOTP secrets and custodial key seeds under a key derived from the tenant KEK; the
+    /// authority of its registered DIDs is the tenant slug.
+    pub fn identity(&self, tenant: &Tenant) -> Result<identity::Identity, BpaError> {
+        let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
+        let master = self.keys(tenant)?.derive("ubos.identity.v1", "master");
+        Ok(identity::Identity::new(
+            Box::new(identity::PgBackend::new(scoped, &tenant.id)),
+            &tenant.slug,
+            &tenant.slug,
+            master,
+        ))
+    }
+
+    /// The secret store of a tenant (DSN-NOD-130; the operator interface of the Server).
+    pub fn secrets(&self, tenant: &Tenant) -> Result<keys::SecretStore, BpaError> {
+        let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
+        Ok(keys::SecretStore::new(scoped, self.keys(tenant)?))
     }
 
     /// The scoped database of a tenant (services and suites).

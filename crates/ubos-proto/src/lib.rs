@@ -192,6 +192,9 @@ pub struct InProcess {
     pub role: Option<String>,
     /// `None` leaves the caller unrestricted; a list restricts it to those permissions.
     pub grants: Option<Vec<String>>,
+    /// Authentication level the host established (`password`, `mfa`, `api_key`; the
+    /// `auth_level` of the context policies see), if any.
+    pub auth_level: Option<String>,
 }
 
 /// Negotiate a handshake body (STD-PROTO-002): the protocol version, the ABI range and the
@@ -247,6 +250,7 @@ pub fn negotiate(body: &Map<String, Value>) -> Result<InProcess, BpaError> {
         principal: text("principal"),
         kind: text("principal_kind").unwrap_or_else(|| "human".into()),
         role: text("role"),
+        auth_level: text("auth_level"),
         grants: cred.get("grants").filter(|v| !v.is_null()).map(|g| {
             g.as_array()
                 .into_iter()

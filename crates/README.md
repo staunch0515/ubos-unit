@@ -120,6 +120,20 @@ over the memory store (development and suites); `--database URL` serves the tena
 registry on PostgreSQL. The `dev` preset accepts `{kind: "dev"}` handshake credentials; the
 credentials of local identity come with step 14c.
 
+Local identity of step 14c (`ubos-node/src/identity.rs`, one `Identity` per tenant over the
+tables of migration 0008 or memory): principals with registered-form DIDs and the lifecycle
+`invited` → `active` ⇄ `suspended` → `deprovisioned`; Argon2id passwords (64 MiB, 3
+iterations) with TOTP, progressive delay and lockout per account and per source; hashed-token
+sessions with idle and absolute timeouts; API keys with scopes (`read`, `write`, `admin`,
+`read:<Class>`, `write:<Class>`, `vae:<authority>`) that become the binding's grants
+intersected with the principal's; custodial or client-held Ed25519 keys with a rotation
+history and DID documents; the node's hash-chained security log, fed by the kernel's
+decision and security logs once a second. The Server takes `{kind: "password" | "bearer" |
+"api_key"}` handshake credentials, `Authorization: Bearer` on the facade and serves the
+identity API under `/api/v1/identity` (sign-in, principals, credentials, API keys, sessions,
+keys, the security log, the session policy, secrets); `ubos-server --admin USER:PASSWORD`
+creates the first administrator.
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh
