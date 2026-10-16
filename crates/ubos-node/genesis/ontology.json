@@ -1,0 +1,147 @@
+{
+ "name": "ontology",
+ "version": "0.1.0",
+ "publisher": "ubos",
+ "description": "The party–role core of the base business ontology; its full content (FR-MODEL-091) follows in PH-2 (DEC-077)",
+ "classes": [
+  {
+   "name": "Party",
+   "label": "Party",
+   "namespace": "ubos.ontology",
+   "description": "A person or an organisation that takes part in business (FR-MODEL-091)",
+   "parent": "DataObject",
+   "kind": "definition",
+   "abstract": true,
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "name",
+     "label": "name",
+     "description": "name",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "country",
+     "label": "country",
+     "description": "country",
+     "type": "text",
+     "required": false
+    }
+   ]
+  },
+  {
+   "name": "Person",
+   "label": "Person",
+   "namespace": "ubos.ontology",
+   "description": "A natural person",
+   "parent": "Party",
+   "kind": "definition",
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "given_name",
+     "label": "given name",
+     "description": "given name",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "family_name",
+     "label": "family name",
+     "description": "family name",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "email",
+     "label": "email",
+     "description": "email",
+     "type": "text",
+     "required": false
+    }
+   ]
+  },
+  {
+   "name": "Organisation",
+   "label": "Organisation",
+   "namespace": "ubos.ontology",
+   "description": "A legal entity or another organisation",
+   "parent": "Party",
+   "kind": "definition",
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "legal_name",
+     "label": "legal name",
+     "description": "legal name",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "registration_number",
+     "label": "registration number",
+     "description": "registration number",
+     "type": "text",
+     "required": false
+    }
+   ]
+  },
+  {
+   "name": "Role",
+   "label": "Role",
+   "namespace": "ubos.ontology",
+   "description": "A role a party can play (customer, supplier, employee, …)",
+   "parent": "DataObject",
+   "kind": "definition",
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "name",
+     "label": "name",
+     "description": "name",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "description",
+     "label": "description",
+     "description": "description",
+     "type": "text",
+     "required": false
+    }
+   ]
+  },
+  {
+   "name": "PartyRole",
+   "label": "Party role",
+   "namespace": "ubos.ontology",
+   "description": "A party playing a role (the party–role model, FR-MODEL-092)",
+   "parent": "DataObject",
+   "kind": "definition",
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "party",
+     "label": "party",
+     "description": "party",
+     "type": "reference",
+     "required": true,
+     "constraints": {
+      "target_class": "Party"
+     }
+    },
+    {
+     "name": "role",
+     "label": "role",
+     "description": "role",
+     "type": "reference",
+     "required": true,
+     "constraints": {
+      "target_class": "Role"
+     }
+    }
+   ]
+  }
+ ]
+}

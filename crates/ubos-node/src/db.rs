@@ -14,6 +14,16 @@ fn err(m: impl std::fmt::Display) -> BpaError {
     BpaError::new("NOD.STORAGE_UNAVAILABLE", m.to_string())
 }
 
+/// Isolation defects detected (DSN-NOD-405): a tenant-scoped pool asked for without a
+/// valid tenant. The self-checks report them.
+pub static ISOLATION_DEFECTS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Raise an isolation defect alert.
+pub fn isolation_alert(what: &str) {
+    ISOLATION_DEFECTS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    eprintln!("ubos: ISOLATION DEFECT: {what}");
+}
+
 /// A future a database job returns.
 pub type Job<R> = Pin<Box<dyn Future<Output = Result<R, BpaError>> + Send>>;
 
@@ -57,8 +67,21 @@ impl Db {
         Db::tenant_with(url, tenant_id, 4)
     }
 
-    /// The application role in one tenant with a pool of at most `max` connections.
+    /// The application role in one tenant with a pool of at most `max` connections. The
+    /// pool's connections are bound to the tenant for their life (DSN-NOD-405): a pool
+    /// serves one tenant and is never shared, and a pool without a valid tenant is refused
+    /// with an isolation alert (row-level security gives a connection without a tenant no
+    /// rows).
     pub fn tenant_with(url: &str, tenant_id: &str, max: u32) -> Result<Db, BpaError> {
+        let ok =
+            tenant_id.len() == 36 && tenant_id.chars().all(|c| c.is_ascii_hexdigit() || c == '-');
+        if !ok {
+            isolation_alert("a tenant pool without a valid tenant was refused");
+            return Err(BpaError::with_details(
+                "NOD.STORAGE_UNAVAILABLE",
+                serde_json::json!({"reason": "tenant_not_set"}),
+            ));
+        }
         Db::open(
             url,
             Some(format!(
