@@ -2719,6 +2719,7 @@ dependencies = [
  "ubos-flow",
  "ubos-model",
  "ubos-proof",
+ "ubos-proto",
  "ubos-query",
  "ubos-rules",
  "ubos-runtime",
@@ -2787,6 +2788,15 @@ dependencies = [
  "serde_json",
  "ubos-crypto",
  "ubos-tree",
+]
+
+[[package]]
+name = "ubos-proto"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "ubos-types",
 ]
 
 [[package]]

@@ -20,6 +20,7 @@ pub mod rules;
 pub mod sheets;
 pub mod stateful;
 pub mod transactions;
+pub mod ubtp;
 pub mod verification;
 
 pub use ubos_authz as authz_engine;

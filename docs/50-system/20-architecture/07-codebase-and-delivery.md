@@ -41,8 +41,8 @@ component names below are used throughout this volume; each maps to a top-level 
 | `ubos-query` | engine | criteria queries, aggregation, traversal, history queries, pagination | `ubos-time`, `ubos-expr`, `ubos-model`, `ubos-crypto`, `ubos-authz` |
 | `ubos-txn` | engine | processes, unit of work, flush orchestration, CAS, idempotency, outbox, provenance | all engine crates above |
 | `ubos-proof` | engine | evidence formats, seal format, verification primitives (shared with `ubos-verify`) | `ubos-tree`, `ubos-crypto` |
+| `ubos-proto` | engine | UBTP message schemas and codecs: the envelope, request and frame types, handshake negotiation, cursors (shared by the kernel's in-process binding, the Server and the SDKs; DEC-075) | `ubos-types` |
 | `ubos-dvm` | engine | host API facade (CTR-001) and host-service traits (CTR-002) | engine crates |
-| `ubos-proto` | host | UBTP message schemas and codecs | `ubos-types` |
 | `ubos-node` | host | Server and Cell host: transports, sessions, jobs, schedules, connectors, secrets, telemetry, sync, admin endpoint | `ubos-dvm`, `ubos-proto` |
 | `ubos-box` | host | desktop and mobile host (Tauri 2) | `ubos-dvm`, `ubos-proto` |
 | `ubos-worker` | host | worker role | `ubos-runtime`, `ubos-proto` |

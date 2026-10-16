@@ -122,7 +122,7 @@ pub fn process(
         p["process_id"].as_str().unwrap_or_default().to_string()
     } else {
         *next += 1;
-        format!("01900000-0000-7000-8000-{:012x}", 0x1000_0000u64 + *next)
+        format!("00000000-0000-4000-8000-{:012x}", *next)
     };
     Ok(Process { id, explicit, p })
 }

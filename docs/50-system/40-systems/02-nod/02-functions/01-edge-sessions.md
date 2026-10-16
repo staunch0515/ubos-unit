@@ -295,6 +295,7 @@ Reading order:
   1. Given 20 failed logins in a minute, when a 21st is attempted, then it is delayed or locked, and a security event is logged.
 - **Verification:** SEC
 - **Origin:** FR-IAM-011, FR-IAM-013, NR-SEC-004
+- **Phase note:** PH-1 step 14 (DEC-075): the WebAuthn second factor is deferred to PH-2 with the Workspace client; PH-1 ships Argon2id passwords with TOTP, progressive delay and lockout.
 
 ### DSN-NOD-102 — Box local unlock
 - **Statement:** The Box MUST unlock its database key with an OS key-store-protected key and a local factor (PIN, biometrics or password) (FR-IAM-014).

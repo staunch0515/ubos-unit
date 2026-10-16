@@ -52,6 +52,8 @@ pub struct Engine {
     /// The commit from which a rebuilt field index serves a branch (`class.field` →
     /// branch → cseq; DSN-DVM-902, step 13d): queries at an earlier commit scan.
     pub index_since: BTreeMap<String, BTreeMap<String, u64>>,
+    /// The sessions of the in-process UBTP binding (step 14a).
+    pub ubtp_sessions: BTreeMap<String, crate::ubtp::Session>,
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
@@ -82,6 +84,7 @@ impl Engine {
             authz: Default::default(),
             decision_log: Vec::new(),
             index_since: BTreeMap::new(),
+            ubtp_sessions: BTreeMap::new(),
         };
         e.reset()?;
         Ok(e)
@@ -107,6 +110,7 @@ impl Engine {
             authz: Default::default(),
             decision_log: Vec::new(),
             index_since: BTreeMap::new(),
+            ubtp_sessions: BTreeMap::new(),
         };
         e.load_genesis(classes, None)?;
         Ok(e)
@@ -120,6 +124,7 @@ impl Engine {
         self.authz.clear();
         self.decision_log.clear();
         self.index_since.clear();
+        self.ubtp_sessions.clear();
         self.now = DEFAULT_NOW.into();
         self.instances.clear();
         self.rules.clear();
@@ -203,6 +208,7 @@ impl Engine {
             authz: Default::default(),
             decision_log: Vec::new(),
             index_since: BTreeMap::new(),
+            ubtp_sessions: BTreeMap::new(),
         };
         if e.store.branch("main")?.is_none() {
             Repo::new(e.store.as_mut(), &e.registry).init()?;
