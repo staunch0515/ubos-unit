@@ -442,8 +442,13 @@ pub fn evaluate(
     let mut out = Evaluated::default();
     let enabled = b.get("enabled").and_then(Value::as_bool).unwrap_or(true);
     let cursor = store.cursor(id)?;
-    let Some(cursor) = cursor.filter(|_| enabled) else {
-        // a first evaluation starts now; a disabled schedule has no slots
+    // a disabled schedule has no slots and keeps no cursor (the leader forgets it, and a
+    // VAE with only disabled schedules has no schedule work); enabled again, it starts now
+    if !enabled {
+        return Ok(out);
+    }
+    let Some(cursor) = cursor else {
+        // a first evaluation starts now
         store.set_cursor(id, now)?;
         return Ok(out);
     };

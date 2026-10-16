@@ -183,6 +183,12 @@ reloadable keys and record the version (`node_config`); `ubos-server bootstrap` 
 prerequisites, migrates, creates the default tenant and VAE and prints a one-time
 administrator invitation link.
 
+Genesis and tenants of step 16b (`ubos-node/src/genesis.rs`, `genesis/`): the signed
+genesis Buks `system` and `ontology` are installed when a tenant is provisioned
+(`Node::provision`, resumable steps recorded in `tenant_setup`); `ubos-server
+genesis-verify` checks their signatures and `genesis-sign` re-signs edited manifests. The
+registry's platform settings appear in each VAE as the read-only `Tenant` object.
+
 SUITE-NOD-EVENTS and SUITE-NOD-JOBS of step 15e run in `ubos-events-suite` (memory, or a
 fresh tenant on PostgreSQL; the crash and failover cases run nodes as child processes with
 `--serve` and kill them), and `ubos-events-suite --bench` measures MET-PERF-017, NR-PERF-012

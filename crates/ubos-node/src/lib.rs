@@ -17,6 +17,7 @@
 
 pub mod config;
 pub mod db;
+pub mod genesis;
 pub mod identity;
 pub mod keys;
 pub mod leases;
@@ -259,6 +260,166 @@ impl Node {
             .iter()
             .filter_map(|r| r["authority"].as_str().map(str::to_string))
             .collect())
+    }
+
+    // ---- the tenant registry and tenant creation (DSN-NOD-401, -402; step 16b) ----
+
+    /// The registry record of a tenant: `{tenant_id, slug, state, plan, placement,
+    /// residency, keys_ref, vaes}` (DSN-NOD-401); `None` when unknown.
+    pub fn tenant_record(&self, slug: &str) -> Result<Option<Value>, BpaError> {
+        let rows = self.db.query(
+            "SELECT tenant_id::text AS tenant_id, slug, state, plan, placement, residency, keys_ref FROM tenant WHERE slug = $1",
+            &[db::Param::Text(slug)],
+        )?;
+        let Some(mut r) = rows.into_iter().next() else {
+            return Ok(None);
+        };
+        let t = Tenant {
+            id: r["tenant_id"].as_str().unwrap_or_default().to_string(),
+            slug: slug.to_string(),
+            state: r["state"].as_str().unwrap_or("active").to_string(),
+        };
+        r["vaes"] = json!(self.vaes(&t)?);
+        if r["keys_ref"].is_null() {
+            r["keys_ref"] = json!(format!("kek:{}:{}", t.id, 1));
+        }
+        Ok(Some(r))
+    }
+
+    /// Change the platform settings of a tenant (`plan`, `placement`, `residency`; CTL in
+    /// later phases); returns the new record. The caller projects it into the VAEs.
+    pub fn set_tenant_settings(&self, slug: &str, patch: &Value) -> Result<Value, BpaError> {
+        let cur = self
+            .tenant_record(slug)?
+            .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown tenant"))?;
+        let pick = |k: &str| -> Result<String, BpaError> {
+            match patch.get(k) {
+                Some(Value::String(v)) if !v.is_empty() && v.len() <= 100 => Ok(v.clone()),
+                Some(Value::Null) | None => Ok(cur[k].as_str().unwrap_or_default().to_string()),
+                Some(_) => Err(BpaError::new(
+                    "MODEL.INVALID_VALUE",
+                    format!("{k} is a text of 1 to 100 characters"),
+                )),
+            }
+        };
+        let (plan, placement, residency) = (pick("plan")?, pick("placement")?, pick("residency")?);
+        self.db.execute(
+            "UPDATE tenant SET plan = $2, placement = $3, residency = nullif($4, '') WHERE slug = $1",
+            &[db::Param::Text(slug), db::Param::Text(&plan), db::Param::Text(&placement), db::Param::Text(&residency)],
+        )?;
+        self.tenant_record(slug)?
+            .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown tenant"))
+    }
+
+    fn setup_done(&self, slug: &str) -> Result<Vec<String>, BpaError> {
+        Ok(self
+            .db
+            .query(
+                "SELECT step FROM tenant_setup WHERE slug = $1",
+                &[db::Param::Text(slug)],
+            )?
+            .iter()
+            .filter_map(|r| r["step"].as_str().map(str::to_string))
+            .collect())
+    }
+
+    fn setup_mark(&self, slug: &str, step: &str, detail: &Value) -> Result<(), BpaError> {
+        self.db.execute(
+            "INSERT INTO tenant_setup (slug, step, detail) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+            &[db::Param::Text(slug), db::Param::Text(step), db::Param::Json(detail)],
+        )?;
+        // a fault injected after a step (the resumption checks of SUITE-NOD-OPS)
+        if std::env::var("UBOS_FAULT_AFTER_STEP").is_ok_and(|s| s == step) {
+            eprintln!("ubos: fault injected after the tenant setup step {step}");
+            std::process::exit(86);
+        }
+        Ok(())
+    }
+
+    /// Create a tenant and its first VAE, idempotently and resumably (DSN-NOD-402): the
+    /// tenant KEK and the registry record, the VAE (`create_vae`), the genesis Buks, the
+    /// `Tenant` projection, the first administrator's invitation (when `admin` names one
+    /// and the tenant has no administrator) and the creation event. Each step is recorded;
+    /// a run after an interruption does what is missing, never twice. Returns `{steps,
+    /// invitation?}`.
+    pub fn provision(
+        &self,
+        slug: &str,
+        authority: &str,
+        admin: Option<&str>,
+    ) -> Result<Value, BpaError> {
+        let done = self.setup_done(slug)?;
+        let mut steps = Vec::new();
+        let mut step = |name: &str, ran: bool| {
+            steps.push(json!({"step": name, "status": if ran { "done" } else { "already done" }}))
+        };
+        // 1. the KEK and the registry record, in one statement
+        let t = match self.tenant(slug)? {
+            Some(t) => t,
+            None => self.create_tenant(slug)?,
+        };
+        let ran = !done.contains(&"register".to_string());
+        if ran {
+            self.setup_mark(slug, "register", &json!({"tenant_id": t.id}))?;
+        }
+        step("register", ran);
+        // 2. the first VAE
+        let ran = self.vae(&t, authority)?.is_none();
+        if ran {
+            self.create_vae(&t, authority)?;
+        }
+        if !done.contains(&"vae".to_string()) {
+            self.setup_mark(slug, "vae", &json!({"authority": authority}))?;
+        }
+        step("vae", ran);
+        // 3. the genesis Buks, 4. the Tenant projection
+        let mut vae = self.open_vae(&t, authority)?;
+        let installed = genesis::install_all(&mut vae)?;
+        let ran = installed.iter().any(|x| x["status"] == "installed");
+        if !done.contains(&"genesis".to_string()) {
+            self.setup_mark(slug, "genesis", &json!({"buks": installed}))?;
+        }
+        step("genesis", ran);
+        let record = self
+            .tenant_record(slug)?
+            .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown tenant"))?;
+        let ran = platform::project_tenant(&mut vae, &record)?;
+        if !done.contains(&"projection".to_string()) {
+            self.setup_mark(slug, "projection", &json!({}))?;
+        }
+        step("projection", ran);
+        drop(vae);
+        // 5. the first administrator's invitation
+        let mut invitation = Value::Null;
+        if let Some(user) = admin {
+            let id = self.identity(&t)?;
+            let has_admin = id
+                .principals()?
+                .iter()
+                .any(|p| p["role"] == "admin" && p["kind"] == "human");
+            let ran = !has_admin;
+            if ran {
+                invitation = id.invite(user, "admin", 24 * 3600)?;
+            }
+            if !done.contains(&"invitation".to_string()) {
+                self.setup_mark(slug, "invitation", &json!({"username": user}))?;
+            }
+            step("invitation", ran);
+        }
+        // 6. the creation event, once
+        let ran = !done.contains(&"event".to_string());
+        if ran {
+            self.identity(&t)?.log(
+                "tenant.created",
+                json!({"tenant": t.id, "slug": slug, "vae": authority}),
+            )?;
+            self.services
+                .telemetry
+                .emit_now(&json!({"name": "node.tenant_provisioned", "tenant": t.id}));
+            self.setup_mark(slug, "event", &json!({}))?;
+        }
+        step("event", ran);
+        Ok(json!({"tenant": t.id, "slug": slug, "steps": steps, "invitation": invitation}))
     }
 
     /// Record an applied configuration version (FR-OPS-093): `{node, hash, author, source,

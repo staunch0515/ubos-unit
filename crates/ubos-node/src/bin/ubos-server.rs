@@ -6,6 +6,7 @@
 //! ubos-server bootstrap --config ubos.toml [--genesis FILE] [--new-invitation]
 //! ubos-server check-config ubos.toml
 //! ubos-server config-schema
+//! ubos-server genesis-verify | genesis-sign [DIR]
 //!
 //! ubos-server [--listen 127.0.0.1:8080] [--database URL | --memory [--genesis FILE]]
 //!             [--tenant SLUG] [--vae AUTHORITY] [--preset dev|server]
@@ -127,27 +128,39 @@ fn classes(opt: &dyn Fn(&str) -> Option<String>) -> Option<Value> {
     })
 }
 
-/// Create the default tenant and VAE when missing (with the genesis classes); returns
-/// whether they were created.
+/// Provision the default tenant and VAE (DSN-NOD-402: resumable steps, genesis Buks,
+/// projection, creation event), then declare the `--genesis` classes in a VAE that lacks
+/// them; returns the provisioning report.
 fn ensure_tenant(
     node: &ubos_node::Node,
     tenant: &str,
     authority: &str,
     classes: Option<&Value>,
-) -> Result<bool, BpaError> {
-    let t = match node.tenant(tenant)? {
-        Some(t) => t,
-        None => node.create_tenant(tenant)?,
-    };
-    if node.vae(&t, authority)?.is_some() {
-        return Ok(false);
-    }
-    node.create_vae(&t, authority)?;
+    admin: Option<&str>,
+) -> Result<Value, BpaError> {
+    let report = node.provision(tenant, authority, admin)?;
     if let Some(c) = classes {
-        node.open_vae(&t, authority)?
-            .call("load_genesis", &json!({"classes": c}))?;
+        let t = node
+            .tenant(tenant)?
+            .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "tenant"))?;
+        let mut vae = node.open_vae(&t, authority)?;
+        let fresh: Vec<Value> = c
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|d| {
+                vae.engine_mut()
+                    .registry
+                    .decl(d["name"].as_str().unwrap_or_default())
+                    .is_err()
+            })
+            .cloned()
+            .collect();
+        if !fresh.is_empty() {
+            vae.call("load_genesis", &json!({"classes": fresh}))?;
+        }
     }
-    Ok(true)
+    Ok(report)
 }
 
 /// `bootstrap` (DSN-NOD-602): checks, migrations, tenant, VAE, administrator invitation.
@@ -204,36 +217,49 @@ fn bootstrap(cfg: &Config, classes: Option<Value>, new_invitation: bool) -> i32 
         cfg.text("server.tenant").unwrap_or("acme"),
         cfg.text("server.vae").unwrap_or("acme"),
     );
-    match ensure_tenant(&node, tenant, authority, classes.as_ref()) {
-        Ok(created) => report.push(json!({"check": "tenant and VAE", "ok": true,
-            "detail": format!("{tenant}/{authority} {}", if created { "created" } else { "exist" })})),
+    let user = cfg.text("bootstrap.admin_username").unwrap_or("admin");
+    let prov = match ensure_tenant(&node, tenant, authority, classes.as_ref(), Some(user)) {
+        Ok(p) => p,
         Err(e) => {
             print(&report);
             eprintln!("bootstrap stopped: {e}");
             return 2;
         }
+    };
+    for st in prov["steps"].as_array().into_iter().flatten() {
+        report.push(
+            json!({"check": format!("tenant {}", st["step"].as_str().unwrap_or("?")), "ok": true,
+            "detail": format!("{tenant}/{authority}: {}", st["status"].as_str().unwrap_or(""))}),
+        );
     }
-    let user = cfg.text("bootstrap.admin_username").unwrap_or("admin");
+    let listen = cfg.text("server.listen").unwrap_or("127.0.0.1:8080");
+    let link = |inv: &Value| {
+        format!(
+            "http://{listen}/api/v1/identity/invitations/{}",
+            inv["token"].as_str().unwrap_or("")
+        )
+    };
     let invited = (|| -> Result<Value, BpaError> {
+        let inv = &prov["invitation"];
+        if inv["token"].is_string() {
+            return Ok(json!({"check": "administrator", "ok": true,
+                "detail": format!("{user} invited until {}", inv["expires_at"].as_str().unwrap_or("")), "link": link(inv)}));
+        }
         let t = node
             .tenant(tenant)?
             .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "tenant"))?;
         let id = node.identity(&t)?;
-        let admins: Vec<Value> = id
+        let active = id
             .principals()?
-            .into_iter()
-            .filter(|p| p["role"] == "admin" && p["kind"] == "human")
-            .collect();
-        let active = admins.iter().any(|p| p["state"] == "active");
-        if active || (!admins.is_empty() && !new_invitation) {
+            .iter()
+            .any(|p| p["role"] == "admin" && p["kind"] == "human" && p["state"] == "active");
+        if active || !new_invitation {
             return Ok(json!({"check": "administrator", "ok": true,
                 "detail": if active { "an administrator exists" } else { "an invitation is pending (--new-invitation issues another)" }}));
         }
         let inv = id.invite(user, "admin", 24 * 3600)?;
-        let listen = cfg.text("server.listen").unwrap_or("127.0.0.1:8080");
         Ok(json!({"check": "administrator", "ok": true,
-            "detail": format!("{user} invited until {}", inv["expires_at"].as_str().unwrap_or("")),
-            "link": format!("http://{listen}/api/v1/identity/invitations/{}", inv["token"].as_str().unwrap_or(""))}))
+            "detail": format!("{user} invited until {}", inv["expires_at"].as_str().unwrap_or("")), "link": link(&inv)}))
     })();
     match invited {
         Ok(v) => report.push(v),
@@ -264,6 +290,36 @@ fn main() {
     };
     let flag = |k: &str| args.iter().any(|a| a == k);
     match args.first().map(String::as_str) {
+        Some("genesis-verify") => {
+            // the embedded genesis Buks verify against the trusted publisher key (CI)
+            let mut bad = false;
+            for b in ubos_node::genesis::embedded().unwrap_or_else(|e| fail(e)) {
+                match b.verify() {
+                    Ok(()) => println!("ok   {} {} {}", b.name(), b.version(), b.hash),
+                    Err(e) => {
+                        bad = true;
+                        println!("FAIL {} {}: {e}", b.name(), b.version());
+                    }
+                }
+            }
+            std::process::exit(if bad { 1 } else { 0 });
+        }
+        Some("genesis-sign") => {
+            // sign the embedded genesis manifests (development publisher key in PH-1)
+            let seed = ubos_node::genesis::dev_publisher_seed();
+            let dir = args
+                .get(1)
+                .cloned()
+                .unwrap_or_else(|| "crates/ubos-node/genesis".into());
+            for n in ["system", "ontology"] {
+                let m = std::fs::read_to_string(format!("{dir}/{n}.json"))
+                    .unwrap_or_else(|e| fail(format!("{dir}/{n}.json: {e}")));
+                let sig = ubos_node::genesis::sign(&m, &seed).unwrap_or_else(|e| fail(e));
+                std::fs::write(format!("{dir}/{n}.sig"), sig).unwrap_or_else(|e| fail(e));
+                println!("signed {dir}/{n}.json");
+            }
+            return;
+        }
         Some("config-schema") => {
             println!(
                 "{}",
@@ -311,9 +367,15 @@ fn main() {
             let events = Arc::new(MemEventLog::default());
             let jobs = Arc::new(MemJobQueue::default());
             let (ev, jb) = (events.clone(), jobs.clone());
-            let handle =
-                VaeHandle::spawn(move || memory_vae_with(classes.as_ref(), Some(ev), Some(jb)))
-                    .unwrap_or_else(|e| fail(e));
+            let handle = VaeHandle::spawn(move || {
+                let mut v = memory_vae_with(None, Some(ev), Some(jb))?;
+                ubos_node::genesis::install_all(&mut v)?;
+                if let Some(c) = classes {
+                    v.call("load_genesis", &json!({"classes": c}))?;
+                }
+                Ok(v)
+            })
+            .unwrap_or_else(|e| fail(e));
             let identity = ubos_node::identity::Identity::memory(&tenant, &authority)
                 .unwrap_or_else(|e| fail(e));
             Server::single_with(
@@ -328,9 +390,16 @@ fn main() {
         }
         Some((url, root)) => {
             let node = ubos_node::Node::connect_with_root(&url, root).unwrap_or_else(|e| fail(e));
-            match ensure_tenant(&node, &tenant, &authority, classes.as_ref()) {
-                Ok(true) => eprintln!("tenant {tenant} with VAE {authority} created"),
-                Ok(false) => {}
+            match ensure_tenant(&node, &tenant, &authority, classes.as_ref(), None) {
+                Ok(r) => {
+                    let created = r["steps"].as_array().is_some_and(|a| {
+                        a.iter()
+                            .any(|x| x["step"] == "register" && x["status"] == "done")
+                    });
+                    if created {
+                        eprintln!("tenant {tenant} with VAE {authority} created");
+                    }
+                }
                 Err(e) => fail(e),
             }
             Server::new(

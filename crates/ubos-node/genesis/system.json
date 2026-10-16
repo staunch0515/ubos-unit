@@ -1,0 +1,371 @@
+{
+ "name": "system",
+ "version": "0.1.0",
+ "publisher": "ubos",
+ "description": "The platform classes of the node: subscriptions, schedules, jobs, the tenant projection and the installed Buks (DEC-076, DEC-077)",
+ "classes": [
+  {
+   "name": "Subscription",
+   "label": "Subscription",
+   "namespace": "ubos.platform",
+   "description": "An event subscription of the platform: event types, selector, branch scope, handler, service principal, retry policy and owner (FR-EVT-021)",
+   "parent": "DataObject",
+   "kind": "definition",
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "name",
+     "label": "name",
+     "description": "name",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "event_types",
+     "label": "event types",
+     "description": "event types",
+     "type": "json",
+     "required": true
+    },
+    {
+     "name": "selector",
+     "label": "selector",
+     "description": "selector",
+     "type": "json",
+     "required": false
+    },
+    {
+     "name": "branches",
+     "label": "branches",
+     "description": "branches",
+     "type": "json",
+     "required": false
+    },
+    {
+     "name": "handler",
+     "label": "handler",
+     "description": "handler",
+     "type": "json",
+     "required": true
+    },
+    {
+     "name": "run_as",
+     "label": "run as",
+     "description": "run as",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "policy",
+     "label": "policy",
+     "description": "policy",
+     "type": "json",
+     "required": false
+    },
+    {
+     "name": "owner",
+     "label": "owner",
+     "description": "owner",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "enabled",
+     "label": "enabled",
+     "description": "enabled",
+     "type": "boolean",
+     "required": false
+    }
+   ]
+  },
+  {
+   "name": "Job",
+   "label": "Job",
+   "namespace": "ubos.platform",
+   "description": "An asynchronous job of the platform: type, queue, payload, state, attempts, last error, priority (FR-EVT-031)",
+   "parent": "SystemObject",
+   "kind": "system",
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "job_type",
+     "label": "job type",
+     "description": "job type",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "queue",
+     "label": "queue",
+     "description": "queue",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "payload",
+     "label": "payload",
+     "description": "payload",
+     "type": "json",
+     "required": false
+    },
+    {
+     "name": "state",
+     "label": "state",
+     "description": "state",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "attempts",
+     "label": "attempts",
+     "description": "attempts",
+     "type": "integer",
+     "required": false
+    },
+    {
+     "name": "max_attempts",
+     "label": "max attempts",
+     "description": "max attempts",
+     "type": "integer",
+     "required": false
+    },
+    {
+     "name": "last_error",
+     "label": "last error",
+     "description": "last error",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "priority",
+     "label": "priority",
+     "description": "priority",
+     "type": "integer",
+     "required": false
+    },
+    {
+     "name": "dedupe_key",
+     "label": "dedupe key",
+     "description": "dedupe key",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "result",
+     "label": "result",
+     "description": "result",
+     "type": "json",
+     "required": false
+    },
+    {
+     "name": "poison",
+     "label": "poison",
+     "description": "poison",
+     "type": "boolean",
+     "required": false
+    }
+   ]
+  },
+  {
+   "name": "Schedule",
+   "label": "Schedule",
+   "namespace": "ubos.platform",
+   "description": "A schedule of the platform: rule, time zone, active window, misfire policy, target and service principal (FR-EVT-041)",
+   "parent": "DataObject",
+   "kind": "definition",
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "name",
+     "label": "name",
+     "description": "name",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "rule",
+     "label": "rule",
+     "description": "rule",
+     "type": "json",
+     "required": true
+    },
+    {
+     "name": "time_zone",
+     "label": "time zone",
+     "description": "time zone",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "window",
+     "label": "window",
+     "description": "window",
+     "type": "json",
+     "required": false
+    },
+    {
+     "name": "misfire",
+     "label": "misfire",
+     "description": "misfire",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "target",
+     "label": "target",
+     "description": "target",
+     "type": "json",
+     "required": true
+    },
+    {
+     "name": "run_as",
+     "label": "run as",
+     "description": "run as",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "policy",
+     "label": "policy",
+     "description": "policy",
+     "type": "json",
+     "required": false
+    },
+    {
+     "name": "owner",
+     "label": "owner",
+     "description": "owner",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "enabled",
+     "label": "enabled",
+     "description": "enabled",
+     "type": "boolean",
+     "required": false
+    },
+    {
+     "name": "paused",
+     "label": "paused",
+     "description": "paused",
+     "type": "boolean",
+     "required": false
+    }
+   ]
+  },
+  {
+   "name": "Tenant",
+   "label": "Tenant",
+   "namespace": "ubos.platform",
+   "description": "The tenant as the node's registry records it, projected into each of its VAEs (FR-TEN-011, DSN-NOD-401): read-only to the tenant",
+   "parent": "SystemObject",
+   "kind": "system",
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "tenant_id",
+     "label": "tenant id",
+     "description": "tenant id",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "slug",
+     "label": "slug",
+     "description": "slug",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "state",
+     "label": "state",
+     "description": "state",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "plan",
+     "label": "plan",
+     "description": "plan",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "placement",
+     "label": "placement",
+     "description": "placement",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "residency",
+     "label": "residency",
+     "description": "residency",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "keys_ref",
+     "label": "keys ref",
+     "description": "keys ref",
+     "type": "text",
+     "required": false
+    },
+    {
+     "name": "vaes",
+     "label": "vaes",
+     "description": "vaes",
+     "type": "json",
+     "required": false
+    }
+   ]
+  },
+  {
+   "name": "Buk",
+   "label": "Buk",
+   "namespace": "ubos.platform",
+   "description": "An installed Buk: name, version, content hash, publisher and signature (FR-PKG-071, DEC-077)",
+   "parent": "SystemObject",
+   "kind": "system",
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "name",
+     "label": "name",
+     "description": "name",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "version",
+     "label": "version",
+     "description": "version",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "content_hash",
+     "label": "content hash",
+     "description": "content hash",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "publisher",
+     "label": "publisher",
+     "description": "publisher",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "signature",
+     "label": "signature",
+     "description": "signature",
+     "type": "text",
+     "required": true
+    }
+   ]
+  }
+ ]
+}

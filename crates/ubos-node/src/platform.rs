@@ -31,48 +31,22 @@ use ubos_dvm::vectors::subset;
 /// The namespace of the platform classes.
 pub const NAMESPACE: &str = "ubos.platform";
 
-fn field(name: &str, ty: &str, required: bool) -> Value {
-    json!({"name": name, "label": name.replace('_', " "), "description": name.replace('_', " "), "type": ty, "required": required})
+fn system_class(name: &str) -> Value {
+    crate::genesis::system()
+        .class(name)
+        .unwrap_or_else(|| json!({"name": name}))
 }
 
-/// The declaration of `Subscription`.
+/// The declaration of `Subscription` (from the embedded `system` Buk).
 pub fn subscription_class() -> Value {
-    json!({"name": "Subscription", "label": "Subscription", "namespace": NAMESPACE,
-    "description": "An event subscription of the platform: event types, selector, branch scope, handler, service principal, retry policy and owner (FR-EVT-021)",
-    "parent": "DataObject", "kind": "definition", "schema_version": 1,
-    "fields": [
-        field("name", "text", true),
-        field("event_types", "json", true),
-        field("selector", "json", false),
-        field("branches", "json", false),
-        field("handler", "json", true),
-        field("run_as", "text", true),
-        field("policy", "json", false),
-        field("owner", "text", false),
-        field("enabled", "boolean", false),
-    ]})
+    system_class("Subscription")
 }
 
 /// The declaration of `Job` (FR-EVT-031): a System-kind object per job, written by the
 /// platform only (`system_commit`); the lease and its fencing token live in the `job`
 /// table (DEC-076).
 pub fn job_class() -> Value {
-    json!({"name": "Job", "label": "Job", "namespace": NAMESPACE,
-    "description": "An asynchronous job of the platform: type, queue, payload, state, attempts, last error, priority (FR-EVT-031)",
-    "parent": "SystemObject", "kind": "system", "schema_version": 1,
-    "fields": [
-        field("job_type", "text", true),
-        field("queue", "text", false),
-        field("payload", "json", false),
-        field("state", "text", true),
-        field("attempts", "integer", false),
-        field("max_attempts", "integer", false),
-        field("last_error", "text", false),
-        field("priority", "integer", false),
-        field("dedupe_key", "text", false),
-        field("result", "json", false),
-        field("poison", "boolean", false),
-    ]})
+    system_class("Job")
 }
 
 /// The declaration of `Schedule` (FR-EVT-041, DSN-NOD-224): a Definition object with a
@@ -80,37 +54,25 @@ pub fn job_class() -> Value {
 /// (`{from?, to?}`), a misfire policy (`skip`, `fire_once` or `fire_all`; `fire_once` when
 /// absent), a target (`{kind: "port", target, port, params?}` or `{kind: "logic", asset,
 /// function, args?}`, on `main` unless it names a `branch`; workflow targets in PH-2,
-/// DEC-076), the service principal it runs
-/// as, and whether it is enabled and paused.
+/// DEC-076), the service principal it runs as, and whether it is enabled and paused.
 pub fn schedule_class() -> Value {
-    json!({"name": "Schedule", "label": "Schedule", "namespace": NAMESPACE,
-    "description": "A schedule of the platform: rule, time zone, active window, misfire policy, target and service principal (FR-EVT-041)",
-    "parent": "DataObject", "kind": "definition", "schema_version": 1,
-    "fields": [
-        field("name", "text", true),
-        field("rule", "json", true),
-        field("time_zone", "text", false),
-        field("window", "json", false),
-        field("misfire", "text", false),
-        field("target", "json", true),
-        field("run_as", "text", true),
-        field("policy", "json", false),
-        field("owner", "text", false),
-        field("enabled", "boolean", false),
-        field("paused", "boolean", false),
-    ]})
+    system_class("Schedule")
 }
 
-/// Declare the platform classes in a VAE that lacks them (an existing class of the same
-/// name in another namespace is left alone and reported).
+/// Declare the platform classes of the `system` Buk in a VAE that lacks them, without
+/// recording the Buk (VAEs not provisioned by the node: the memory preset, suites); an
+/// existing class of the same name in another namespace is left alone and reported. A
+/// provisioned VAE installs the Buk itself (`genesis::install`).
 pub fn ensure(vae: &mut Vae) -> Result<(), BpaError> {
     let mut missing = Vec::new();
-    for (name, decl) in [
-        ("Subscription", subscription_class()),
-        ("Job", job_class()),
-        ("Schedule", schedule_class()),
-    ] {
-        match vae.engine_mut().registry.decl(name) {
+    let system = crate::genesis::system();
+    for decl in system.manifest["classes"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+    {
+        let name = decl["name"].as_str().unwrap_or_default().to_string();
+        match vae.engine_mut().registry.decl(&name) {
             Ok(c) if c["namespace"] == json!(NAMESPACE) => {}
             Ok(_) => {
                 return Err(BpaError::new(
@@ -751,4 +713,42 @@ pub fn set_paused(
             "process": {"kind": "action", "initiator": by, "channel": "admin", "message": message},
             "ctx": {"principal": by, "channel": "admin"}}),
     )
+}
+
+// ---- the tenant projection (DSN-NOD-401, step 16b) ----
+
+/// The identifier of a VAE's `Tenant` object.
+pub fn tenant_object_id(tenant_id: &str) -> Result<String, BpaError> {
+    derived_uuid("tenant", tenant_id)
+}
+
+/// Project a registry record into a VAE as its `Tenant` object (created, or updated when
+/// it differs); `true` when it wrote.
+pub fn project_tenant(vae: &mut Vae, record: &Value) -> Result<bool, BpaError> {
+    let tid = record["tenant_id"].as_str().unwrap_or_default();
+    let oid = tenant_object_id(tid)?;
+    let body = json!({"tenant_id": tid, "slug": record["slug"], "state": record["state"], "plan": record["plan"],
+        "placement": record["placement"], "residency": record["residency"], "keys_ref": record["keys_ref"], "vaes": record["vaes"]});
+    let change = match vae.call("read", &json!({"branch": "main", "object_id": oid})) {
+        Ok(cur) => {
+            let same = body
+                .as_object()
+                .into_iter()
+                .flatten()
+                .all(|(k, v)| cur["body"].get(k).unwrap_or(&Value::Null) == v);
+            if same {
+                return Ok(false);
+            }
+            json!({"op": "update", "object_id": oid, "body": body})
+        }
+        Err(e) if e.code == "IAM.NOT_FOUND" => {
+            json!({"op": "create", "class": "Tenant", "object_id": oid, "slug": format!("tenant-{}", record["slug"].as_str().unwrap_or("x")), "body": body})
+        }
+        Err(e) => return Err(e),
+    };
+    vae.call(
+        "system_commit",
+        &json!({"branch": "main", "changes": [change], "process": {"kind": "sync", "message": "tenant projection"}}),
+    )?;
+    Ok(true)
 }

@@ -382,6 +382,9 @@ fn host_call(vae: &mut Vae, op: &str, input: &Value) -> Result<Value, BpaError> 
             crate::platform::run_schedule(vae, &input["job"], &input["principal"])
         }
         "host.schedules" => crate::platform::schedules(vae, input["known"].as_str()),
+        "host.project_tenant" => {
+            crate::platform::project_tenant(vae, input).map(|w| json!({"written": w}))
+        }
         "host.set_paused" => crate::platform::set_paused(
             vae,
             input["schedule"].as_str().unwrap_or_default(),
@@ -472,6 +475,15 @@ pub trait VaeSource: Send + Sync {
     }
     /// The jobs of a VAE (deliveries and dead letters); `None` when the source keeps none.
     fn jobs(&self, _tenant: &str, _authority: &str) -> Result<Option<Arc<dyn JobStore>>, BpaError> {
+        Ok(None)
+    }
+    /// The registry record of a tenant (DSN-NOD-401); `None` when the source keeps no
+    /// registry.
+    fn tenant_record(&self, _slug: &str) -> Result<Option<Value>, BpaError> {
+        Ok(None)
+    }
+    /// Change a tenant's platform settings; `None` when the source keeps no registry.
+    fn set_tenant_settings(&self, _slug: &str, _patch: &Value) -> Result<Option<Value>, BpaError> {
         Ok(None)
     }
     /// Record an applied configuration version (FR-OPS-093); `false` when the source keeps
@@ -590,6 +602,12 @@ impl VaeSource for NodeVaes {
     }
     fn record_config(&self, version: &Value) -> Result<bool, BpaError> {
         self.0.record_config(version).map(|_| true)
+    }
+    fn tenant_record(&self, slug: &str) -> Result<Option<Value>, BpaError> {
+        self.0.tenant_record(slug)
+    }
+    fn set_tenant_settings(&self, slug: &str, patch: &Value) -> Result<Option<Value>, BpaError> {
+        self.0.set_tenant_settings(slug, patch).map(Some)
     }
     fn config_versions(&self, node: &str, limit: i64) -> Result<Option<Vec<Value>>, BpaError> {
         self.0.config_versions(Some(node), limit).map(Some)
@@ -2796,6 +2814,12 @@ async fn admin_api(
             Err(e) => problem_response(&e),
         };
     }
+    if p.first() == Some(&"tenant") {
+        return match admin_tenant(&s, &tenant, &method, &q, &body, &me.did).await {
+            Ok(v) => Json(v).into_response(),
+            Err(e) => problem_response(&e),
+        };
+    }
     if p.first() == Some(&"config") {
         return match admin_config(&s, &method, &p, &q, &body, &me.did).await {
             Ok(v) => Json(v).into_response(),
@@ -2977,6 +3001,63 @@ async fn admin_api(
     match out {
         Ok(v) => Json(v).into_response(),
         Err(e) => problem_response(&e),
+    }
+}
+
+/// The tenant routes of the operator API (step 16b, DSN-NOD-401): `GET tenant` (the
+/// registry record) and `PUT tenant` `{plan?, placement?, residency?}` — the change of a
+/// platform setting (by CTL in later phases), projected at once into the `Tenant` object of
+/// each of the tenant's VAEs and audited. `?slug=` names another tenant for an
+/// administrator of the node's default tenant.
+async fn admin_tenant(
+    s: &Shared,
+    own: &str,
+    method: &Method,
+    q: &HashMap<String, String>,
+    body: &Value,
+    by: &str,
+) -> Result<Value, BpaError> {
+    let slug = q.get("slug").cloned().unwrap_or_else(|| own.to_string());
+    if slug != own && own != s.default_tenant {
+        return Err(BpaError::with_details(
+            "IAM.DENIED",
+            json!({"reason": "another_tenant"}),
+        ));
+    }
+    let (me, sl) = (s.clone(), slug.clone());
+    match method.as_str() {
+        "GET" => blocking(move || me.source.tenant_record(&sl))
+            .await?
+            .ok_or_else(|| {
+                BpaError::new(
+                    "LOGIC.NOT_AVAILABLE",
+                    "this server keeps no tenant registry",
+                )
+            }),
+        "PUT" => {
+            let patch = body.clone();
+            let rec = blocking(move || me.source.set_tenant_settings(&sl, &patch))
+                .await?
+                .ok_or_else(|| {
+                    BpaError::new(
+                        "LOGIC.NOT_AVAILABLE",
+                        "this server keeps no tenant registry",
+                    )
+                })?;
+            let mut projected = Vec::new();
+            for a in rec["vaes"].as_array().cloned().unwrap_or_default() {
+                let a = a.as_str().unwrap_or_default().to_string();
+                let h = s.vae_async(&slug, &a).await?;
+                h.call("host.project_tenant", rec.clone()).await?;
+                projected.push(a);
+            }
+            if let Ok(id) = s.identity_async(&slug).await {
+                let r = json!({"tenant": slug, "by": by, "plan": rec["plan"], "placement": rec["placement"], "residency": rec["residency"]});
+                let _ = blocking(move || id.log("tenant.settings", r)).await;
+            }
+            Ok(json!({"tenant": rec, "projected": projected}))
+        }
+        _ => Err(BpaError::new("IAM.NOT_FOUND", "unknown admin route")),
     }
 }
 
