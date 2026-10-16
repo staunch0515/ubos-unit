@@ -3128,6 +3128,7 @@ dependencies = [
  "sha1",
  "sqlx",
  "tokio",
+ "tokio-tungstenite",
  "ubos-dvm",
  "ubos-proto",
 ]

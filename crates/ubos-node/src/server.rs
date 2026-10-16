@@ -486,6 +486,14 @@ impl Server {
     /// Serve on `listen` until the task is cancelled.
     pub async fn serve(self: Shared, listen: std::net::SocketAddr) -> std::io::Result<()> {
         let listener = tokio::net::TcpListener::bind(listen).await?;
+        self.serve_with(listener).await
+    }
+
+    /// Serve on a bound listener (suites pick an ephemeral port).
+    pub async fn serve_with(
+        self: Shared,
+        listener: tokio::net::TcpListener,
+    ) -> std::io::Result<()> {
         let poll = self.clone();
         tokio::spawn(async move { poll.poll_loop().await });
         axum::serve(
@@ -970,7 +978,10 @@ async fn ws_upgrade(
 
 async fn ws_session(s: Shared, tenant: Option<String>, source: String, socket: WebSocket) {
     let (mut sink, mut stream) = socket.split();
+    // the session entry holds the only sender: when the Server drops the entry (a revoked
+    // or expired credential, DSN-NOD-106) the channel closes and so does the connection
     let (push_tx, mut push_rx) = tokio::sync::mpsc::channel::<Value>(QUEUE);
+    let mut push_tx = Some(push_tx);
     let mut session: Option<String> = None;
     loop {
         tokio::select! {
@@ -994,7 +1005,9 @@ async fn ws_session(s: Shared, tenant: Option<String>, source: String, socket: W
                 let (key, frames) = s.handle(session.clone(), tenant.clone(), &source, message).await;
                 if session.is_none() && !key.is_empty() {
                     session = Some(key.clone());
-                    s.attach_push(&key, push_tx.clone());
+                    if let Some(tx) = push_tx.take() {
+                        s.attach_push(&key, tx);
+                    }
                 }
                 for f in frames {
                     if sink.send(Message::Text(f.to_string().into())).await.is_err() { break; }

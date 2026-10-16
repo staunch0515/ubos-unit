@@ -1,0 +1,2229 @@
+{
+  "suite": "SUITE-NOD-PROTO",
+  "item": "VER-CONF-7000",
+  "step": "PH-1 14d",
+  "decision": "DEC-075",
+  "implementation": {
+    "crate": "ubos-node",
+    "version": "0.0.0"
+  },
+  "environment": {
+    "backend": "memory",
+    "os": "linux",
+    "arch": "x86_64"
+  },
+  "vectors": 88,
+  "seconds": 7.4,
+  "bindings": {
+    "http": {
+      "passed": 88,
+      "cases": 88,
+      "results": [
+        {
+          "vector": "VER-CONF-5400",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5401",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5402",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5403",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5404",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5405",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5406",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5407",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5408",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5409",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5410",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5411",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5412",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5413",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5414",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5420",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5421",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5422",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5423",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5424",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5425",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5426",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5427",
+          "outcome": "pass",
+          "detail": "binding-specific: a bearer token is verified by the Server: an invalid one is refused with IAM.DENIED before the binding"
+        },
+        {
+          "vector": "VER-CONF-5428",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5429",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5430",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5431",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5440",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5441",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5442",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5443",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5444",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5445",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5446",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5447",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5448",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5449",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5450",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5451",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5452",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5453",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5454",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5455",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5456",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5457",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5458",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5470",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5471",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5472",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5473",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5474",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5475",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5476",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5477",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5478",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5479",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5480",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5481",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5482",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5483",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5484",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5500",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5501",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5502",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5503",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5504",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5505",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5506",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5507",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5508",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5509",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5510",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5511",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5512",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5513",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5514",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5530",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5531",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5532",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5533",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5534",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5535",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5536",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5545",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5546",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5547",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5548",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5549",
+          "outcome": "pass"
+        }
+      ]
+    },
+    "in_process": {
+      "passed": 88,
+      "cases": 88,
+      "results": [
+        {
+          "vector": "VER-CONF-5400",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5401",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5402",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5403",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5404",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5405",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5406",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5407",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5408",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5409",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5410",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5411",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5412",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5413",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5414",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5420",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5421",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5422",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5423",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5424",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5425",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5426",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5427",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5428",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5429",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5430",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5431",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5440",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5441",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5442",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5443",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5444",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5445",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5446",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5447",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5448",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5449",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5450",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5451",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5452",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5453",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5454",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5455",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5456",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5457",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5458",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5470",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5471",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5472",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5473",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5474",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5475",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5476",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5477",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5478",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5479",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5480",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5481",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5482",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5483",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5484",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5500",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5501",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5502",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5503",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5504",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5505",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5506",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5507",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5508",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5509",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5510",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5511",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5512",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5513",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5514",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5530",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5531",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5532",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5533",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5534",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5535",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5536",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5545",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5546",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5547",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5548",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5549",
+          "outcome": "pass"
+        }
+      ]
+    },
+    "websocket": {
+      "passed": 88,
+      "cases": 88,
+      "results": [
+        {
+          "vector": "VER-CONF-5400",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5401",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5402",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5403",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5404",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5405",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5406",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5407",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5408",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5409",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5410",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5411",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5412",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5413",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5414",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5420",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5421",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5422",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5423",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5424",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5425",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5426",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5427",
+          "outcome": "pass",
+          "detail": "binding-specific: a bearer token is verified by the Server: an invalid one is refused with IAM.DENIED before the binding"
+        },
+        {
+          "vector": "VER-CONF-5428",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5429",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5430",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5431",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5440",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5441",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5442",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5443",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5444",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5445",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5446",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5447",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5448",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5449",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5450",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5451",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5452",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5453",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5454",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5455",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5456",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5457",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5458",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5470",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5471",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5472",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5473",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5474",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5475",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5476",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5477",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5478",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5479",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5480",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5481",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5482",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5483",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5484",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5500",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5501",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5502",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5503",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5504",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5505",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5506",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5507",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5508",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5509",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5510",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5511",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5512",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5513",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5514",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5530",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5531",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5532",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5533",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5534",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5535",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5536",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5545",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5546",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5547",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5548",
+          "outcome": "pass"
+        },
+        {
+          "vector": "VER-CONF-5549",
+          "outcome": "pass"
+        }
+      ]
+    }
+  },
+  "version_skew": {
+    "http": {
+      "passed": 8,
+      "cases": 8,
+      "results": [
+        {
+          "case": "client N-1: protocol version 0.9 only",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.VERSION_UNSUPPORTED",
+                "message": "INT.VERSION_UNSUPPORTED",
+                "details": {
+                  "supported": {
+                    "versions": [
+                      "1.0"
+                    ],
+                    "abi": {
+                      "min": "1.0",
+                      "max": "1.0"
+                    }
+                  }
+                }
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client offering 0.9 and 1.0",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "result",
+              "body": {
+                "version": "1.0",
+                "abi": "1.0",
+                "session_id": "s1",
+                "encoding": "json",
+                "principal": {
+                  "did": "did:ubos:acme:01900000-0000-7000-8000-000000000002",
+                  "kind": "human",
+                  "authority": "acme"
+                },
+                "limits": {
+                  "frame_bytes": 16777216,
+                  "window": 8,
+                  "retention": 100
+                },
+                "features": []
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N-1: ABI 0.9 only",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.VERSION_UNSUPPORTED",
+                "message": "INT.VERSION_UNSUPPORTED",
+                "details": {
+                  "supported": {
+                    "versions": [
+                      "1.0"
+                    ],
+                    "abi": {
+                      "min": "1.0",
+                      "max": "1.0"
+                    }
+                  }
+                }
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N+1: ABI range 0.9 to 2.0",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "result",
+              "body": {
+                "version": "1.0",
+                "abi": "1.0",
+                "session_id": "s1",
+                "encoding": "json",
+                "principal": {
+                  "did": "did:ubos:acme:01900000-0000-7000-8000-000000000002",
+                  "kind": "human",
+                  "authority": "acme"
+                },
+                "limits": {
+                  "frame_bytes": 16777216,
+                  "window": 8,
+                  "retention": 100
+                },
+                "features": []
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client with an encoding the server lacks",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.VERSION_UNSUPPORTED",
+                "message": "INT.VERSION_UNSUPPORTED",
+                "details": {
+                  "supported": {
+                    "encodings": [
+                      "json"
+                    ]
+                  }
+                }
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N-1: envelope version 0.9",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.VERSION_UNSUPPORTED",
+                "message": "INT.VERSION_UNSUPPORTED",
+                "details": {
+                  "supported": {
+                    "versions": [
+                      "1.0"
+                    ]
+                  }
+                }
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N+1: unknown message type",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.PROTOCOL_ERROR",
+                "message": "INT.PROTOCOL_ERROR",
+                "details": "unknown message type frobnicate"
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N+1: unknown handshake members are ignored",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "result",
+              "body": {
+                "version": "1.0",
+                "abi": "1.0",
+                "session_id": "s1",
+                "encoding": "json",
+                "principal": {
+                  "did": "did:ubos:acme:01900000-0000-7000-8000-000000000002",
+                  "kind": "human",
+                  "authority": "acme"
+                },
+                "limits": {
+                  "frame_bytes": 16777216,
+                  "window": 8,
+                  "retention": 100
+                },
+                "features": []
+              },
+              "reply_to": "h"
+            }
+          ]
+        }
+      ]
+    },
+    "in_process": {
+      "passed": 8,
+      "cases": 8,
+      "results": [
+        {
+          "case": "client N-1: protocol version 0.9 only",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.VERSION_UNSUPPORTED",
+                "message": "INT.VERSION_UNSUPPORTED",
+                "details": {
+                  "supported": {
+                    "versions": [
+                      "1.0"
+                    ],
+                    "abi": {
+                      "min": "1.0",
+                      "max": "1.0"
+                    }
+                  }
+                }
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client offering 0.9 and 1.0",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "result",
+              "body": {
+                "version": "1.0",
+                "abi": "1.0",
+                "session_id": "s1",
+                "encoding": "json",
+                "principal": {
+                  "did": "did:ubos:acme:01900000-0000-7000-8000-000000000002",
+                  "kind": "human",
+                  "authority": "acme"
+                },
+                "limits": {
+                  "frame_bytes": 16777216,
+                  "window": 8,
+                  "retention": 100
+                },
+                "features": []
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N-1: ABI 0.9 only",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.VERSION_UNSUPPORTED",
+                "message": "INT.VERSION_UNSUPPORTED",
+                "details": {
+                  "supported": {
+                    "versions": [
+                      "1.0"
+                    ],
+                    "abi": {
+                      "min": "1.0",
+                      "max": "1.0"
+                    }
+                  }
+                }
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N+1: ABI range 0.9 to 2.0",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "result",
+              "body": {
+                "version": "1.0",
+                "abi": "1.0",
+                "session_id": "s1",
+                "encoding": "json",
+                "principal": {
+                  "did": "did:ubos:acme:01900000-0000-7000-8000-000000000002",
+                  "kind": "human",
+                  "authority": "acme"
+                },
+                "limits": {
+                  "frame_bytes": 16777216,
+                  "window": 8,
+                  "retention": 100
+                },
+                "features": []
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client with an encoding the server lacks",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.VERSION_UNSUPPORTED",
+                "message": "INT.VERSION_UNSUPPORTED",
+                "details": {
+                  "supported": {
+                    "encodings": [
+                      "json"
+                    ]
+                  }
+                }
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N-1: envelope version 0.9",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.VERSION_UNSUPPORTED",
+                "message": "INT.VERSION_UNSUPPORTED",
+                "details": {
+                  "supported": {
+                    "versions": [
+                      "1.0"
+                    ]
+                  }
+                }
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N+1: unknown message type",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.PROTOCOL_ERROR",
+                "message": "INT.PROTOCOL_ERROR",
+                "details": "unknown message type frobnicate"
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N+1: unknown handshake members are ignored",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "result",
+              "body": {
+                "version": "1.0",
+                "abi": "1.0",
+                "session_id": "s1",
+                "encoding": "json",
+                "principal": {
+                  "did": "did:ubos:acme:01900000-0000-7000-8000-000000000002",
+                  "kind": "human",
+                  "authority": "acme"
+                },
+                "limits": {
+                  "frame_bytes": 16777216,
+                  "window": 8,
+                  "retention": 100
+                },
+                "features": []
+              },
+              "reply_to": "h"
+            }
+          ]
+        }
+      ]
+    },
+    "websocket": {
+      "passed": 8,
+      "cases": 8,
+      "results": [
+        {
+          "case": "client N-1: protocol version 0.9 only",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.VERSION_UNSUPPORTED",
+                "message": "INT.VERSION_UNSUPPORTED",
+                "details": {
+                  "supported": {
+                    "versions": [
+                      "1.0"
+                    ],
+                    "abi": {
+                      "min": "1.0",
+                      "max": "1.0"
+                    }
+                  }
+                }
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client offering 0.9 and 1.0",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "result",
+              "body": {
+                "version": "1.0",
+                "abi": "1.0",
+                "session_id": "s1",
+                "encoding": "json",
+                "principal": {
+                  "did": "did:ubos:acme:01900000-0000-7000-8000-000000000002",
+                  "kind": "human",
+                  "authority": "acme"
+                },
+                "limits": {
+                  "frame_bytes": 16777216,
+                  "window": 8,
+                  "retention": 100
+                },
+                "features": []
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N-1: ABI 0.9 only",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.VERSION_UNSUPPORTED",
+                "message": "INT.VERSION_UNSUPPORTED",
+                "details": {
+                  "supported": {
+                    "versions": [
+                      "1.0"
+                    ],
+                    "abi": {
+                      "min": "1.0",
+                      "max": "1.0"
+                    }
+                  }
+                }
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N+1: ABI range 0.9 to 2.0",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "result",
+              "body": {
+                "version": "1.0",
+                "abi": "1.0",
+                "session_id": "s1",
+                "encoding": "json",
+                "principal": {
+                  "did": "did:ubos:acme:01900000-0000-7000-8000-000000000002",
+                  "kind": "human",
+                  "authority": "acme"
+                },
+                "limits": {
+                  "frame_bytes": 16777216,
+                  "window": 8,
+                  "retention": 100
+                },
+                "features": []
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client with an encoding the server lacks",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.VERSION_UNSUPPORTED",
+                "message": "INT.VERSION_UNSUPPORTED",
+                "details": {
+                  "supported": {
+                    "encodings": [
+                      "json"
+                    ]
+                  }
+                }
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N-1: envelope version 0.9",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.VERSION_UNSUPPORTED",
+                "message": "INT.VERSION_UNSUPPORTED",
+                "details": {
+                  "supported": {
+                    "versions": [
+                      "1.0"
+                    ]
+                  }
+                }
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N+1: unknown message type",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "error",
+              "body": {
+                "code": "INT.PROTOCOL_ERROR",
+                "message": "INT.PROTOCOL_ERROR",
+                "details": "unknown message type frobnicate"
+              },
+              "reply_to": "h"
+            }
+          ]
+        },
+        {
+          "case": "client N+1: unknown handshake members are ignored",
+          "outcome": "pass",
+          "detail": "",
+          "frames": [
+            {
+              "v": "1.0",
+              "id": "s1",
+              "type": "result",
+              "body": {
+                "version": "1.0",
+                "abi": "1.0",
+                "session_id": "s1",
+                "encoding": "json",
+                "principal": {
+                  "did": "did:ubos:acme:01900000-0000-7000-8000-000000000002",
+                  "kind": "human",
+                  "authority": "acme"
+                },
+                "limits": {
+                  "frame_bytes": 16777216,
+                  "window": 8,
+                  "retention": 100
+                },
+                "features": []
+              },
+              "reply_to": "h"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "identical": {
+    "vectors": 87,
+    "binding_specific": 1,
+    "of": 88,
+    "results": [
+      {
+        "vector": "VER-CONF-5400",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5401",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5402",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5403",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5404",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5405",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5406",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5407",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5408",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5409",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5410",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5411",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5412",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5413",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5414",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5420",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5421",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5422",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5423",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5424",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5425",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5426",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5427",
+        "identical": "binding_specific",
+        "detail": "a bearer token is verified by the Server: an invalid one is refused with IAM.DENIED before the binding"
+      },
+      {
+        "vector": "VER-CONF-5428",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5429",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5430",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5431",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5440",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5441",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5442",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5443",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5444",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5445",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5446",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5447",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5448",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5449",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5450",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5451",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5452",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5453",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5454",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5455",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5456",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5457",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5458",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5470",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5471",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5472",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5473",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5474",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5475",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5476",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5477",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5478",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5479",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5480",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5481",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5482",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5483",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5484",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5500",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5501",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5502",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5503",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5504",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5505",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5506",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5507",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5508",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5509",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5510",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5511",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5512",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5513",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5514",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5530",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5531",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5532",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5533",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5534",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5535",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5536",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5545",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5546",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5547",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5548",
+        "identical": true,
+        "detail": ""
+      },
+      {
+        "vector": "VER-CONF-5549",
+        "identical": true,
+        "detail": ""
+      }
+    ]
+  },
+  "rest_equivalence": {
+    "passed": 4,
+    "cases": 4,
+    "results": [
+      {
+        "case": "read: GET /api/v1/{vae}/{Class}/{slug} equals the query message's read",
+        "outcome": "pass",
+        "detail": ""
+      },
+      {
+        "case": "query: GET /api/v1/{vae}/{Class}?q= equals the query message's textual query",
+        "outcome": "pass",
+        "detail": ""
+      },
+      {
+        "case": "error: a problem document carries the message's error code and the status of STD-ERR-002",
+        "outcome": "pass",
+        "detail": ""
+      },
+      {
+        "case": "mutate: POST /api/v1/{vae}/{Class}/{slug}/{port} equals the mutate message's port call",
+        "outcome": "pass",
+        "detail": ""
+      }
+    ]
+  },
+  "signature": {
+    "alg": "ed25519",
+    "key": "1cf903c631fc4f99a00a66b19a48c2bfac7f17b8d4b60d06e36d1375e3ab1b15",
+    "sig": "9c824ac11bb943391d9d1f582ed3cddc7d89fea3b06b8c3aaf1900e8647c5a81b0088990e27931b9f88681c7cc2a5819a7ce138a3203a99e55e71c49d779050b"
+  }
+}

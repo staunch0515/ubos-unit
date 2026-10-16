@@ -134,6 +134,14 @@ identity API under `/api/v1/identity` (sign-in, principals, credentials, API key
 keys, the security log, the session policy, secrets); `ubos-server --admin USER:PASSWORD`
 creates the first administrator.
 
+The suites of step 14d: `ubos-proto-suite` (SUITE-NOD-PROTO, VER-CONF-7000) replays the
+Protocol vectors over the in-process, HTTP and WebSocket bindings and requires identical
+frames, with version-skew cases and REST facade equivalence; `ubos-auth-suite`
+(SUITE-NOD-AUTH) checks local identity against the acceptance criteria of its design clauses
+on memory or, with `--database`, PostgreSQL. Both are test bodies of `cargo test -p
+ubos-node`. The vector-matching helpers both conformance runners use are in
+`ubos_dvm::vectors`.
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh

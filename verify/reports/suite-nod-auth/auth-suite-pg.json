@@ -1,0 +1,167 @@
+{
+  "suite": "SUITE-NOD-AUTH",
+  "step": "PH-1 14d",
+  "decision": "DEC-075",
+  "implementation": {
+    "crate": "ubos-node",
+    "version": "0.0.0"
+  },
+  "environment": {
+    "backend": "postgresql",
+    "os": "linux",
+    "arch": "x86_64"
+  },
+  "cases": 13,
+  "passed": 13,
+  "results": [
+    {
+      "case": "credentials_argon2id_totp",
+      "clause": "DSN-NOD-101",
+      "result": "pass",
+      "ms": 833,
+      "evidence": {
+        "phc_prefix": "$argon2id$v=19$m=65536,t=3,p=1"
+      }
+    },
+    {
+      "case": "brute_force_delay_and_lock",
+      "clause": "DSN-NOD-101",
+      "result": "pass",
+      "ms": 3795,
+      "evidence": {
+        "attempts": [
+          "invalid_credentials",
+          "invalid_credentials",
+          "invalid_credentials",
+          "invalid_credentials",
+          "invalid_credentials",
+          "invalid_credentials",
+          "invalid_credentials",
+          "throttled",
+          "throttled",
+          "throttled",
+          "throttled",
+          "throttled",
+          "throttled",
+          "throttled",
+          "throttled",
+          "throttled",
+          "throttled",
+          "throttled",
+          "throttled",
+          "throttled"
+        ],
+        "attempt_21": "locked"
+      }
+    },
+    {
+      "case": "sessions_and_timeouts",
+      "clause": "DSN-NOD-105",
+      "result": "pass",
+      "ms": 1478,
+      "evidence": {
+        "live_sessions": 2
+      }
+    },
+    {
+      "case": "revocation",
+      "clause": "DSN-NOD-106",
+      "result": "pass",
+      "ms": 778,
+      "evidence": {}
+    },
+    {
+      "case": "principal_keys_and_history",
+      "clause": "DSN-NOD-108",
+      "result": "pass",
+      "ms": 78,
+      "evidence": {
+        "keys": 3
+      }
+    },
+    {
+      "case": "principal_lifecycle",
+      "clause": "DSN-NOD-109",
+      "result": "pass",
+      "ms": 926,
+      "evidence": {}
+    },
+    {
+      "case": "service_principals_per_tenant",
+      "clause": "DSN-NOD-110",
+      "result": "pass",
+      "ms": 66,
+      "evidence": {}
+    },
+    {
+      "case": "security_log_chain",
+      "clause": "DSN-NOD-111",
+      "result": "pass",
+      "ms": 717,
+      "evidence": {
+        "entries": 9,
+        "gaps": [
+          3
+        ]
+      }
+    },
+    {
+      "case": "api_keys",
+      "clause": "DSN-NOD-150",
+      "result": "pass",
+      "ms": 49,
+      "evidence": {}
+    },
+    {
+      "case": "scope_intersection",
+      "clause": "DSN-NOD-153",
+      "result": "pass",
+      "ms": 0,
+      "evidence": {
+        "read": [
+          "read",
+          "read_history",
+          "explain",
+          "reflect",
+          "evaluate",
+          "ask"
+        ],
+        "write_on_update_customer": [
+          "read",
+          "update:Customer"
+        ]
+      }
+    },
+    {
+      "case": "server.server_preset_credentials",
+      "clause": "DSN-NOD-004",
+      "result": "pass",
+      "ms": 3,
+      "evidence": {}
+    },
+    {
+      "case": "server.read_only_scope_denies_mutate",
+      "clause": "DSN-NOD-153",
+      "result": "pass",
+      "ms": 207,
+      "evidence": {}
+    },
+    {
+      "case": "server.revocation_closes_connections",
+      "clause": "DSN-NOD-106",
+      "result": "pass",
+      "ms": 620,
+      "evidence": {
+        "connections": 3,
+        "closed_within_ms": 3,
+        "bound_ms": 60000
+      }
+    }
+  ],
+  "seconds": 9.8,
+  "signature": {
+    "alg": "ed25519",
+    "key": "131102aa9da6163e673fb15784b8ebe2676bdd8af3a9c9a52d15522be03201ad",
+    "sig": "397354d109f8fabbab7352175b881b66bbc1fed9df6245a8b1aeb1f260b5a01f9f268e26357a97a84cb866a65318cbd59bf882235e7819e6fb78ba0e1a66030d"
+  }
+}

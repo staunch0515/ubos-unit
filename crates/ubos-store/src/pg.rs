@@ -1091,6 +1091,18 @@ impl StoreRead for PgBackend {
             .await?;
         rows.iter().map(|r| r.try_get(0).map_err(db)).collect()
     }
+    async fn outbox_of_commit(&self, branch_id: i64, cseq: i64) -> Result<Vec<Vec<u8>>, BpaError> {
+        let rows = self
+            .rows(
+                sqlx::query("SELECT payload FROM outbox WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND cseq = $4 ORDER BY id")
+                    .bind(&self.scope.tenant)
+                    .bind(&self.scope.vae)
+                    .bind(branch_id)
+                    .bind(cseq),
+            )
+            .await?;
+        rows.iter().map(|r| r.try_get(0).map_err(db)).collect()
+    }
     async fn timers(&self) -> Result<Vec<TimerRow>, BpaError> {
         static SQL: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
             format!(
@@ -3275,6 +3287,15 @@ impl Store for PgStore {
     }
     fn outbox_pending(&mut self) -> Result<Vec<Value>, BpaError> {
         let rows = self.rt.block_on(self.backend.outbox_pending())?;
+        rows.iter().map(|b| json(b)).collect()
+    }
+    fn outbox_released(&mut self, branch: &str, cseq: u64) -> Result<Vec<Value>, BpaError> {
+        let Some(bid) = self.branch_id(branch)? else {
+            return Ok(Vec::new());
+        };
+        let rows = self
+            .rt
+            .block_on(self.backend.outbox_of_commit(bid, cseq as i64))?;
         rows.iter().map(|b| json(b)).collect()
     }
     fn outbox_push(&mut self, items: &[Value]) -> Result<(), BpaError> {
