@@ -1,6 +1,6 @@
 [package]
 name = "ubos-node"
-description = "Node host: in-process host services on PostgreSQL (tenant registry, key hierarchy, blobs, secrets, connectors, event log, jobs, telemetry)"
+description = "Node host: the single-node Server over UBTP (WebSocket, HTTP and server-sent events bindings, the REST facade) and the host services on PostgreSQL (tenant registry, key hierarchy, blobs, secrets, connectors, event log, jobs, telemetry)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,11 +12,19 @@ publish.workspace = true
 name = "ubos-node-suite"
 path = "src/bin/ubos-node-suite.rs"
 
+[[bin]]
+name = "ubos-server"
+path = "src/bin/ubos-server.rs"
+
 [dependencies]
 ubos-dvm.workspace = true
+ubos-proto.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
 tokio.workspace = true
+axum.workspace = true
+futures-util.workspace = true
 cap.workspace = true
 
 [lints]

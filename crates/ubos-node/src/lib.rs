@@ -14,6 +14,7 @@
 
 pub mod db;
 pub mod keys;
+pub mod server;
 pub mod services;
 
 use db::Db;

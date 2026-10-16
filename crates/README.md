@@ -110,6 +110,16 @@ subscriptions with cursors, the window of unacknowledged emits — and the Serve
 hands its transport frames to the same binding. The conformance test claims the Protocol
 profile (88 vectors).
 
+The Server of step 14b (`ubos-node/src/server.rs`, binary `ubos-server`) runs each VAE on
+its own actor thread and serves the WebSocket (`GET /ubtp/v1`, subprotocol `ubtp.v1`), HTTP
+(`POST /ubtp/v1`, `GET /ubtp/v1/stream` as server-sent events) and REST facade
+(`/api/v1/{vae}/{Class}[/{slug}[/{port}]]`) bindings by handing every message to the kernel's
+in-process binding; it fans the emits of a commit out to the other sessions of the VAE and
+polls once a second as the fallback. `ubos-server --memory --genesis FILE` serves one VAE
+over the memory store (development and suites); `--database URL` serves the tenancy
+registry on PostgreSQL. The `dev` preset accepts `{kind: "dev"}` handshake credentials; the
+credentials of local identity come with step 14c.
+
 Run the BPA vectors tagged `prototype`:
 
 ```sh
