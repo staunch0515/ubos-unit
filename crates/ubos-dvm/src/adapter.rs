@@ -56,6 +56,7 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "outbox_claim",
     "outbox_ack",
     "due_effective",
+    "system_commit",
     "bulk",
     "resolve",
     "did_document",
@@ -287,6 +288,7 @@ impl Adapter {
                 .engine
                 .load_genesis(field(i, "classes")?, i.get("value_types"))?,
             "commit" => self.engine.commit(i)?,
+            "system_commit" => self.engine.system_commit(i)?,
             "read" => self.engine.read(i)?,
             "read_ledger" => self.engine.read_ledger(i)?,
             "create_branch" | "merge" | "diff" | "export_state" | "merge_preview"

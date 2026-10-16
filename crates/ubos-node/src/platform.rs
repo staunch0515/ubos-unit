@@ -53,19 +53,51 @@ pub fn subscription_class() -> Value {
     ]})
 }
 
+/// The declaration of `Job` (FR-EVT-031): a System-kind object per job, written by the
+/// platform only (`system_commit`); the lease and its fencing token live in the `job`
+/// table (DEC-076).
+pub fn job_class() -> Value {
+    json!({"name": "Job", "label": "Job", "namespace": NAMESPACE,
+    "description": "An asynchronous job of the platform: type, queue, payload, state, attempts, last error, priority (FR-EVT-031)",
+    "parent": "SystemObject", "kind": "system", "schema_version": 1,
+    "fields": [
+        field("job_type", "text", true),
+        field("queue", "text", false),
+        field("payload", "json", false),
+        field("state", "text", true),
+        field("attempts", "integer", false),
+        field("max_attempts", "integer", false),
+        field("last_error", "text", false),
+        field("priority", "integer", false),
+        field("dedupe_key", "text", false),
+        field("result", "json", false),
+        field("poison", "boolean", false),
+    ]})
+}
+
 /// Declare the platform classes in a VAE that lacks them (an existing class of the same
 /// name in another namespace is left alone and reported).
 pub fn ensure(vae: &mut Vae) -> Result<(), BpaError> {
-    match vae.call("class_at", &json!({"class": "Subscription"})) {
-        Ok(c) if c["namespace"] == json!(NAMESPACE) => Ok(()),
-        Ok(_) => Err(BpaError::new(
-            "MODEL.DECLARATION_INCOMPLETE",
-            "a class Subscription of another namespace exists; event subscriptions are off in this VAE",
-        )),
-        Err(_) => vae
-            .call("load_genesis", &json!({"classes": [subscription_class()]}))
-            .map(|_| ()),
+    let mut missing = Vec::new();
+    for (name, decl) in [("Subscription", subscription_class()), ("Job", job_class())] {
+        match vae.engine_mut().registry.decl(name) {
+            Ok(c) if c["namespace"] == json!(NAMESPACE) => {}
+            Ok(_) => {
+                return Err(BpaError::new(
+                    "MODEL.DECLARATION_INCOMPLETE",
+                    format!(
+                        "a class {name} of another namespace exists; the event platform is off in this VAE"
+                    ),
+                ));
+            }
+            Err(_) => missing.push(decl),
+        }
     }
+    if missing.is_empty() {
+        return Ok(());
+    }
+    vae.call("load_genesis", &json!({"classes": missing}))
+        .map(|_| ())
 }
 
 /// Whether a branch is in a scope (`name` or `prefix/*`; `["main"]` when absent).
@@ -168,16 +200,150 @@ pub fn listeners(
     Ok(out)
 }
 
-/// Enqueue the deliveries of released effects (before they are acknowledged): one job per
-/// subscription and event. Returns the number enqueued.
+/// A UUID derived from a key (job and process identifiers).
+fn derived_uuid(domain: &str, key: &str) -> Result<String, BpaError> {
+    let h = content_id("ubos.chunk.v1", &json!({domain: key}))?;
+    let hex: String = h.trim_start_matches("sha256:").chars().take(32).collect();
+    Ok(format!(
+        "{}-{}-8{}-8{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[13..16],
+        &hex[17..20],
+        &hex[20..32]
+    ))
+}
+
+/// The job objects' state of a table state.
+pub fn object_state(table_state: &str) -> &'static str {
+    match table_state {
+        "done" => "succeeded",
+        "dead" => "dead",
+        "cancelled" => "cancelled",
+        "running" => "running",
+        _ => "pending",
+    }
+}
+
+/// Create the `Job` objects of job specifications (`{job_id, kind, queue?, priority?,
+/// payload, max_attempts?, dedupe_key?, delay_ms?}`) in one platform commit, skipping those
+/// that exist, then enqueue their rows (FR-EVT-031). Returns how many were new.
+pub fn create_jobs(vae: &mut Vae, specs: &[Value]) -> Result<usize, BpaError> {
+    let mut changes = Vec::new();
+    let mut new = Vec::new();
+    for sp in specs {
+        let id = sp["job_id"].as_str().unwrap_or_default().to_string();
+        match vae.call("read", &json!({"branch": "main", "object_id": id})) {
+            Ok(_) => continue,
+            Err(e) if e.code == "IAM.NOT_FOUND" => {}
+            Err(e) => return Err(e),
+        }
+        changes.push(json!({"op": "create", "class": "Job", "object_id": id, "slug": format!("job-{id}"),
+            "body": {"job_type": sp["kind"], "queue": sp.get("queue").cloned().unwrap_or_else(|| json!("default")),
+                "payload": sp["payload"], "state": "pending", "attempts": 0,
+                "max_attempts": sp.get("max_attempts").cloned().unwrap_or_else(|| json!(3)),
+                "priority": sp.get("priority").cloned().unwrap_or_else(|| json!(0)),
+                "dedupe_key": sp.get("dedupe_key").cloned().unwrap_or(Value::Null)}}));
+        new.push(sp.clone());
+    }
+    if !changes.is_empty() {
+        vae.call(
+            "system_commit",
+            &json!({"branch": "main", "changes": changes, "process": {"kind": "job", "message": "jobs enqueued"}}),
+        )?;
+    }
+    // rows of every spec: a crash between the commit and the rows is repaired here on the
+    // next release round, or by the sweeper
+    for sp in specs {
+        vae.services().jobs.enqueue(sp)?;
+    }
+    Ok(new.len())
+}
+
+/// Commit a job object's new state (`set` merged into its body).
+pub fn job_state(vae: &mut Vae, job_id: &str, set: &Value) -> Result<(), BpaError> {
+    vae.call(
+        "system_commit",
+        &json!({"branch": "main", "changes": [{"op": "update", "object_id": job_id, "body": set}],
+            "process": {"kind": "job", "message": "job state"}}),
+    )
+    .map(|_| ())
+}
+
+/// The `Job` objects still pending, as specifications for the sweeper (FR-EVT-032).
+pub fn open_jobs(vae: &mut Vae) -> Result<Vec<Value>, BpaError> {
+    let ids = match vae.call("list_objects", &json!({"class": "Job", "branch": "main"})) {
+        Ok(v) => v["objects"].as_array().cloned().unwrap_or_default(),
+        Err(_) => return Ok(Vec::new()),
+    };
+    let mut out = Vec::new();
+    for id in ids {
+        let oid = id.as_str().unwrap_or_default();
+        let b = vae.call("read", &json!({"branch": "main", "object_id": oid}))?["body"].clone();
+        if matches!(b["state"].as_str(), Some("pending" | "running")) {
+            out.push(json!({"job_id": oid, "kind": b["job_type"], "queue": b["queue"], "priority": b["priority"],
+                "payload": b["payload"], "max_attempts": b["max_attempts"], "attempts": b["attempts"],
+                "dedupe_key": b["dedupe_key"]}));
+        }
+    }
+    Ok(out)
+}
+
+/// The job specification of a `Job` effect of the kernel (`run.async`): a port job on the
+/// effect's object, run as the parent process's initiator after `not_before`.
+pub fn effect_job(e: &Value, now: &str) -> Option<Value> {
+    if e["type"] != "Job" {
+        return None;
+    }
+    let p = &e["payload"];
+    let id = p["job_id"].as_str()?;
+    let delay = match (
+        p["not_before"].as_str(),
+        ubos_dvm::types::time::parse_instant(now),
+    ) {
+        (Some(nb), Ok(n)) => ubos_dvm::types::time::parse_instant(nb)
+            .map(|t| (t - n).num_milliseconds().max(0))
+            .unwrap_or(0),
+        _ => 0,
+    };
+    Some(
+        json!({"job_id": id, "kind": "port", "queue": "default", "max_attempts": 5, "delay_ms": delay,
+        "dedupe_key": format!("effect:{}", e["effect_id"].as_str().unwrap_or(id)),
+        "payload": {"branch": e["branch"], "target": e["object_id"], "port": p["port"], "params": p["params"],
+            "parent_process": p["parent_process"]}}),
+    )
+}
+
+/// The jobs of released effects (before they are acknowledged): one delivery per
+/// subscription and event, and a port job per `Job` effect. Returns the specifications.
+pub fn dispatch_specs(vae: &mut Vae, effects: &[Value], now: &str) -> Result<Vec<Value>, BpaError> {
+    let mut specs: Vec<Value> = effects.iter().filter_map(|e| effect_job(e, now)).collect();
+    specs.extend(delivery_specs(vae, effects)?);
+    Ok(specs)
+}
+
+/// Create and enqueue the jobs of released effects; returns how many jobs.
 pub fn dispatch(vae: &mut Vae, effects: &[Value]) -> Result<usize, BpaError> {
+    let now = ubos_dvm::types::time::format_instant(&chrono::DateTime::<chrono::Utc>::from(
+        std::time::SystemTime::now(),
+    ));
+    let specs = dispatch_specs(vae, effects, &now)?;
+    if specs.is_empty() {
+        return Ok(0);
+    }
+    create_jobs(vae, &specs)?;
+    Ok(specs.len())
+}
+
+/// The delivery jobs of released effects: one per subscription and event.
+fn delivery_specs(vae: &mut Vae, effects: &[Value]) -> Result<Vec<Value>, BpaError> {
     let mut by_branch: std::collections::BTreeMap<String, Vec<Value>> =
         std::collections::BTreeMap::new();
     for e in effects {
         let b = e["branch"].as_str().unwrap_or("main").to_string();
         by_branch.entry(b).or_default().push(e.clone());
     }
-    let mut n = 0;
+    let mut out = Vec::new();
     for (branch, evs) in by_branch {
         let subs = subscriptions(vae, &branch)?;
         if subs.is_empty() {
@@ -193,16 +359,15 @@ pub fn dispatch(vae: &mut Vae, effects: &[Value]) -> Result<usize, BpaError> {
                     .unwrap_or_else(|| json!({}));
                 let max = crate::services::RetryPolicy::from_json(&policy).max_attempts;
                 let sub = s["object_id"].as_str().unwrap_or_default();
-                let job = json!({"kind": "delivery", "max_attempts": max,
-                    "dedupe_key": format!("{sub}:{}", e["effect_id"].as_str().unwrap_or_default()),
+                let dedupe = format!("{sub}:{}", e["effect_id"].as_str().unwrap_or_default());
+                out.push(json!({"job_id": derived_uuid("delivery", &dedupe)?, "kind": "delivery", "queue": "deliveries",
+                    "max_attempts": max, "dedupe_key": dedupe,
                     "payload": {"subscription": sub, "name": b["name"], "run_as": b["run_as"], "handler": b["handler"],
-                        "policy": policy, "event": event_view(e)}});
-                vae.services().jobs.enqueue(&job)?;
-                n += 1;
+                        "policy": policy, "event": event_view(e)}}));
             }
         }
     }
-    Ok(n)
+    Ok(out)
 }
 
 /// The process identifier of a delivery: a UUID derived from `(subscription, event)`.
@@ -270,8 +435,10 @@ pub fn deliver(vae: &mut Vae, job: &Value, principal: &Value) -> Result<Value, B
         .map(str::to_string);
     let trigger = json!({"type": if parent.is_some() { "event" } else { "external" }, "source": "subscription",
         "subscription": sub, "event_id": event_id, "event_type": event["type"]});
+    // the job's idempotency key commits the handler's work once, whichever holder of the
+    // lease gets there first (DEC-076)
     let mut process = json!({"process_id": pid, "kind": "action", "initiator": did, "principal_kind": kind,
-        "channel": "event", "trigger": trigger});
+        "channel": "event", "trigger": trigger, "idempotency_key": format!("job:{}", job["job_id"].as_str().unwrap_or(pid.as_str()))});
     if let Some(pp) = parent {
         process["parent_process"] = json!(pp);
     }
@@ -322,4 +489,82 @@ pub fn deliver(vae: &mut Vae, job: &Value, principal: &Value) -> Result<Value, B
     Ok(
         json!({"status": "done", "process_id": pid, "result": r.get("result").cloned().unwrap_or(Value::Null)}),
     )
+}
+
+/// The principal of a process recorded by the kernel (its initiator), if any.
+pub fn initiator_of(vae: &mut Vae, process_id: &str) -> Option<String> {
+    vae.call("process_info", &json!({"process_id": process_id}))
+        .ok()
+        .and_then(|i| i["initiator"].as_str().map(str::to_string))
+}
+
+/// Run a port job (a `Job` effect of `run.async`, or an operator's): the port on its target
+/// as one process with the job's identifier, the parent as trigger when the kernel recorded
+/// it, and the job's idempotency key; `already_done` when that process committed before.
+pub fn run_port(vae: &mut Vae, job: &Value, principal: &Value) -> Result<Value, BpaError> {
+    let p = &job["payload"];
+    let job_id = job["job_id"].as_str().unwrap_or_default();
+    if let Ok(info) = vae.call("process_info", &json!({"process_id": job_id}))
+        && info["state"] == "committed"
+    {
+        return Ok(json!({"status": "already_done", "process_id": job_id}));
+    }
+    let port = p["port"]
+        .as_str()
+        .ok_or_else(|| BpaError::new("MODEL.INVALID_VALUE", "a port job names its port"))?;
+    let parent = p["parent_process"]
+        .as_str()
+        .filter(|x| vae.call("process_info", &json!({"process_id": x})).is_ok())
+        .map(str::to_string);
+    let did = principal["did"].as_str().unwrap_or_default();
+    let kind = principal["kind"].as_str().unwrap_or("service");
+    let mut process = json!({"process_id": job_id, "kind": "job", "initiator": did, "principal_kind": kind,
+        "channel": "job", "idempotency_key": format!("job:{job_id}"),
+        "trigger": {"type": if parent.is_some() { "job" } else { "external" }, "source": "job", "job_id": job_id}});
+    if let Some(pp) = parent {
+        process["parent_process"] = json!(pp);
+    }
+    let mut ctx = json!({"principal": did, "principal_kind": kind, "channel": "job"});
+    if let Some(r) = principal["role"].as_str() {
+        process["role"] = json!(r);
+        ctx["role"] = json!(r);
+    }
+    let mut input = json!({"branch": p["branch"].as_str().unwrap_or("main"), "target": p["target"], "port": port,
+        "params": p.get("params").filter(|x| x.is_object()).cloned().unwrap_or_else(|| json!({})),
+        "process": process, "ctx": ctx});
+    if let Some(g) = principal.get("grants").filter(|g| g.is_array()) {
+        input["grants"] = g.clone();
+    }
+    let r = vae.call("execute", &input)?;
+    Ok(
+        json!({"status": "done", "process_id": job_id, "result": r.get("result").cloned().unwrap_or(Value::Null)}),
+    )
+}
+
+/// One step of a bulk job (DSN-NOD-230, DSN-DVM-560): at most `max_chunks` chunks of the
+/// kernel's bulk process named by the job (its identifier unless the payload names one),
+/// resumed when it exists; returns the bulk result (`suspended`, `committed` or `failed`).
+pub fn run_bulk(vae: &mut Vae, job: &Value, max_chunks: u64) -> Result<Value, BpaError> {
+    let mut input = job["payload"].clone();
+    if !input.is_object() {
+        return Err(BpaError::new(
+            "MODEL.INVALID_VALUE",
+            "a bulk job's payload is the bulk input",
+        ));
+    }
+    let pid = input["process_id"]
+        .as_str()
+        .map(str::to_string)
+        .unwrap_or_else(|| job["job_id"].as_str().unwrap_or_default().to_string());
+    let known = vae
+        .call("process_info", &json!({"process_id": pid}))
+        .ok()
+        .map(|i| i["state"].clone());
+    if known == Some(json!("committed")) {
+        return Ok(json!({"state": "committed", "process_id": pid}));
+    }
+    input["process_id"] = json!(pid);
+    input["max_chunks"] = json!(max_chunks);
+    input["resume"] = json!(known.is_some());
+    vae.call("bulk", &input)
 }

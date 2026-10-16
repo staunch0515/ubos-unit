@@ -703,6 +703,13 @@ impl Store for MemStore {
         Ok(true)
     }
     fn flush(&mut self, f: &Flush) -> Result<bool, BpaError> {
+        // a request whose idempotency record another flush wrote meanwhile is not committed
+        // twice: the flush fails like a moved head and the caller replays (STD-TXN-040)
+        if let Some((scope, key, _, _)) = &f.idempotency
+            && self.meta(&format!("idem:{scope}:{key}"))?.is_some()
+        {
+            return Ok(false);
+        }
         let Some(b) = self.branches.get_mut(&f.branch) else {
             return Ok(false);
         };

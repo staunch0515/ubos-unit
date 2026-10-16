@@ -69,8 +69,12 @@ pub const RELEASE_LEASE_MS: i64 = 30_000;
 pub const RELEASE_POLL_MS: u64 = 200;
 /// Deliveries a worker runs per VAE per round.
 pub const DELIVERY_BATCH: usize = 100;
-/// The lease of a claimed delivery.
+/// The lease of a claimed job (heartbeated every third of it).
 pub const DELIVERY_LEASE_MS: i64 = 60_000;
+/// The job kinds the worker runs.
+pub const JOB_KINDS: &[&str] = &["delivery", "port", "bulk"];
+/// The interval of the job sweeper (FR-EVT-032).
+pub const JOB_SWEEP_SECS: u64 = 30;
 /// The interval of the scan for VAEs with work.
 pub const WORK_SCAN_SECS: u64 = 30;
 /// Timers due within this horizon open their VAE (a scan interval and a margin).
@@ -340,6 +344,27 @@ fn host_call(vae: &mut Vae, op: &str, input: &Value) -> Result<Value, BpaError> 
             Ok(json!({"released": effects.len(), "deliveries": deliveries}))
         }
         "host.deliver" => crate::platform::deliver(vae, &input["job"], &input["principal"]),
+        "host.run_port" => crate::platform::run_port(vae, &input["job"], &input["principal"]),
+        "host.run_bulk" => crate::platform::run_bulk(
+            vae,
+            &input["job"],
+            input["max_chunks"].as_u64().unwrap_or(1),
+        ),
+        "host.initiator" => Ok(json!(crate::platform::initiator_of(
+            vae,
+            input["process_id"].as_str().unwrap_or_default()
+        ))),
+        "host.job_state" => crate::platform::job_state(
+            vae,
+            input["job_id"].as_str().unwrap_or_default(),
+            &input["set"],
+        )
+        .map(|_| json!(true)),
+        "host.jobs_open" => crate::platform::open_jobs(vae).map(|j| json!({"items": j})),
+        "host.enqueue" => {
+            let specs = input["specs"].as_array().cloned().unwrap_or_default();
+            crate::platform::create_jobs(vae, &specs).map(|n| json!({"created": n}))
+        }
         "host.listeners" => crate::platform::listeners(
             vae,
             input["branch"].as_str().unwrap_or("main"),
@@ -841,10 +866,15 @@ impl Server {
         Ok(j)
     }
 
-    /// The delivery worker (DSN-NOD-204, -209; FR-EVT-051): every `RELEASE_POLL_MS` and at
-    /// once after a release with deliveries, each open VAE's delivery jobs are claimed under
-    /// a lease and run as their subscription's service principal; a failed attempt waits for
-    /// its backoff, and one that spends the policy, or whose principal cannot act, is dead.
+    /// The job worker (DSN-NOD-204, -209, -220…-223, -229, -230; FR-EVT-031…-034,
+    /// -051…-053): every `RELEASE_POLL_MS` and at once after a release with jobs, it takes
+    /// one ready job from each open VAE in turn (tenants round-robin, within their queue and
+    /// tenant limits) until none is ready. A claimed job holds a lease whose token fences its
+    /// result and which is heartbeated every lease/3; deliveries run as their subscription's
+    /// service principal, port jobs as the parent process's initiator, bulk jobs batch by
+    /// batch so that a cancellation stops them in between. A failed attempt waits for its
+    /// backoff; one that spends its policy, repeats the same error `POISON_AFTER` times or
+    /// whose principal cannot act is dead. Every outcome is committed to the `Job` object.
     async fn delivery_loop(self: Shared) {
         loop {
             let _ = tokio::time::timeout(
@@ -859,89 +889,253 @@ impl Server {
                 .iter()
                 .map(|(k, h)| (k.clone(), h.clone()))
                 .collect();
-            for (key, h) in vaes {
-                for _ in 0..DELIVERY_BATCH {
-                    match self.deliver_one(&key, &h).await {
-                        Ok(true) => continue,
-                        Ok(false) => break,
-                        Err(e) => {
-                            eprintln!("ubos-server: delivery {key}: {e}");
-                            break;
-                        }
+            for _ in 0..DELIVERY_BATCH {
+                let mut any = false;
+                for (key, h) in &vaes {
+                    match self.run_one(key, h).await {
+                        Ok(true) => any = true,
+                        Ok(false) => {}
+                        Err(e) => eprintln!("ubos-server: job {key}: {e}"),
                     }
+                }
+                if !any {
+                    break;
                 }
             }
         }
     }
 
-    /// Claim and run one delivery of a VAE; `false` when none is ready.
-    async fn deliver_one(self: &Shared, key: &str, h: &VaeHandle) -> Result<bool, BpaError> {
+    /// The principal a job runs as: the subscription's service principal (`required`:
+    /// it must exist, be active and be a service or agent, DSN-NOD-110), or the parent
+    /// process's initiator when the tenant knows it.
+    async fn job_principal(
+        self: &Shared,
+        tenant: &str,
+        did: &str,
+        required: bool,
+    ) -> Result<Value, (BpaError, bool)> {
+        let id = self.identity_async(tenant).await.map_err(|e| (e, true))?;
+        let d = did.to_string();
+        match blocking(move || id.principal(&d)).await {
+            Ok(p)
+                if p["state"] == "active"
+                    && (!required || matches!(p["kind"].as_str(), Some("service" | "agent"))) =>
+            {
+                Ok(
+                    json!({"did": p["did"], "kind": p["kind"], "role": p.get("role").cloned().unwrap_or(Value::Null),
+                    "grants": p.get("grants").cloned().unwrap_or(Value::Null)}),
+                )
+            }
+            Ok(p) => Err((
+                BpaError::with_details(
+                    "IAM.DENIED",
+                    json!({"reason": "run_as_not_an_active_service_principal", "run_as": did, "state": p["state"], "kind": p["kind"]}),
+                ),
+                true,
+            )),
+            Err(_) if !required && !did.is_empty() => Ok(json!({"did": did, "kind": "human"})),
+            Err(e) => Err((e, true)),
+        }
+    }
+
+    /// Claim and run one job of a VAE; `false` when none is ready.
+    async fn run_one(self: &Shared, key: &str, h: &VaeHandle) -> Result<bool, BpaError> {
         let (me, k) = (self.clone(), key.to_string());
         let Some(jobs) = blocking(move || me.jobs_of(&k)).await? else {
             return Ok(false);
         };
         let (j2, holder) = (jobs.clone(), self.node_id.clone());
-        let Some(job) =
-            blocking(move || j2.claim(Some("delivery"), &holder, DELIVERY_LEASE_MS)).await?
+        let Some(job) = blocking(move || j2.claim(JOB_KINDS, &holder, DELIVERY_LEASE_MS)).await?
         else {
             return Ok(false);
         };
         let job_id = job["job_id"].as_str().unwrap_or_default().to_string();
+        let token = job["lease_token"].as_i64().unwrap_or(0);
         let tenant = key.split('/').next().unwrap_or_default().to_string();
-        let run_as = job["payload"]["run_as"]
-            .as_str()
-            .unwrap_or_default()
-            .to_string();
-        // the service principal must exist in the tenant and be active (DSN-NOD-110)
-        let principal = match self.identity_async(&tenant).await {
-            Ok(id) => {
-                let ra = run_as.clone();
-                blocking(move || id.principal(&ra)).await
+        let kind = job["kind"].as_str().unwrap_or_default().to_string();
+        // a cancellation asked before the attempt started
+        if job["cancel_requested"] == json!(true) {
+            let (j2, jid) = (jobs.clone(), job_id.clone());
+            if blocking(move || j2.finish_cancelled(&jid, token)).await? {
+                let _ = h
+                    .call(
+                        "host.job_state",
+                        json!({"job_id": job_id, "set": {"state": "cancelled"}}),
+                    )
+                    .await;
             }
-            Err(e) => Err(e),
+            return Ok(true);
+        }
+        // heartbeats every lease/3 while the attempt runs (DSN-NOD-221)
+        let hb = {
+            let (j2, jid) = (jobs.clone(), job_id.clone());
+            tokio::spawn(async move {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_millis(
+                        (DELIVERY_LEASE_MS / 3) as u64,
+                    ))
+                    .await;
+                    let (j3, jid2) = (j2.clone(), jid.clone());
+                    if !blocking(move || j3.heartbeat(&jid2, token, DELIVERY_LEASE_MS))
+                        .await
+                        .unwrap_or(false)
+                    {
+                        break;
+                    }
+                }
+            })
         };
-        let outcome = match principal {
-            Ok(p)
-                if p["state"] == "active"
-                    && matches!(p["kind"].as_str(), Some("service" | "agent")) =>
-            {
-                let pr = json!({"did": p["did"], "kind": p["kind"], "role": p.get("role").cloned().unwrap_or(Value::Null),
-                    "grants": p.get("grants").cloned().unwrap_or(Value::Null)});
-                h.call("host.deliver", json!({"job": job, "principal": pr}))
-                    .await
-                    .map_err(|e| (e, false))
+        let outcome: Result<Value, (BpaError, bool)> = match kind.as_str() {
+            "delivery" => {
+                let run_as = job["payload"]["run_as"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string();
+                match self.job_principal(&tenant, &run_as, true).await {
+                    Ok(pr) => h
+                        .call("host.deliver", json!({"job": job, "principal": pr}))
+                        .await
+                        .map_err(|e| (e, false)),
+                    Err(e) => Err(e),
+                }
             }
-            Ok(p) => Err((
-                BpaError::with_details(
-                    "IAM.DENIED",
-                    json!({"reason": "run_as_not_an_active_service_principal", "run_as": run_as, "state": p["state"], "kind": p["kind"]}),
+            "port" => {
+                let parent = job["payload"]["parent_process"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string();
+                let did = match h
+                    .call("host.initiator", json!({"process_id": parent}))
+                    .await
+                {
+                    Ok(v) => v.as_str().unwrap_or_default().to_string(),
+                    Err(_) => String::new(),
+                };
+                match self.job_principal(&tenant, &did, false).await {
+                    Ok(pr) => h
+                        .call("host.run_port", json!({"job": job, "principal": pr}))
+                        .await
+                        .map_err(|e| (e, false)),
+                    Err(e) => Err(e),
+                }
+            }
+            "bulk" => self.run_bulk_job(&jobs, h, &job, token).await,
+            other => Err((
+                BpaError::new(
+                    "LOGIC.NOT_AVAILABLE",
+                    format!("no runner for jobs of kind {other}"),
                 ),
                 true,
             )),
-            Err(e) => Err((e, true)),
         };
+        hb.abort();
         let policy = crate::services::RetryPolicy::from_json(&job["payload"]["policy"]);
         let attempts = job["attempts"].as_i64().unwrap_or(1);
         let jid = job_id.clone();
         match outcome {
-            Ok(r) => blocking(move || jobs.complete(&jid, &r)).await?,
+            Ok(r) if r["status"] == "cancelled" => {
+                let j2 = jobs.clone();
+                if blocking(move || j2.finish_cancelled(&jid, token)).await? {
+                    let _ = h.call("host.job_state", json!({"job_id": job_id, "set": {"state": "cancelled", "attempts": attempts}})).await;
+                }
+            }
+            Ok(r) => {
+                let (j2, r2) = (jobs.clone(), r.clone());
+                if blocking(move || j2.complete(&jid, Some(token), &r2)).await? {
+                    let _ = h.call("host.job_state", json!({"job_id": job_id, "set": {"state": "succeeded", "attempts": attempts, "result": r}})).await;
+                } else {
+                    self.fenced(&tenant, key, &job_id, token).await;
+                }
+            }
             Err((e, final_)) => {
                 let text = match &e.details {
                     Some(d) => format!("{}: {d}", e.code),
                     None => format!("{}: {}", e.code, e.message),
                 };
                 let delay = policy.delay_ms(attempts);
-                let state = blocking(move || jobs.fail(&jid, &text, delay, final_)).await?;
-                if state == "dead"
-                    && let Ok(id) = self.identity_async(&tenant).await
-                {
-                    let rec = json!({"vae": key, "job_id": job_id, "subscription": job["payload"]["subscription"],
-                        "event_id": job["payload"]["event"]["event_id"], "code": e.code, "attempts": attempts});
-                    let _ = blocking(move || id.log("delivery.dead", rec)).await;
+                let (j2, t2) = (jobs.clone(), text.clone());
+                match blocking(move || j2.fail(&jid, Some(token), &t2, delay, final_)).await? {
+                    None => self.fenced(&tenant, key, &job_id, token).await,
+                    Some(f) => {
+                        let set = json!({"state": crate::platform::object_state(&f.state), "attempts": attempts,
+                            "last_error": text, "poison": f.poison});
+                        let _ = h
+                            .call("host.job_state", json!({"job_id": job_id, "set": set}))
+                            .await;
+                        if f.state == "dead"
+                            && let Ok(id) = self.identity_async(&tenant).await
+                        {
+                            let rec = json!({"vae": key, "job_id": job_id, "kind": kind, "code": e.code, "attempts": attempts,
+                                "poison": f.poison, "subscription": job["payload"]["subscription"],
+                                "event_id": job["payload"]["event"]["event_id"]});
+                            let name = if kind == "delivery" {
+                                "delivery.dead"
+                            } else {
+                                "job.dead"
+                            };
+                            let _ = blocking(move || id.log(name, rec)).await;
+                        }
+                    }
                 }
             }
         }
         Ok(true)
+    }
+
+    /// A result refused because the lease's token no longer holds (DSN-NOD-221).
+    async fn fenced(self: &Shared, tenant: &str, key: &str, job_id: &str, token: i64) {
+        if let Ok(id) = self.identity_async(tenant).await {
+            let rec = json!({"vae": key, "job_id": job_id, "token": token, "node": self.node_id});
+            let _ = blocking(move || id.log("job.fenced", rec)).await;
+        }
+    }
+
+    /// Run a bulk job batch by batch: between batches the lease is checked and an
+    /// operator's cancellation stops the job (`{status: "cancelled"}`).
+    async fn run_bulk_job(
+        self: &Shared,
+        jobs: &Arc<dyn JobStore>,
+        h: &VaeHandle,
+        job: &Value,
+        token: i64,
+    ) -> Result<Value, (BpaError, bool)> {
+        let job_id = job["job_id"].as_str().unwrap_or_default().to_string();
+        loop {
+            let r = h
+                .call("host.run_bulk", json!({"job": job, "max_chunks": 1}))
+                .await
+                .map_err(|e| (e, false))?;
+            match r["state"].as_str() {
+                Some("committed") => return Ok(r),
+                Some("failed") => {
+                    return Err((
+                        BpaError::with_details(
+                            "LOGIC.NOT_AVAILABLE",
+                            json!({"reason": "bulk_failed", "error": r["error"]}),
+                        ),
+                        false,
+                    ));
+                }
+                _ => {}
+            }
+            let (j2, jid) = (jobs.clone(), job_id.clone());
+            let now = blocking(move || j2.job(&jid))
+                .await
+                .map_err(|e| (e, false))?;
+            match now {
+                Some(j) if j["cancel_requested"] == json!(true) => {
+                    return Ok(json!({"status": "cancelled", "bulk": r}));
+                }
+                Some(j) if j["lease_token"].as_i64() == Some(token) && j["state"] == "running" => {}
+                // the lease was lost: stop; the new holder resumes the bulk process
+                _ => {
+                    return Err((
+                        BpaError::with_details("LOGIC.CANCELLED", json!({"reason": "lease_lost"})),
+                        false,
+                    ));
+                }
+            }
+        }
     }
 
     /// The leader's loop (DSN-NOD-208, -228): every second each VAE's lease is renewed
@@ -950,6 +1144,7 @@ impl Server {
     /// once its lease would have expired.
     async fn leader_loop(self: Shared) {
         let mut last_sweep = std::time::Instant::now();
+        let mut last_jobs = std::time::Instant::now();
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             let vaes: Vec<(String, VaeHandle)> = self
@@ -963,6 +1158,10 @@ impl Server {
             if sweep {
                 last_sweep = std::time::Instant::now();
             }
+            let sweep_jobs = last_jobs.elapsed().as_secs() >= JOB_SWEEP_SECS;
+            if sweep_jobs {
+                last_jobs = std::time::Instant::now();
+            }
             for (key, h) in vaes {
                 let held = self.renew(&key, &h).await;
                 if !held {
@@ -970,6 +1169,9 @@ impl Server {
                 }
                 if let Err(e) = h.call("host.tick", json!({})).await {
                     eprintln!("ubos-server: tick {key}: {e}");
+                }
+                if sweep_jobs && let Err(e) = self.sweep_jobs(&key, &h).await {
+                    eprintln!("ubos-server: job sweep {key}: {e}");
                 }
                 if sweep {
                     let (me, k) = (self.clone(), key.clone());
@@ -984,6 +1186,31 @@ impl Server {
                 }
             }
         }
+    }
+
+    /// The job sweeper (FR-EVT-032, DSN-NOD-220): every pending `Job` object without a row
+    /// gets one again; expired leases are claimable anyway. Returns the rows restored.
+    pub async fn sweep_jobs(self: &Shared, key: &str, h: &VaeHandle) -> Result<usize, BpaError> {
+        let (me, k) = (self.clone(), key.to_string());
+        let Some(jobs) = blocking(move || me.jobs_of(&k)).await? else {
+            return Ok(0);
+        };
+        let open = h.call("host.jobs_open", json!({})).await?;
+        let items = open["items"].as_array().cloned().unwrap_or_default();
+        let restored = blocking(move || {
+            let mut n = 0;
+            for j in &items {
+                if jobs.restore(j)? {
+                    n += 1;
+                }
+            }
+            Ok(n)
+        })
+        .await?;
+        if restored > 0 {
+            self.deliver_now.notify_one();
+        }
+        Ok(restored)
     }
 
     /// Renew (or try to take) a VAE's leadership when due; returns whether this node may act.
@@ -2041,6 +2268,10 @@ async fn identity_api(
     }
 }
 
+/// What an operator's job action answers: the reply, the object state to commit after it
+/// and the job specification to create.
+type AdminJobOutcome = (Value, Option<(String, Value)>, Option<Value>);
+
 /// The lease name of a VAE's leadership.
 fn lease_name(key: &str) -> String {
     format!("vae-leader:{key}")
@@ -2058,6 +2289,10 @@ fn lease_name(key: &str) -> String {
 /// | `GET listeners` | `?vae&branch&type&handler` — the listener registry (FR-EVT-022) |
 /// | `GET jobs`, `GET jobs/{id}` | `?vae&state&kind&limit` — jobs and dead letters |
 /// | `POST jobs/{id}/retry`, `…/cancel`, `…/annotate` | `{text}` for a note — operator actions on dead letters (FR-EVT-052), audited |
+/// | `POST jobs` | `{kind: bulk \| port, payload, queue?, priority?, max_attempts?}` — an operator's job (DSN-NOD-230) |
+/// | `POST jobs/{id}/priority` | `{priority}` — re-prioritise (DSN-NOD-229) |
+/// | `GET queues`, `POST queues/{q}/pause`, `…/resume`, `PUT queues/{q}` | `{concurrency}` — queue controls and limits |
+/// | `PUT jobs-limit` | `{concurrency}` — the tenant's limit of running jobs (FR-EVT-034) |
 async fn admin_api(
     State(s): State<Shared>,
     ConnectInfo(peer): ConnectInfo<SocketAddr>,
@@ -2122,7 +2357,11 @@ async fn admin_api(
             Err(e) => problem_response(&e),
         };
     }
-    if p.first() == Some(&"jobs") {
+    if matches!(p.first(), Some(&"jobs" | &"queues" | &"jobs-limit")) {
+        let h = match s.vae_async(&tenant, &vae).await {
+            Ok(h) => h,
+            Err(e) => return problem_response(&e),
+        };
         let (me2, key2, m, segs2, by) = (
             s.clone(),
             key.clone(),
@@ -2131,20 +2370,16 @@ async fn admin_api(
             me.did.clone(),
         );
         let id2 = s.identity_async(&tenant).await.ok();
-        let out = blocking(move || {
-            let jobs = me2.jobs_of(&key2)?.ok_or_else(|| {
-                BpaError::new(
-                    "LOGIC.NOT_AVAILABLE",
-                    "this server keeps no jobs for the VAE",
-                )
-            })?;
+        let body2 = body.clone();
+        // the table action; the object's new state, if any, is committed after it
+        let out = blocking(move || -> Result<AdminJobOutcome, BpaError> {
+            let jobs = me2
+                .jobs_of(&key2)?
+                .ok_or_else(|| BpaError::new("LOGIC.NOT_AVAILABLE", "this server keeps no jobs for the VAE"))?;
             let p: Vec<&str> = segs2.iter().map(String::as_str).collect();
-            let audit = |action: &str, job: &str, ok: bool| {
+            let audit = |action: &str, job: &str, ok: bool, extra: Value| {
                 if let Some(id) = &id2 {
-                    let _ = id.log(
-                        &format!("admin.job_{action}"),
-                        json!({"vae": key2, "job_id": job, "by": by, "ok": ok}),
-                    );
+                    let _ = id.log(&format!("admin.job_{action}"), json!({"vae": key2, "job_id": job, "by": by, "ok": ok, "detail": extra}));
                 }
             };
             match (m.as_str(), p.as_slice()) {
@@ -2152,39 +2387,90 @@ async fn admin_api(
                     let f = JobFilter {
                         state: q.get("state").cloned(),
                         kind: q.get("kind").cloned(),
+                        queue: q.get("queue").cloned(),
                         limit: q.get("limit").and_then(|x| x.parse().ok()).unwrap_or(100),
                     };
-                    Ok(json!({"items": jobs.list(&f)?}))
+                    Ok((json!({"items": jobs.list(&f)?}), None, None))
                 }
-                ("GET", ["jobs", j]) => jobs
-                    .job(j)?
-                    .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown job")),
+                ("POST", ["jobs"]) => {
+                    // an operator's job: a bulk process or a port call (DSN-NOD-230)
+                    let kind = text(&body2, "kind")?.to_string();
+                    if kind != "bulk" && kind != "port" {
+                        return Err(BpaError::new("MODEL.INVALID_VALUE", "an operator enqueues bulk or port jobs"));
+                    }
+                    let id = crate::uuid()?;
+                    let spec = json!({"job_id": id, "kind": kind, "queue": body2.get("queue").cloned().unwrap_or_else(|| json!("default")),
+                        "priority": body2.get("priority").cloned().unwrap_or_else(|| json!(0)),
+                        "max_attempts": body2.get("max_attempts").cloned().unwrap_or_else(|| json!(3)),
+                        "payload": body2.get("payload").cloned().unwrap_or_else(|| json!({}))});
+                    audit("enqueue", &id, true, json!({"kind": kind}));
+                    Ok((json!({"job_id": id}), None, Some(spec)))
+                }
+                ("GET", ["jobs", j]) => Ok((jobs.job(j)?.ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown job"))?, None, None)),
                 ("POST", ["jobs", j, "retry"]) => {
                     let ok = jobs.retry(j)?;
-                    audit("retry", j, ok);
-                    Ok(json!({"ok": ok}))
+                    audit("retry", j, ok, Value::Null);
+                    Ok((json!({"ok": ok}), ok.then(|| (j.to_string(), json!({"state": "pending", "attempts": 0, "poison": false}))), None))
                 }
                 ("POST", ["jobs", j, "cancel"]) => {
+                    let before = jobs.job(j)?.map(|x| x["state"].clone());
                     let ok = jobs.cancel(j)?;
-                    audit("cancel", j, ok);
-                    Ok(json!({"ok": ok}))
+                    audit("cancel", j, ok, json!({"was": before}));
+                    // a running job is cancelled when its attempt ends (or between batches)
+                    let set = (ok && before != Some(json!("running"))).then(|| (j.to_string(), json!({"state": "cancelled"})));
+                    Ok((json!({"ok": ok, "running": before == Some(json!("running"))}), set, None))
                 }
                 ("POST", ["jobs", j, "annotate"]) => {
-                    let ok = jobs.annotate(j, &by, text(&body, "text")?)?;
-                    audit("annotate", j, ok);
-                    Ok(json!({"ok": ok}))
+                    let ok = jobs.annotate(j, &by, text(&body2, "text")?)?;
+                    audit("annotate", j, ok, Value::Null);
+                    Ok((json!({"ok": ok}), None, None))
+                }
+                ("POST", ["jobs", j, "priority"]) => {
+                    let pr = body2["priority"].as_i64().ok_or_else(|| BpaError::new("MODEL.INVALID_VALUE", "priority is an integer"))?;
+                    let ok = jobs.reprioritise(j, pr)?;
+                    audit("priority", j, ok, json!({"priority": pr}));
+                    Ok((json!({"ok": ok}), ok.then(|| (j.to_string(), json!({"priority": pr}))), None))
+                }
+                ("GET", ["queues"]) => Ok((json!({"items": jobs.queues()?}), None, None)),
+                ("POST", ["queues", qn, action @ ("pause" | "resume")]) => {
+                    jobs.set_queue(qn, Some(*action == "pause"), None)?;
+                    audit(action, qn, true, json!({"queue": qn}));
+                    Ok((json!({"ok": true}), None, None))
+                }
+                ("PUT", ["queues", qn]) => {
+                    let c = body2["concurrency"].as_i64();
+                    jobs.set_queue(qn, None, Some(c))?;
+                    audit("queue_limit", qn, true, json!({"queue": qn, "concurrency": c}));
+                    Ok((json!({"ok": true}), None, None))
+                }
+                ("PUT", ["jobs-limit"]) => {
+                    let c = body2["concurrency"].as_i64();
+                    jobs.set_tenant_limit(c)?;
+                    audit("tenant_limit", "*", true, json!({"concurrency": c}));
+                    Ok((json!({"ok": true}), None, None))
                 }
                 _ => Err(BpaError::new("IAM.NOT_FOUND", "unknown admin route")),
             }
         })
         .await;
-        if out.as_ref().is_ok_and(|v| v["ok"] == true) {
-            s.deliver_now.notify_one();
-        }
-        return match out {
-            Ok(v) => Json(v).into_response(),
-            Err(e) => problem_response(&e),
+        let (v, set, spec) = match out {
+            Ok(x) => x,
+            Err(e) => return problem_response(&e),
         };
+        if let Some((job_id, set)) = set
+            && let Err(e) = h
+                .call("host.job_state", json!({"job_id": job_id, "set": set}))
+                .await
+        {
+            return problem_response(&e);
+        }
+        if let Some(spec) = spec
+            && let Err(e) = h.call("host.enqueue", json!({"specs": [spec]})).await
+        {
+            return problem_response(&e);
+        }
+        s.deliver_now.notify_one();
+        return Json(v).into_response();
     }
     let me2 = s.clone();
     let m = method.clone();
