@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (76)
+## DEC (77)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -170,4 +170,5 @@ depends_on: [UBS-IDX-00]
 | DEC-074 | Row filters for list queries: residual post-filter with the order-by pushdown (step 13, part 13d) | `90-decisions/000-index.md` |
 | DEC-075 | PH-1 step 14: single-node Server and local identity, parts 14a–14d | `90-decisions/000-index.md` |
 | DEC-076 | PH-1 step 15: events, jobs and schedules, parts 15a–15e | `90-decisions/000-index.md` |
+| DEC-077 | PH-1 step 16: operations and configuration, parts 16a–16f | `90-decisions/000-index.md` |
 

@@ -155,6 +155,7 @@ Reading order:
   1. Given a VAE installed twice with the same genesis version, when compared, then roots are equal.
 - **Verification:** CONF
 - **Origin:** FR-PKG-071, FR-PKG-072
+- **Phase note:** PH-1 step 16 (DEC-077): the PH-1 genesis Buks are `system` (the platform classes) and `ontology` (the party–role core); notifications, files and tasks follow with their systems.
 
 ### DSN-NOD-421 — Genesis upgrades
 - **Statement:** A node upgrade carrying newer genesis Buks MUST propose upgrade change sets per VAE rather than changing `main` directly (FR-PKG-073).
@@ -348,6 +349,7 @@ Reading order:
   1. Given each package, when installed on its target, then the installation smoke test passes.
 - **Verification:** SCN
 - **Origin:** FR-OPS-011, NR-PORT-002
+- **Phase note:** PH-1 step 16 (DEC-077): the Server packages in PH-1; the Box installers follow the Box in PH-4 (DEC-024).
 
 ### DSN-NOD-602 — Bootstrap
 - **Statement:** First start MUST run a bootstrap that checks prerequisites (database version, extensions, object store access, clock sync, key service), applies storage migrations, creates the platform schema, and prints a one-time administrator link.
@@ -359,6 +361,7 @@ Reading order:
 - **Verification:** SCN
 - **Origin:** NR-OPER-001, NR-USE-006
 - **Phase note:** PH-1 step 7a (DEC-060): the node applies the migrations at start before any tenant is opened.
+- **Phase note:** PH-1 step 16 (DEC-077): the object store check follows with the object store in PH-2.
 
 ### DSN-NOD-603 — Versioned node configuration
 - **Statement:** Node configuration MUST be a versioned document (file or CTL-managed) with a schema, validated at start and reload (FR-OPS-091, NR-OPER-003). Every applied version MUST be recorded with its hash and author (FR-OPS-093).
@@ -485,6 +488,7 @@ Reading order:
   1. Given a restore to 10 minutes ago, when completed, then the DVM verification of the last 1,000 commits passes.
 - **Verification:** FAULT
 - **Origin:** FR-OPS-021, NR-DUR-002, NR-DUR-003, CR-SOX-004
+- **Phase note:** PH-1 step 16 (DEC-077): backups go to a local or mounted directory; PH-1 blobs live in PostgreSQL and are covered by point-in-time restore, and object-store versioning follows with the object store in PH-2.
 
 ### DSN-NOD-621 — Box backups
 - **Statement:** The Box MUST back up its encrypted database and blobs to a user-chosen target (local disk, cloud folder or Server) with online SQLite backup (FR-OPS-022).

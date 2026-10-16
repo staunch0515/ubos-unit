@@ -15,6 +15,7 @@
 //!
 //! The Server of gate 1b (UBTP, sessions, schedules, backup) builds on these services.
 
+pub mod config;
 pub mod db;
 pub mod identity;
 pub mod keys;
@@ -25,7 +26,7 @@ pub mod server;
 pub mod services;
 
 use db::Db;
-use serde_json::json;
+use serde_json::{Value, json};
 use std::sync::Arc;
 use ubos_dvm::host::{Context, Services, Vae};
 use ubos_dvm::store::kernel::Scope;
@@ -91,6 +92,13 @@ pub struct Node {
     services: NodeServices,
     scoped: std::sync::Mutex<std::collections::HashMap<String, Arc<Db>>>,
 }
+
+/// The oldest PostgreSQL version a node runs on (`server_version_num`).
+pub const MIN_POSTGRES: i64 = 160_000;
+/// The clock skew a bootstrap and the self-checks accept against the database, in ms.
+pub const MAX_CLOCK_SKEW_MS: i64 = 2_000;
+/// The PostgreSQL extensions the migrations need.
+pub const EXTENSIONS: &[&str] = &["btree_gist"];
 
 /// The connections of a node's pool of one tenant.
 pub const TENANT_POOL: u32 = 8;
@@ -251,6 +259,100 @@ impl Node {
             .iter()
             .filter_map(|r| r["authority"].as_str().map(str::to_string))
             .collect())
+    }
+
+    /// Record an applied configuration version (FR-OPS-093): `{node, hash, author, source,
+    /// document, diff, restart_required}`; returns its sequence number.
+    pub fn record_config(&self, v: &Value) -> Result<i64, BpaError> {
+        let t = |k: &str| v[k].as_str().unwrap_or_default().to_string();
+        let (node, hash, author, source, doc) = (
+            t("node"),
+            t("hash"),
+            t("author"),
+            t("source"),
+            t("document"),
+        );
+        let rows = self.db.query(
+            "INSERT INTO node_config (node_id, hash, author, source, document, diff, restart_required) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING seq",
+            &[
+                db::Param::Text(&node),
+                db::Param::Text(&hash),
+                db::Param::Text(&author),
+                db::Param::Text(&source),
+                db::Param::Text(&doc),
+                db::Param::Json(&v["diff"]),
+                db::Param::Json(&v["restart_required"]),
+            ],
+        )?;
+        Ok(rows.first().and_then(|r| r["seq"].as_i64()).unwrap_or(0))
+    }
+
+    /// The configuration versions applied, newest first (all nodes, or one).
+    pub fn config_versions(&self, node: Option<&str>, limit: i64) -> Result<Vec<Value>, BpaError> {
+        self.db.query(
+            "SELECT seq, node_id, to_char(applied_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS applied_at, \
+             hash, author, source, diff, restart_required FROM node_config WHERE ($1 = '' OR node_id = $1) ORDER BY seq DESC LIMIT $2",
+            &[db::Param::Text(node.unwrap_or_default()), db::Param::Int(limit.clamp(1, 1000))],
+        )
+    }
+
+    /// The prerequisites of a bootstrap (DSN-NOD-602): the PostgreSQL version, the
+    /// extensions the migrations need, the clock against the database's and whether the
+    /// root key is the development one. Each check is `{check, ok, detail, fix?}`.
+    pub fn prerequisites(url: &str, extensions: &[&str]) -> Vec<Value> {
+        let mut out = Vec::new();
+        let db = match Db::owner(url) {
+            Ok(d) => d,
+            Err(e) => {
+                out.push(
+                    json!({"check": "database", "ok": false, "detail": e.to_string(),
+                    "fix": "start PostgreSQL 16 or later and check database.url"}),
+                );
+                return out;
+            }
+        };
+        match db.query("SELECT current_setting('server_version_num')::int AS v, current_setting('server_version') AS t", &[]) {
+            Ok(r) => {
+                let v = r.first().and_then(|x| x["v"].as_i64()).unwrap_or(0);
+                let t = r.first().and_then(|x| x["t"].as_str()).unwrap_or("?").to_string();
+                out.push(json!({"check": "postgresql_version", "ok": v >= MIN_POSTGRES, "detail": t,
+                    "fix": if v >= MIN_POSTGRES { Value::Null } else { json!("upgrade PostgreSQL to version 16 or later") }}));
+            }
+            Err(e) => out.push(json!({"check": "postgresql_version", "ok": false, "detail": e.to_string()})),
+        }
+        for ext in extensions {
+            let rows = db
+                .query(
+                    "SELECT (SELECT count(*) FROM pg_available_extensions WHERE name = $1)::int AS available, \
+                     (SELECT count(*) FROM pg_extension WHERE extname = $1)::int AS installed",
+                    &[db::Param::Text(ext)],
+                )
+                .unwrap_or_default();
+            let r = rows.first().cloned().unwrap_or(Value::Null);
+            let ok = r["available"].as_i64().unwrap_or(0) > 0
+                || r["installed"].as_i64().unwrap_or(0) > 0;
+            out.push(json!({"check": format!("extension {ext}"), "ok": ok,
+                "detail": if ok { format!("{ext} is available") } else { format!("the PostgreSQL extension {ext} is not available") },
+                "fix": if ok { Value::Null } else { json!(format!("install the PostgreSQL contrib package (postgresql-16 contrib, e.g. postgresql-contrib), then run bootstrap again; it runs CREATE EXTENSION {ext}")) }}));
+        }
+        match db.query(
+            "SELECT (extract(epoch FROM clock_timestamp()) * 1000)::bigint AS ms",
+            &[],
+        ) {
+            Ok(r) => {
+                let theirs = r.first().and_then(|x| x["ms"].as_i64()).unwrap_or(0);
+                let ours = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as i64)
+                    .unwrap_or_default();
+                let skew = ours - theirs;
+                out.push(json!({"check": "clock", "ok": skew.abs() <= MAX_CLOCK_SKEW_MS, "detail": format!("{skew} ms against the database"),
+                    "fix": if skew.abs() <= MAX_CLOCK_SKEW_MS { Value::Null } else { json!("synchronise the clocks (NTP) of this host and the database host") }}));
+            }
+            Err(e) => out.push(json!({"check": "clock", "ok": false, "detail": e.to_string()})),
+        }
+        out
     }
 
     /// The `(tenant slug, authority)` of the active VAEs with work for the Server: effects

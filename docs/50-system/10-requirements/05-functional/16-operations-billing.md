@@ -24,6 +24,7 @@ depends_on: [UBS-REQ-05, UBS-REQ-05-09]
   1. Given a clean Linux host, when the single binary is installed with a PostgreSQL URL, then SCN-001 passes.
 - **Verification:** SCN
 - **Origin:** L40:SPEC-31
+- **Phase note:** PH-1 step 16 (DEC-077): the Server ships as a static Linux binary, an OCI image, a Helm chart and a Docker Compose file; the Box installers follow the Box in PH-4 (DEC-024).
 
 ### FR-OPS-012 — Minimal dependencies
 - **Statement:** The Box MUST run with no external services. The Server MUST require only PostgreSQL and an S3-compatible object store. The runtime store MAY be embedded for small installations.
@@ -34,6 +35,7 @@ depends_on: [UBS-REQ-05, UBS-REQ-05-09]
   1. Given a Server without Redis, when started in `small` mode, then it runs with the embedded runtime store.
 - **Verification:** SCN
 - **Origin:** L40:SPEC-31
+- **Phase note:** PH-1 step 16 (DEC-077): PH-1 keeps blobs in PostgreSQL; the S3-compatible object store follows in PH-2.
 
 ### FR-OPS-013 — Air-gapped installation
 - **Statement:** The Server MUST install and upgrade without Internet access, from signed offline bundles.

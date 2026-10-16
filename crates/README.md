@@ -176,6 +176,13 @@ and the job's identifier is derived from the slot, so a slot fires once whatever
 of leaders. Missed slots after an outage and slots recorded while paused follow the misfire
 policy; operators list, pause and resume schedules under `/api/v1/admin/schedules`.
 
+Configuration of step 16a (`ubos-node/src/config.rs`): `ubos-server --config ubos.toml`
+validates the file against its schema (`ubos-server config-schema`, `check-config`); secrets
+are `env:`, `file:` or `kms:` references; SIGHUP or `POST /api/v1/admin/config` apply the
+reloadable keys and record the version (`node_config`); `ubos-server bootstrap` checks the
+prerequisites, migrates, creates the default tenant and VAE and prints a one-time
+administrator invitation link.
+
 SUITE-NOD-EVENTS and SUITE-NOD-JOBS of step 15e run in `ubos-events-suite` (memory, or a
 fresh tenant on PostgreSQL; the crash and failover cases run nodes as child processes with
 `--serve` and kill them), and `ubos-events-suite --bench` measures MET-PERF-017, NR-PERF-012

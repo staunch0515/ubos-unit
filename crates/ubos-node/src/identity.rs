@@ -1775,6 +1775,69 @@ impl Identity {
         )
     }
 
+    // ---- invitations (DSN-NOD-602) ----
+
+    /// Invite a human principal with a role (the invited principal of that name when there
+    /// is one): a one-time token valid for `ttl_secs`, stored hashed. The token starts with the tenant slug, so that the invitation link names
+    /// its tenant. Returns `{token, principal, username, expires_at}`.
+    pub fn invite(&self, username: &str, role: &str, ttl_secs: i64) -> Result<Value, BpaError> {
+        if self.backend.get("credential", username)?.is_some() {
+            return Err(BpaError::new(
+                "TXN.ALREADY_EXISTS",
+                "the username belongs to a principal",
+            ));
+        }
+        // an invited principal of this name is invited again (a re-run bootstrap)
+        let existing = self.principals()?.into_iter().find(|p| {
+            s(p, "name") == Some(username)
+                && s(p, "kind") == Some("human")
+                && s(p, "state") == Some("invited")
+        });
+        let p = match existing {
+            Some(p) => p,
+            None => self.create_principal("human", username, Some(role), None)?,
+        };
+        let did = s(&p, "did").unwrap_or_default().to_string();
+        let secret: [u8; TOKEN_BYTES] = crypto::random_bytes()?;
+        let token = format!("{}.{}", self.tenant, b64u(&secret));
+        let expires = self.now() + ttl_secs;
+        self.backend.put(
+            "invitation",
+            &token_hash(&token),
+            &json!({"principal": did, "username": username, "role": role, "expires_at": expires}),
+        )?;
+        self.log(
+            "invitation.created",
+            json!({"principal": did, "username": username, "role": role, "expires_at": iso(expires)}),
+        )?;
+        Ok(
+            json!({"token": token, "principal": did, "username": username, "expires_at": iso(expires)}),
+        )
+    }
+
+    /// Accept an invitation: set the invited username's password, which activates the
+    /// principal, and consume the token (once).
+    pub fn accept_invitation(&self, token: &str, password: &str) -> Result<Value, BpaError> {
+        let key = token_hash(token);
+        let inv = self
+            .backend
+            .get("invitation", &key)?
+            .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown or used invitation"))?;
+        if inv["expires_at"].as_i64().unwrap_or(0) < self.now() {
+            self.backend.remove("invitation", &key)?;
+            return Err(denied("invitation_expired", json!({})));
+        }
+        let did = s(&inv, "principal").unwrap_or_default().to_string();
+        let username = s(&inv, "username").unwrap_or_default().to_string();
+        self.set_password(&username, &did, password)?;
+        self.backend.remove("invitation", &key)?;
+        self.log(
+            "invitation.accepted",
+            json!({"principal": did, "username": username}),
+        )?;
+        Ok(json!({"principal": did, "username": username, "state": "active"}))
+    }
+
     // ---- bootstrap ----
 
     /// Create the first administrator when the username is free: a human principal with
