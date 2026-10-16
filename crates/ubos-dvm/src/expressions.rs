@@ -360,9 +360,15 @@ impl Engine {
                 (None, None) => None,
             };
             let scanned = match &best {
-                Some(b) => {
-                    repo.field_scan(&branch, cseq, &classes, &b.field, lo, b.hi.as_deref(), fetch)?
-                }
+                Some(b) => repo.field_scan(
+                    &branch,
+                    cseq,
+                    &classes,
+                    &b.field,
+                    lo,
+                    b.hi.as_deref(),
+                    fetch,
+                )?,
                 None => None,
             };
             let objects = match scanned {
@@ -428,7 +434,11 @@ impl Engine {
         let mut hashes: Vec<String> = Vec::new();
         for o in st.objects.values() {
             let lin = &reg.class(&o.class)?.linearization;
-            if !(if only { o.class == cls } else { lin.contains(&cls) }) {
+            if !(if only {
+                o.class == cls
+            } else {
+                lin.contains(&cls)
+            }) {
                 continue;
             }
             let a = asof.clone().unwrap_or_else(|| default_valid(&o.class));
@@ -545,7 +555,9 @@ impl Engine {
             drop(repo);
             let mut passed = carried;
             passed.extend(rows);
-            let next = fetch.saturating_mul(4).min((budget - scanned_total) as usize);
+            let next = fetch
+                .saturating_mul(4)
+                .min((budget - scanned_total) as usize);
             return self.query_in(
                 i,
                 Some(next.max(1)),
