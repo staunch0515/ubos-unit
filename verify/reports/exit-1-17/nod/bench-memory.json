@@ -1,0 +1,67 @@
+{
+  "benchmark": "VER-BENCH-2000 (NOD part: MET-PERF-017, NR-PERF-012, NR-DUR-006)",
+  "step": "PH-1 15e",
+  "decision": "DEC-076",
+  "implementation": {
+    "crate": "ubos-node",
+    "version": "0.0.0"
+  },
+  "environment": {
+    "backend": "memory",
+    "os": "linux",
+    "arch": "x86_64",
+    "cpus": 4
+  },
+  "metrics": {
+    "MET-PERF-017": {
+      "idle": {
+        "n": 100,
+        "p50": 6.9,
+        "p95": 9.9,
+        "p99": 11.8,
+        "max": 16.7,
+        "mean": 7.4,
+        "missing": 0
+      },
+      "loaded": {
+        "n": 300,
+        "p50": 91.7,
+        "p95": 140.5,
+        "p99": 160.2,
+        "max": 191.3,
+        "mean": 92.4,
+        "missing": 0
+      },
+      "capacity_port_calls_per_s": 169.6,
+      "load_fraction": 0.7,
+      "load_target_port_calls_per_s": 118.7,
+      "load_port_calls_per_s": 39.4,
+      "measure": "commit time of the ping to commit time of its handler (kernel tx_time)",
+      "target_p95_ms": 500,
+      "met": true
+    },
+    "NR-PERF-012": {
+      "n": 1000,
+      "p50": 204.0,
+      "p95": 355.0,
+      "p99": 385.0,
+      "max": 411.0,
+      "mean": 204.0,
+      "versions": 1000,
+      "fired": 1000,
+      "before_valid_from": 0,
+      "within_5s": 1000,
+      "target": "p99 <= 5000 ms",
+      "met": true
+    },
+    "NR-DUR-006": {
+      "skipped": "needs PostgreSQL"
+    }
+  },
+  "seconds": 186.4,
+  "signature": {
+    "alg": "ed25519",
+    "key": "65b2312bf4c284eff97f2ca60913c4872d2be25e204ac572395578da03741b5b",
+    "sig": "18b6029340f3caf8e974b64ece8a53b670d493b67218b64560a25e1eb9eae40ba4631e49eda9f54f07ba36e765af98c930d0d9df68e17e1998c6fc39291bbe03"
+  }
+}

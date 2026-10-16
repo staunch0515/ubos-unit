@@ -371,7 +371,15 @@ fn host_call(vae: &mut Vae, op: &str, input: &Value) -> Result<Value, BpaError> 
             &input["set"],
         )
         .map(|_| json!(true)),
-        "host.jobs_open" => crate::platform::open_jobs(vae).map(|j| json!({"items": j})),
+        "host.jobs_open" => {
+            let known: std::collections::HashSet<String> = input["known"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|x| x.as_str().map(str::to_string))
+                .collect();
+            crate::platform::open_jobs(vae, &known).map(|j| json!({"items": j}))
+        }
         "host.enqueue" => {
             let specs = input["specs"].as_array().cloned().unwrap_or_default();
             crate::platform::create_jobs(vae, &specs).map(|n| json!({"created": n}))
@@ -1052,6 +1060,15 @@ impl Server {
                     Ok(v) => v.as_str().unwrap_or_default().to_string(),
                     Err(_) => String::new(),
                 };
+                // the parent's initiator, or the operator who enqueued the job
+                let did = if did.is_empty() {
+                    job["payload"]["initiator"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_string()
+                } else {
+                    did
+                };
                 match self.job_principal(&tenant, &did, false).await {
                     Ok(pr) => h
                         .call("host.run_port", json!({"job": job, "principal": pr}))
@@ -1277,6 +1294,14 @@ impl Server {
         let r = h.call("host.schedules", json!({"known": known})).await?;
         if r["unchanged"] != json!(true) {
             let items = r["items"].as_array().cloned().unwrap_or_default();
+            // the cursors of deleted and disabled schedules are forgotten
+            let live: Vec<String> = items
+                .iter()
+                .filter(|it| it["body"]["enabled"] != json!(false))
+                .filter_map(|it| it["schedule_id"].as_str().map(str::to_string))
+                .collect();
+            let (me, k) = (self.clone(), key.to_string());
+            blocking(move || me.schedules_of(&k)?.retain(&live)).await?;
             self.schedule_cache.lock().expect("schedule cache").insert(
                 key.to_string(),
                 (r["head"].as_str().unwrap_or_default().to_string(), items),
@@ -1358,7 +1383,9 @@ impl Server {
         let Some(jobs) = blocking(move || me.jobs_of(&k)).await? else {
             return Ok(0);
         };
-        let open = h.call("host.jobs_open", json!({})).await?;
+        let j2 = jobs.clone();
+        let known: Vec<String> = blocking(move || j2.ids()).await?.into_iter().collect();
+        let open = h.call("host.jobs_open", json!({"known": known})).await?;
         let items = open["items"].as_array().cloned().unwrap_or_default();
         let restored = blocking(move || {
             let mut n = 0;
@@ -2570,10 +2597,15 @@ async fn admin_api(
                         return Err(BpaError::new("MODEL.INVALID_VALUE", "an operator enqueues bulk or port jobs"));
                     }
                     let id = crate::uuid()?;
+                    let mut payload = body2.get("payload").cloned().unwrap_or_else(|| json!({}));
+                    // an operator's port job runs as the operator (it has no parent process)
+                    if kind == "port" && payload.is_object() {
+                        payload["initiator"] = json!(by);
+                    }
                     let spec = json!({"job_id": id, "kind": kind, "queue": body2.get("queue").cloned().unwrap_or_else(|| json!("default")),
                         "priority": body2.get("priority").cloned().unwrap_or_else(|| json!(0)),
                         "max_attempts": body2.get("max_attempts").cloned().unwrap_or_else(|| json!(3)),
-                        "payload": body2.get("payload").cloned().unwrap_or_else(|| json!({}))});
+                        "payload": payload});
                     audit("enqueue", &id, true, json!({"kind": kind}));
                     Ok((json!({"job_id": id}), None, Some(spec)))
                 }

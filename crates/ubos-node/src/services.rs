@@ -609,6 +609,8 @@ pub trait JobStore: Jobs {
     fn set_tenant_limit(&self, concurrency: Option<i64>) -> Result<(), BpaError>;
     /// Insert the row of a job object that has none (the sweeper); `true` when inserted.
     fn restore(&self, job: &Value) -> Result<bool, BpaError>;
+    /// The identifiers of the jobs that have a row (the sweeper reads only the others).
+    fn ids(&self) -> Result<std::collections::HashSet<String>, BpaError>;
 }
 
 fn job_spec(job: &Value) -> (String, String, Value, i64, String, String, i64, i64) {
@@ -898,6 +900,16 @@ impl JobStore for JobQueue {
         Ok(())
     }
 
+    fn ids(&self) -> Result<std::collections::HashSet<String>, BpaError> {
+        let rows = self.db.query(
+            "SELECT job_id::text AS id FROM job WHERE tenant_id = $1::uuid AND vae_id = $2::uuid",
+            &self.params(vec![]),
+        )?;
+        Ok(rows
+            .iter()
+            .filter_map(|r| r["id"].as_str().map(str::to_string))
+            .collect())
+    }
     fn restore(&self, job: &Value) -> Result<bool, BpaError> {
         let (id, kind, payload, max, dedupe, queue, priority, _) = job_spec(job);
         let attempts = job.get("attempts").and_then(Value::as_i64).unwrap_or(0);
@@ -1280,6 +1292,13 @@ impl JobStore for MemJobQueue {
     fn set_tenant_limit(&self, concurrency: Option<i64>) -> Result<(), BpaError> {
         *self.tenant_limit.lock().map_err(|_| mem_err())? = concurrency.map(|c| c.max(1));
         Ok(())
+    }
+    fn ids(&self) -> Result<std::collections::HashSet<String>, BpaError> {
+        let rows = self.rows.lock().map_err(|_| mem_err())?;
+        Ok(rows
+            .iter()
+            .filter_map(|r| r["job_id"].as_str().map(str::to_string))
+            .collect())
     }
     fn restore(&self, job: &Value) -> Result<bool, BpaError> {
         let now = self.now_ms();

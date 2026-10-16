@@ -1,0 +1,189 @@
+{
+  "suite": "SUITE-NOD-JOBS",
+  "step": "PH-1 15e",
+  "decision": "DEC-076",
+  "implementation": {
+    "crate": "ubos-node",
+    "version": "0.0.0"
+  },
+  "environment": {
+    "backend": "memory",
+    "os": "linux",
+    "arch": "x86_64",
+    "cpus": 4
+  },
+  "cases": 13,
+  "passed": 13,
+  "skipped": 0,
+  "results": [
+    {
+      "case": "jobs_are_objects",
+      "clause": "DSN-NOD-220",
+      "result": "pass",
+      "ms": 95,
+      "evidence": {
+        "job_id": "cc3f08f2-5919-415a-8e18-6027e60cbdd8",
+        "object_state": "succeeded",
+        "refused": "LOGIC.FORBIDDEN_TARGET"
+      }
+    },
+    {
+      "case": "lease_fencing",
+      "clause": "DSN-NOD-221",
+      "result": "pass",
+      "ms": 450,
+      "evidence": {
+        "tokens": [
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "case": "retries_and_poison",
+      "clause": "DSN-NOD-223",
+      "result": "pass",
+      "ms": 0,
+      "evidence": {
+        "delays_ms": [
+          1000,
+          2000,
+          4000,
+          8000
+        ],
+        "poison_after": 3
+      }
+    },
+    {
+      "case": "priorities_and_limits",
+      "clause": "DSN-NOD-229",
+      "result": "pass",
+      "ms": 0,
+      "evidence": {
+        "queue": "q-527fd3d9"
+      }
+    },
+    {
+      "case": "sweeper_restores",
+      "clause": "FR-EVT-032",
+      "result": "pass",
+      "ms": 69,
+      "evidence": {
+        "job_id": "bcddae65-8b18-4488-827d-f709f656530e"
+      }
+    },
+    {
+      "case": "bulk_cancel",
+      "clause": "DSN-NOD-230",
+      "result": "pass",
+      "ms": 979,
+      "evidence": {
+        "batches_before_cancel": 35,
+        "of": 200
+      }
+    },
+    {
+      "case": "idempotent_execution",
+      "clause": "DSN-NOD-221",
+      "result": "pass",
+      "ms": 18,
+      "evidence": {
+        "cseq": 43,
+        "replayed": true
+      }
+    },
+    {
+      "case": "schedule_rules",
+      "clause": "FR-EVT-041",
+      "result": "pass",
+      "ms": 0,
+      "evidence": {
+        "dst": [
+          "2026-10-30T22:00:00.000000Z",
+          "2026-11-02T23:00:00.000000Z",
+          "2026-11-03T23:00:00.000000Z"
+        ]
+      }
+    },
+    {
+      "case": "schedule_exactly_once",
+      "clause": "DSN-NOD-224",
+      "result": "pass",
+      "ms": 17,
+      "evidence": {
+        "evaluators": 2,
+        "slots": 20,
+        "firings": 20
+      }
+    },
+    {
+      "case": "schedule_missed_slots",
+      "clause": "DSN-NOD-226",
+      "result": "pass",
+      "ms": 0,
+      "evidence": {
+        "fire_all": [
+          "2026-10-16T11:00:00.000000Z",
+          "2026-10-16T12:00:00.000000Z",
+          "2026-10-16T13:00:00.000000Z"
+        ],
+        "fire_once": [
+          "2026-10-16T13:00:00.000000Z"
+        ],
+        "skip": []
+      }
+    },
+    {
+      "case": "schedule_pause_resume",
+      "clause": "DSN-NOD-225",
+      "result": "pass",
+      "ms": 1,
+      "evidence": {
+        "fire_once": [
+          "skipped",
+          "skipped",
+          "fired"
+        ],
+        "fire_all": [
+          "fired",
+          "fired",
+          "fired"
+        ]
+      }
+    },
+    {
+      "case": "schedule_hot_change",
+      "clause": "FR-EVT-042",
+      "result": "pass",
+      "ms": 27,
+      "evidence": {
+        "before": [
+          "2026-10-17T06:00:00.000000Z",
+          "2026-10-18T06:00:00.000000Z",
+          "2026-10-19T06:00:00.000000Z"
+        ],
+        "after": [
+          "2026-10-16T15:00:00.000000Z",
+          "2026-10-16T16:00:00.000000Z",
+          "2026-10-16T17:00:00.000000Z"
+        ]
+      }
+    },
+    {
+      "case": "schedule_through_server",
+      "clause": "DSN-NOD-224",
+      "result": "pass",
+      "ms": 44873,
+      "evidence": {
+        "slot": "2026-10-16T14:20:00.000000Z",
+        "observed_ms_after_slot": 220
+      }
+    }
+  ],
+  "seconds": 47.0,
+  "signature": {
+    "alg": "ed25519",
+    "key": "2ac896763a5f1ec2a00f3debb9e012246d1c4c0f21c662726afd0e38eae98d98",
+    "sig": "f07991133ec97f55ef099deb546a32c176c074cf9599e74ac5b0488ded76f6cd008434f0268057f0e4fa9b7daf9a1e18584ac98d0e287fe4bf0a7968419b5e0d"
+  }
+}

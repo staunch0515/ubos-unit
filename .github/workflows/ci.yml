@@ -111,6 +111,11 @@ jobs:
         run: |
           cargo build --release --locked -p ubos-node --bin ubos-node-suite
           ./target/release/ubos-node-suite --database "host=127.0.0.1 user=postgres dbname=bpa"
+      - name: events and jobs on PostgreSQL (SUITE-NOD-EVENTS, SUITE-NOD-JOBS, DEC-076)
+        run: |
+          cargo build --release --locked -p ubos-node --bin ubos-events-suite
+          ./target/release/ubos-events-suite --suite events --database "host=127.0.0.1 user=postgres dbname=bpa"
+          ./target/release/ubos-events-suite --suite jobs --database "host=127.0.0.1 user=postgres dbname=bpa"
       - name: export/import round trip with the independent verifier (VER-CONF-8403, EXIT-1-12, DEC-059)
         run: |
           cargo build --release --locked -p ubos-verify

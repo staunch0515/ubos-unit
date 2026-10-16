@@ -300,8 +300,13 @@ pub fn job_state(vae: &mut Vae, job_id: &str, set: &Value) -> Result<(), BpaErro
     .map(|_| ())
 }
 
-/// The `Job` objects still pending, as specifications for the sweeper (FR-EVT-032).
-pub fn open_jobs(vae: &mut Vae) -> Result<Vec<Value>, BpaError> {
+/// The `Job` objects still pending that have no row among `known`, as specifications for
+/// the sweeper (FR-EVT-032): one listing of the objects, and a read only of those without a
+/// row (normally none), so that a sweep does not grow with the history of jobs.
+pub fn open_jobs(
+    vae: &mut Vae,
+    known: &std::collections::HashSet<String>,
+) -> Result<Vec<Value>, BpaError> {
     let ids = match vae.call("list_objects", &json!({"class": "Job", "branch": "main"})) {
         Ok(v) => v["objects"].as_array().cloned().unwrap_or_default(),
         Err(_) => return Ok(Vec::new()),
@@ -309,6 +314,9 @@ pub fn open_jobs(vae: &mut Vae) -> Result<Vec<Value>, BpaError> {
     let mut out = Vec::new();
     for id in ids {
         let oid = id.as_str().unwrap_or_default();
+        if known.contains(oid) {
+            continue;
+        }
         let b = vae.call("read", &json!({"branch": "main", "object_id": oid}))?["body"].clone();
         if matches!(b["state"].as_str(), Some("pending" | "running")) {
             out.push(json!({"job_id": oid, "kind": b["job_type"], "queue": b["queue"], "priority": b["priority"],
@@ -389,8 +397,9 @@ fn delivery_specs(vae: &mut Vae, effects: &[Value]) -> Result<Vec<Value>, BpaErr
                     .unwrap_or_else(|| json!({}));
                 let max = crate::services::RetryPolicy::from_json(&policy).max_attempts;
                 let sub = s["object_id"].as_str().unwrap_or_default();
-                let dedupe = format!("{sub}:{}", e["effect_id"].as_str().unwrap_or_default());
-                out.push(json!({"job_id": derived_uuid("delivery", &dedupe)?, "kind": "delivery", "queue": "deliveries",
+                let effect = e["effect_id"].as_str().unwrap_or_default();
+                let dedupe = format!("{sub}:{effect}");
+                out.push(json!({"job_id": delivery_job_id(sub, effect)?, "kind": "delivery", "queue": "deliveries",
                     "max_attempts": max, "dedupe_key": dedupe,
                     "payload": {"subscription": sub, "name": b["name"], "run_as": b["run_as"], "handler": b["handler"],
                         "policy": policy, "event": event_view(e)}}));
@@ -398,6 +407,11 @@ fn delivery_specs(vae: &mut Vae, effects: &[Value]) -> Result<Vec<Value>, BpaErr
         }
     }
     Ok(out)
+}
+
+/// The job identifier of a delivery: a UUID derived from `(subscription, effect)`.
+pub fn delivery_job_id(subscription: &str, effect_id: &str) -> Result<String, BpaError> {
+    derived_uuid("delivery", &format!("{subscription}:{effect_id}"))
 }
 
 /// The process identifier of a delivery: a UUID derived from `(subscription, event)`.

@@ -1,0 +1,133 @@
+{
+  "suite": "SUITE-NOD-EVENTS",
+  "step": "PH-1 15e",
+  "decision": "DEC-076",
+  "implementation": {
+    "crate": "ubos-node",
+    "version": "0.0.0"
+  },
+  "environment": {
+    "backend": "memory",
+    "os": "linux",
+    "arch": "x86_64",
+    "cpus": 4
+  },
+  "cases": 10,
+  "passed": 8,
+  "skipped": 2,
+  "results": [
+    {
+      "case": "release_order",
+      "clause": "DSN-NOD-201",
+      "result": "pass",
+      "ms": 858,
+      "evidence": {
+        "objects": 3,
+        "effects": 30
+      }
+    },
+    {
+      "case": "outbox_claims",
+      "clause": "DSN-NOD-201",
+      "result": "pass",
+      "ms": 526,
+      "evidence": {
+        "claimed_a": 4,
+        "claimed_b": 4,
+        "after_lease": 6
+      }
+    },
+    {
+      "case": "subscription_scope",
+      "clause": "DSN-NOD-203",
+      "result": "pass",
+      "ms": 115,
+      "evidence": {
+        "listeners": [
+          "closed-feature"
+        ],
+        "deliveries": [
+          "closed-feature"
+        ]
+      }
+    },
+    {
+      "case": "handler_process_once",
+      "clause": "DSN-NOD-204",
+      "result": "pass",
+      "ms": 99,
+      "evidence": {
+        "process_id": "c37b15ae-c94d-866c-8b6d-35925ccc5e74",
+        "redelivery": "already_done",
+        "trigger": {
+          "type": "event",
+          "source": "subscription",
+          "subscription": "2341a599-3a05-436e-82d5-0ace140492e1",
+          "event_id": "00000000-0000-4000-8000-000000000065/1",
+          "event_type": "Pinged"
+        }
+      }
+    },
+    {
+      "case": "dead_letters",
+      "clause": "DSN-NOD-209",
+      "result": "pass",
+      "ms": 397,
+      "evidence": {
+        "job_id": "5bc5b3c5-e6dd-8ce6-8fec-967a1646e864",
+        "attempts": 2,
+        "redriven": true
+      }
+    },
+    {
+      "case": "became_effective",
+      "clause": "DSN-NOD-208",
+      "result": "pass",
+      "ms": 3547,
+      "evidence": {
+        "lag_ms": 31
+      }
+    },
+    {
+      "case": "event_log_query_retention",
+      "clause": "DSN-NOD-202",
+      "result": "pass",
+      "ms": 105,
+      "evidence": {
+        "removed": 2
+      }
+    },
+    {
+      "case": "leader_leases",
+      "clause": "DSN-NOD-228",
+      "result": "pass",
+      "ms": 401,
+      "evidence": {
+        "tokens": [
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "case": "crash_recovery",
+      "clause": "NR-DUR-006",
+      "result": "skip",
+      "ms": 0,
+      "detail": "needs PostgreSQL"
+    },
+    {
+      "case": "failover",
+      "clause": "DSN-NOD-228",
+      "result": "skip",
+      "ms": 0,
+      "detail": "needs PostgreSQL"
+    }
+  ],
+  "seconds": 6.4,
+  "signature": {
+    "alg": "ed25519",
+    "key": "89b1403290d7842b1b82b516c62bbc75643363eb7d52b04395751ecd5b95753e",
+    "sig": "0506a6bca94b662be0d104fe5f4441b59b7db073e896a8a1e02cef877427ba05c2640555ffb00af024708fd6396e45d82fe84b950f486fb4b75e6dc728576701"
+  }
+}

@@ -89,7 +89,11 @@ pub struct Node {
     db: Arc<Db>,
     root: [u8; 32],
     services: NodeServices,
+    scoped: std::sync::Mutex<std::collections::HashMap<String, Arc<Db>>>,
 }
+
+/// The connections of a node's pool of one tenant.
+pub const TENANT_POOL: u32 = 8;
 
 /// The service implementations shared by the VAEs of a node.
 #[derive(Clone)]
@@ -119,6 +123,7 @@ impl Node {
                 connectors: Arc::new(services::ConnectorRegistry::default()),
                 telemetry: Arc::new(services::LogTelemetry::default()),
             },
+            scoped: std::sync::Mutex::new(std::collections::HashMap::new()),
         })
     }
 
@@ -290,7 +295,7 @@ impl Node {
         let Some(vae_id) = self.vae(tenant, authority)? else {
             return Ok(None);
         };
-        let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
+        let scoped = self.scoped(tenant)?;
         Ok(Some(services::EventLog::new(scoped, &tenant.id, &vae_id)))
     }
 
@@ -304,7 +309,7 @@ impl Node {
         let Some(vae_id) = self.vae(tenant, authority)? else {
             return Ok(None);
         };
-        let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
+        let scoped = self.scoped(tenant)?;
         Ok(Some(services::JobQueue::new(scoped, &tenant.id, &vae_id)))
     }
 
@@ -317,7 +322,7 @@ impl Node {
         let Some(vae_id) = self.vae(tenant, authority)? else {
             return Ok(None);
         };
-        let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
+        let scoped = self.scoped(tenant)?;
         Ok(Some(schedule::PgScheduleStore::new(
             scoped, &tenant.id, &vae_id,
         )))
@@ -331,7 +336,7 @@ impl Node {
     /// The host services of a tenant's VAE: real clock and entropy, the node's connectors
     /// (with the tenant's secrets), no models, the event log, the job table and telemetry.
     pub fn vae_services(&self, tenant: &Tenant, vae_id: &str) -> Result<Services, BpaError> {
-        let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
+        let scoped = self.scoped(tenant)?;
         let hierarchy = self.keys(tenant)?;
         let secrets = Arc::new(keys::SecretStore::new(scoped.clone(), hierarchy));
         let connectors = Arc::new(services::BoundConnectors {
@@ -357,7 +362,7 @@ impl Node {
             None => self.create_vae(tenant, authority)?,
         };
         let hierarchy = self.keys(tenant)?;
-        let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
+        let scoped = self.scoped(tenant)?;
         let blobs = Arc::new(services::PgBlobs::new(scoped.clone(), &tenant.id));
         let signer = Arc::new(keys::Signer::new(
             scoped,
@@ -381,7 +386,7 @@ impl Node {
     /// TOTP secrets and custodial key seeds under a key derived from the tenant KEK; the
     /// authority of its registered DIDs is the tenant slug.
     pub fn identity(&self, tenant: &Tenant) -> Result<identity::Identity, BpaError> {
-        let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
+        let scoped = self.scoped(tenant)?;
         let master = self.keys(tenant)?.derive("ubos.identity.v1", "master");
         Ok(identity::Identity::new(
             Box::new(identity::PgBackend::new(scoped, &tenant.id)),
@@ -393,13 +398,29 @@ impl Node {
 
     /// The secret store of a tenant (DSN-NOD-130; the operator interface of the Server).
     pub fn secrets(&self, tenant: &Tenant) -> Result<keys::SecretStore, BpaError> {
-        let scoped = Arc::new(Db::tenant(&self.url, &tenant.id)?);
+        let scoped = self.scoped(tenant)?;
         Ok(keys::SecretStore::new(scoped, self.keys(tenant)?))
     }
 
     /// The scoped database of a tenant (services and suites).
     pub fn tenant_db(&self, tenant: &Tenant) -> Result<Arc<Db>, BpaError> {
-        Db::tenant(&self.url, &tenant.id).map(Arc::new)
+        self.scoped(tenant)
+    }
+
+    /// The node's one pool of a tenant (opened once, `TENANT_POOL` connections), shared by
+    /// the tenant's VAEs, stores and services, so that the connections of a node grow with
+    /// its tenants rather than with every store of every VAE.
+    fn scoped(&self, tenant: &Tenant) -> Result<Arc<Db>, BpaError> {
+        let mut pools = self
+            .scoped
+            .lock()
+            .map_err(|_| BpaError::new("NOD.STORAGE_UNAVAILABLE", "pools lock"))?;
+        if let Some(d) = pools.get(&tenant.id) {
+            return Ok(d.clone());
+        }
+        let d = Arc::new(Db::tenant_with(&self.url, &tenant.id, TENANT_POOL)?);
+        pools.insert(tenant.id.clone(), d.clone());
+        Ok(d)
     }
 
     /// A context for `principal`.
