@@ -80,7 +80,7 @@ export async function tour(o: TourOptions): Promise<{ ok: number; failed: number
   // idempotency: the same key returns the first result
   const key = uuid7();
   const v0 = (await c.get(`ubos://${o.vae}/Customer/t${n0}`)).version;
-  const ch = [{ op: "update", object_id: oid(n0), base: v0, set: { name: "tour 0 renamed" } }];
+  const ch = [{ op: "update", object_id: oid(n0), base: v0, body: { name: "tour 0 renamed" } }];
   const opts = { idempotencyKey: key, trace: new TraceContext() };
   const r1 = await c.commit(ch, opts).catch((e: unknown) => e);
   const r2 = await c.commit(ch, opts).catch((e: unknown) => e);
@@ -115,7 +115,7 @@ export async function tour(o: TourOptions): Promise<{ ok: number; failed: number
   const sub = await c.subscribe(target);
   const rename = async (name: string) => {
     const it = await c.get(target);
-    return c.commit([{ op: "update", object_id: oid(n0), base: it.version, set: { name } }]);
+    return c.commit([{ op: "update", object_id: oid(n0), base: it.version, body: { name } }]);
   };
   const u1 = await rename("tour 0 again").catch((e: unknown) => e);
   check("an update with its base", !(u1 instanceof Error), u1);

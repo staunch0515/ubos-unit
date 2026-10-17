@@ -49,7 +49,7 @@ async fn rename(
         )
         .await?;
     c.commit(
-        json!([{"op": "update", "object_id": oid, "base": item.version(), "set": {"name": name}}]),
+        json!([{"op": "update", "object_id": oid, "base": item.version(), "body": {"name": name}}]),
         o,
     )
     .await
@@ -145,7 +145,7 @@ async fn main() {
         .as_ref()
         .map(|i| i.version().to_string())
         .unwrap_or_default();
-    let ch = json!([{"op": "update", "object_id": oid(base), "base": v0, "set": {"name": "tour 0 renamed"}}]);
+    let ch = json!([{"op": "update", "object_id": oid(base), "base": v0, "body": {"name": "tour 0 renamed"}}]);
     let r1 = c.commit(ch.clone(), &o).await;
     let r2 = c.commit(ch, &o).await;
     t.check("the same idempotency key returns the first result", matches!((&r1, &r2), (Ok(x), Ok(y)) if x.process_id() == y.process_id() && !x.process_id().is_empty()), (r1.as_ref().err(), r2.as_ref().err()));
@@ -234,6 +234,7 @@ async fn main() {
                 chunk_size: Some(512 * 1024),
                 on_progress: Some(&mut progress),
                 resume: None,
+                on_location: None,
             },
         )
         .await;

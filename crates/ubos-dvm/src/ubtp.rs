@@ -11,7 +11,7 @@ use crate::stateful::Engine;
 use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use ubos_proto::{InProcess, Limits, Request};
-use ubos_types::{BpaError, content_id};
+use ubos_types::{BpaError, canonical, content_id};
 use ubos_version::Repo;
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
@@ -307,6 +307,31 @@ impl Engine {
             }
             return Ok(body.clone());
         }
+        // STD-TXN-040: a key is scoped by the principal, not by the session. A key the
+        // kernel already recorded (in an earlier session: a client retrying after a lost
+        // reply) returns the first result before the base is checked, since the first
+        // attempt moved the head; new requests carry the key into their process, so the
+        // record is written with the commit.
+        let validate_only = b.get("validate_only") == Some(&json!(true));
+        let mut replayed = None;
+        if let Some(k) = key.as_ref().filter(|_| !validate_only) {
+            let request = match (b.get("commit"), b.get("port").unwrap_or(&Value::Null)) {
+                (Some(c), _) => {
+                    json!({"branch": branch, "changes": c.get("changes").cloned().unwrap_or(json!([]))})
+                }
+                (None, p) => json!({"branch": branch, "target": p["target"], "port": p["name"],
+                    "params": p.get("params").cloned().filter(|v| !v.is_null()).unwrap_or_else(|| json!({}))}),
+            };
+            let kernel_hash = content_id("ubos.chunk.v1", &request)?;
+            replayed = self.replay(&session.principal, &canonical(&json!(k))?, &kernel_hash)?;
+        }
+        if let Some(r) = replayed {
+            let body = self.replayed_response(&branch, b.contains_key("commit"), &r)?;
+            if let Some(k) = key {
+                session.idem.insert(k, (hash, body.clone()));
+            }
+            return Ok(body);
+        }
         if let Some(base) = b.get("base").filter(|v| !v.is_null()) {
             let head = self.head_cseq(&branch)?;
             if *base != json!(head) {
@@ -321,6 +346,9 @@ impl Engine {
             if let Some(v) = b.get(k).and_then(Value::as_str).filter(|t| !t.is_empty()) {
                 extra.insert(k.into(), json!(v));
             }
+        }
+        if let Some(k) = key.as_ref().filter(|_| !validate_only) {
+            extra.insert("idempotency_key".into(), json!(k));
         }
         let body = if let Some(c) = b.get("commit") {
             let changes = match c
@@ -402,6 +430,31 @@ impl Engine {
             session.idem.insert(k, (hash, body.clone()));
         }
         Ok(body)
+    }
+
+    /// The response to a mutation the kernel replayed from its idempotency record: the
+    /// commit, its versions and its process as the first attempt answered them.
+    fn replayed_response(&mut self, branch: &str, raw: bool, r: &Value) -> Result<Value, BpaError> {
+        let (mut commits, mut versions, mut pid) = (Vec::new(), Map::new(), Value::Null);
+        if let Some(cseq) = r.get("cseq").and_then(Value::as_u64).filter(|c| *c > 0) {
+            let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+            let cid = repo.commit_at(branch, Some(cseq))?;
+            let c = repo.commit(cid)?;
+            commits.push(json!(c.commit_id));
+            pid = c.extra.get("process_id").cloned().unwrap_or(Value::Null);
+            let ids: Vec<String> = c.ops.keys().cloned().collect();
+            for (oid, o) in repo.objects_in_ids(branch, cseq, &ids)? {
+                versions.insert(oid, json!(o.head));
+            }
+        }
+        Ok(if raw {
+            json!({"process_id": pid, "commits": commits, "versions": r.get("versions").cloned().unwrap_or(json!(versions)),
+                "warnings": r.get("warnings").cloned().unwrap_or_else(|| json!([])),
+                "result": {"cseq": r["cseq"], "entries": r["entries"], "retroactive": r["retroactive"]}})
+        } else {
+            json!({"process_id": pid, "commits": commits, "versions": versions, "warnings": [],
+                "result": r.get("result").cloned().unwrap_or(Value::Null)})
+        })
     }
 
     // ---- query (STD-PROTO-011) ----
@@ -494,9 +547,13 @@ impl Engine {
                 let mut uri = s(&Value::Object(b.clone()), "read")
                     .unwrap_or_default()
                     .to_string();
-                // the message's coordinates complete the selectors the URI lacks
-                let mut add = vec![("branch".to_string(), json!(branch))];
-                for n in ["asof", "time"] {
+                // the message's coordinates complete the selectors the URI lacks; a commit
+                // implies its branch (STD-ADDR-002), so the default branch is not added to it
+                let mut add = Vec::new();
+                if b.contains_key("branch") || !sel.contains_key("commit") {
+                    add.push(("branch".to_string(), json!(branch)));
+                }
+                for n in ["asof", "time", "commit"] {
                     if let Some(v) = sel.get(n) {
                         add.push((n.to_string(), v.clone()));
                     }
@@ -611,7 +668,7 @@ impl Engine {
                 let t = &b["timeline"];
                 let oid = self.object_of(&branch, &t["target"], &sel)?;
                 let mut i = json!({"branch": branch, "object_id": oid,
-                    "from": t.get("from").cloned().filter(|v| !v.is_null()).unwrap_or_else(|| json!("0000-01-01"))});
+                    "from": t.get("from").cloned().filter(|v| !v.is_null()).unwrap_or_else(|| json!("0001-01-01"))});
                 if let Some(v) = t.get("to").filter(|v| !v.is_null()) {
                     i["to"] = v.clone();
                 }

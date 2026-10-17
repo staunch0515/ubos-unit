@@ -4,7 +4,13 @@
     "rootDir": ".",
     "outDir": "build",
     "declaration": false,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["src", "examples"]
+  "include": [
+    "src",
+    "examples",
+    "suite"
+  ]
 }

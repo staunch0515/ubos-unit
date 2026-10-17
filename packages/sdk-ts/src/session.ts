@@ -74,6 +74,7 @@ export class Session {
   #handshake: Record<string, unknown> = {};
   #acks: Promise<unknown> = Promise.resolve();
   #closed = false;
+  #watchdog: ReturnType<typeof setInterval> | undefined;
 
   /** A session that is not open yet (see open()). */
   constructor(options: ConnectOptions) {
@@ -85,6 +86,15 @@ export class Session {
   /** Authenticate and hand-shake (`IAM.DENIED`, `INT.VERSION_UNSUPPORTED`). */
   async open(): Promise<this> {
     await this.#establish();
+    // reopen the session when its stream ended by itself while subscriptions are open, so
+    // that they resume from their cursors without waiting for a request (DSN-SDK-004)
+    this.#watchdog ??= setInterval(() => {
+      if (this.#closed || !this.link.lost || ![...this.subs.values()].some((x) => x.serverId)) return;
+      const seen = this.#generation;
+      this.#connected = false;
+      this.reconnect(seen, Date.now() + this.retry.deadlineMs).catch(() => undefined);
+    }, 500);
+    (this.#watchdog as { unref?: () => void }).unref?.();
     return this;
   }
 
@@ -120,6 +130,7 @@ export class Session {
 
   /** Close the connection; subscriptions end. */
   close(): void {
+    clearInterval(this.#watchdog);
     this.#closed = true;
     this.#connected = false;
     this.link.reset();
@@ -155,7 +166,8 @@ export class Session {
     const a = this.options.auth;
     switch (a.kind) {
       case "password":
-        this.#token = await this.#signIn(a.username, a.password);
+        // a reconnection reuses the session token while the node accepts it
+        this.#token ??= await this.#signIn(a.username, a.password);
         return { kind: "bearer", token: this.#token };
       case "api_key":
         return { kind: "api_key", key: a.key };
@@ -166,8 +178,20 @@ export class Session {
     }
   }
 
-  /** Open the session: credentials, handshake, then resubscribe. */
+  /** Open the session: credentials, handshake, then resubscribe. A held session token
+   * the node refuses (expired, revoked) is dropped and the client signs in again. */
   async #establish(): Promise<void> {
+    const held = this.options.auth.kind === "password" && this.#token !== undefined;
+    try {
+      await this.#establishOnce();
+    } catch (e) {
+      if (!held || !(e instanceof UbosError) || e instanceof TransportError || !e.code.startsWith("IAM.")) throw e;
+      this.#token = undefined;
+      await this.#establishOnce();
+    }
+  }
+
+  async #establishOnce(): Promise<void> {
     if (this.#closed) throw new TransportError("the client is closed");
     this.link.reset();
     const credentials = await this.#credentials();
@@ -235,6 +259,7 @@ export class Session {
     deadline: number,
   ): Promise<Record<string, unknown>> {
     for (let round = 0; round < 2; round++) {
+      if (this.link.lost) this.#connected = false;
       if (!this.#connected) await this.reconnect(this.#generation, deadline);
       const m: Frame = { v: VERSIONS[0], id: this.#id(), type, body };
       if (trace) m.trace = trace.child().traceparent;

@@ -9,13 +9,14 @@ import { type ConnectOptions, Session, type Update } from "./session.js";
 import { Files } from "./files.js";
 import { type TraceContext, uuid7 } from "./util.js";
 
-/** The coordinates of a read (DSN-SDK-006). */
+/** The coordinates of a read (DSN-SDK-006, STD-ADDR-002); at most one of `time` and
+ * `commit`. */
 export interface Selectors {
   /** Branch (default `main`). */
   branch?: string;
-  /** Transaction time (RFC 3339). */
+  /** Valid time: a date or a canonical instant (`2026-10-17T08:00:00.000000Z`). */
   asof?: string;
-  /** Valid time. */
+  /** Transaction time (the snapshot at that instant): a canonical instant. */
   time?: string;
   /** A commit. */
   commit?: string;
@@ -276,9 +277,11 @@ export class Client extends Session {
     return this.#ask(selectors(this.#body({ timeline: { target } }), sel));
   }
 
-  /** `diff {from, to}`: the differences between two commits or branches. */
-  diff(from: string, to: string): Promise<Json> {
-    return this.#ask(this.#body({ diff: { from, to } }));
+  /** `diff {from, to}`: the differences between two coordinates, each a branch and a
+   * commit sequence (`cseq`, as a mutation's result gives it). */
+  diff(from: { branch?: string; cseq: number }, to: { branch?: string; cseq: number }): Promise<Json> {
+    const c = (x: { branch?: string; cseq: number }) => ({ branch: x.branch ?? "main", time: x.cseq });
+    return this.#ask(this.#body({ diff: { from: c(from), to: c(to) } }));
   }
 
   /** `explain {target, kind, property | port}`. */

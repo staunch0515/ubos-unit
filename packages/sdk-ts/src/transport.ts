@@ -9,7 +9,9 @@
 //   `tenant` query parameter (browsers cannot set WebSocket headers).
 //
 // The layer knows envelopes only; a lost connection is a TransportError the session layer
-// reconnects from.
+// reconnects from, and a stream that ends by itself (the WebSocket, or the server-sent
+// events of HTTP) marks the link `lost` so that subscriptions resume without waiting for a
+// request.
 
 import { TransportError } from "./error.js";
 
@@ -38,6 +40,7 @@ export class Link {
   #opening: Promise<WebSocket> | undefined;
   #pending = new Map<string, Waiter>();
   #sse: AbortController | undefined;
+  #lost = false;
 
   constructor(
     readonly binding: Binding,
@@ -48,8 +51,14 @@ export class Link {
     readonly onEmit: (f: Frame) => void,
   ) {}
 
+  /** Whether the stream ended by itself (the session must be opened again). */
+  get lost(): boolean {
+    return this.#lost;
+  }
+
   /** Drop the connection and the session (the next exchange opens anew). */
   reset(): void {
+    this.#lost = false;
     this.#session = undefined;
     this.#sse?.abort();
     this.#sse = undefined;
@@ -113,12 +122,12 @@ export class Link {
           headers: { accept: "text/event-stream" },
           signal: ac.signal,
         });
-        if (!resp.ok || !resp.body) return;
+        if (!resp.ok || !resp.body) throw new TransportError("no event stream");
         const reader = resp.body.pipeThrough(new TextDecoderStream()).getReader();
         let buf = "";
         for (;;) {
           const { value, done } = await reader.read();
-          if (done) return;
+          if (done) break;
           buf += value.replace(/\r\n/g, "\n");
           let i: number;
           while ((i = buf.indexOf("\n\n")) >= 0) {
@@ -138,8 +147,10 @@ export class Link {
           }
         }
       } catch {
-        // aborted or lost: the next exchange restores the session
+        // aborted on reset, or lost
       }
+      // the stream ended by itself: the session is opened again
+      if (!ac.signal.aborted) this.#lost = true;
     })();
   }
 
@@ -169,7 +180,11 @@ export class Link {
       };
       ws.onclose = () => {
         clearTimeout(timer);
-        if (this.#ws === ws) this.#ws = undefined;
+        if (this.#ws === ws) {
+          // closed by the node or the network, not by reset()
+          this.#ws = undefined;
+          this.#lost = true;
+        }
         // every waiting request fails with a transport error
         this.#fail(new TransportError("the connection closed"));
       };

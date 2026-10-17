@@ -2550,7 +2550,15 @@ async fn ws_session(s: Shared, tenant: Option<String>, source: String, socket: W
                         s.attach_push(&key, tx);
                     }
                 }
-                for f in frames {
+                // emits the poll drained from the binding before this request are older than
+                // its frames: they go first, so a connection keeps the binding's order
+                // (STD-PROTO-012)
+                let mut ordered = Vec::new();
+                while let Ok(f) = push_rx.try_recv() {
+                    ordered.push(f);
+                }
+                ordered.extend(frames);
+                for f in ordered {
                     if sink.send(Message::Text(f.to_string().into())).await.is_err() { break; }
                 }
                 // a session the Server closed (a revoked or expired credential) ends the connection
