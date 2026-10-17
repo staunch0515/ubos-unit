@@ -424,6 +424,14 @@ def main():
     ids = [c["id"] for s in manifest["suites"].values() for c in s]
     work = tempfile.mkdtemp(prefix="sdk-suite-")
     node = Node(args, work)
+    try:
+        return run_all(args, manifest, ids, work, node)
+    finally:
+        node.drop()
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def run_all(args, manifest, ids, work, node):
     node.setup()
     token, api_key = credentials(node)
     proxy = Proxy(node.port)
@@ -457,7 +465,6 @@ def main():
         for k in types["checks"]:
             print(f"  {'ok  ' if k['ok'] else 'FAIL'} {k['name']}" + ("" if k["ok"] else f": {k['detail']}"), flush=True)
         failed += 0 if types["ok"] else 1
-    node.drop()
     summary = {label: {suite: f"{sum(1 for c in cs if r['cases'].get(c['id'], {}).get('ok'))} of {len(cs)}"
                        for suite, cs in manifest["suites"].items()} for label, r in results.items()}
     report = {"suite": "SUITE-SDK-PROTO, SUITE-SDK-NET, SUITE-SDK-TYPES", "step": "PH-1 17d (DEC-078)",
@@ -471,7 +478,6 @@ def main():
         open(args.report, "a").write("\n")
     print(json.dumps(summary, indent=1))
     print(f"failed: {failed}")
-    shutil.rmtree(work, ignore_errors=True)
     return 1 if failed else 0
 
 

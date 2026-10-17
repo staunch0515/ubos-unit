@@ -177,7 +177,7 @@ compile, naming `email`.
 ## Reproduce
 
 ```
-cargo build --locked -p ubos-node --bin ubos-server -p ubos-forge -p ubos-sdk --example suite
+cargo build --locked -p ubos-node -p ubos-forge -p ubos-sdk --bin ubos-server --bin forge --example suite
 (cd packages/sdk-ts && npm ci && npm run examples)
 python3 verify/sdk/sdk_suite.py --server target/debug/ubos-server --forge target/debug/forge \
     --rust target/debug/examples/suite --ts packages/sdk-ts/build/suite/suite.js \

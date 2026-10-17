@@ -66,7 +66,7 @@ jobs:
           cache: npm
           cache-dependency-path: packages/sdk-ts/package-lock.json
       - name: build the node, forge and the Rust runner
-        run: cargo build --locked -p ubos-node --bin ubos-server -p ubos-forge -p ubos-sdk --example suite
+        run: cargo build --locked -p ubos-node -p ubos-forge -p ubos-sdk --bin ubos-server --bin forge --example suite
       - name: build the TypeScript runner
         working-directory: packages/sdk-ts
         run: npm ci && npm run examples
