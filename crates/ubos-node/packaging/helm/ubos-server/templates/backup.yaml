@@ -1,0 +1,34 @@
+{{- if .Values.backup.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ubos.name" . }}-backups
+  labels: {{- include "ubos.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.backup.persistence.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources: {requests: {storage: {{ .Values.backup.persistence.size }}}}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "ubos.name" . }}-backup
+  labels: {{- include "ubos.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext: {runAsNonRoot: true, runAsUser: 10001, fsGroup: 10001}
+          containers:
+            - name: backup
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              args: ["backup", "base", "--config", "/etc/ubos/ubos.toml"]
+              volumeMounts: {{- include "ubos.mounts" . | nindent 16 }}
+          volumes: {{- include "ubos.volumes" . | nindent 12 }}
+{{- end }}

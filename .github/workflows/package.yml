@@ -1,0 +1,94 @@
+# Server packages (DSN-NOD-601, FR-OPS-011; PH-1 step 16f, DEC-077): static binaries for
+# x86-64 and ARM64, the OCI image, the Helm chart and the Compose file, and SUITE-NOD-OPS
+# (PH-1 part, VER-FAULT-2000) installing the x86-64 package by INSTALL.md.
+name: package
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - "crates/ubos-node/packaging/**"
+      - "crates/ubos-node/ops/**"
+      - ".github/workflows/package.yml"
+  pull_request:
+    paths:
+      - "crates/ubos-node/packaging/**"
+      - "crates/ubos-node/ops/**"
+      - ".github/workflows/package.yml"
+  workflow_dispatch:
+
+jobs:
+  binary:
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: toolchain and musl
+        run: |
+          rustup target add ${{ matrix.target }}
+          sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: package
+        run: crates/ubos-node/packaging/build.sh --target ${{ matrix.target }} --out dist
+      - name: the binary is static and runs
+        run: |
+          tar -xzf dist/*.tar.gz -C dist
+          file dist/ubos-server-*/bin/ubos-server | tee /dev/stderr | grep -q "statically linked\|static-pie linked"
+          dist/ubos-server-*/bin/ubos-server version
+          dist/ubos-server-*/bin/ubos-server check-config dist/ubos-server-*/ubos.toml.example
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ubos-server-${{ matrix.target }}
+          path: |
+            dist/*.tar.gz
+            dist/SHA256SUMS
+
+  ops-suite:
+    needs: binary
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ubos-server-x86_64-unknown-linux-musl
+          path: dist
+      - name: SUITE-NOD-OPS on the x86-64 package (VER-FAULT-2000)
+        run: |
+          python3 crates/ubos-node/ops/ops_suite.py --package dist/ubos-server-*-x86_64-linux.tar.gz \
+            --pg-bin /usr/lib/postgresql/16/bin --report ops-report.json --points 10 --spacing 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: suite-nod-ops-report
+          path: ops-report.json
+
+  image:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: OCI image
+        run: docker build -f crates/ubos-node/packaging/Dockerfile -t ubos-server:local .
+      - name: the image runs
+        run: |
+          docker run --rm ubos-server:local version
+          docker run --rm --entrypoint pg_basebackup ubos-server:local --version
+      - name: the Compose file is valid
+        working-directory: crates/ubos-node/packaging
+        run: |
+          mkdir -p secrets && openssl rand -hex 32 > secrets/root.key && openssl rand -hex 32 > secrets/backup.key
+          openssl rand -hex 24 > secrets/db.password
+          docker compose -f compose.yaml config --quiet
+      - uses: azure/setup-helm@v4
+      - name: the Helm chart lints and renders
+        run: |
+          helm lint crates/ubos-node/packaging/helm/ubos-server
+          helm template t crates/ubos-node/packaging/helm/ubos-server > /dev/null

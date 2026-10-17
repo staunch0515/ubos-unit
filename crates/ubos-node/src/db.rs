@@ -96,6 +96,31 @@ impl Db {
         self.rt.block_on(f(self.pool.clone()))
     }
 
+    /// Run statements in one transaction, in order; the rows of each. A failing statement
+    /// rolls the transaction back.
+    pub fn transaction(&self, stmts: &[(&str, &[Param<'_>])]) -> Result<Vec<Vec<Value>>, BpaError> {
+        let stmts: Vec<(String, Vec<Owned>)> = stmts
+            .iter()
+            .map(|(sql, params)| (sql.to_string(), params.iter().map(Param::owned).collect()))
+            .collect();
+        self.run(move |pool| {
+            Box::pin(async move {
+                let mut tx = pool.begin().await.map_err(err)?;
+                let mut out = Vec::new();
+                for (sql, params) in &stmts {
+                    let mut q = sqlx::query(sql);
+                    for p in params {
+                        q = p.bind(q);
+                    }
+                    let rows = q.fetch_all(&mut *tx).await.map_err(err)?;
+                    out.push(rows.iter().map(row_json).collect::<Result<Vec<_>, _>>()?);
+                }
+                tx.commit().await.map_err(err)?;
+                Ok(out)
+            })
+        })
+    }
+
     /// Execute a statement with text and byte parameters; returns the rows affected.
     pub fn execute(&self, sql: &str, params: &[Param<'_>]) -> Result<u64, BpaError> {
         let sql = sql.to_string();

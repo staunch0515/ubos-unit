@@ -1,0 +1,106 @@
+# Docker Compose file of a single-node UBOS Server with its PostgreSQL (DSN-NOD-601).
+# Before the first start, create the secrets (64 hexadecimal digits each) and the config:
+#   mkdir -p secrets && openssl rand -hex 32 > secrets/root.key && openssl rand -hex 32 > secrets/backup.key
+#   openssl rand -hex 24 > secrets/db.password
+# then:  docker compose up -d   (from crates/ubos-node/packaging, or with -f)
+# The administrator's one-time invitation link is in `docker compose logs bootstrap`.
+name: ubos
+
+x-ubos: &ubos
+  image: ${UBOS_IMAGE:-ubos-server:local}
+  build:
+    context: ../../..
+    dockerfile: crates/ubos-node/packaging/Dockerfile
+  secrets: [root_key, backup_key, db_password]
+  configs:
+    - source: ubos_toml
+      target: /etc/ubos/ubos.toml
+  volumes:
+    - backups:/var/backups/ubos
+
+services:
+  db:
+    <<: *ubos
+    user: postgres
+    entrypoint: ["docker-entrypoint.sh"]
+    command:
+      - postgres
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=/usr/local/bin/ubos-server backup wal-push %p %f --config /etc/ubos/ubos.toml
+      - -c
+      - archive_timeout=60
+    environment:
+      POSTGRES_DB: ubos
+      POSTGRES_USER: ubos
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    configs:
+      - source: ubos_toml
+        target: /etc/ubos/ubos.toml
+      - source: pg_init
+        target: /docker-entrypoint-initdb.d/10-ubos.sh
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - backups:/var/backups/ubos
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "ubos", "-d", "ubos"]
+      interval: 5s
+      retries: 20
+
+  bootstrap:
+    <<: *ubos
+    command: ["bootstrap", "--config", "/etc/ubos/ubos.toml"]
+    environment: &env
+      UBOS_DB_PASSWORD_FILE: /run/secrets/db_password
+    entrypoint: ["sh", "-c", "export UBOS_DATABASE_URL=\"host=db user=ubos dbname=ubos password=$$(cat /run/secrets/db_password)\" && exec /usr/local/bin/ubos-server \"$$@\"", "--"]
+    depends_on:
+      db: {condition: service_healthy}
+    restart: "no"
+
+  server:
+    <<: *ubos
+    command: ["--config", "/etc/ubos/ubos.toml"]
+    environment: *env
+    entrypoint: ["sh", "-c", "export UBOS_DATABASE_URL=\"host=db user=ubos dbname=ubos password=$$(cat /run/secrets/db_password)\" && exec /usr/local/bin/ubos-server \"$$@\"", "--"]
+    ports: ["8080:8080"]
+    depends_on:
+      bootstrap: {condition: service_completed_successfully}
+    restart: unless-stopped
+
+  backup:
+    <<: *ubos
+    entrypoint: ["sh", "-c", "export UBOS_DATABASE_URL=\"host=db user=ubos dbname=ubos password=$$(cat /run/secrets/db_password)\"; while true; do /usr/local/bin/ubos-server backup base --config /etc/ubos/ubos.toml; sleep 86400; done"]
+    depends_on:
+      bootstrap: {condition: service_completed_successfully}
+    restart: unless-stopped
+
+configs:
+  pg_init:
+    content: |
+      # base backups connect for replication (pg_basebackup)
+      echo "host replication all all scram-sha-256" >> "$$PGDATA/pg_hba.conf"
+  ubos_toml:
+    content: |
+      version = 1
+      [server]
+      listen = "0.0.0.0:8080"
+      preset = "server"
+      tenant = "acme"
+      vae = "acme"
+      [database]
+      url = "env:UBOS_DATABASE_URL"
+      [keys]
+      root_kek = "file:/run/secrets/root_key"
+      [backup]
+      dir = "/var/backups/ubos"
+      key = "file:/run/secrets/backup_key"
+
+secrets:
+  root_key: {file: ./secrets/root.key}
+  backup_key: {file: ./secrets/backup.key}
+  db_password: {file: ./secrets/db.password}
+
+volumes:
+  pgdata: {}
+  backups: {}

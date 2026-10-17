@@ -1,0 +1,5 @@
+UBOS Server {{ .Chart.AppVersion }} — one replica against the PostgreSQL in Secret {{ .Values.existingSecret }}.
+The administrator's one-time invitation link is in the log of the bootstrap init container:
+  kubectl logs deploy/{{ include "ubos.name" . }} -c bootstrap
+WAL archiving runs on the PostgreSQL side (archive_command = 'ubos-server backup wal-push %p %f --config …');
+see INSTALL.md, "Backups".
