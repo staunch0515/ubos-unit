@@ -32,6 +32,8 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-076 | PH-1 step 15 (events, jobs and schedules) in parts 15a–15e: jobs as System-kind `Job` objects with leases, heartbeats and fencing tokens in the `job` table as the runtime hint; a handler delivery is a job and a dead letter is a job in `dead`; the platform classes `Subscription`, `Schedule` and `Job` in the namespace `ubos.platform`, provided by the node and outside BPA 1.0; handlers of kind port and logic in PH-1, webhook, connector and workflow handlers with delivery masking in PH-2; dead letters retried, cancelled or annotated, never edited; FR-EVT-041 misfire names; became-effective driven every second; tenant round-robin and concurrency limits now; poison by repeated error signature; bulk as a job, sagas in PH-2 | Accepted |
 | DEC-077 | PH-1 step 16 (operations and configuration) in parts 16a–16f: a versioned `ubos.toml` with a schema, secret references only, hot reload and an audit of every applied version; `ubos-server bootstrap` with prerequisite checks and a one-time administrator invitation; genesis Buks in a PH-1 form (an embedded signed manifest of declarations installed by one signed commit on `main`, no loader branch), `system` with the platform classes and `ontology` with the party–role core; a self-written OTLP/HTTP exporter; backups to a local or mounted directory with a separate backup key, the S3 object store in PH-2; Box installers in PH-4 (DEC-024); the isolation suite at step 19; a per-principal request rate limit; the ENV-REF-SMALL runs of EXIT-1-18 with step 19 | Accepted |
 | DEC-078 | PH-1 step 17 (SDKs, `forge dev`, engineering UI) in parts 17a–17f: 17a the node file service the SDK uploads need (tus-compatible resumable uploads, content-defined chunks sealed per tenant and deduplicated within it, signed short-lived download links with ranges, personal downloads logged); the Rust SDK `ubos-sdk` and the TypeScript SDK `@ubos/sdk` (Apache-2.0) over HTTP, WebSocket and SSE; generated typed API, SUITE-SDK-PROTO and SUITE-SDK-NET; `forge dev`; the engineering UI prototype; SDK authentication in PH-1 limited to passwords, sessions and API keys; protocol compatibility tested by negotiation until a second version exists | Accepted |
+| DEC-079 | PH-1 step 18 (the thirteen PH-1 scenarios over UBTP) in parts 18a–18d: 18a BPA 1.0-rc4 adds the versioning messages (`create_branch`, `change_set`, `merge`, `revert`, `bulk`) and introspection queries (`class`, `dispatch`, `commit_info`, `merge_preview`, `ledger`, `process`, `replay`) to UBTP with reference model and vectors; 18b the kernel and the Server implement them, with a test clock of the dev preset advanced through an operator endpoint; 18c the SDKs offer them; 18d a scenario runner over WebSocket and HTTP on PostgreSQL and the EXIT-1-19 report in CI | Accepted |
+| DEC-080 | The content-addressed build cache of DSN-FRG-003 follows after PH-1: a full `forge check` of a 500-class project takes 0.3 s on PostgreSQL (17e), well within NR-PERF-016, so the PH-1 acceptance of DSN-FRG-003 is met without it | Accepted |
 
 ---
 
@@ -369,3 +371,36 @@ the records from DEC-060 on follow.
   - Download through the UBTP channel was rejected: links let browsers and other clients fetch files with plain HTTP and ranges.
   - Waiting for PH-2 to offer OIDC in the SDKs was not needed for gate 1b: local identity covers the acceptance scenarios.
 - **Affects:** DSN-NOD-320, DSN-NOD-321, DSN-NOD-327, FR-FILE-011, FR-FILE-012, DSN-SDK-010, DSN-SDK-011, DSN-SDK-014, DSN-FRG-501, EXIT-1-15, DEC-063
+
+### DEC-079 — PH-1 step 18: the thirteen PH-1 scenarios over UBTP, parts 18a–18d
+- **Date:** 2026-10-17 · **Status:** Accepted
+- **Context:**
+  - **The step.** Step 18 of gate 1b (DEC-063) runs the thirteen PH-1 scenarios (SCN-001, SCN-009, SCN-017 and the ten gate-1a scenarios) over UBTP on the single-node Server, with EXIT-1-19 (scenario report) as its exit criterion.
+  - **A gap in the Protocol.** The gate-1a scenarios (DEC-060 item 6) call the kernel through the host API: besides reads, commits and queries they create branches, open, submit, approve and merge change sets, preview merges, revert processes, run bulk processes, and inspect the effective class, port dispatch, commit records, ledger entries, process records, journals, metering records and replays. UBTP 1.0 as released in BPA 1.0-rc3 (STD-PROTO-001…020) has none of these messages, so a client of the Server cannot run the scenarios. AR-033 puts the standard before the code.
+  - **Time.** SCN-006 and SCN-007 need time to pass (a price becoming effective, a schedule firing); the Server runs on the system clock.
+- **Decision:**
+  1. **Parts.** One pull request per part.
+     - 18a: BPA 1.0-rc4, opened by the scope rule of gate 1b on the base 1.0-rc3: STD-PROTO-014 (the versioning requests of `mutate`: `create_branch`, `change_set`, `merge`, `revert`, `bulk`, each with its permission and the uniform result `{process_id?, commits, versions, warnings, result}`) and STD-PROTO-015 (the introspection requests of `query`: `class`, `dispatch`, `commit_info` with the state root, `merge_preview`, `ledger`, `process` with journal and metering record, `replay`); notes on STD-PROTO-010 and -011; the reference model and 47 vectors; the release notes and manifest; the owner's signed tag `bpa-v1.0.0-rc4`.
+     - 18b: the kernel's in-process binding (`ubos-dvm/src/ubtp.rs`) and the Server implement 1.0-rc4; SUITE-NOD-PROTO replays the new vectors over the WebSocket and HTTP bindings; the dev preset gets a test clock that an operator endpoint advances (production presets keep the system clock).
+     - 18c: the Rust and TypeScript SDKs offer the versioning operations of IF-SDK-004 and the introspection queries, with cases in SUITE-SDK-PROTO.
+     - 18d: a scenario runner on the Rust SDK runs the thirteen scenarios over UBTP on a single-node Server on PostgreSQL, over WebSocket and over HTTP; SCN-001 and SCN-017 also use the operator commands; the EXIT-1-19 report in `verify/reports/exit-1-19/`; the run joins CI.
+  2. **Names.** The versioning and introspection requests are named after the adapter operations they map to (STD-CONF-005); `create_branch` and `commit_info` avoid the coordinates `branch` and `commit` of the message body.
+  3. **Change sets.** The client names the change set's `id`, since the change set is an object of the target branch (STD-VER-020); the approver of `approve` and `reject` is the session's principal, never a member of the message.
+  4. **Environments.** The EXIT-1-19 run of 18d is made on the development workstation and in CI; its run on ENV-REF-SMALL joins the reference runs of step 19, as for EXIT-1-18 (DEC-077).
+- **Consequences:**
+  - BPA 1.0-rc3 stays frozen as tagged (DEC-072); `spec/` and `vectors/` hold 1.0-rc4.
+  - Until 18b, SUITE-NOD-PROTO skips the vectors of STD-PROTO-014 and -015, and the kernel's conformance test runs only the vectors of the releases it implements (DEC-070).
+  - 18a found that replaying a port process whose logic updates its object diverges in the reference model (`changes_hash`): the base of the update is taken from the current head rather than from the journaled snapshot (STD-CTX-012). The 1.0-rc4 replay vector uses a read-only port; the defect is recorded for correction with the kernel check of 18b.
+- **Alternatives considered:**
+  - Running the scenarios through the in-process binding only was rejected: EXIT-1-19 asks for UBTP on the Server.
+  - New message types (`branch`, `merge`, …) beside `mutate` and `query` were rejected: they would change the envelope of STD-PROTO-001 and every binding, while new request kinds of `mutate` and `query` reuse idempotency, `base`, authorization and emits.
+  - An operator-only scenario harness that bypasses UBTP was rejected for the same reason as the in-process run.
+- **Affects:** STD-PROTO-010, STD-PROTO-011, STD-PROTO-014, STD-PROTO-015, IF-SDK-004, EXIT-1-19, DEC-063, DEC-072
+
+### DEC-080 — The content-addressed build cache of `forge` after PH-1
+- **Date:** 2026-10-17 · **Status:** Accepted
+- **Context:** DSN-FRG-003 asks for a content-addressed dependency graph with outputs cached by input hash, so that a one-file change rebuilds only its dependants; its acceptance is a 500-class `forge check` within NR-PERF-016. The phase note of DEC-060 placed the cache with `forge dev` at gate 1b. Measured in step 17e (`verify/reports/forge-dev/`): a full check of 500 classes takes 0.3 s and the save-to-use loop 0.29 s on PostgreSQL, far within NR-PERF-016.
+- **Decision:** The content-addressed output cache of DSN-FRG-003 follows after PH-1, when Buk packaging (PH-2) gives build outputs that are worth caching. In PH-1 every check is a full pass.
+- **Consequences:** Phase note on DSN-FRG-003; the acceptance of DSN-FRG-003 is met in PH-1 by the 17e measurement.
+- **Alternatives considered:** Building the cache in step 18 was rejected: it adds a cache and its invalidation for no measurable gain at gate 1b.
+- **Affects:** DSN-FRG-003, NR-PERF-016, DEC-060

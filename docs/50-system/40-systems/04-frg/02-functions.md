@@ -50,7 +50,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given a 500-class project, when one script changes, then `forge check` completes within NR-PERF-016.
 - **Verification:** BENCH
 - **Origin:** FR-DEV-013, NR-PERF-016
-- **Phase note:** Not needed at gate 1a (DEC-060): one pass checks a project in milliseconds; the content-addressed cache follows with `forge dev` at gate 1b, where the developer loop of NR-PERF-016 is measured.
+- **Phase note:** Not needed at gate 1a (DEC-060): one pass checks a project in milliseconds; the content-addressed cache follows with `forge dev` at gate 1b, where the developer loop of NR-PERF-016 is measured. Since DEC-080: the developer loop measured at gate 1b (`forge check` of 500 classes in 0.3 s, step 17e) meets the acceptance with full passes; the content-addressed output cache follows after PH-1.
 
 ### DSN-FRG-004 — Same engine everywhere
 - **Statement:** The CLI, the NOD-linked service (CTR-012) and the EXC verification service MUST use the same `ubos-forge` library version pinned to the kernel ABI, and produce identical findings for identical inputs.

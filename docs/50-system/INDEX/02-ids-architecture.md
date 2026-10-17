@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (78)
+## DEC (80)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -172,4 +172,6 @@ depends_on: [UBS-IDX-00]
 | DEC-076 | PH-1 step 15: events, jobs and schedules, parts 15a–15e | `90-decisions/000-index.md` |
 | DEC-077 | PH-1 step 16: operations and configuration, parts 16a–16f | `90-decisions/000-index.md` |
 | DEC-078 | PH-1 step 17: SDKs, `forge dev` and the engineering UI, parts 17a–17f | `90-decisions/000-index.md` |
+| DEC-079 | PH-1 step 18: the thirteen PH-1 scenarios over UBTP, parts 18a–18d | `90-decisions/000-index.md` |
+| DEC-080 | The content-addressed build cache of `forge` after PH-1 | `90-decisions/000-index.md` |
 
