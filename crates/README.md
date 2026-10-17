@@ -212,6 +212,11 @@ Files of step 17a (`ubos-node/src/files.rs`): tus uploads at `/files/v1/{vae}`, 
 with FastCDC and sealed per tenant, `blob` references, signed download links at
 `/files/v1/download/{token}`.
 
+The Rust SDK of step 17b (`ubos-sdk`, Apache-2.0): `Client::connect(Config::new(url, vae,
+auth))`, then `read`, `query`, `commit`, `invoke`, `subscribe`, `upload`, `download`; the
+example `tour` (`cargo run -p ubos-sdk --example tour -- URL VAE USER PASSWORD ws`) shows
+every layer. `tools/gen_registry.py` generates the typed error registry from STD-ERR-002.
+
 SUITE-NOD-EVENTS and SUITE-NOD-JOBS of step 15e run in `ubos-events-suite` (memory, or a
 fresh tenant on PostgreSQL; the crash and failover cases run nodes as child processes with
 `--serve` and kill them), and `ubos-events-suite --bench` measures MET-PERF-017, NR-PERF-012
