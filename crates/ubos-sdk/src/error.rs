@@ -15,8 +15,8 @@ pub struct Error {
     pub code_text: String,
     /// The message.
     pub message: String,
-    /// Code-specific details (the node's `details`).
-    pub details: Value,
+    /// Code-specific details (the node's `details`; boxed to keep results small).
+    pub details: Box<Value>,
     /// The HTTP status of the code, when it has one.
     pub status: Option<u16>,
 }
@@ -32,7 +32,7 @@ impl Error {
             code: entry.map(|r| r.0),
             code_text: code.to_string(),
             message: message.into(),
-            details,
+            details: Box::new(details),
             status: entry.map(|r| r.5),
         }
     }
@@ -59,7 +59,7 @@ impl Error {
             code: None,
             code_text: TRANSPORT.into(),
             message: e.to_string(),
-            details: Value::Null,
+            details: Box::new(Value::Null),
             status: None,
         }
     }
