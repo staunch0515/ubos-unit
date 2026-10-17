@@ -4819,7 +4819,9 @@ async fn upload_state(
         let u = f.upload(&id, &principal)?;
         let mut v = u.json();
         if let Some(fid) = &u.file_id {
-            v["reference"] = f.file(fid)?.reference(u.name.as_deref());
+            let rec = f.file(fid)?;
+            v["reference"] = rec.reference(u.name.as_deref());
+            v["sha256"] = json!(rec.sha256);
         }
         Ok(v)
     })

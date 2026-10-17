@@ -1,0 +1,33 @@
+[package]
+name = "ubos-sdk"
+description = "The Rust SDK of UBOS: transport, session, operations, files and exact decimals over UBTP (DSN-SDK-001…016; PH-1 step 17b, DEC-078)"
+version = "0.2.0"
+edition.workspace = true
+rust-version.workspace = true
+license = "Apache-2.0"
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+ubos-proto.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+futures-util.workspace = true
+tokio-tungstenite.workspace = true
+hyper.workspace = true
+http-body-util.workspace = true
+hyper-util.workspace = true
+bytes.workspace = true
+getrandom.workspace = true
+sha2.workspace = true
+tokio-rustls = { workspace = true, optional = true }
+webpki-roots = { workspace = true, optional = true }
+
+[features]
+default = ["tls"]
+# https and wss with the Mozilla roots (rustls on ring)
+tls = ["dep:tokio-rustls", "dep:webpki-roots"]
+
+[lints]
+workspace = true

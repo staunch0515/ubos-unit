@@ -21,6 +21,7 @@ members = [
     "crates/ubos-dvm",
     "crates/ubos-node",
     "crates/ubos-forge",
+    "crates/ubos-sdk",
     "verify/ubos-verify",
 ]
 
@@ -51,6 +52,7 @@ ubos-query = { path = "crates/ubos-query" }
 ubos-authz = { path = "crates/ubos-authz" }
 ubos-runtime = { path = "crates/ubos-runtime" }
 ubos-proto = { path = "crates/ubos-proto" }
+ubos-sdk = { path = "crates/ubos-sdk" }
 # third-party crates of the PH-0 prototype (DEC-033)
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -90,6 +92,12 @@ cedar-policy = "4.13"
 serde_yaml_ng = "0.10"
 toml = "0.8"
 fastcdc = "5"
+hyper = { version = "1", features = ["client", "http1"] }
+http-body-util = "0.1"
+hyper-util = { version = "0.1", features = ["tokio"] }
+bytes = "1"
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12", "logging"] }
+webpki-roots = "1"
 
 # Argon2id at 64 MiB and 3 iterations (DSN-NOD-101) is optimised even in debug builds, so
 # that a sign-in on a development build takes well under a second

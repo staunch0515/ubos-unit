@@ -42,6 +42,8 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: dependency graph (AR-031, DEC-028)
         run: python3 docs/tools/check_deps.py
+      - name: the SDK error registry is generated from STD-ERR-002 (DSN-SDK-007)
+        run: python3 crates/ubos-sdk/tools/gen_registry.py --check
       - name: test bodies of the mutation score — vectors, scenarios and property sample (VER-INSP-0001, DEC-061)
         run: cargo test -p ubos-forge -p ubos-dvm --locked
         env:
