@@ -1207,7 +1207,7 @@ impl Server {
             Ok(Some(l)) => l,
             Ok(None) => vec![(self.default_tenant.clone(), self.default_authority.clone())],
             Err(e) => {
-                self.log_error("work scan", format!("work scan"), &e);
+                self.log_error("work scan", "work scan".to_string(), &e);
                 return;
             }
         };
@@ -1272,7 +1272,7 @@ impl Server {
                             break;
                         }
                         Err(e) => {
-                            self.log_error("release", format!("release"), &e);
+                            self.log_error("release", "release".to_string(), &e);
                             self.release_failed(&e);
                             break;
                         }
