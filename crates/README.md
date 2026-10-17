@@ -195,6 +195,10 @@ stderr or over OTLP/HTTP (`[telemetry]` in `ubos.toml`); `/livez`, `/readyz`, `/
 periodic self-checks and the degraded modes `read_only` and `effects_paused`
 (`/api/v1/admin/health`).
 
+Diagnostic bundles of step 16d (`ubos-node/src/diagnostics.rs`): `POST
+/api/v1/admin/diagnostics` on the running node, `ubos-server diagnostics --config
+ubos.toml` offline; operational sources only, configured secrets redacted as a second line.
+
 SUITE-NOD-EVENTS and SUITE-NOD-JOBS of step 15e run in `ubos-events-suite` (memory, or a
 fresh tenant on PostgreSQL; the crash and failover cases run nodes as child processes with
 `--serve` and kill them), and `ubos-events-suite --bench` measures MET-PERF-017, NR-PERF-012

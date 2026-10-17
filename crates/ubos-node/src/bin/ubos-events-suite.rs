@@ -1220,6 +1220,53 @@ fn traces(e: &Env) -> Result<Value, BpaError> {
     Ok(json!({"trace_id": trace_id, "spans": names}))
 }
 
+/// DSN-NOD-615 acceptance 1, FR-OPS-053, NR-OPER-005: a diagnostic bundle of the running
+/// node holds configuration, versions, logs, metrics and self-checks, and no business value.
+fn diagnostics(e: &Env) -> Result<Value, BpaError> {
+    let slug = e.slug("diag");
+    e.c.accounts(std::slice::from_ref(&slug))?;
+    let canary = format!("canary{}", &uuid().replace('-', "")[..12]);
+    let r = e.c.port(&slug, "ping", json!({"n": canary}))?;
+    check_v(!r.is_null(), "a ping carrying the canary value", &r)?;
+    let t0 = std::time::Instant::now();
+    let (st, b) = e.c.call("POST", "/api/v1/admin/diagnostics", &json!({}))?;
+    let secs = t0.elapsed().as_secs_f64();
+    check_v(
+        st == 200 && b["manifest"]["format"] == "ubos.diagnostics.v1",
+        "a bundle",
+        &b,
+    )?;
+    check(secs <= 300.0, "produced within 5 minutes (NR-OPER-005)")?;
+    let sections = [
+        "versions",
+        "host",
+        "configuration",
+        "health",
+        "telemetry",
+        "spans",
+        "logs",
+        "runtime",
+        "security_log",
+    ];
+    let missing: Vec<&str> = sections
+        .iter()
+        .copied()
+        .filter(|k| b.get(*k).is_none())
+        .collect();
+    check_v(
+        missing.is_empty(),
+        "configuration, versions, logs, metrics and self-checks",
+        &json!(missing),
+    )?;
+    check(
+        !b.to_string().contains(&canary),
+        "no business value in the bundle (DSN-NOD-615 acceptance 1)",
+    )?;
+    Ok(
+        json!({"seconds": secs, "bytes": b.to_string().len(), "redactions": b["manifest"]["redactions"]}),
+    )
+}
+
 // ---- SUITE-NOD-JOBS ----
 
 /// DSN-NOD-220, FR-EVT-031: a `run.async` job is a System-kind `Job` object on `main` whose
@@ -2258,6 +2305,7 @@ const EVENTS: &[Case] = &[
     ),
     ("leader_leases", "DSN-NOD-228", leader_leases),
     ("traces", "NR-OBS-001", traces),
+    ("diagnostics", "DSN-NOD-615", diagnostics),
     ("crash_recovery", "NR-DUR-006", crash_recovery),
     ("failover", "DSN-NOD-228", failover),
 ];
