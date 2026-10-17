@@ -171,6 +171,11 @@ compile, naming `email`.
     reopen the session and resume the subscriptions from their cursors (N06).
   - A password client signed in again at every reconnection, which used up the concurrent
     sessions of the account. It now keeps its token until the node refuses it.
+- **Frame order on a WebSocket.** The once-a-second poll can drain a subscription's emits
+  from the binding just before a request on the same connection is handled. The request's
+  reply was then written first and the older emits after it, which broke the order of
+  STD-PROTO-012. This showed in CI as VER-CONF-5504 failing over WebSocket. The session now
+  sends the emits already queued before a reply.
 - **Tours of 17b and 17c.** They wrote updates as `set` instead of `body`. The kernel
   ignores `set`, so those renames changed nothing; they now write `body`.
 
