@@ -258,10 +258,14 @@ pub fn problem(e: &BpaError) -> Value {
 
 // ---- the VAE actor ----
 
+/// The result of an operation with the kernel's phases when it was traced.
+type Traced = (Result<Value, BpaError>, Vec<ubos_dvm::types::trace::Phase>);
+
 struct Call {
     op: String,
     input: Value,
-    reply: tokio::sync::oneshot::Sender<Result<Value, BpaError>>,
+    trace: bool,
+    reply: tokio::sync::oneshot::Sender<Traced>,
 }
 
 /// A VAE on its own thread: the kernel's operations run there in order (the kernel is
@@ -293,8 +297,16 @@ impl VaeHandle {
                     }
                 };
                 while let Ok(call) = rx.recv() {
+                    if call.trace {
+                        ubos_dvm::types::trace::begin();
+                    }
                     let r = host_call(&mut vae, &call.op, &call.input);
-                    let _ = call.reply.send(r);
+                    let phases = if call.trace {
+                        ubos_dvm::types::trace::take()
+                    } else {
+                        Vec::new()
+                    };
+                    let _ = call.reply.send((r, phases));
                 }
             })
             .map_err(|e| BpaError::new("NOD.STORAGE_UNAVAILABLE", e.to_string()))?;
@@ -310,16 +322,30 @@ impl VaeHandle {
 
     /// Run one operation on the VAE and await its result.
     pub async fn call(&self, op: &str, input: Value) -> Result<Value, BpaError> {
+        self.send(op, input, false).await.0
+    }
+
+    /// Run one operation and return the kernel's phases with its result (DSN-NOD-610).
+    pub async fn call_traced(&self, op: &str, input: Value) -> Traced {
+        self.send(op, input, true).await
+    }
+
+    async fn send(&self, op: &str, input: Value, trace: bool) -> Traced {
         let (reply, rx) = tokio::sync::oneshot::channel();
-        self.tx
+        let gone = || BpaError::new("NOD.STORAGE_UNAVAILABLE", "the VAE thread ended");
+        if self
+            .tx
             .send(Call {
                 op: op.to_string(),
                 input,
+                trace,
                 reply,
             })
-            .map_err(|_| BpaError::new("NOD.STORAGE_UNAVAILABLE", "the VAE thread ended"))?;
-        rx.await
-            .map_err(|_| BpaError::new("NOD.STORAGE_UNAVAILABLE", "the VAE thread ended"))?
+            .is_err()
+        {
+            return (Err(gone()), Vec::new());
+        }
+        rx.await.unwrap_or_else(|_| (Err(gone()), Vec::new()))
     }
 
     /// Run one operation from a thread outside the runtime (suites and setup).
@@ -329,11 +355,13 @@ impl VaeHandle {
             .send(Call {
                 op: op.to_string(),
                 input,
+                trace: false,
                 reply,
             })
             .map_err(|_| BpaError::new("NOD.STORAGE_UNAVAILABLE", "the VAE thread ended"))?;
         rx.blocking_recv()
             .map_err(|_| BpaError::new("NOD.STORAGE_UNAVAILABLE", "the VAE thread ended"))?
+            .0
     }
 }
 
@@ -382,6 +410,21 @@ fn host_call(vae: &mut Vae, op: &str, input: &Value) -> Result<Value, BpaError> 
             crate::platform::run_schedule(vae, &input["job"], &input["principal"])
         }
         "host.schedules" => crate::platform::schedules(vae, input["known"].as_str()),
+        "host.verify_roots" => {
+            let head = vae.call("branch_info", &json!({"branch": "main"}))?["cseq"]
+                .as_u64()
+                .unwrap_or(0);
+            let last = input["last"].as_u64().unwrap_or(20);
+            let r = ubos_dvm::verify::verify_roots(
+                vae.engine_mut(),
+                "main",
+                head.saturating_sub(last.saturating_sub(1)).max(1),
+                head,
+            )?;
+            Ok(
+                json!({"checked": r.checked, "findings": r.findings.iter().map(|f| json!({"check": f.check, "key": f.key, "detail": f.detail})).collect::<Vec<_>>()}),
+            )
+        }
         "host.project_tenant" => {
             crate::platform::project_tenant(vae, input).map(|w| json!({"written": w}))
         }
@@ -476,6 +519,15 @@ pub trait VaeSource: Send + Sync {
     /// The jobs of a VAE (deliveries and dead letters); `None` when the source keeps none.
     fn jobs(&self, _tenant: &str, _authority: &str) -> Result<Option<Arc<dyn JobStore>>, BpaError> {
         Ok(None)
+    }
+    /// Probe the database (DSN-NOD-613): `{ok, writable, clock_skew_ms}`; `None` when
+    /// the source has none.
+    fn probe_database(&self) -> Option<Value> {
+        None
+    }
+    /// Probe a tenant's keys; `None` when the source has no key service.
+    fn probe_keys(&self, _tenant: &str) -> Option<Value> {
+        None
     }
     /// The registry record of a tenant (DSN-NOD-401); `None` when the source keeps no
     /// registry.
@@ -606,6 +658,12 @@ impl VaeSource for NodeVaes {
     fn tenant_record(&self, slug: &str) -> Result<Option<Value>, BpaError> {
         self.0.tenant_record(slug)
     }
+    fn probe_database(&self) -> Option<Value> {
+        Some(self.0.probe_database())
+    }
+    fn probe_keys(&self, tenant: &str) -> Option<Value> {
+        Some(self.0.probe_keys(tenant))
+    }
     fn set_tenant_settings(&self, slug: &str, patch: &Value) -> Result<Option<Value>, BpaError> {
         self.0.set_tenant_settings(slug, patch).map(Some)
     }
@@ -648,6 +706,8 @@ struct Auth {
 }
 
 struct SessionEntry {
+    /// The degraded-mode epoch this session has been told of (DSN-NOD-616).
+    banner_epoch: u64,
     vae: String,
     tenant: String,
     handle: VaeHandle,
@@ -655,6 +715,22 @@ struct SessionEntry {
     /// Frames the Server produced itself (errors before the binding), numbered apart.
     own: u64,
     auth: Option<Auth>,
+}
+
+/// The degraded modes of a node (DSN-NOD-616): read-only when the database refuses
+/// writes, effects paused when the release of effects fails.
+#[derive(Debug, Clone, Default)]
+struct Modes {
+    read_only: Option<String>,
+    effects_paused: Option<String>,
+    epoch: u64,
+}
+
+impl Modes {
+    fn json(&self) -> Value {
+        json!({"read_only": self.read_only.is_some(), "read_only_reason": self.read_only,
+            "effects_paused": self.effects_paused.is_some(), "effects_paused_reason": self.effects_paused, "epoch": self.epoch})
+    }
 }
 
 /// The Server's state.
@@ -685,6 +761,20 @@ pub struct Server {
     job_stores: Mutex<HashMap<String, Arc<dyn JobStore>>>,
     /// Schedule stores per VAE (opened once).
     schedule_stores: Mutex<HashMap<String, Arc<dyn ScheduleStore>>>,
+    /// Traces, metrics and logs (DSN-NOD-610).
+    pub tracer: Arc<crate::telemetry::Tracer>,
+    /// The trace of the request that started each recent process (jobs join it).
+    process_traces: Mutex<HashMap<String, crate::telemetry::Context>>,
+    /// The degraded modes (DSN-NOD-616).
+    modes: Mutex<Modes>,
+    /// Whether the Server's loops run (the startup probe).
+    started: std::sync::atomic::AtomicBool,
+    /// The last self-check results (DSN-NOD-614).
+    checks: Mutex<Vec<Value>>,
+    /// Consecutive failed release rounds.
+    release_failures: std::sync::atomic::AtomicU64,
+    /// Security-log entries the database refused (a read-only node), written with the next.
+    audit_backlog: Mutex<Vec<(String, Value)>>,
     /// The running configuration (DSN-NOD-603).
     config: std::sync::RwLock<Arc<Config>>,
     /// The file the configuration is read from, if any.
@@ -729,6 +819,13 @@ impl Server {
             job_stores: Mutex::new(HashMap::new()),
             schedule_stores: Mutex::new(HashMap::new()),
             config: std::sync::RwLock::new(Arc::new(Config::defaults())),
+            tracer: Arc::new(crate::telemetry::Tracer::new("node")),
+            process_traces: Mutex::new(HashMap::new()),
+            modes: Mutex::new(Modes::default()),
+            started: std::sync::atomic::AtomicBool::new(false),
+            checks: Mutex::new(Vec::new()),
+            release_failures: std::sync::atomic::AtomicU64::new(0),
+            audit_backlog: Mutex::new(Vec::new()),
             config_file: Mutex::new(None),
             config_log: Mutex::new(Vec::new()),
             budgets: Mutex::new(HashMap::new()),
@@ -784,6 +881,13 @@ impl Server {
             job_stores: Mutex::new(HashMap::new()),
             schedule_stores: Mutex::new(HashMap::new()),
             config: std::sync::RwLock::new(Arc::new(Config::defaults())),
+            tracer: Arc::new(crate::telemetry::Tracer::new("node")),
+            process_traces: Mutex::new(HashMap::new()),
+            modes: Mutex::new(Modes::default()),
+            started: std::sync::atomic::AtomicBool::new(false),
+            checks: Mutex::new(Vec::new()),
+            release_failures: std::sync::atomic::AtomicU64::new(0),
+            audit_backlog: Mutex::new(Vec::new()),
             config_file: Mutex::new(None),
             config_log: Mutex::new(Vec::new()),
             budgets: Mutex::new(HashMap::new()),
@@ -818,6 +922,7 @@ impl Server {
         let diff = cfg.diff(&old);
         *self.config.write().expect("config") = Arc::new(cfg.clone());
         set_log_level(cfg.text("log.level").unwrap_or("info"));
+        self.configure_telemetry(&cfg);
         self.record_version(&cfg, author, "start", diff, Vec::new())
     }
 
@@ -839,6 +944,7 @@ impl Server {
             .collect();
         let running = cur.reloaded(&new);
         set_log_level(running.text("log.level").unwrap_or("info"));
+        self.configure_telemetry(&running);
         *self.config.write().expect("config") = Arc::new(running);
         self.budgets.lock().expect("budgets").clear();
         self.record_version(&new, author, source, diff, restart)
@@ -924,8 +1030,32 @@ impl Server {
 
     /// An entry of the default tenant's security log (node events: configuration).
     fn audit(&self, kind: &str, record: Value) {
-        if let Ok(id) = self.identity(&self.default_tenant) {
-            let _ = id.log(kind, record);
+        let write = || {
+            let mut backlog = self.audit_backlog.lock().expect("audit backlog");
+            backlog.push((kind.to_string(), record));
+            let Ok(id) = self.identity(&self.default_tenant) else {
+                return;
+            };
+            let mut written = 0;
+            for (k, r) in backlog.iter() {
+                if id.log(k, r.clone()).is_err() {
+                    break;
+                }
+                written += 1;
+            }
+            backlog.drain(..written);
+            // a node that cannot write for long keeps the newest entries
+            let excess = backlog.len().saturating_sub(1000);
+            backlog.drain(..excess);
+        };
+        // the database runtime cannot nest inside the Server's: from async code the write
+        // runs on a thread of its own
+        if tokio::runtime::Handle::try_current().is_ok() {
+            std::thread::scope(|sc| {
+                let _ = sc.spawn(write).join();
+            });
+        } else {
+            write();
         }
     }
 
@@ -974,6 +1104,9 @@ impl Server {
     /// The router of the bindings and the facade.
     pub fn router(self: &Shared) -> Router {
         Router::new()
+            .route("/livez", get(livez))
+            .route("/readyz", get(readyz))
+            .route("/startupz", get(startupz))
             .route("/ubtp/v1", get(ws_upgrade).post(http_messages))
             .route("/ubtp/v1/stream", get(sse_stream))
             .route("/api/v1/{vae}/{class}", get(rest_query))
@@ -998,6 +1131,8 @@ impl Server {
     ) -> std::io::Result<()> {
         let poll = self.clone();
         tokio::spawn(async move { poll.poll_loop().await });
+        let ops = self.clone();
+        tokio::spawn(async move { ops.operations_loop().await });
         let me = self.clone();
         tokio::spawn(async move {
             // the VAEs with work open at start and on every rescan, so that what a crash
@@ -1124,9 +1259,13 @@ impl Server {
                         Ok(v) if v["released"].as_u64().unwrap_or(0) as usize == RELEASE_BATCH => {
                             continue;
                         }
-                        Ok(_) => break,
+                        Ok(_) => {
+                            self.release_ok();
+                            break;
+                        }
                         Err(e) => {
                             eprintln!("ubos-server: release: {e}");
+                            self.release_failed(&e);
                             break;
                         }
                     }
@@ -1270,6 +1409,22 @@ impl Server {
                 }
             })
         };
+        // the job joins the trace of the request whose process started it (FR-OPS-041)
+        let origin = match kind.as_str() {
+            "delivery" => job["payload"]["event"]["event_id"]
+                .as_str()
+                .and_then(|e| e.split('/').next())
+                .map(str::to_string),
+            "port" => job["payload"]["parent_process"]
+                .as_str()
+                .map(str::to_string),
+            _ => None,
+        };
+        let parent = origin
+            .as_deref()
+            .and_then(|p| self.process_traces.lock().expect("traces").get(p).cloned());
+        let jctx = self.tracer.child(parent.as_ref());
+        let jt0 = crate::telemetry::now_ns();
         let outcome: Result<Value, (BpaError, bool)> = match kind.as_str() {
             "delivery" => {
                 let run_as = job["payload"]["run_as"]
@@ -1336,6 +1491,27 @@ impl Server {
             )),
         };
         hb.abort();
+        {
+            let mut a = Map::new();
+            a.insert("ubos.job_id".into(), json!(job_id));
+            a.insert("ubos.job_kind".into(), json!(kind));
+            a.insert("ubos.tenant".into(), json!(tenant));
+            if let Ok(r) = &outcome
+                && let Some(pid) = r["process_id"].as_str()
+            {
+                a.insert("ubos.process_id".into(), json!(pid));
+            }
+            let err = outcome.as_ref().err().map(|(e, _)| e.code);
+            self.tracer.record(
+                &jctx,
+                parent.as_ref().map(|p| p.span_id.as_str()),
+                &format!("job.{kind}"),
+                jt0,
+                crate::telemetry::now_ns(),
+                &a,
+                err,
+            );
+        }
         let policy = crate::services::RetryPolicy::from_json(&job["payload"]["policy"]);
         let attempts = job["attempts"].as_i64().unwrap_or(1);
         let jid = job_id.clone();
@@ -1732,6 +1908,7 @@ impl Server {
         self.sessions.lock().expect("sessions").insert(
             key.clone(),
             SessionEntry {
+                banner_epoch: 0,
                 vae: format!("{tenant}/{authority}"),
                 tenant: tenant.to_string(),
                 handle: handle.clone(),
@@ -1895,10 +2072,33 @@ impl Server {
             );
             return (key.clone(), vec![self.own_error(&key, &e, rid.as_deref())]);
         }
+        // a read-only node refuses writes and keeps serving reads (DSN-NOD-616)
+        let read_only = self.modes.lock().expect("modes").read_only.clone();
+        if type_ == "mutate"
+            && let Some(reason) = read_only
+        {
+            let e = BpaError::with_details(
+                "NOD.STORAGE_UNAVAILABLE",
+                json!({"reason": "read_only", "detail": reason,
+                    "message": "the node is read-only: the database does not accept writes; reads work"}),
+            );
+            let mut frames = vec![self.own_error(&key, &e, rid.as_deref())];
+            self.banner_for(&key, &mut frames);
+            return (key.clone(), frames);
+        }
+        // the edge span of the request, child of the client's trace (DSN-NOD-610)
+        let incoming = message
+            .get("trace")
+            .and_then(Value::as_str)
+            .and_then(crate::telemetry::Context::parse);
+        let edge = self.tracer.child(incoming.as_ref());
+        let dvm = self.tracer.child(Some(&edge));
         let started = std::time::Instant::now();
-        let out = handle
-            .call("ubtp", json!({"session": key, "messages": [message]}))
+        let t0 = crate::telemetry::now_ns();
+        let (out, phases) = handle
+            .call_traced("ubtp", json!({"session": key, "messages": [message]}))
             .await;
+        let t1 = crate::telemetry::now_ns();
         if log_enabled(LogLevel::Debug) {
             eprintln!(
                 "ubos-server: debug {type_} session={key} {} us",
@@ -1909,6 +2109,18 @@ impl Server {
             Ok(v) => v["responses"].as_array().cloned().unwrap_or_default(),
             Err(e) => vec![self.own_error(&key, &e, rid.as_deref())],
         };
+        self.trace_request(
+            &key,
+            &type_,
+            authority.as_deref(),
+            incoming.as_ref(),
+            &edge,
+            &dvm,
+            (t0, t1),
+            &phases,
+            &frames,
+        );
+        self.banner_for(&key, &mut frames);
         if let Some(t) = signed_in {
             match frames.first_mut() {
                 Some(f) if f["type"] == json!("result") => f["body"]["credentials"] = t,
@@ -2270,7 +2482,14 @@ async fn http_messages(
     {
         out.extend(v["responses"].as_array().cloned().unwrap_or_default());
     }
-    for m in messages {
+    let traceparent = header(&headers, "traceparent");
+    for mut m in messages {
+        // the HTTP traceparent stands for a message without its own trace
+        if let (Some(tp), Some(o)) = (&traceparent, m.as_object_mut())
+            && !o.contains_key("trace")
+        {
+            o.insert("trace".into(), json!(tp));
+        }
         let (key, frames) = s.handle(session.clone(), tenant.clone(), &source, m).await;
         if session.is_none() && !key.is_empty() {
             session = Some(key);
@@ -2810,6 +3029,12 @@ async fn admin_api(
         let input = json!({"branch": q.get("branch").cloned().unwrap_or_else(|| "main".into()),
             "type": q.get("type"), "handler": q.get("handler")});
         return match h.call("host.listeners", input).await {
+            Ok(v) => Json(v).into_response(),
+            Err(e) => problem_response(&e),
+        };
+    }
+    if matches!(p.first(), Some(&"health" | &"telemetry")) {
+        return match admin_ops(&s, &method, &p, &q).await {
             Ok(v) => Json(v).into_response(),
             Err(e) => problem_response(&e),
         };
@@ -3516,3 +3741,646 @@ pub fn memory_vae_with(
 /// Unused-import guard for `Map` in builds without the facade helpers.
 #[allow(dead_code)]
 fn _map_type(_: &Map<String, Value>) {}
+
+// ---- operations: traces, health, self-checks and degraded modes (step 16c) ----
+
+impl Server {
+    fn configure_telemetry(&self, cfg: &Config) {
+        self.tracer.set_node(&self.node_id);
+        self.tracer.configure(crate::telemetry::Export {
+            mode: cfg.text("telemetry.export").unwrap_or("none").to_string(),
+            endpoint: cfg.text("telemetry.otlp_endpoint").map(str::to_string),
+            ratio: cfg.float("telemetry.sample_ratio"),
+        });
+    }
+
+    /// Record the spans of a request: the edge span `ubtp.<type>`, the DVM operation and
+    /// the kernel's phases; a process the request started is remembered with its trace.
+    #[allow(clippy::too_many_arguments)]
+    fn trace_request(
+        &self,
+        key: &str,
+        type_: &str,
+        authority: Option<&str>,
+        incoming: Option<&crate::telemetry::Context>,
+        edge: &crate::telemetry::Context,
+        dvm: &crate::telemetry::Context,
+        (t0, t1): (u64, u64),
+        phases: &[ubos_dvm::types::trace::Phase],
+        frames: &[Value],
+    ) {
+        let first = frames.first().cloned().unwrap_or(Value::Null);
+        let pid = first["body"]["process_id"].as_str().map(str::to_string);
+        let err = (first["type"] == "error").then(|| {
+            first["body"]["code"]
+                .as_str()
+                .unwrap_or("error")
+                .to_string()
+        });
+        let mut a = Map::new();
+        a.insert("ubos.message_type".into(), json!(type_));
+        a.insert("ubos.session".into(), json!(key));
+        if let Some(v) = authority {
+            a.insert("ubos.vae".into(), json!(v));
+        }
+        if let Some(p) = &pid {
+            a.insert("ubos.process_id".into(), json!(p));
+            let mut m = self.process_traces.lock().expect("traces");
+            if m.len() >= 10_000 {
+                m.clear();
+            }
+            m.insert(p.clone(), edge.clone());
+        }
+        if let Some(e) = &err {
+            a.insert("ubos.error_code".into(), json!(e));
+        }
+        let end = crate::telemetry::now_ns();
+        let mut d = a.clone();
+        d.insert("ubos.op".into(), json!("ubtp"));
+        self.tracer.record(
+            dvm,
+            Some(&edge.span_id),
+            "dvm.ubtp",
+            t0,
+            t1,
+            &d,
+            err.as_deref(),
+        );
+        for ph in phases {
+            let c = self.tracer.child(Some(dvm));
+            self.tracer.record(
+                &c,
+                Some(&dvm.span_id),
+                ph.name,
+                ph.start_ns,
+                ph.end_ns,
+                &a,
+                None,
+            );
+        }
+        self.tracer.record(
+            edge,
+            incoming.map(|c| c.span_id.as_str()),
+            &format!("ubtp.{type_}"),
+            t0.saturating_sub(1),
+            end,
+            &a,
+            err.as_deref(),
+        );
+    }
+
+    /// The emit frame of the current degraded modes (DSN-NOD-616).
+    fn banner_frame(&self, n: u64) -> Value {
+        let m = self.modes.lock().expect("modes").clone();
+        let message = match (&m.read_only, &m.effects_paused) {
+            (Some(_), _) => {
+                "The node is read-only: the database does not accept writes. Reads work; writes wait until it recovers."
+            }
+            (None, Some(_)) => {
+                "Effects are paused: events and jobs are delivered once the node can release them again."
+            }
+            (None, None) => "The node works normally again.",
+        };
+        json!({"v": "1.0", "id": format!("b{n}"), "type": "emit",
+            "body": {"banner": {"read_only": m.read_only.is_some(), "effects_paused": m.effects_paused.is_some(), "message": message, "epoch": m.epoch}}})
+    }
+
+    /// Add the banner to a session's frames when its last banner is older than the modes.
+    fn banner_for(&self, key: &str, frames: &mut Vec<Value>) {
+        let (epoch, active) = {
+            let m = self.modes.lock().expect("modes");
+            (m.epoch, m.read_only.is_some() || m.effects_paused.is_some())
+        };
+        if epoch == 0 {
+            return;
+        }
+        // a session hears of a degraded mode, and of the recovery when it heard of the mode
+        let due = match self.sessions.lock().expect("sessions").get_mut(key) {
+            Some(e) if e.banner_epoch < epoch => {
+                let tell = active || e.banner_epoch > 0;
+                e.banner_epoch = epoch;
+                tell
+            }
+            _ => false,
+        };
+        if due {
+            frames.push(self.banner_frame(epoch));
+        }
+    }
+
+    /// Enter or leave a degraded mode; a change is audited, logged and pushed to the
+    /// streaming sessions as a banner.
+    fn set_mode(&self, mode: &str, reason: Option<String>) {
+        let changed = {
+            let mut m = self.modes.lock().expect("modes");
+            let slot = if mode == "read_only" {
+                &mut m.read_only
+            } else {
+                &mut m.effects_paused
+            };
+            if slot.is_some() == reason.is_some() {
+                false
+            } else {
+                *slot = reason.clone();
+                m.epoch += 1;
+                true
+            }
+        };
+        if !changed {
+            return;
+        }
+        let rec = json!({"mode": mode, "active": reason.is_some(), "reason": reason});
+        eprintln!(
+            "ubos-server: mode {mode} {}",
+            if reason.is_some() { "entered" } else { "left" }
+        );
+        self.tracer.log(
+            if reason.is_some() { "WARN" } else { "INFO" },
+            json!({"name": "node.mode", "mode": mode, "active": reason.is_some()}),
+        );
+        self.audit("node.mode", rec);
+        let epoch = self.modes.lock().expect("modes").epoch;
+        let frame = self.banner_frame(epoch);
+        let mut sessions = self.sessions.lock().expect("sessions");
+        for e in sessions.values_mut() {
+            if let Some(p) = &e.push
+                && p.try_send(frame.clone()).is_ok()
+            {
+                e.banner_epoch = epoch;
+            }
+        }
+    }
+
+    fn release_ok(&self) {
+        if self
+            .release_failures
+            .swap(0, std::sync::atomic::Ordering::Relaxed)
+            > 0
+        {
+            self.set_mode("effects_paused", None);
+        }
+    }
+
+    fn release_failed(&self, e: &BpaError) {
+        let n = self
+            .release_failures
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            + 1;
+        if n >= 3 {
+            self.set_mode(
+                "effects_paused",
+                Some(format!("{n} release rounds failed: {}", e.code)),
+            );
+        }
+    }
+
+    /// The readiness of the node (DSN-NOD-613): the database, the key service and the
+    /// degraded modes; `(ready, report)`.
+    fn readiness(&self) -> (bool, Value) {
+        let mut checks = Vec::new();
+        let mut ready = true;
+        if let Some(db) = self.source.probe_database() {
+            ready &= db["ok"] == json!(true);
+            checks.push(json!({"check": "database", "ok": db["ok"], "detail": db.get("detail").cloned().unwrap_or(json!({"writable": db["writable"]}))}));
+        }
+        if !ready {
+            // the key service is reached through the database
+            checks.push(json!({"check": "key service", "ok": Value::Null, "detail": "not checked: the database is unavailable"}));
+        } else if let Some(k) = self.source.probe_keys(&self.default_tenant) {
+            ready &= k["ok"] == json!(true);
+            checks.push(json!({"check": "key service", "ok": k["ok"], "detail": k.get("detail").cloned().unwrap_or(Value::Null)}));
+        }
+        checks.push(json!({"check": "object store", "ok": true, "detail": "none in PH-1: blobs live in PostgreSQL (DEC-077)"}));
+        let modes = self.modes.lock().expect("modes").json();
+        let status = if !ready {
+            "not ready"
+        } else if modes["read_only"] == json!(true) || modes["effects_paused"] == json!(true) {
+            "degraded"
+        } else {
+            "ready"
+        };
+        (
+            ready,
+            json!({"status": status, "checks": checks, "modes": modes}),
+        )
+    }
+
+    /// The self-checks (DSN-NOD-614): clock, certificate, keys, disk, backups, the DVM root
+    /// verifier and isolation; a check that turns to warning or error raises an alert.
+    async fn run_selfchecks(self: &Shared) -> Vec<Value> {
+        let cfg = self.config();
+        let mut out = Vec::new();
+        let check = |name: &str, status: &str, detail: Value| json!({"check": name, "status": status, "detail": detail});
+        let me = self.clone();
+        let db = blocking(move || Ok(me.source.probe_database()))
+            .await
+            .ok()
+            .flatten();
+        match &db {
+            Some(d) if d["ok"] == json!(true) => {
+                let skew = d["clock_skew_ms"].as_i64().unwrap_or(0);
+                out.push(check(
+                    "clock",
+                    if skew.abs() <= crate::MAX_CLOCK_SKEW_MS {
+                        "ok"
+                    } else {
+                        "warning"
+                    },
+                    json!(format!("{skew} ms against the database")),
+                ));
+            }
+            Some(d) => out.push(check(
+                "clock",
+                "error",
+                json!(format!("the database does not answer: {}", d["detail"])),
+            )),
+            None => out.push(check("clock", "ok", json!("no database (memory store)"))),
+        }
+        match cfg.text("server.tls_certificate") {
+            None => out.push(check(
+                "certificate",
+                "ok",
+                json!("no certificate configured"),
+            )),
+            Some(p) => match std::fs::read_to_string(p)
+                .ok()
+                .and_then(|t| cert_not_after(&t))
+            {
+                None => out.push(check(
+                    "certificate",
+                    "error",
+                    json!(format!("{p}: not a readable PEM certificate")),
+                )),
+                Some(t) => {
+                    let days =
+                        (t - chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::now()))
+                            .num_days();
+                    let st = if days < 0 {
+                        "error"
+                    } else if days <= 30 {
+                        "warning"
+                    } else {
+                        "ok"
+                    };
+                    out.push(check(
+                        "certificate",
+                        st,
+                        json!(format!(
+                            "{p} expires {} ({days} days)",
+                            ubos_dvm::types::time::format_instant(&t)
+                        )),
+                    ));
+                }
+            },
+        }
+        let (me, t) = (self.clone(), self.default_tenant.clone());
+        match blocking(move || Ok(me.source.probe_keys(&t)))
+            .await
+            .ok()
+            .flatten()
+        {
+            Some(k) if k["ok"] == json!(true) => out.push(check(
+                "keys",
+                "ok",
+                json!("the root key opens the tenant key"),
+            )),
+            Some(k) => out.push(check("keys", "error", k["detail"].clone())),
+            None => out.push(check("keys", "ok", json!("no key service (memory store)"))),
+        }
+        let min = cfg.int("selfcheck.disk_min_free_mb").max(0) as u64;
+        let mut paths = vec![".".to_string()];
+        if let Some(b) = cfg.text("backup.dir") {
+            paths.push(b.to_string());
+        }
+        for p in paths {
+            match disk_free_mb(&p) {
+                Some(f) => out.push(check(
+                    "disk",
+                    if f < min { "warning" } else { "ok" },
+                    json!(format!("{p}: {f} MB free (minimum {min})")),
+                )),
+                None => out.push(check(
+                    "disk",
+                    "warning",
+                    json!(format!("{p}: free space unknown")),
+                )),
+            }
+        }
+        match cfg.text("backup.dir") {
+            Some(d) => match newest_mtime(d) {
+                Some(age) if age <= 26 * 3600 => out.push(check(
+                    "backup age",
+                    "ok",
+                    json!(format!("the newest backup is {} h old", age / 3600)),
+                )),
+                Some(age) => out.push(check(
+                    "backup age",
+                    "warning",
+                    json!(format!("the newest backup is {} h old", age / 3600)),
+                )),
+                None => out.push(check(
+                    "backup age",
+                    "warning",
+                    json!(format!("{d}: no backup yet")),
+                )),
+            },
+            None if db.is_some() && cfg.text("server.preset") == Some("server") => out.push(check(
+                "backup age",
+                "warning",
+                json!("no backup directory configured (backup.dir)"),
+            )),
+            None => out.push(check(
+                "backup age",
+                "ok",
+                json!("no backups expected (development)"),
+            )),
+        }
+        match self
+            .vae_async(&self.default_tenant, &self.default_authority)
+            .await
+        {
+            Ok(h) => match h.call("host.verify_roots", json!({"last": 20})).await {
+                Ok(r) if r["findings"].as_array().is_some_and(Vec::is_empty) => out.push(check(
+                    "dvm verifier",
+                    "ok",
+                    json!(format!("{} recent commits of main verified", r["checked"])),
+                )),
+                Ok(r) => out.push(check("dvm verifier", "error", r["findings"].clone())),
+                Err(e) => out.push(check("dvm verifier", "warning", json!(e.to_string()))),
+            },
+            Err(e) => out.push(check("dvm verifier", "warning", json!(e.to_string()))),
+        }
+        let defects = crate::db::ISOLATION_DEFECTS.load(std::sync::atomic::Ordering::Relaxed);
+        out.push(check(
+            "isolation",
+            if defects == 0 { "ok" } else { "error" },
+            json!(format!("{defects} isolation defects")),
+        ));
+        let errors = self
+            .tracer
+            .export_errors
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let last = self.tracer.last_error.lock().expect("last").clone();
+        out.push(check(
+            "telemetry export",
+            if errors == 0 { "ok" } else { "warning" },
+            json!(format!(
+                "{errors} failed exports{}",
+                last.map(|l| format!("; last: {l}")).unwrap_or_default()
+            )),
+        ));
+        // alerts on changes to warning or error
+        let before: HashMap<String, String> = self
+            .checks
+            .lock()
+            .expect("checks")
+            .iter()
+            .map(|c| {
+                (
+                    format!("{}|{}", c["check"], c["detail"]),
+                    c["status"].as_str().unwrap_or("").to_string(),
+                )
+            })
+            .collect();
+        for c in &out {
+            let st = c["status"].as_str().unwrap_or("ok");
+            let k = format!("{}|{}", c["check"], c["detail"]);
+            if st != "ok" && before.get(&k).map(String::as_str) != Some(st) {
+                self.audit("selfcheck.alert", c.clone());
+                self.tracer.log(
+                    if st == "error" { "ERROR" } else { "WARN" },
+                    json!({"name": "node.selfcheck", "check": c["check"], "status": st}),
+                );
+                eprintln!(
+                    "ubos-server: self-check {}: {st}: {}",
+                    c["check"], c["detail"]
+                );
+            }
+        }
+        *self.checks.lock().expect("checks") = out.clone();
+        out
+    }
+
+    /// The operations loop: telemetry export every second (metrics every 10 s), the
+    /// database's writability every 5 s (read-only mode), the self-checks every
+    /// `selfcheck.interval_secs`.
+    async fn operations_loop(self: Shared) {
+        self.started
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        let mut tick: u64 = 0;
+        let mut last_checks = std::time::Instant::now() - std::time::Duration::from_secs(3600);
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            tick += 1;
+            let gauges = {
+                let modes = self.modes.lock().expect("modes").clone();
+                json!({"sessions": self.sessions.lock().expect("sessions").len(), "vaes_open": self.vaes.lock().expect("vaes").len(),
+                    "isolation_defects": crate::db::ISOLATION_DEFECTS.load(std::sync::atomic::Ordering::Relaxed),
+                    "spans_dropped": self.tracer.dropped.load(std::sync::atomic::Ordering::Relaxed),
+                    "read_only": modes.read_only.is_some() as i64, "effects_paused": modes.effects_paused.is_some() as i64})
+            };
+            let t = self.tracer.clone();
+            let with_metrics = tick.is_multiple_of(10);
+            let _ = tokio::task::spawn_blocking(move || t.flush(&gauges, with_metrics)).await;
+            if tick.is_multiple_of(5) {
+                let me = self.clone();
+                if let Ok(Some(db)) = blocking(move || Ok(me.source.probe_database())).await {
+                    if db["ok"] == json!(true) && db["writable"] == json!(false) {
+                        let why = if db["in_recovery"] == json!(true) {
+                            "the database is in recovery"
+                        } else {
+                            "the database refuses writes"
+                        };
+                        self.set_mode("read_only", Some(why.to_string()));
+                    } else if db["ok"] == json!(true) {
+                        self.set_mode("read_only", None);
+                    }
+                }
+            }
+            let every = self.config().int("selfcheck.interval_secs").max(5) as u64;
+            if last_checks.elapsed().as_secs() >= every {
+                last_checks = std::time::Instant::now();
+                self.run_selfchecks().await;
+            }
+        }
+    }
+}
+
+/// The free space of the file system of a path in MB (`df -Pk`).
+fn disk_free_mb(path: &str) -> Option<u64> {
+    let o = std::process::Command::new("df")
+        .args(["-Pk", path])
+        .output()
+        .ok()?;
+    let t = String::from_utf8_lossy(&o.stdout);
+    let line = t.lines().nth(1)?;
+    line.split_whitespace()
+        .nth(3)?
+        .parse::<u64>()
+        .ok()
+        .map(|k| k / 1024)
+}
+
+/// The age in seconds of the newest file under a directory (one level of subdirectories).
+fn newest_mtime(dir: &str) -> Option<u64> {
+    let mut newest: Option<std::time::SystemTime> = None;
+    let mut visit = |p: &std::path::Path| {
+        if let Ok(m) = std::fs::metadata(p)
+            && m.is_file()
+            && let Ok(t) = m.modified()
+        {
+            newest = Some(newest.map_or(t, |n| n.max(t)));
+        }
+    };
+    for e in std::fs::read_dir(dir).ok()?.flatten() {
+        let p = e.path();
+        if p.is_dir() {
+            for f in std::fs::read_dir(&p).into_iter().flatten().flatten() {
+                visit(&f.path());
+            }
+        } else {
+            visit(&p);
+        }
+    }
+    newest.and_then(|t| t.elapsed().ok()).map(|d| d.as_secs())
+}
+
+/// The `notAfter` of the first certificate of a PEM text (DER: Certificate → tbsCertificate
+/// → validity).
+pub fn cert_not_after(pem: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    let b64: String = pem
+        .lines()
+        .skip_while(|l| !l.starts_with("-----BEGIN CERTIFICATE"))
+        .skip(1)
+        .take_while(|l| !l.starts_with("-----END"))
+        .collect();
+    let der = base64_decode(&b64)?;
+    // (tag, content start, content end)
+    let tlv = |b: &[u8], at: usize| -> Option<(u8, usize, usize)> {
+        let tag = *b.get(at)?;
+        let l0 = *b.get(at + 1)? as usize;
+        let (len, hdr) = if l0 < 0x80 {
+            (l0, 2)
+        } else {
+            let n = l0 & 0x7f;
+            let mut len = 0usize;
+            for i in 0..n {
+                len = (len << 8) | *b.get(at + 2 + i)? as usize;
+            }
+            (len, 2 + n)
+        };
+        Some((tag, at + hdr, at + hdr + len))
+    };
+    let (_, cs, _) = tlv(&der, 0)?; // Certificate
+    let (_, ts, _) = tlv(&der, cs)?; // tbsCertificate
+    let mut at = ts;
+    let (tag, _, end) = tlv(&der, at)?;
+    if tag == 0xa0 {
+        at = end; // [0] version
+    }
+    for _ in 0..3 {
+        let (_, _, end) = tlv(&der, at)?; // serial, signature, issuer
+        at = end;
+    }
+    let (_, vs, _) = tlv(&der, at)?; // validity
+    let (_, _, nb_end) = tlv(&der, vs)?; // notBefore
+    let (tag, s, e) = tlv(&der, nb_end)?; // notAfter
+    let text = std::str::from_utf8(der.get(s..e)?).ok()?;
+    let full = if tag == 0x17 {
+        // UTCTime YYMMDDHHMMSSZ
+        let yy: i32 = text.get(0..2)?.parse().ok()?;
+        format!(
+            "{}{}",
+            if yy >= 50 { 1900 + yy } else { 2000 + yy },
+            text.get(2..)?
+        )
+    } else {
+        text.to_string()
+    };
+    chrono::NaiveDateTime::parse_from_str(full.trim_end_matches('Z'), "%Y%m%d%H%M%S")
+        .ok()
+        .map(|n| n.and_utc())
+}
+
+fn base64_decode(s: &str) -> Option<Vec<u8>> {
+    let mut out = Vec::new();
+    let (mut buf, mut bits) = (0u32, 0u32);
+    for c in s.bytes() {
+        let v = match c {
+            b'A'..=b'Z' => c - b'A',
+            b'a'..=b'z' => c - b'a' + 26,
+            b'0'..=b'9' => c - b'0' + 52,
+            b'+' => 62,
+            b'/' => 63,
+            b'=' | b'\r' | b'\n' | b' ' => continue,
+            _ => return None,
+        };
+        buf = (buf << 6) | v as u32;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((buf >> bits) as u8);
+            buf &= (1 << bits) - 1;
+        }
+    }
+    Some(out)
+}
+
+/// The liveness probe (DSN-NOD-613): the process answers.
+async fn livez() -> Response {
+    Json(json!({"status": "live"})).into_response()
+}
+
+/// The startup probe: the Server's loops run.
+async fn startupz(State(s): State<Shared>) -> Response {
+    if s.started.load(std::sync::atomic::Ordering::Relaxed) {
+        Json(json!({"status": "started"})).into_response()
+    } else {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({"status": "starting"})),
+        )
+            .into_response()
+    }
+}
+
+/// The readiness probe (DSN-NOD-613): the database and the key service answer; degraded
+/// modes are reported.
+async fn readyz(State(s): State<Shared>) -> Response {
+    let me = s.clone();
+    let (ready, report) = tokio::task::spawn_blocking(move || me.readiness())
+        .await
+        .unwrap_or((false, json!({"status": "not ready"})));
+    if ready {
+        Json(report).into_response()
+    } else {
+        (StatusCode::SERVICE_UNAVAILABLE, Json(report)).into_response()
+    }
+}
+
+/// The operator's view of operations (step 16c): `GET health` (readiness, modes and the
+/// last self-checks), `POST health/run` (run the self-checks now), `GET telemetry/spans`
+/// `?trace&limit` (recent spans), `GET telemetry/metrics`.
+async fn admin_ops(
+    s: &Shared,
+    method: &Method,
+    p: &[&str],
+    q: &HashMap<String, String>,
+) -> Result<Value, BpaError> {
+    match (method.as_str(), p) {
+        ("GET", ["health"]) => {
+            let me = s.clone();
+            let (_, r) = blocking(move || Ok(me.readiness())).await?;
+            Ok(json!({"readiness": r, "selfchecks": *s.checks.lock().expect("checks")}))
+        }
+        ("POST", ["health", "run"]) => Ok(json!({"selfchecks": s.run_selfchecks().await})),
+        ("GET", ["telemetry", "spans"]) => {
+            let limit = q.get("limit").and_then(|x| x.parse().ok()).unwrap_or(200);
+            Ok(json!({"items": s.tracer.recent(q.get("trace").map(String::as_str), limit)}))
+        }
+        ("GET", ["telemetry", "metrics"]) => Ok(json!({"spans": s.tracer.metrics(),
+            "dropped": s.tracer.dropped.load(std::sync::atomic::Ordering::Relaxed),
+            "export_errors": s.tracer.export_errors.load(std::sync::atomic::Ordering::Relaxed)})),
+        _ => Err(BpaError::new("IAM.NOT_FOUND", "unknown admin route")),
+    }
+}

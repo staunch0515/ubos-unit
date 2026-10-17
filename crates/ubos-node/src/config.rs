@@ -83,7 +83,7 @@ const fn key(
 /// The log levels.
 pub const LEVELS: &[&str] = &["error", "warn", "info", "debug", "trace"];
 
-/// The schema of `ubos.toml` (schema version 1).
+/// The schema of `ubos.toml` (schema version 1; 19 keys).
 pub const SCHEMA: &[Key] = &[
     key(
         "server.listen",
@@ -189,6 +189,27 @@ pub const SCHEMA: &[Key] = &[
         Some("35"),
         true,
         "the point-in-time window in days",
+    ),
+    key(
+        "server.tls_certificate",
+        Kind::Path,
+        None,
+        true,
+        "a PEM certificate whose expiry the self-checks watch",
+    ),
+    key(
+        "selfcheck.interval_secs",
+        Kind::Int(5, 3600),
+        Some("60"),
+        true,
+        "the interval of the self-checks",
+    ),
+    key(
+        "selfcheck.disk_min_free_mb",
+        Kind::Int(0, 10_000_000),
+        Some("1024"),
+        true,
+        "the free disk space below which the self-checks warn",
     ),
     key(
         "bootstrap.admin_username",

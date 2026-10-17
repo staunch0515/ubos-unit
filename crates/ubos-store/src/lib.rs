@@ -703,6 +703,7 @@ impl Store for MemStore {
         Ok(true)
     }
     fn flush(&mut self, f: &Flush) -> Result<bool, BpaError> {
+        let _phase = ubos_types::trace::span("store.flush");
         // a request whose idempotency record another flush wrote meanwhile is not committed
         // twice: the flush fails like a moved head and the caller replays (STD-TXN-040)
         if let Some((scope, key, _, _)) = &f.idempotency

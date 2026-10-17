@@ -14,6 +14,7 @@ pub mod decimal;
 pub mod error;
 pub mod names;
 pub mod time;
+pub mod trace;
 pub mod values;
 
 pub use canon::{canonical, content_id, digest, nfc};

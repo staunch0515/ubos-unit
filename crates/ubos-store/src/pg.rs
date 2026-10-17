@@ -2927,9 +2927,11 @@ impl Store for PgStore {
         Ok(id.is_some())
     }
     fn flush(&mut self, f: &Flush) -> Result<bool, BpaError> {
+        let _phase = ubos_types::trace::span("store.flush");
         self.write(std::slice::from_ref(f))
     }
     fn flush_many(&mut self, fs: &[Flush]) -> Result<bool, BpaError> {
+        let _phase = ubos_types::trace::span("store.flush");
         self.write(fs)
     }
     fn object(

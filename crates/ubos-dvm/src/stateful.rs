@@ -1515,6 +1515,7 @@ pub(crate) fn commit_on(
                     .map(|v| (oid.to_string(), v.to_string()))
             })
             .collect();
+        let _phase = ubos_types::trace::span("dvm.rules");
         let warnings = crate::rules::enforce(
             &mut repo,
             &tx,
@@ -1594,7 +1595,10 @@ pub(crate) fn commit_on(
         tx.idempotency = Some((scope, key, hash, result.clone()));
     }
     let head = tx.head;
-    let id = repo.write(tx, vec![head])?;
+    let id = {
+        let _phase = ubos_types::trace::span("dvm.flush");
+        repo.write(tx, vec![head])?
+    };
     let c = repo.commit(id)?;
     result["commit_id"] = json!(c.commit_id);
     result["tx_time"] = json!(c.tx_time);
