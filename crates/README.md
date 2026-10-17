@@ -208,6 +208,10 @@ Packages and SUITE-NOD-OPS of step 16f: `ubos-node/packaging/` (`build.sh` for t
 tarball, `Dockerfile`, `compose.yaml`, `helm/ubos-server`, systemd units, `INSTALL.md`) and
 `ubos-node/ops/ops_suite.py` (the installation, backup, restore and upgrade suite).
 
+Files of step 17a (`ubos-node/src/files.rs`): tus uploads at `/files/v1/{vae}`, chunks cut
+with FastCDC and sealed per tenant, `blob` references, signed download links at
+`/files/v1/download/{token}`.
+
 SUITE-NOD-EVENTS and SUITE-NOD-JOBS of step 15e run in `ubos-events-suite` (memory, or a
 fresh tenant on PostgreSQL; the crash and failover cases run nodes as child processes with
 `--serve` and kill them), and `ubos-events-suite --bench` measures MET-PERF-017, NR-PERF-012

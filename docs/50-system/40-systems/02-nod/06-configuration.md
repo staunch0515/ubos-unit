@@ -47,6 +47,7 @@ Secrets are references (`env:`, `file:`, `kms:`), never inline (DSN-NOD-605). Th
 | `egress.proxy` | — | URL | yes | DSN-NOD-302 |
 | `egress.block_private_ranges` | true | bool | yes | DSN-NOD-302 |
 | `files.scan.backend` | clamav | clamav, cloud, none (dev only) | yes | DSN-NOD-322 |
+| `files.max_upload_mb` | 1024 | 1–1048576 | yes | FR-FILE-012 |
 | `files.download_link_seconds` | 300 | 30–3600 | yes | DSN-NOD-327 |
 | `search.text.backend` | tantivy | tantivy, opensearch | no | DSN-NOD-340 |
 | `search.vector.backend` | pgvector | pgvector, hnsw | no | DSN-NOD-342 |

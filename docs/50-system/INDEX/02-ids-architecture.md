@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (77)
+## DEC (78)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -123,36 +123,36 @@ depends_on: [UBS-IDX-00]
 | DEC-027 | The specification moves to the repository `ubos-unit` | `90-decisions/01-records-dec-001-029.md` |
 | DEC-028 | `ubos-unit` is the single implementation monorepo | `90-decisions/01-records-dec-001-029.md` |
 | DEC-029 | Finance requirements frozen at version 1.0, distributed by copy | `90-decisions/01-records-dec-001-029.md` |
-| DEC-030 | PH-0 execution model: owner with AI sessions, external review at acceptance | `90-decisions/000-index.md` |
-| DEC-031 | Model-checking bounds: exhaustive where feasible, simulation at the stated bound otherwise | `90-decisions/000-index.md` |
-| DEC-032 | BPA 0.1 release: scope, build, adapter operations, generated vectors, clarifications | `90-decisions/000-index.md` |
-| DEC-033 | PH-0 prototype: crate set, PostgreSQL client, property-test harness | `90-decisions/000-index.md` |
-| DEC-034 | Rhai sandbox spike: ASM-008 confirmed for L2 with conditions | `90-decisions/000-index.md` |
-| DEC-035 | EXIT-0-05 carried over into PH-1 | `90-decisions/000-index.md` |
-| DEC-036 | PH-1 re-baseline after PH-0 | `90-decisions/000-index.md` |
-| DEC-037 | PH-0 acceptance | `90-decisions/000-index.md` |
-| DEC-038 | PH-1 execution | `90-decisions/000-index.md` |
-| DEC-039 | Scope of BPA 1.0-rc1 | `90-decisions/000-index.md` |
-| DEC-040 | BPA 1.0-rc1 object and class model (step 1b) | `90-decisions/000-index.md` |
-| DEC-041 | BPA 1.0-rc1 versioning, time and transactions (step 1c) | `90-decisions/000-index.md` |
-| DEC-042 | BPA 1.0-rc1 proofs (step 1d) | `90-decisions/000-index.md` |
-| DEC-043 | BPA 1.0-rc1 L1 expressions, queries, addressing and value types (step 1e-1) | `90-decisions/000-index.md` |
-| DEC-044 | BPA 1.0-rc1 execution (step 1e-2) | `90-decisions/000-index.md` |
-| DEC-045 | Release of BPA 1.0-rc1 (step 1f) | `90-decisions/000-index.md` |
-| DEC-046 | Group commit and ledger sequence model (step 2) | `90-decisions/000-index.md` |
-| DEC-047 | Storage kernel (step 3) | `90-decisions/000-index.md` |
-| DEC-048 | Tenancy and physical form of the storage kernel (step 3b) | `90-decisions/000-index.md` |
-| DEC-049 | Verifiers and storage suite (step 3c) | `90-decisions/000-index.md` |
-| DEC-050 | Engine at production quality (step 4) | `90-decisions/000-index.md` |
-| DEC-051 | Versioning in the kernel (step 4b) | `90-decisions/000-index.md` |
-| DEC-052 | Time, ledger and transactions in the kernel (step 4c) | `90-decisions/000-index.md` |
-| DEC-053 | Production identities of the kernel schema (step 4d-1) | `90-decisions/000-index.md` |
-| DEC-054 | Metadata tables, tenant scope and addressing (step 4d-2) | `90-decisions/000-index.md` |
-| DEC-055 | Runtime: L1 expressions (PH-1 step 5, part 5a) | `90-decisions/000-index.md` |
-| DEC-056 | Instruction set and executor (PH-1 step 5, part 5b) | `90-decisions/000-index.md` |
-| DEC-057 | Verification gate, replay and BPU views (PH-1 step 5, part 5c) | `90-decisions/000-index.md` |
-| DEC-058 | L2 host at production quality (PH-1 step 5, part 5d) | `90-decisions/000-index.md` |
-| DEC-059 | Proofs: signed commit records, node key history and the pure verification primitives (PH-1 step 6, part 6a) | `90-decisions/000-index.md` |
+| DEC-030 | PH-0 execution model: owner with AI sessions, external review at acceptance | `90-decisions/02-records-dec-030-059.md` |
+| DEC-031 | Model-checking bounds: exhaustive where feasible, simulation at the stated bound otherwise | `90-decisions/02-records-dec-030-059.md` |
+| DEC-032 | BPA 0.1 release: scope, build, adapter operations, generated vectors, clarifications | `90-decisions/02-records-dec-030-059.md` |
+| DEC-033 | PH-0 prototype: crate set, PostgreSQL client, property-test harness | `90-decisions/02-records-dec-030-059.md` |
+| DEC-034 | Rhai sandbox spike: ASM-008 confirmed for L2 with conditions | `90-decisions/02-records-dec-030-059.md` |
+| DEC-035 | EXIT-0-05 carried over into PH-1 | `90-decisions/02-records-dec-030-059.md` |
+| DEC-036 | PH-1 re-baseline after PH-0 | `90-decisions/02-records-dec-030-059.md` |
+| DEC-037 | PH-0 acceptance | `90-decisions/02-records-dec-030-059.md` |
+| DEC-038 | PH-1 execution | `90-decisions/02-records-dec-030-059.md` |
+| DEC-039 | Scope of BPA 1.0-rc1 | `90-decisions/02-records-dec-030-059.md` |
+| DEC-040 | BPA 1.0-rc1 object and class model (step 1b) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-041 | BPA 1.0-rc1 versioning, time and transactions (step 1c) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-042 | BPA 1.0-rc1 proofs (step 1d) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-043 | BPA 1.0-rc1 L1 expressions, queries, addressing and value types (step 1e-1) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-044 | BPA 1.0-rc1 execution (step 1e-2) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-045 | Release of BPA 1.0-rc1 (step 1f) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-046 | Group commit and ledger sequence model (step 2) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-047 | Storage kernel (step 3) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-048 | Tenancy and physical form of the storage kernel (step 3b) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-049 | Verifiers and storage suite (step 3c) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-050 | Engine at production quality (step 4) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-051 | Versioning in the kernel (step 4b) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-052 | Time, ledger and transactions in the kernel (step 4c) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-053 | Production identities of the kernel schema (step 4d-1) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-054 | Metadata tables, tenant scope and addressing (step 4d-2) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-055 | Runtime: L1 expressions (PH-1 step 5, part 5a) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-056 | Instruction set and executor (PH-1 step 5, part 5b) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-057 | Verification gate, replay and BPU views (PH-1 step 5, part 5c) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-058 | L2 host at production quality (PH-1 step 5, part 5d) | `90-decisions/02-records-dec-030-059.md` |
+| DEC-059 | Proofs: signed commit records, node key history and the pure verification primitives (PH-1 step 6, part 6a) | `90-decisions/02-records-dec-030-059.md` |
 | DEC-060 | In-process host and host services on PostgreSQL (PH-1 step 7, part 7a) | `90-decisions/000-index.md` |
 | DEC-061 | Verification close-out of gate 1a (PH-1 step 8, parts 8a–8c) | `90-decisions/000-index.md` |
 | DEC-062 | Gate-1a acceptance (PH-1 step 9, part 9a) | `90-decisions/000-index.md` |
@@ -171,4 +171,5 @@ depends_on: [UBS-IDX-00]
 | DEC-075 | PH-1 step 14: single-node Server and local identity, parts 14a–14d | `90-decisions/000-index.md` |
 | DEC-076 | PH-1 step 15: events, jobs and schedules, parts 15a–15e | `90-decisions/000-index.md` |
 | DEC-077 | PH-1 step 16: operations and configuration, parts 16a–16f | `90-decisions/000-index.md` |
+| DEC-078 | PH-1 step 17: SDKs, `forge dev` and the engineering UI, parts 17a–17f | `90-decisions/000-index.md` |
 

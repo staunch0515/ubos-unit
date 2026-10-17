@@ -16,6 +16,7 @@
 //! `--serve`), kill them with SIGKILL and restart them.
 
 use serde_json::{Value, json};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use ubos_dvm::crypto;
@@ -67,8 +68,8 @@ fn port(name: &str, params: &[&str], emits: &[&str]) -> Value {
     p
 }
 
-/// The genesis classes: `Account` with its ports and events, `Rate` (instant valid time,
-/// emitting `BecameEffective`).
+/// The genesis classes: `Account` with its ports and events, `Statement` with a personal
+/// `blob` field, `Rate` (instant valid time, emitting `BecameEffective`).
 fn classes() -> Value {
     json!([
         {"name": "Account", "label": "Account", "description": "Account", "namespace": "suite.events", "parent": "DataObject",
@@ -77,6 +78,10 @@ fn classes() -> Value {
          "fields": [field("name", "text", true), field("status", "text", false), field("tag", "text", false)],
          "ports": [port("close", &[], &["AccountClosed"]), port("ping", &["n"], &["Pinged"]), port("mark", &["tag"], &[]),
                    port("later", &[], &[])]},
+        {"name": "Statement", "label": "Statement", "description": "Statement", "namespace": "suite.events", "parent": "DataObject",
+         "kind": "definition", "schema_version": 1,
+         "fields": [field("title", "text", true),
+                    {"name": "scan", "label": "scan", "description": "scan", "type": "blob", "classification": "personal"}]},
         {"name": "Rate", "label": "Rate", "description": "Rate", "namespace": "suite.events", "parent": "DataObject",
          "kind": "definition", "schema_version": 1, "valid_time": "instant", "emit_became_effective": true,
          "fields": [field("value", "decimal", true)]}
@@ -119,6 +124,69 @@ fn iso(t: chrono::DateTime<chrono::Utc>) -> String {
 }
 
 // ---- HTTP ----
+
+/// A raw HTTP response: status, headers (lower-case names), body bytes.
+type RawResponse = (u16, HashMap<String, String>, Vec<u8>);
+
+/// One HTTP request with raw bytes and extra headers: the status, the headers (lower-case
+/// names) and the body bytes.
+fn http_raw(
+    addr: &str,
+    method: &str,
+    path: &str,
+    token: Option<&str>,
+    headers: &[(&str, String)],
+    body: &[u8],
+) -> Result<RawResponse, BpaError> {
+    use std::io::{Read, Write};
+    let mut s = std::net::TcpStream::connect(addr).map_err(err)?;
+    s.set_read_timeout(Some(Duration::from_secs(60)))
+        .map_err(err)?;
+    let mut head = format!("{method} {path} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n");
+    if let Some(t) = token {
+        head += &format!("Authorization: Bearer {t}\r\n");
+    }
+    for (k, v) in headers {
+        head += &format!("{k}: {v}\r\n");
+    }
+    head += &format!("Content-Length: {}\r\n\r\n", body.len());
+    s.write_all(head.as_bytes()).map_err(err)?;
+    s.write_all(body).map_err(err)?;
+    let mut raw = Vec::new();
+    s.read_to_end(&mut raw).map_err(err)?;
+    let split = raw
+        .windows(4)
+        .position(|w| w == b"\r\n\r\n")
+        .unwrap_or(raw.len());
+    let head = String::from_utf8_lossy(&raw[..split]).to_string();
+    let mut rest = raw.get(split + 4..).unwrap_or_default().to_vec();
+    let status = head
+        .split_whitespace()
+        .nth(1)
+        .and_then(|c| c.parse().ok())
+        .unwrap_or(0);
+    let hs: HashMap<String, String> = head
+        .lines()
+        .skip(1)
+        .filter_map(|l| l.split_once(':'))
+        .map(|(k, v)| (k.trim().to_ascii_lowercase(), v.trim().to_string()))
+        .collect();
+    if hs.get("transfer-encoding").is_some_and(|t| t == "chunked") {
+        let mut out = Vec::new();
+        let mut i = 0;
+        while let Some(p) = rest[i..].windows(2).position(|w| w == b"\r\n") {
+            let n = usize::from_str_radix(String::from_utf8_lossy(&rest[i..i + p]).trim(), 16)
+                .unwrap_or(0);
+            if n == 0 || rest.len() < i + p + 2 + n {
+                break;
+            }
+            out.extend_from_slice(&rest[i + p + 2..i + p + 2 + n]);
+            i += p + 2 + n + 2;
+        }
+        rest = out;
+    }
+    Ok((status, hs, rest))
+}
 
 fn http(
     addr: &str,
@@ -1267,6 +1335,129 @@ fn diagnostics(e: &Env) -> Result<Value, BpaError> {
     )
 }
 
+/// DSN-NOD-320, -321, -327: a tus upload in pieces resumes from its offset and completes a
+/// chunked file; the same content is the same file; a `blob` field refers to it; a link of
+/// the personal field downloads the content and ranges of it, and the download is logged.
+fn files(e: &Env) -> Result<Value, BpaError> {
+    let (addr, tok) = (e.c.addr.as_str(), Some(e.c.token.as_str()));
+    let mut x: u64 = 0x9e37_79b9_7f4a_7c15;
+    let content: Vec<u8> = (0..1_000_003)
+        .map(|_| {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            (x >> 24) as u8
+        })
+        .collect();
+    fn tus(extra: &[(&'static str, String)]) -> Vec<(&'static str, String)> {
+        let mut h = vec![("Tus-Resumable", "1.0.0".to_string())];
+        h.extend(extra.iter().cloned());
+        h
+    }
+    let create = || -> Result<String, BpaError> {
+        let (st, h, _) = http_raw(
+            addr,
+            "POST",
+            "/files/v1/acme",
+            tok,
+            &tus(&[
+                ("Upload-Length", content.len().to_string()),
+                (
+                    "Upload-Metadata",
+                    "filename c2Nhbi5iaW4=,filetype YXBwbGljYXRpb24vb2N0ZXQtc3RyZWFt".into(),
+                ),
+            ]),
+            b"",
+        )?;
+        check_v(st == 201, "an upload created", &json!(h))?;
+        Ok(h.get("location").cloned().unwrap_or_default())
+    };
+    let patch = |loc: &str, off: usize, data: &[u8]| {
+        http_raw(
+            addr,
+            "PATCH",
+            loc,
+            tok,
+            &tus(&[
+                ("Upload-Offset", off.to_string()),
+                ("Content-Type", "application/offset+octet-stream".into()),
+            ]),
+            data,
+        )
+    };
+    let loc = create()?;
+    let (st, _, _) = patch(&loc, 0, &content[..400_000])?;
+    check(st == 204, "the first piece")?;
+    let (st, _, _) = patch(&loc, 7, &content[7..100])?;
+    check(st == 409, "a wrong offset refused")?;
+    let (st, h, _) = http_raw(addr, "HEAD", &loc, tok, &tus(&[]), b"")?;
+    check_v(
+        st == 200 && h.get("upload-offset").map(String::as_str) == Some("400000"),
+        "HEAD tells where to resume",
+        &json!(h),
+    )?;
+    let (st, h, _) = patch(&loc, 400_000, &content[400_000..])?;
+    let file = h.get("ubos-file").cloned().unwrap_or_default();
+    check_v(
+        st == 204 && file.starts_with("sha256:"),
+        "the last piece completes the file",
+        &json!(h),
+    )?;
+    let again = create()?;
+    let (_, h, _) = patch(&again, 0, &content)?;
+    check(
+        h.get("ubos-file") == Some(&file),
+        "the same content is the same file (DSN-NOD-321)",
+    )?;
+    let reference = json!({"content_id": file, "size": content.len(), "media_type": "application/octet-stream", "name": "scan.bin"});
+    let slug = e.slug("stmt");
+    e.c.commit(
+        BR,
+        json!([{"op": "create", "class": "Statement", "object_id": uuid(), "slug": slug,
+        "body": {"title": "statement", "scan": reference}}]),
+    )?;
+    let (st, link) = e.c.call(
+        "POST",
+        "/files/v1/acme/links",
+        &json!({"object": format!("ubos://acme/Statement/{slug}?branch={BR}"), "field": "scan"}),
+    )?;
+    check_v(
+        st == 200 && link["classification"] == "personal",
+        "a link of the personal field",
+        &link,
+    )?;
+    let url = link["url"].as_str().unwrap_or_default();
+    let (st, h, body) = http_raw(addr, "GET", url, None, &[], b"")?;
+    check_v(
+        st == 200 && body == content,
+        "the download is the content",
+        &json!({"status": st, "len": body.len()}),
+    )?;
+    let (st, h2, part) = http_raw(
+        addr,
+        "GET",
+        url,
+        None,
+        &[("Range", "bytes=100-199".into())],
+        b"",
+    )?;
+    check_v(
+        st == 206 && part == content[100..200],
+        "a range",
+        &json!(h2),
+    )?;
+    let (_, log) = e.c.call(
+        "GET",
+        "/api/v1/identity/security-log?limit=10000",
+        &Value::Null,
+    )?;
+    let logged = log["entries"].as_array().map_or(0, |a| {
+        a.iter().filter(|x| x["kind"] == "file.download").count()
+    });
+    check(logged >= 2, "personal downloads logged (DSN-NOD-327)")?;
+    Ok(json!({"file": file, "sha256": h.get("ubos-content-sha256"), "downloads_logged": logged}))
+}
+
 // ---- SUITE-NOD-JOBS ----
 
 /// DSN-NOD-220, FR-EVT-031: a `run.async` job is a System-kind `Job` object on `main` whose
@@ -2306,6 +2497,7 @@ const EVENTS: &[Case] = &[
     ("leader_leases", "DSN-NOD-228", leader_leases),
     ("traces", "NR-OBS-001", traces),
     ("diagnostics", "DSN-NOD-615", diagnostics),
+    ("files", "DSN-NOD-320", files),
     ("crash_recovery", "NR-DUR-006", crash_recovery),
     ("failover", "DSN-NOD-228", failover),
 ];

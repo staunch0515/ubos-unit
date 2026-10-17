@@ -191,6 +191,20 @@ pub const SCHEMA: &[Key] = &[
         "the point-in-time window in days",
     ),
     key(
+        "files.max_upload_mb",
+        Kind::Int(1, 1_048_576),
+        Some("1024"),
+        true,
+        "the largest file an upload may declare, in MiB (FR-FILE-012)",
+    ),
+    key(
+        "files.download_link_seconds",
+        Kind::Int(30, 3600),
+        Some("300"),
+        true,
+        "the lifetime of a download link (DSN-NOD-327)",
+    ),
+    key(
         "backup.restore_point_minutes",
         Kind::Int(0, 1440),
         Some("10"),

@@ -811,6 +811,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fastcdc"
+version = "5.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0431c3132902a1bed6fe77dcfa5d03844e083f263b81288246a2d43dd7d4b2ad"
+
+[[package]]
 name = "fiat-crypto"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3122,11 +3128,13 @@ dependencies = [
  "cap",
  "chrono",
  "chrono-tz",
+ "fastcdc",
  "futures-util",
  "hmac",
  "serde",
  "serde_json",
  "sha1",
+ "sha2",
  "sqlx",
  "tokio",
  "tokio-tungstenite",
