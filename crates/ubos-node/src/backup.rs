@@ -111,7 +111,11 @@ impl Target {
 
     fn sub(&self, name: &str) -> Result<PathBuf, BpaError> {
         let p = self.dir.join(name);
-        std::fs::create_dir_all(&p).map_err(io(&p))?;
+        if !p.exists() {
+            std::fs::create_dir_all(&p).map_err(io(&p))?;
+            // the node and PostgreSQL's archive_command write as members of one group
+            set_mode(&p, 0o2770);
+        }
         Ok(p)
     }
 
@@ -253,21 +257,22 @@ fn aad(header: &[u8], counter: u64, last: bool) -> Vec<u8> {
 /// The heads of every branch of every VAE: `[{tenant, vae, branch, cseq, head, root}]`
 /// (the owner connection; content IDs and state roots in hexadecimal).
 pub fn heads(db: &Db) -> Result<Vec<Value>, BpaError> {
-    db.query(
-        "SELECT t.slug AS tenant, v.authority AS vae, b.name AS branch, b.head_cseq AS cseq, \
-         encode(b.head_commit, 'hex') AS head, encode(c.state_root, 'hex') AS root \
-         FROM branch_ref b JOIN vae v ON v.tenant_id = b.tenant_id AND v.vae_id = b.vae_id \
-         JOIN tenant t ON t.tenant_id = b.tenant_id \
-         LEFT JOIN commit c ON c.tenant_id = b.tenant_id AND c.vae_id = b.vae_id AND c.commit_id = b.head_commit \
-         ORDER BY t.slug, v.authority, b.name",
-        &[],
-    )
+    db.query(HEADS, &[])
 }
 
-/// Create a named restore point and record the heads at it (`points/`): the heads are
-/// read before and after the point and kept only when they agree, so they are exactly the
-/// heads of a restore to that point. A point a commit raced is left unrecorded and the
-/// next attempt takes a suffixed name (a recovery stops at the first point of a name).
+/// The heads query of [`heads`].
+const HEADS: &str = "SELECT t.slug AS tenant, v.authority AS vae, b.name AS branch, b.head_cseq AS cseq, \
+     encode(b.head_commit, 'hex') AS head, encode(c.state_root, 'hex') AS root \
+     FROM branch_ref b JOIN vae v ON v.tenant_id = b.tenant_id AND v.vae_id = b.vae_id \
+     JOIN tenant t ON t.tenant_id = b.tenant_id \
+     LEFT JOIN commit c ON c.tenant_id = b.tenant_id AND c.vae_id = b.vae_id AND c.commit_id = b.head_commit \
+     ORDER BY t.slug, v.authority, b.name";
+
+/// Create a named restore point and record the heads at it (`points/`). One transaction
+/// holds `branch_ref` in share mode — a commit moving a head waits for it, and every commit
+/// that moved one before has ended — reads the heads and creates the point, so the heads
+/// are exactly those of a restore to the point, under any load. Commits wait for the few
+/// milliseconds this takes.
 pub fn restore_point(db: &Db, target: &Target, name: &str) -> Result<Value, BpaError> {
     let ok = !name.is_empty()
         && name.len() <= 60
@@ -280,37 +285,32 @@ pub fn restore_point(db: &Db, target: &Target, name: &str) -> Result<Value, BpaE
             "a restore point name is 1…60 of [A-Za-z0-9_-]",
         ));
     }
-    for attempt in 0..10 {
-        let used = if attempt == 0 {
-            name.to_string()
-        } else {
-            format!("{name}-{attempt}")
-        };
-        let before = heads(db)?;
-        let p = db.query(
+    let r = db.transaction(&[
+        ("SET LOCAL lock_timeout = '10s'", &[]),
+        ("LOCK TABLE branch_ref IN SHARE MODE", &[]),
+        (HEADS, &[]),
+        (
             "WITH p AS (SELECT pg_create_restore_point($1) AS lsn) \
              SELECT lsn::text AS lsn, pg_walfile_name(lsn) AS wal_file, \
              to_char(clock_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS at FROM p",
-            &[Param::Text(&used)],
-        )?;
-        let after = heads(db)?;
-        if before != after {
-            continue;
-        }
-        let p = p.into_iter().next().unwrap_or(Value::Null);
-        let rec = json!({"name": used, "at": p["at"], "lsn": p["lsn"], "wal_file": p["wal_file"], "heads": after});
-        let file = target
-            .sub("points")?
-            .join(format!("{}-{used}.json.enc", stamp(now())));
-        target.seal_json(&rec, &file)?;
-        return Ok(
-            json!({"name": used, "at": rec["at"], "lsn": rec["lsn"], "wal_file": rec["wal_file"],
-            "vaes": rec["heads"].as_array().map_or(0, Vec::len)}),
-        );
-    }
-    Err(fail(
-        "the heads kept changing around the restore point; try again",
-    ))
+            &[Param::Text(name)],
+        ),
+    ])?;
+    let heads = r.get(2).cloned().unwrap_or_default();
+    let p = r
+        .get(3)
+        .and_then(|x| x.first())
+        .cloned()
+        .unwrap_or(Value::Null);
+    let rec = json!({"name": name, "at": p["at"], "lsn": p["lsn"], "wal_file": p["wal_file"], "heads": heads});
+    let file = target
+        .sub("points")?
+        .join(format!("{}-{name}.json.enc", stamp(now())));
+    target.seal_json(&rec, &file)?;
+    Ok(
+        json!({"name": name, "at": rec["at"], "lsn": rec["lsn"], "wal_file": rec["wal_file"],
+        "vaes": heads.len()}),
+    )
 }
 
 /// The recorded restore points, oldest first (`{name, at, lsn, wal_file, heads}`).

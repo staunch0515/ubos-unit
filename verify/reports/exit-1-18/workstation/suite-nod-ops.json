@@ -1,0 +1,219 @@
+{
+  "suite": "SUITE-NOD-OPS",
+  "part": "PH-1 (step 16f)",
+  "items": [
+    "VER-FAULT-2000"
+  ],
+  "exit": "EXIT-1-18",
+  "pass": true,
+  "version": "ubos-server 0.0.0",
+  "host": {
+    "system": "Linux-6.18.44-fc-v139-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "cpus": 4,
+    "postgres": "postgres (PostgreSQL) 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)"
+  },
+  "seconds": 115.0,
+  "steps": {
+    "install_seconds": 0.24,
+    "postgres_seconds": 1.03,
+    "invalid_configurations": 214,
+    "configs_seconds": 1.39,
+    "bootstrap_seconds": 4.6,
+    "backup_seconds": 23.54,
+    "commits_under_load": 570,
+    "bundle_seconds": 1.99,
+    "restores_verified": 10,
+    "restore_seconds": [
+      3.12,
+      2.81,
+      3.26,
+      4.45,
+      5.55,
+      7.64,
+      8.37,
+      9.32,
+      10.39,
+      12.04
+    ],
+    "pitr_seconds": 71.81,
+    "upgrade_seconds": 3.44
+  },
+  "checks": [
+    {
+      "check": "install: the package matches SHA256SUMS",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "install: the package carries the guide and the systemd units",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "install: the binary runs",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "install: the configuration from the example is valid",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "postgres: initdb",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "postgres: started with WAL archiving",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "postgres: the ubos role and database (not a superuser)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "configs: 214 invalid configurations, every one rejected (NR-OPER-003)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "bootstrap: interrupted after the genesis step (SCN-001 A1)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "bootstrap: the rerun completes and prints the invitation",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "bootstrap: the administrator signs in through the invitation",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "bootstrap: the genesis Buks system and ontology recorded once each (SCN-001)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "load: commits",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "backups: a base backup under load",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "backups: 10 restore points under load with recorded heads",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "backups: the WAL archived through the last point",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "backups: no business value in the backup files (DSN-NOD-623)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "backups: unreadable with another key (DSN-NOD-623 acceptance 1)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "bundle: produced within 5 minutes (NR-OPER-005)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "bundle: no business value, no secret (DSN-NOD-615)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "load: no failed commit",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "pitr: p00 restored, heads equal, DVM roots and indexes of the last 1,000 commits verified",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "pitr: p01 restored, heads equal, DVM roots and indexes of the last 1,000 commits verified",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "pitr: p02 restored, heads equal, DVM roots and indexes of the last 1,000 commits verified",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "pitr: p03 restored, heads equal, DVM roots and indexes of the last 1,000 commits verified",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "pitr: p04 restored, heads equal, DVM roots and indexes of the last 1,000 commits verified",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "pitr: p05 restored, heads equal, DVM roots and indexes of the last 1,000 commits verified",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "pitr: p06 restored, heads equal, DVM roots and indexes of the last 1,000 commits verified",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "pitr: p07 restored, heads equal, DVM roots and indexes of the last 1,000 commits verified",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "pitr: p08 restored, heads equal, DVM roots and indexes of the last 1,000 commits verified",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "pitr: p09 restored, heads equal, DVM roots and indexes of the last 1,000 commits verified",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "pitr: a restore past a gap in the WAL chain refused with the last consistent point (SCN-017 A1)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "upgrade: one command \u2014 configuration, backup, point, migrations, install, verification, report",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "upgrade: a failed verification puts the previous binary back",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "upgrade: the node starts ready afterwards",
+      "ok": true,
+      "detail": null
+    }
+  ]
+}

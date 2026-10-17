@@ -1,0 +1,36 @@
+# ubos.toml — configuration of a single-node UBOS Server (DSN-NOD-603).
+# Check it with `ubos-server check-config /etc/ubos/ubos.toml`; `ubos-server config-schema`
+# lists every key with its type, range and whether it is reloadable (SIGHUP).
+# Secrets are references only: env:NAME, file:/path or kms:<provider>/<key> (DSN-NOD-605).
+version = 1
+
+[server]
+listen = "0.0.0.0:8080"
+preset = "server"
+tenant = "acme"          # the first tenant, created by `ubos-server bootstrap`
+vae = "acme"             # its default VAE
+# tls_certificate = "/etc/ubos/tls/cert.pem"   # the self-checks watch its expiry
+
+[database]
+# PostgreSQL 16 or later with btree_gist; the role owns the UBOS tables
+url = "file:/etc/ubos/database.url"
+
+[keys]
+root_kek = "file:/etc/ubos/root.key"          # 64 hexadecimal digits
+
+[backup]
+dir = "/var/backups/ubos"                     # mounted from a separate failure domain
+key = "file:/etc/ubos/backup.key"             # 64 hexadecimal digits, not the root key
+retention_days = 35
+restore_point_minutes = 10
+
+[limits]
+requests_per_second = 50
+
+[telemetry]
+export = "stderr"                             # none | stderr | otlp
+# otlp_endpoint = "http://otel-collector:4318"
+
+[selfcheck]
+interval_secs = 60
+disk_min_free_mb = 1024

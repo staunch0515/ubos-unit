@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ubos-server
+description: A single-node UBOS Server (PH-1) against an existing PostgreSQL 16 with WAL archiving
+type: application
+version: 0.1.0
+appVersion: "0.0.0"

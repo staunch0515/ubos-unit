@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ubos.name" . }}
+  labels: {{- include "ubos.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {{- include "ubos.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "ubos.labels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, fsGroup: 10001}
+      initContainers:
+        - name: bootstrap
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["bootstrap", "--config", "/etc/ubos/ubos.toml"]
+          volumeMounts: {{- include "ubos.mounts" . | nindent 12 }}
+      containers:
+        - name: server
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["--config", "/etc/ubos/ubos.toml"]
+          ports: [{name: http, containerPort: {{ .Values.service.port }}}]
+          startupProbe:
+            httpGet: {path: /startupz, port: http}
+            failureThreshold: 60
+            periodSeconds: 2
+          livenessProbe:
+            httpGet: {path: /livez, port: http}
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 5
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts: {{- include "ubos.mounts" . | nindent 12 }}
+      volumes: {{- include "ubos.volumes" . | nindent 8 }}
