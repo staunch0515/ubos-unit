@@ -43,6 +43,9 @@ pub struct Options {
     pub database: Option<String>,
     /// Where the node listens.
     pub listen: String,
+    /// The web origins allowed to call the node (`server.cors_origins`): the engineering
+    /// UI served locally by default.
+    pub cors: Vec<String>,
     /// Run the tests after each accepted change.
     pub test: bool,
     /// Write the generated types after each model change.
@@ -168,9 +171,16 @@ fn start(o: &Options, p: &Project, key: &str, work: &Path) -> Result<Node, Strin
         g["value_types"] = json!(vts);
     }
     std::fs::write(&genesis, g.to_string()).map_err(|e| e.to_string())?;
+    let origins: Vec<String> = o
+        .cors
+        .iter()
+        .map(|x| format!("\"{}\"", x.replace('"', "")))
+        .collect();
     let mut cfg = format!(
-        "version = 1\n[server]\nlisten = \"{}\"\npreset = \"dev\"\ntenant = \"{tenant}\"\nvae = \"{}\"\n",
-        o.listen, p.manifest.vae
+        "version = 1\n[server]\nlisten = \"{}\"\npreset = \"dev\"\ntenant = \"{tenant}\"\nvae = \"{}\"\ncors_origins = [{}]\n",
+        o.listen,
+        p.manifest.vae,
+        origins.join(", ")
     );
     if let Some(db) = &o.database {
         cfg.push_str(&format!(
@@ -337,6 +347,13 @@ fn write_types(o: &Options, p: &Project) {
         let _ = std::fs::create_dir_all(&out);
         let _ = std::fs::write(out.join("types.ts"), ts);
         let _ = std::fs::write(out.join("types.rs"), rs);
+    }
+    if let Ok(m) = crate::types::model(p) {
+        let out = p.root.join("generated");
+        let _ = std::fs::write(
+            out.join("model.json"),
+            serde_json::to_string_pretty(&m).unwrap_or_default() + "\n",
+        );
     }
 }
 

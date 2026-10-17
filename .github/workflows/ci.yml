@@ -64,7 +64,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: packages/sdk-ts/package-lock.json
+          cache-dependency-path: |
+            packages/sdk-ts/package-lock.json
+            packages/eng-ui/package-lock.json
       - name: build the node, forge and the Rust runner
         run: cargo build --locked -p ubos-node -p ubos-forge -p ubos-sdk --bin ubos-server --bin forge --example suite
       - name: build the TypeScript runner
@@ -75,6 +77,14 @@ jobs:
           python3 verify/sdk/sdk_suite.py --server target/debug/ubos-server --forge target/debug/forge \
             --rust target/debug/examples/suite --ts packages/sdk-ts/build/suite/suite.js \
             --database "host=127.0.0.1 user=postgres dbname=bpa" --report sdk-suite.json
+      - name: the engineering UI — type check, lint, build, and the walk-through in Chrome over both bindings (PH-1b acceptance UI)
+        working-directory: packages/eng-ui
+        run: |
+          npm ci && npm run check
+          for b in ws http; do
+            node test/e2e.mjs --forge ../../target/debug/forge --server ../../target/debug/ubos-server \
+              --binding $b --chromium "$(command -v google-chrome || command -v chromium)"
+          done
       - name: forge dev on PostgreSQL — install, two script edits, a model change (DSN-FRG-501; debug build, so the bound is 60 s, not NR-PERF-016's 10 s)
         run: |
           python3 verify/tools/dev_loop.py --forge target/debug/forge --server target/debug/ubos-server \

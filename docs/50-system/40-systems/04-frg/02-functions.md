@@ -85,7 +85,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given generated TypeScript types, when an application uses a removed field, then the TypeScript compiler fails.
 - **Verification:** CONF
 - **Origin:** FR-DEV-031, FR-DEV-032
-- **Phase note:** PH-1 step 7b (DEC-060): `types.ts` and `types.rs` for classes, value types and ports, with the branch and model hash in the header; Python follows in PH-3. PH-1 step 17d (DEC-078): the generated code is the typed API of DSN-SDK-012 over the SDKs' typed layers (typed reads, unions of a class and its subclasses, query builders, typed port calls).
+- **Phase note:** PH-1 step 7b (DEC-060): `types.ts` and `types.rs` for classes, value types and ports, with the branch and model hash in the header; Python follows in PH-3. PH-1 step 17d (DEC-078): the generated code is the typed API of DSN-SDK-012 over the SDKs' typed layers (typed reads, unions of a class and its subclasses, query builders, typed port calls). PH-1 step 17f: `forge types` also writes `model.json` (classes, fields with types and constraints, ports with parameters) for generic clients such as the engineering UI.
 
 ### DSN-FRG-103 — Verification records
 - **Statement:** For each logic asset, Forge MUST produce a signed verification record (STD-CTX-023) binding the asset hash, ABI, passed checks, test results, coverage and inferred capabilities. Records MUST be signed with the verifier key (developer, CI or EXC service key).

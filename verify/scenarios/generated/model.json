@@ -1,0 +1,479 @@
+{
+  "project": "gate-1a-scenarios",
+  "branch": "main",
+  "model_hash": "sha256:d04dd495ca847dd4b0881eacd74969b0090e369a3ec0006cba57fff631d59c82",
+  "vae": "acme",
+  "classes": [
+    {
+      "name": "Agreement",
+      "label": "Agreement",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Agreement",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "effective_from",
+          "type": "date",
+          "required": false,
+          "label": "effective_from",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Agreement"
+        },
+        {
+          "name": "parties",
+          "type": "list",
+          "required": false,
+          "label": "parties",
+          "constraints": {
+            "item_type": {
+              "type": "reference",
+              "constraints": {
+                "target_class": "Party"
+              }
+            },
+            "min_items": 2
+          },
+          "default": null,
+          "classification": null,
+          "declared_by": "Agreement"
+        },
+        {
+          "name": "state",
+          "type": "enum",
+          "required": false,
+          "label": "state",
+          "constraints": {
+            "allowed_values": [
+              "active",
+              "terminated"
+            ]
+          },
+          "default": "active",
+          "classification": null,
+          "declared_by": "Agreement"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "label": "title",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Agreement"
+        }
+      ],
+      "ports": [
+        {
+          "name": "terminate",
+          "kind": "command",
+          "params": [],
+          "declared_by": "Agreement"
+        }
+      ]
+    },
+    {
+      "name": "CashMovement",
+      "label": "CashMovement",
+      "parent": "DataObject",
+      "kind": "ledger",
+      "linearization": [
+        "CashMovement",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "account",
+          "type": "text",
+          "required": true,
+          "label": "account",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "CashMovement"
+        },
+        {
+          "name": "amount",
+          "type": "money",
+          "required": true,
+          "label": "amount",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "CashMovement"
+        },
+        {
+          "name": "memo",
+          "type": "text",
+          "required": false,
+          "label": "memo",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "CashMovement"
+        }
+      ],
+      "ports": []
+    },
+    {
+      "name": "Customer",
+      "label": "Customer",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Customer",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "country",
+          "type": "text",
+          "required": false,
+          "label": "country",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Customer"
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "required": false,
+          "label": "email",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Customer"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Customer"
+        }
+      ],
+      "ports": []
+    },
+    {
+      "name": "FeeCase",
+      "label": "FeeCase",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "FeeCase",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "fee",
+          "type": "decimal",
+          "required": false,
+          "label": "fee",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "FeeCase"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "FeeCase"
+        }
+      ],
+      "ports": []
+    },
+    {
+      "name": "Job",
+      "label": "Job",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Job",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "counter",
+          "type": "integer",
+          "required": false,
+          "label": "counter",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Job"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Job"
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "required": false,
+          "label": "note",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Job"
+        }
+      ],
+      "ports": [
+        {
+          "name": "probe",
+          "kind": "command",
+          "params": [],
+          "declared_by": "Job"
+        },
+        {
+          "name": "run",
+          "kind": "command",
+          "params": [],
+          "declared_by": "Job"
+        }
+      ]
+    },
+    {
+      "name": "Party",
+      "label": "Party",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Party",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Party"
+        }
+      ],
+      "ports": []
+    },
+    {
+      "name": "PriceList",
+      "label": "PriceList",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "PriceList",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "price",
+          "type": "decimal",
+          "required": true,
+          "label": "price",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "PriceList"
+        }
+      ],
+      "ports": []
+    },
+    {
+      "name": "Product",
+      "label": "Product",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Product",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "category",
+          "type": "text",
+          "required": false,
+          "label": "category",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Product"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Product"
+        },
+        {
+          "name": "price",
+          "type": "decimal",
+          "required": false,
+          "label": "price",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Product"
+        }
+      ],
+      "ports": []
+    },
+    {
+      "name": "Rate",
+      "label": "Rate",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Rate",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "value",
+          "type": "decimal",
+          "required": true,
+          "label": "value",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Rate"
+        }
+      ],
+      "ports": []
+    },
+    {
+      "name": "ServiceAgreement",
+      "label": "ServiceAgreement",
+      "parent": "Agreement",
+      "kind": "definition",
+      "linearization": [
+        "ServiceAgreement",
+        "Agreement",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "effective_from",
+          "type": "date",
+          "required": false,
+          "label": "effective_from",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Agreement"
+        },
+        {
+          "name": "in_notice_period",
+          "type": "boolean",
+          "required": false,
+          "label": "in_notice_period",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "ServiceAgreement"
+        },
+        {
+          "name": "parties",
+          "type": "list",
+          "required": false,
+          "label": "parties",
+          "constraints": {
+            "item_type": {
+              "type": "reference",
+              "constraints": {
+                "target_class": "Party"
+              }
+            },
+            "min_items": 2
+          },
+          "default": null,
+          "classification": null,
+          "declared_by": "Agreement"
+        },
+        {
+          "name": "service_level",
+          "type": "enum",
+          "required": false,
+          "label": "service_level",
+          "constraints": {
+            "allowed_values": [
+              "gold",
+              "silver"
+            ]
+          },
+          "default": null,
+          "classification": null,
+          "declared_by": "ServiceAgreement"
+        },
+        {
+          "name": "state",
+          "type": "enum",
+          "required": false,
+          "label": "state",
+          "constraints": {
+            "allowed_values": [
+              "active",
+              "terminated"
+            ]
+          },
+          "default": "active",
+          "classification": null,
+          "declared_by": "Agreement"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "label": "title",
+          "constraints": {
+            "max_length": 120
+          },
+          "default": null,
+          "classification": null,
+          "declared_by": "Agreement"
+        }
+      ],
+      "ports": [
+        {
+          "name": "terminate",
+          "kind": "command",
+          "params": [],
+          "declared_by": "ServiceAgreement"
+        }
+      ]
+    }
+  ]
+}
