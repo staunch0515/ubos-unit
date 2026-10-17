@@ -307,8 +307,10 @@ pub fn restore_point(db: &Db, target: &Target, name: &str) -> Result<Value, BpaE
         .sub("points")?
         .join(format!("{}-{name}.json.enc", stamp(now())));
     target.seal_json(&rec, &file)?;
-    Ok(json!({"name": name, "at": rec["at"], "lsn": rec["lsn"], "wal_file": rec["wal_file"],
-        "vaes": heads.len()}))
+    Ok(
+        json!({"name": name, "at": rec["at"], "lsn": rec["lsn"], "wal_file": rec["wal_file"],
+        "vaes": heads.len()}),
+    )
 }
 
 /// The recorded restore points, oldest first (`{name, at, lsn, wal_file, heads}`).

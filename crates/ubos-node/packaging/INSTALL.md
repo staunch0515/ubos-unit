@@ -45,7 +45,8 @@ that its `archive_command` can read the configuration and write the WAL archive:
 The `ubos` role owns the UBOS tables and is not a superuser. The application role
 `ubos_app`, which the node switches to for tenant work under row-level security, is created
 beforehand and granted to `ubos`. Base backups need `REPLICATION`; restore points need
-`pg_create_restore_point`:
+`pg_create_restore_point`, granted in the `ubos` database (function privileges are per
+database):
 
 ```
 postgres$ psql <<'SQL'
@@ -53,6 +54,7 @@ CREATE ROLE ubos_app NOLOGIN;
 CREATE ROLE ubos LOGIN REPLICATION PASSWORD '<a long random password>';
 GRANT ubos_app TO ubos;
 CREATE DATABASE ubos OWNER ubos;
+\c ubos
 GRANT EXECUTE ON FUNCTION pg_create_restore_point(text) TO ubos;
 SQL
 ```
@@ -211,6 +213,6 @@ volume.
 | `bootstrap` stops at `extensions` | `btree_gist` is missing: install the PostgreSQL contrib package |
 | `permission denied to set role "ubos_app"` | `GRANT ubos_app TO ubos;` (section 3) |
 | self-check `wal archive` is `error` | PostgreSQL cannot run `archive_command`: check that `postgres` is in the `ubos` group and see the PostgreSQL log |
-| `backup point` fails with `permission denied for function pg_create_restore_point` | `GRANT EXECUTE ON FUNCTION pg_create_restore_point(text) TO ubos;` |
+| `backup point` fails with `permission denied for function pg_create_restore_point` | in the `ubos` database: `GRANT EXECUTE ON FUNCTION pg_create_restore_point(text) TO ubos;` |
 | `restore` refuses with `wal_chain_broken` | a WAL segment is missing from the archive: restore to the named `last_consistent` point |
 | `/readyz` reports `degraded` with `read_only` | the database refuses writes (read-only or in recovery); reads keep working and writes return when it recovers |

@@ -208,8 +208,10 @@ def postgres(env):
         "CREATE ROLE ubos_app NOLOGIN",
         f"CREATE ROLE ubos LOGIN REPLICATION PASSWORD '{env.db_password}'",
         "GRANT ubos_app TO ubos",
-        "CREATE DATABASE ubos OWNER ubos",
-        "GRANT EXECUTE ON FUNCTION pg_create_restore_point(text) TO ubos"])
+        "CREATE DATABASE ubos OWNER ubos"])
+    if r.returncode == 0:
+        # function privileges are per database
+        r = env.psql("GRANT EXECUTE ON FUNCTION pg_create_restore_point(text) TO ubos", db="ubos")
     check("postgres: the ubos role and database (not a superuser)", r.returncode == 0, r.stderr)
     STEPS["postgres_seconds"] = round(time.time() - t0, 2)
     return True
