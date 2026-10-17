@@ -10,6 +10,7 @@ preset = "server"
 tenant = "acme"          # the first tenant, created by `ubos-server bootstrap`
 vae = "acme"             # its default VAE
 # tls_certificate = "/etc/ubos/tls/cert.pem"   # the self-checks watch its expiry
+# cors_origins = ["https://app.example.com"]   # web applications on other origins (browser SDK)
 
 [database]
 # PostgreSQL 16 or later with btree_gist; the role owns the UBOS tables

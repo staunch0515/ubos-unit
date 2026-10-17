@@ -7,10 +7,13 @@ single source. Checks:
   * every crate under crates/ is listed in the table;
   * every internal dependency (a `ubos-*` crate) of a crate under crates/ is allowed by its row;
   * a Cargo manifest under verify/ depends only on ubos-types, ubos-crypto and ubos-proof;
-  * nothing under standard/ depends on any internal crate.
+  * nothing under standard/ depends on any internal crate;
+  * every package under packages/ is listed in the package table of UBS-ARC-07 §3, and its
+    internal dependencies (`@ubos/*`) are allowed by its row.
 
 Usage: python3 docs/tools/check_deps.py
 """
+import json
 import os
 import re
 import sys
@@ -43,6 +46,40 @@ def allowed_graph():
             allowed |= {c for c in order if layer_of[c] == 'engine' and c != name}
         graph[name] = allowed
     return graph
+
+
+def allowed_packages():
+    text = open(ARC07, encoding='utf-8').read()
+    section = text.split('## 3. TypeScript packages', 1)[1].split('\n## ', 1)[0]
+    graph = {}
+    for line in section.splitlines():
+        m = re.match(r'^\| `(@ubos/[a-z0-9-]+)` \| .*? \| (.*) \|$', line)
+        if m:
+            graph[m[1]] = set(re.findall(r'`(@ubos/[a-z0-9-]+)`', m[2]))
+    return graph
+
+
+def check_packages(errors):
+    graph = allowed_packages()
+    checked = 0
+    for root, dirs, files in os.walk(os.path.join(REPO, 'packages')):
+        dirs[:] = [d for d in dirs if d not in ('node_modules', 'dist', 'build')]
+        if 'package.json' not in files:
+            continue
+        manifest = os.path.join(root, 'package.json')
+        rel = os.path.relpath(manifest, REPO)
+        data = json.load(open(manifest, encoding='utf-8'))
+        name = data.get('name')
+        checked += 1
+        if name not in graph:
+            errors.append('%s: package %s is not listed in UBS-ARC-07 §3' % (rel, name))
+            continue
+        deps = set()
+        for t in ('dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'):
+            deps |= {d for d in data.get(t, {}) if d.startswith('@ubos/')}
+        for d in sorted(deps - graph[name]):
+            errors.append('%s: %s may not depend on %s (AR-031)' % (rel, name, d))
+    return len(graph), checked
 
 
 def internal_deps(manifest):
@@ -82,7 +119,9 @@ def main():
                 allowed = set()
             for d in sorted(deps - allowed):
                 errors.append('%s: %s may not depend on %s (AR-031, DEC-028)' % (rel, name, d))
-    print('dependency graph: crates in UBS-ARC-07 %d, manifests checked %d' % (len(graph), checked))
+    packages, package_manifests = check_packages(errors)
+    print('dependency graph: crates in UBS-ARC-07 %d, manifests checked %d; packages %d, package manifests checked %d'
+          % (len(graph), checked, packages, package_manifests))
     for e in errors:
         print('ERROR', e)
     print('errors: %d' % len(errors))

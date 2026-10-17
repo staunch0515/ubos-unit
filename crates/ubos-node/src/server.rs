@@ -1233,6 +1233,7 @@ impl Server {
             .route("/api/v1/identity/{*rest}", axum::routing::any(identity_api))
             .route("/api/v1/admin/{*rest}", axum::routing::any(admin_api))
             .layer(DefaultBodyLimit::max(MAX_FRAME))
+            .layer(axum::middleware::from_fn_with_state(self.clone(), cors))
             .with_state(self.clone())
     }
 
@@ -2495,13 +2496,21 @@ impl Server {
 
 // ---- WebSocket (STD-PROTO-020) ----
 
+#[derive(serde::Deserialize)]
+struct WsQuery {
+    tenant: Option<String>,
+}
+
+/// The tenant is `Ubtp-Tenant`, else the `tenant` query parameter (browsers cannot set
+/// headers on a WebSocket).
 async fn ws_upgrade(
     State(s): State<Shared>,
     ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    Query(q): Query<WsQuery>,
     headers: HeaderMap,
     ws: WebSocketUpgrade,
 ) -> Response {
-    let tenant = header(&headers, "ubtp-tenant");
+    let tenant = header(&headers, "ubtp-tenant").or(q.tenant);
     let source = peer.ip().to_string();
     ws.protocols([SUBPROTOCOL])
         .max_message_size(MAX_FRAME)
@@ -2556,6 +2565,62 @@ async fn ws_session(s: Shared, tenant: Option<String>, source: String, socket: W
     if let Some(k) = session {
         s.close_session(&k);
     }
+}
+
+// ---- browsers (CORS) ----
+
+/// The response headers a browser application reads: the session, tus and download headers.
+const CORS_EXPOSE: &str = "ubtp-session, location, upload-offset, upload-length, upload-metadata, \
+    tus-resumable, tus-version, tus-extension, tus-max-size, ubos-content-sha256, content-range, \
+    content-length, accept-ranges";
+
+/// Cross-origin requests from the origins of `server.cors_origins` (none by default): a
+/// preflight is answered here, other responses carry the allowed origin and the headers
+/// the SDK reads. Credentials travel as bearer headers, never as cookies.
+async fn cors(
+    State(s): State<Shared>,
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Response {
+    let origin = header(req.headers(), "origin").filter(|o| {
+        s.config()
+            .get("server.cors_origins")
+            .and_then(Value::as_array)
+            .is_some_and(|l| l.iter().any(|x| x.as_str() == Some(o.as_str())))
+    });
+    let Some(origin) = origin else {
+        return next.run(req).await;
+    };
+    let preflight = req.method() == Method::OPTIONS
+        && req.headers().contains_key("access-control-request-method");
+    let mut resp = if preflight {
+        let mut r = StatusCode::NO_CONTENT.into_response();
+        let h = r.headers_mut();
+        h.insert(
+            "access-control-allow-methods",
+            header::HeaderValue::from_static("GET, POST, PATCH, HEAD, DELETE, OPTIONS"),
+        );
+        if let Some(v) = req.headers().get("access-control-request-headers") {
+            h.insert("access-control-allow-headers", v.clone());
+        }
+        h.insert(
+            "access-control-max-age",
+            header::HeaderValue::from_static("600"),
+        );
+        r
+    } else {
+        next.run(req).await
+    };
+    let h = resp.headers_mut();
+    if let Ok(v) = origin.parse() {
+        h.insert("access-control-allow-origin", v);
+    }
+    h.insert(
+        "access-control-expose-headers",
+        header::HeaderValue::from_static(CORS_EXPOSE),
+    );
+    h.append(header::VARY, header::HeaderValue::from_static("origin"));
+    resp
 }
 
 // ---- HTTP (STD-PROTO-020) ----
