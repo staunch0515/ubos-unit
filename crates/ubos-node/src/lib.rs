@@ -15,6 +15,7 @@
 //!
 //! The Server of gate 1b (UBTP, sessions, schedules, backup) builds on these services.
 
+pub mod backup;
 pub mod config;
 pub mod db;
 pub mod diagnostics;
@@ -307,6 +308,55 @@ impl Node {
             })
         };
         run().unwrap_or_else(|e| json!({"ok": false, "detail": e}))
+    }
+
+    /// The owner connection of the node (the registry and node tables, backups).
+    pub fn owner_db(&self) -> &Db {
+        &self.db
+    }
+
+    /// Rebuild the kernel indexes of a VAE's branch from its commit records and compare
+    /// them with the stored ones over `cseq` in `[from, to]` (DSN-DVM-092; the projection
+    /// check of a restore, SCN-017): `{checked, findings}`.
+    pub fn verify_indexes(
+        &self,
+        tenant: &Tenant,
+        authority: &str,
+        branch: &str,
+        from: u64,
+        to: u64,
+    ) -> Result<Value, BpaError> {
+        use ubos_dvm::store::kernel::StoreRead;
+        let vae = self
+            .vae(tenant, authority)?
+            .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown VAE"))?;
+        let scope = Scope {
+            tenant: tenant.id.clone(),
+            vae,
+            authority: authority.to_string(),
+        };
+        let (url, branch) = (self.url.clone(), branch.to_string());
+        let run = move || -> Result<Value, BpaError> {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|e| BpaError::new("NOD.STORAGE_UNAVAILABLE", e.to_string()))?;
+            rt.block_on(async move {
+                let b = ubos_dvm::store::PgBackend::connect(&url, scope).await?;
+                let Some(br) = b.branch(&branch).await? else {
+                    return Ok(json!({"checked": 0, "findings": 0}));
+                };
+                let r = ubos_dvm::store::verify::verify_indexes(&b, br.branch_id, from, to).await?;
+                Ok(json!({"checked": r.checked, "findings": r.findings.len()}))
+            })
+        };
+        // a runtime of its own, on a thread of its own (the caller may run one)
+        std::thread::spawn(run).join().unwrap_or_else(|_| {
+            Err(BpaError::new(
+                "NOD.STORAGE_UNAVAILABLE",
+                "the index check failed",
+            ))
+        })
     }
 
     /// The database part of a diagnostic bundle (DSN-NOD-615): counts and sizes only.

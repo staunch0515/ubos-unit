@@ -59,6 +59,9 @@ Secrets are references (`env:`, `file:`, `kms:`), never inline (DSN-NOD-605). Th
 | `selfcheck.disk_min_free_mb` | 1024 | 0–10000000 | yes | DSN-NOD-614 |
 | `backup.wal_archive` | — | target reference | no | DSN-NOD-620 |
 | `backup.retention_days` | 35 | 7–3650 | yes | DSN-NOD-623 |
+| `backup.dir` | — | path (a separate failure domain) | yes | DSN-NOD-620 |
+| `backup.key` | — | secret reference (32 bytes) | yes | DSN-NOD-623 |
+| `backup.restore_point_minutes` | 10 | 0–1440 | yes | DSN-NOD-620 |
 | `ctl.endpoint` | — | URL (optional) | no | DSN-NOD-643 |
 | `ctl.heartbeat_seconds` | 30 | 10–300 | yes | DSN-NOD-642 |
 | `residency.region` | — | region code | no | DSN-NOD-410 |
