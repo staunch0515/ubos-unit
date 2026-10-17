@@ -1,0 +1,176 @@
+{
+ "benchmark": "NR-PERF-016 developer loop (forge dev)",
+ "step": "PH-1 17e (DEC-078)",
+ "date": "2026-10-17T11:54:20+00:00",
+ "host": {
+  "machine": "x86_64",
+  "cpus": 4,
+  "system": "Linux"
+ },
+ "summary": {
+  "reference": {
+   "classes": 100,
+   "rules": 200,
+   "tests": 50,
+   "assets": 1
+  },
+  "backend": "postgres",
+  "start_s": 6.63,
+  "save_to_use_ms": {
+   "p50": 285.0,
+   "p95": 313.8,
+   "max": 312
+  },
+  "edit_check_test_ms": {
+   "p50": 2141.5,
+   "max": 2252
+  },
+  "model_change_rebuild_s": 3.08,
+  "target_ms": 10000,
+  "check_500_classes_ms": 299,
+  "met": true
+ },
+ "edits": [
+  {
+   "edit": 2,
+   "save_to_use_ms": 204,
+   "check_ms": 39,
+   "install_ms": 36,
+   "forge_ms": 2015,
+   "tests": {
+    "tests": 50,
+    "failed": [],
+    "test_ms": 1930
+   }
+  },
+  {
+   "edit": 3,
+   "save_to_use_ms": 280,
+   "check_ms": 41,
+   "install_ms": 57,
+   "forge_ms": 2190,
+   "tests": {
+    "tests": 50,
+    "failed": [],
+    "test_ms": 2081
+   }
+  },
+  {
+   "edit": 4,
+   "save_to_use_ms": 304,
+   "check_ms": 47,
+   "install_ms": 60,
+   "forge_ms": 2169,
+   "tests": {
+    "tests": 50,
+    "failed": [],
+    "test_ms": 2049
+   }
+  },
+  {
+   "edit": 5,
+   "save_to_use_ms": 300,
+   "check_ms": 59,
+   "install_ms": 48,
+   "forge_ms": 1996,
+   "tests": {
+    "tests": 50,
+    "failed": [],
+    "test_ms": 1875
+   }
+  },
+  {
+   "edit": 6,
+   "save_to_use_ms": 261,
+   "check_ms": 34,
+   "install_ms": 35,
+   "forge_ms": 2145,
+   "tests": {
+    "tests": 50,
+    "failed": [],
+    "test_ms": 2066
+   }
+  },
+  {
+   "edit": 7,
+   "save_to_use_ms": 312,
+   "check_ms": 65,
+   "install_ms": 51,
+   "forge_ms": 2252,
+   "tests": {
+    "tests": 50,
+    "failed": [],
+    "test_ms": 2121
+   }
+  },
+  {
+   "edit": 8,
+   "save_to_use_ms": 274,
+   "check_ms": 40,
+   "install_ms": 50,
+   "forge_ms": 2138,
+   "tests": {
+    "tests": 50,
+    "failed": [],
+    "test_ms": 2036
+   }
+  },
+  {
+   "edit": 9,
+   "save_to_use_ms": 308,
+   "check_ms": 49,
+   "install_ms": 46,
+   "forge_ms": 2162,
+   "tests": {
+    "tests": 50,
+    "failed": [],
+    "test_ms": 2056
+   }
+  },
+  {
+   "edit": 10,
+   "save_to_use_ms": 271,
+   "check_ms": 50,
+   "install_ms": 37,
+   "forge_ms": 1702,
+   "tests": {
+    "tests": 50,
+    "failed": [],
+    "test_ms": 1601
+   }
+  },
+  {
+   "edit": 11,
+   "save_to_use_ms": 290,
+   "check_ms": 50,
+   "install_ms": 55,
+   "forge_ms": 1999,
+   "tests": {
+    "tests": 50,
+    "failed": [],
+    "test_ms": 1879
+   }
+  }
+ ],
+ "rebuild_event": {
+  "event": "rebuilt",
+  "changed": [
+   "forge.toml",
+   "logic/ref.yaml",
+   "model/classes.yaml",
+   "seed/objects.yaml",
+   "tests/reference.yaml"
+  ],
+  "assets": [
+   "ref.logic"
+  ],
+  "check_ms": 40,
+  "install_ms": 761,
+  "ms": 2891,
+  "tests": {
+   "tests": 50,
+   "failed": [],
+   "test_ms": 2079
+  }
+ }
+}

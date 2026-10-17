@@ -1,5 +1,5 @@
-//! `forge` command line: `init`, `check`, `types`, `test` (PH-1 step 7b, DEC-060) and
-//! `conform` (PH-0). Every command takes `--json`; exit status 0 on success, 1 on findings
+//! `forge` command line: `init`, `check`, `types`, `test` (PH-1 step 7b, DEC-060), `dev`
+//! (step 17e, DEC-078) and `conform` (PH-0). Every command takes `--json`; exit status 0 on success, 1 on findings
 //! or failures, 2 on usage (DSN-FRG-001).
 
 use ed25519_dalek::{Signer, SigningKey};
@@ -20,6 +20,8 @@ const USAGE: &str = "usage:
   forge types [<project dir>] [--out <dir>] [--sdk <module>] [--json]
   forge test [<project dir>] [--report <json file>] [--junit <xml file>] [--records <dir>] \
 [--key <file with 64 hex chars>] [--backend memory|postgres] [--database <connection string>] [--json]
+  forge dev [<project dir>] [--database <connection string>] [--listen <host:port>] \
+[--server <ubos-server>] [--test] [--types] [--once] [--json]
   forge conform --vectors <dir> [--tag <tag>] [--profiles <p1,p2>] [--report <file>] \
 [--key <file with 64 hex chars>] [--standard <version>] [--build <hash>] \
 [--backend memory|postgres] [--database <connection string>] [--l2] [--verbose]";
@@ -282,6 +284,53 @@ fn types(args: &[String]) -> Result<bool, String> {
     Ok(true)
 }
 
+/// `forge dev` (DSN-FRG-501): flags without values (`--test`, `--types`, `--once`,
+/// `--json`) and options with one.
+fn dev(args: &[String]) -> Result<bool, String> {
+    let mut o = ubos_forge::dev::Options {
+        dir: PathBuf::from("."),
+        server: ubos_forge::dev::default_server(),
+        database: std::env::var("UBOS_DEV_DATABASE").ok(),
+        listen: "127.0.0.1:7070".into(),
+        test: false,
+        types: false,
+        once: false,
+        json: false,
+        poll: std::time::Duration::from_millis(150),
+    };
+    let mut i = 0;
+    while i < args.len() {
+        let value = || {
+            args.get(i + 1)
+                .cloned()
+                .ok_or(format!("{} needs a value", args[i]))
+        };
+        match args[i].as_str() {
+            "--test" => o.test = true,
+            "--types" => o.types = true,
+            "--once" => o.once = true,
+            "--json" => o.json = true,
+            "--database" => {
+                o.database = Some(value()?);
+                i += 1;
+            }
+            "--memory" => o.database = None,
+            "--listen" => {
+                o.listen = value()?;
+                i += 1;
+            }
+            "--server" => {
+                o.server = PathBuf::from(value()?);
+                i += 1;
+            }
+            a if a.starts_with("--") => return Err(format!("unknown option {a}\n{USAGE}")),
+            a => o.dir = PathBuf::from(a),
+        }
+        i += 1;
+    }
+    ubos_forge::dev::run(o).map(|()| true)
+}
+
 fn test(args: &[String]) -> Result<bool, String> {
     let (dir, opts, json_out) = options(args);
     let project = load(&dir)?;
@@ -401,6 +450,7 @@ fn main() -> ExitCode {
         Some("check") => project_cmd(check(&args[1..])),
         Some("types") => project_cmd(types(&args[1..])),
         Some("test") => project_cmd(test(&args[1..])),
+        Some("dev") => project_cmd(dev(&args[1..])),
         Some("conform") => match conform(&args[1..]) {
             Ok(true) => ExitCode::SUCCESS,
             Ok(false) => ExitCode::FAILURE,

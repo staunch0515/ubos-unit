@@ -1,6 +1,6 @@
 [package]
 name = "ubos-forge"
-description = "Forge: conformance runner (`forge conform`) for BPA vectors"
+description = "Forge: project check, types, test, dev and the conformance runner (`forge conform`)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -14,6 +14,8 @@ path = "src/main.rs"
 
 [dependencies]
 ubos-dvm.workspace = true
+ubos-sdk.workspace = true
+tokio.workspace = true
 cap.workspace = true
 serde.workspace = true
 serde_json.workspace = true

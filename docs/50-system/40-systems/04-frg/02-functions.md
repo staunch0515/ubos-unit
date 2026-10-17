@@ -319,6 +319,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given a saved script, when changed, then the running dev VAE uses it within NR-PERF-016.
 - **Verification:** BENCH
 - **Origin:** FR-DEV-021, NR-PERF-016
+- **Phase note:** PH-1 step 17e (DEC-078): the development node is `ubos-server` in the `dev` preset, started by `forge dev`, which installs the project over UBTP with the Rust SDK on the branch `feature/dev` (Forge depends on `ubos-dvm` and `ubos-sdk` only). A changed script is installed again at once; since classes are declared at genesis in PH-1, a changed model or seed rebuilds the development VAE on a fresh tenant.
 
 ### DSN-FRG-502 — Language server
 - **Statement:** `forge lsp` MUST implement the Language Server Protocol for model YAML, sheets, scripts and tests: diagnostics from the check pipeline, completion from the model, hover with effective definitions and cascade explanations, go-to-definition across files (FR-DEV-071).

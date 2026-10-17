@@ -8,6 +8,7 @@
 //! STD-CONF-005) and produces a signed `DAT-ConformanceReport` (STD-CONF-003).
 
 pub mod check;
+pub mod dev;
 pub mod json;
 pub mod project;
 pub mod records;

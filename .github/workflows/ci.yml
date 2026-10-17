@@ -75,6 +75,10 @@ jobs:
           python3 verify/sdk/sdk_suite.py --server target/debug/ubos-server --forge target/debug/forge \
             --rust target/debug/examples/suite --ts packages/sdk-ts/build/suite/suite.js \
             --database "host=127.0.0.1 user=postgres dbname=bpa" --report sdk-suite.json
+      - name: forge dev on PostgreSQL — install, two script edits, a model change (DSN-FRG-501; debug build, so the bound is 60 s, not NR-PERF-016's 10 s)
+        run: |
+          python3 verify/tools/dev_loop.py --forge target/debug/forge --server target/debug/ubos-server \
+            --database "host=127.0.0.1 user=postgres dbname=bpa" --edits 2 --target-ms 60000
 
   rust:
     name: rust workspace

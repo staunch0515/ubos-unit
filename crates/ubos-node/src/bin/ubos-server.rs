@@ -137,8 +137,9 @@ fn database(cfg: &Config) -> Option<(String, [u8; 32])> {
     Some((url, root))
 }
 
-/// The `--genesis` file: a list of class declarations, or `{classes, branches}` where the
-/// branches are created from `main` when missing (suites run uncertified logic on them).
+/// The `--genesis` file: a list of class declarations, or `{classes, value_types?,
+/// branches}` where the branches are created from `main` when missing (suites and `forge
+/// dev` run uncertified logic on them).
 fn classes(opt: &dyn Fn(&str) -> Option<String>) -> Option<Value> {
     opt("--genesis").map(|p| {
         let t = std::fs::read_to_string(&p).unwrap_or_else(|e| fail(format!("{p}: {e}")));
@@ -194,7 +195,11 @@ fn ensure_tenant(
             .cloned()
             .collect();
         if !fresh.is_empty() {
-            vae.call("load_genesis", &json!({"classes": fresh}))?;
+            let mut g = json!({"classes": fresh});
+            if let Some(vt) = c.get("value_types").filter(|v| !v.is_null()) {
+                g["value_types"] = vt.clone();
+            }
+            vae.call("load_genesis", &g)?;
         }
         genesis_branches(&mut |op, input| vae.call(op, input), c)?;
     }
@@ -818,7 +823,11 @@ fn main() {
                 let mut v = memory_vae_with(None, Some(ev), Some(jb))?;
                 ubos_node::genesis::install_all(&mut v)?;
                 if let Some(c) = classes {
-                    v.call("load_genesis", &json!({"classes": c["classes"]}))?;
+                    let mut g = json!({"classes": c["classes"]});
+                    if let Some(vt) = c.get("value_types").filter(|v| !v.is_null()) {
+                        g["value_types"] = vt.clone();
+                    }
+                    v.call("load_genesis", &g)?;
                     genesis_branches(&mut |op, input| v.call(op, input), &c)?;
                 }
                 Ok(v)
