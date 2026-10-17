@@ -467,7 +467,7 @@ def run_all(args, manifest, ids, work, node):
         failed += 0 if types["ok"] else 1
     summary = {label: {suite: f"{sum(1 for c in cs if r['cases'].get(c['id'], {}).get('ok'))} of {len(cs)}"
                        for suite, cs in manifest["suites"].items()} for label, r in results.items()}
-    report = {"suite": "SUITE-SDK-PROTO, SUITE-SDK-NET, SUITE-SDK-TYPES", "step": "PH-1 17d (DEC-078)",
+    report = {"suite": "SUITE-SDK-PROTO, SUITE-SDK-NET, SUITE-SDK-TYPES", "step": "PH-1 17d, 18c (DEC-078, DEC-079)",
               "date": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
               "host": {"machine": platform.machine(), "system": platform.system(), "python": platform.python_version()},
               "node": "ubos-server, preset server, PostgreSQL, behind the fault proxy of verify/sdk/sdk_suite.py",

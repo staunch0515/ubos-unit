@@ -1,5 +1,5 @@
 {
- "date": "2026-10-17T09:54:35+00:00",
+ "date": "2026-10-17T23:12:29+00:00",
  "failed": 0,
  "host": {
   "machine": "x86_64",
@@ -29,7 +29,7 @@
        "ok": true
       }
      ],
-     "ms": 60,
+     "ms": 78,
      "ok": true
     },
     "N02": {
@@ -46,7 +46,7 @@
        "ok": true
       }
      ],
-     "ms": 634,
+     "ms": 651,
      "ok": true
     },
     "N03": {
@@ -68,7 +68,7 @@
        "ok": true
       }
      ],
-     "ms": 1266,
+     "ms": 1287,
      "ok": true
     },
     "N04": {
@@ -80,7 +80,7 @@
        "ok": true
       }
      ],
-     "ms": 3115,
+     "ms": 3230,
      "ok": true
     },
     "N05": {
@@ -102,7 +102,7 @@
        "ok": true
       }
      ],
-     "ms": 4749,
+     "ms": 4986,
      "ok": true
     },
     "N06": {
@@ -114,7 +114,7 @@
        "ok": true
       }
      ],
-     "ms": 3123,
+     "ms": 2024,
      "ok": true
     },
     "N07": {
@@ -136,7 +136,7 @@
        "ok": true
       }
      ],
-     "ms": 1609,
+     "ms": 1246,
      "ok": true
     },
     "N08": {
@@ -153,7 +153,7 @@
        "ok": true
       }
      ],
-     "ms": 457,
+     "ms": 768,
      "ok": true
     },
     "P01": {
@@ -197,7 +197,7 @@
        "ok": true
       }
      ],
-     "ms": 457,
+     "ms": 474,
      "ok": true
     },
     "P03": {
@@ -209,7 +209,7 @@
        "ok": true
       }
      ],
-     "ms": 51,
+     "ms": 48,
      "ok": true
     },
     "P04": {
@@ -251,7 +251,7 @@
        "ok": true
       }
      ],
-     "ms": 1291,
+     "ms": 1288,
      "ok": true
     },
     "P05": {
@@ -288,7 +288,7 @@
        "ok": true
       }
      ],
-     "ms": 1015,
+     "ms": 1506,
      "ok": true
     },
     "P06": {
@@ -315,7 +315,7 @@
        "ok": true
       }
      ],
-     "ms": 209,
+     "ms": 251,
      "ok": true
     },
     "P07": {
@@ -332,7 +332,7 @@
        "ok": true
       }
      ],
-     "ms": 120,
+     "ms": 165,
      "ok": true
     },
     "P08": {
@@ -364,7 +364,7 @@
        "ok": true
       }
      ],
-     "ms": 750,
+     "ms": 407,
      "ok": true
     },
     "P09": {
@@ -391,7 +391,7 @@
        "ok": true
       }
      ],
-     "ms": 763,
+     "ms": 718,
      "ok": true
     },
     "P10": {
@@ -450,7 +450,7 @@
        "ok": true
       }
      ],
-     "ms": 119,
+     "ms": 155,
      "ok": true
     },
     "P12": {
@@ -492,7 +492,7 @@
        "ok": true
       }
      ],
-     "ms": 311,
+     "ms": 438,
      "ok": true
     },
     "P13": {
@@ -529,7 +529,7 @@
        "ok": true
       }
      ],
-     "ms": 760,
+     "ms": 1172,
      "ok": true
     },
     "P14": {
@@ -566,7 +566,7 @@
        "ok": true
       }
      ],
-     "ms": 43,
+     "ms": 65,
      "ok": true
     },
     "P15": {
@@ -608,13 +608,171 @@
        "ok": true
       }
      ],
-     "ms": 526,
+     "ms": 716,
+     "ok": true
+    },
+    "P16": {
+     "case": "P16",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a branch from main",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a branch from a branch",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a commit on the source branch",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the merge preview lists the change and no conflict",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the merge: one process, its commit and the version written",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the target reads the merged version",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a conflicting merge is VER.MERGE_CONFLICT, not retried",
+       "ok": true
+      }
+     ],
+     "ms": 501,
+     "ok": true
+    },
+    "P17": {
+     "case": "P17",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a commit on the source",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "open",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "submit: the preview is recorded",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "approve: the approver is the session's principal",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "merge: merged with its commit",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the target reads the change",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "an action out of state is FLOW.TRANSITION_NOT_ALLOWED",
+       "ok": true
+      }
+     ],
+     "ms": 605,
+     "ok": true
+    },
+    "P18": {
+     "case": "P18",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a dry run names the commit and commits nothing",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "revert: one process and one commit",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the reverted object no longer reads at the head",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a bulk process commits its chunks as children",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the bulk process record counts its children",
+       "ok": true
+      }
+     ],
+     "ms": 484,
+     "ok": true
+    },
+    "P19": {
+     "case": "P19",
+     "checks": [
+      {
+       "detail": "",
+       "name": "the effective class with its linearization",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "dispatch names the implementing class",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the head commit with its state root",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a ledger key without entries is empty",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the process record with its journal and metering",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the replay is identical",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "an unknown process is IAM.NOT_FOUND",
+       "ok": true
+      }
+     ],
+     "ms": 191,
      "ok": true
     }
    },
    "failed": [],
    "missing": [],
-   "seconds": 21.9
+   "seconds": 23.9
   },
   "rust/ws": {
    "cases": {
@@ -637,7 +795,7 @@
        "ok": true
       }
      ],
-     "ms": 207,
+     "ms": 58,
      "ok": true
     },
     "N02": {
@@ -654,7 +812,7 @@
        "ok": true
       }
      ],
-     "ms": 709,
+     "ms": 666,
      "ok": true
     },
     "N03": {
@@ -676,7 +834,7 @@
        "ok": true
       }
      ],
-     "ms": 1264,
+     "ms": 1276,
      "ok": true
     },
     "N04": {
@@ -688,7 +846,7 @@
        "ok": true
       }
      ],
-     "ms": 3138,
+     "ms": 3222,
      "ok": true
     },
     "N05": {
@@ -710,7 +868,7 @@
        "ok": true
       }
      ],
-     "ms": 4917,
+     "ms": 4994,
      "ok": true
     },
     "N06": {
@@ -722,7 +880,7 @@
        "ok": true
       }
      ],
-     "ms": 2844,
+     "ms": 2234,
      "ok": true
     },
     "N07": {
@@ -744,7 +902,7 @@
        "ok": true
       }
      ],
-     "ms": 1360,
+     "ms": 1196,
      "ok": true
     },
     "N08": {
@@ -761,7 +919,7 @@
        "ok": true
       }
      ],
-     "ms": 576,
+     "ms": 670,
      "ok": true
     },
     "P01": {
@@ -805,7 +963,7 @@
        "ok": true
       }
      ],
-     "ms": 383,
+     "ms": 722,
      "ok": true
     },
     "P03": {
@@ -817,7 +975,7 @@
        "ok": true
       }
      ],
-     "ms": 40,
+     "ms": 63,
      "ok": true
     },
     "P04": {
@@ -859,7 +1017,7 @@
        "ok": true
       }
      ],
-     "ms": 1218,
+     "ms": 1275,
      "ok": true
     },
     "P05": {
@@ -896,7 +1054,7 @@
        "ok": true
       }
      ],
-     "ms": 901,
+     "ms": 995,
      "ok": true
     },
     "P06": {
@@ -923,7 +1081,7 @@
        "ok": true
       }
      ],
-     "ms": 225,
+     "ms": 213,
      "ok": true
     },
     "P07": {
@@ -940,7 +1098,7 @@
        "ok": true
       }
      ],
-     "ms": 145,
+     "ms": 120,
      "ok": true
     },
     "P08": {
@@ -972,7 +1130,7 @@
        "ok": true
       }
      ],
-     "ms": 375,
+     "ms": 312,
      "ok": true
     },
     "P09": {
@@ -999,7 +1157,7 @@
        "ok": true
       }
      ],
-     "ms": 752,
+     "ms": 715,
      "ok": true
     },
     "P10": {
@@ -1021,7 +1179,7 @@
        "ok": true
       }
      ],
-     "ms": 31,
+     "ms": 28,
      "ok": true
     },
     "P11": {
@@ -1058,7 +1216,7 @@
        "ok": true
       }
      ],
-     "ms": 108,
+     "ms": 76,
      "ok": true
     },
     "P12": {
@@ -1100,7 +1258,7 @@
        "ok": true
       }
      ],
-     "ms": 550,
+     "ms": 497,
      "ok": true
     },
     "P13": {
@@ -1137,7 +1295,7 @@
        "ok": true
       }
      ],
-     "ms": 843,
+     "ms": 1171,
      "ok": true
     },
     "P14": {
@@ -1174,7 +1332,7 @@
        "ok": true
       }
      ],
-     "ms": 47,
+     "ms": 37,
      "ok": true
     },
     "P15": {
@@ -1216,13 +1374,171 @@
        "ok": true
       }
      ],
-     "ms": 503,
+     "ms": 532,
+     "ok": true
+    },
+    "P16": {
+     "case": "P16",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a branch from main",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a branch from a branch",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a commit on the source branch",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the merge preview lists the change and no conflict",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the merge: one process, its commit and the version written",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the target reads the merged version",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a conflicting merge is VER.MERGE_CONFLICT, not retried",
+       "ok": true
+      }
+     ],
+     "ms": 483,
+     "ok": true
+    },
+    "P17": {
+     "case": "P17",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a commit on the source",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "open",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "submit: the preview is recorded",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "approve: the approver is the session's principal",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "merge: merged with its commit",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the target reads the change",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "an action out of state is FLOW.TRANSITION_NOT_ALLOWED",
+       "ok": true
+      }
+     ],
+     "ms": 558,
+     "ok": true
+    },
+    "P18": {
+     "case": "P18",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a dry run names the commit and commits nothing",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "revert: one process and one commit",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the reverted object no longer reads at the head",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a bulk process commits its chunks as children",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the bulk process record counts its children",
+       "ok": true
+      }
+     ],
+     "ms": 394,
+     "ok": true
+    },
+    "P19": {
+     "case": "P19",
+     "checks": [
+      {
+       "detail": "",
+       "name": "the effective class with its linearization",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "dispatch names the implementing class",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the head commit with its state root",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a ledger key without entries is empty",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the process record with its journal and metering",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the replay is identical",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "an unknown process is IAM.NOT_FOUND",
+       "ok": true
+      }
+     ],
+     "ms": 188,
      "ok": true
     }
    },
    "failed": [],
    "missing": [],
-   "seconds": 21.5
+   "seconds": 23.3
   },
   "typescript/http": {
    "cases": {
@@ -1245,7 +1561,7 @@
        "ok": true
       }
      ],
-     "ms": 260,
+     "ms": 203,
      "ok": true
     },
     "N02": {
@@ -1262,7 +1578,7 @@
        "ok": true
       }
      ],
-     "ms": 823,
+     "ms": 759,
      "ok": true
     },
     "N03": {
@@ -1284,7 +1600,7 @@
        "ok": true
       }
      ],
-     "ms": 1297,
+     "ms": 1337,
      "ok": true
     },
     "N04": {
@@ -1296,7 +1612,7 @@
        "ok": true
       }
      ],
-     "ms": 3152,
+     "ms": 3229,
      "ok": true
     },
     "N05": {
@@ -1318,7 +1634,7 @@
        "ok": true
       }
      ],
-     "ms": 4767,
+     "ms": 4919,
      "ok": true
     },
     "N06": {
@@ -1330,7 +1646,7 @@
        "ok": true
       }
      ],
-     "ms": 2594,
+     "ms": 2523,
      "ok": true
     },
     "N07": {
@@ -1352,7 +1668,7 @@
        "ok": true
       }
      ],
-     "ms": 1333,
+     "ms": 3645,
      "ok": true
     },
     "N08": {
@@ -1369,7 +1685,7 @@
        "ok": true
       }
      ],
-     "ms": 605,
+     "ms": 873,
      "ok": true
     },
     "P01": {
@@ -1386,7 +1702,7 @@
        "ok": true
       }
      ],
-     "ms": 3,
+     "ms": 4,
      "ok": true
     },
     "P02": {
@@ -1413,7 +1729,7 @@
        "ok": true
       }
      ],
-     "ms": 627,
+     "ms": 741,
      "ok": true
     },
     "P03": {
@@ -1425,7 +1741,7 @@
        "ok": true
       }
      ],
-     "ms": 59,
+     "ms": 77,
      "ok": true
     },
     "P04": {
@@ -1467,7 +1783,7 @@
        "ok": true
       }
      ],
-     "ms": 1447,
+     "ms": 1472,
      "ok": true
     },
     "P05": {
@@ -1494,7 +1810,7 @@
        "ok": true
       }
      ],
-     "ms": 1521,
+     "ms": 1673,
      "ok": true
     },
     "P06": {
@@ -1521,7 +1837,7 @@
        "ok": true
       }
      ],
-     "ms": 263,
+     "ms": 300,
      "ok": true
     },
     "P07": {
@@ -1538,7 +1854,7 @@
        "ok": true
       }
      ],
-     "ms": 150,
+     "ms": 159,
      "ok": true
     },
     "P08": {
@@ -1570,7 +1886,7 @@
        "ok": true
       }
      ],
-     "ms": 394,
+     "ms": 435,
      "ok": true
     },
     "P09": {
@@ -1597,610 +1913,7 @@
        "ok": true
       }
      ],
-     "ms": 723,
-     "ok": true
-    },
-    "P10": {
-     "case": "P10",
-     "checks": [
-      {
-       "detail": "",
-       "name": "112 registered codes: retried exactly when retryable",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "TXN.HEAD_MOVED retried when the call has no base",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "transport failures retried",
-       "ok": true
-      }
-     ],
-     "ms": 27,
-     "ok": true
-    },
-    "P11": {
-     "case": "P11",
-     "checks": [
-      {
-       "detail": "",
-       "name": "a missing object: IamNotFound (404)",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a malformed query: QryInvalidQuery (400)",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a failed validation: RuleValidationFailed (422)",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "its details name the validation",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "an unknown class: a registered error",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a float: LogicFloatToDecimal at the boundary with its path",
-       "ok": true
-      }
-     ],
-     "ms": 220,
-     "ok": true
-    },
-    "P12": {
-     "case": "P12",
-     "checks": [
-      {
-       "detail": "",
-       "name": "object: the change emitted",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "query: a new matching object emitted",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "events: the released AccountClosed emitted",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a handler receives the update",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the cursor of the last update",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "object: unsubscribed",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "query: unsubscribed",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "events: unsubscribed",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "handler: unsubscribed",
-       "ok": true
-      }
-     ],
-     "ms": 476,
-     "ok": true
-    },
-    "P13": {
-     "case": "P13",
-     "checks": [
-      {
-       "detail": "",
-       "name": "the first attempt interrupted by a dropped connection",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the node kept a part",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "resumed from its location, completed and verified by SHA-256",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "referred to by a blob field",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the whole file downloaded and verified",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a range",
-       "ok": true
-      }
-     ],
-     "ms": 841,
-     "ok": true
-    },
-    "P14": {
-     "case": "P14",
-     "checks": [
-      {
-       "detail": "",
-       "name": "a 30-digit decimal committed",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "read back exactly",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "money in canonical form",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "negative zero is zero",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "an exponent is refused",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a float refused with its path",
-       "ok": true
-      }
-     ],
-     "ms": 60,
-     "ok": true
-    },
-    "P15": {
-     "case": "P15",
-     "checks": [
-      {
-       "detail": "",
-       "name": "a typed read with its money",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the builder compiles to DAT-Query",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the same results as the text query",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "polymorphic results narrowed by class",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a variant's own fields",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a typed port call",
-       "ok": true
-      }
-     ],
-     "ms": 674,
-     "ok": true
-    }
-   },
-   "failed": [],
-   "missing": [],
-   "seconds": 22.9
-  },
-  "typescript/ws": {
-   "cases": {
-    "N01": {
-     "case": "N01",
-     "checks": [
-      {
-       "detail": "",
-       "name": "before",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the proxy dropped the connections",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the next request reconnects",
-       "ok": true
-      }
-     ],
-     "ms": 217,
-     "ok": true
-    },
-    "N02": {
-     "case": "N02",
-     "checks": [
-      {
-       "detail": "",
-       "name": "the reply was cut",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the read retried and answered",
-       "ok": true
-      }
-     ],
-     "ms": 642,
-     "ok": true
-    },
-    "N03": {
-     "case": "N03",
-     "checks": [
-      {
-       "detail": "",
-       "name": "a read completes",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a commit completes",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the latency was applied",
-       "ok": true
-      }
-     ],
-     "ms": 1288,
-     "ok": true
-    },
-    "N04": {
-     "case": "N04",
-     "checks": [
-      {
-       "detail": "",
-       "name": "the request completed after the partition healed",
-       "ok": true
-      }
-     ],
-     "ms": 3141,
-     "ok": true
-    },
-    "N05": {
-     "case": "N05",
-     "checks": [
-      {
-       "detail": "",
-       "name": "a transport error, retryable",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "within the deadline and one request timeout",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "served again after the partition",
-       "ok": true
-      }
-     ],
-     "ms": 4996,
-     "ok": true
-    },
-    "N06": {
-     "case": "N06",
-     "checks": [
-      {
-       "detail": "",
-       "name": "all 9 updates arrived across 3 dropped connections, without a request of the subscriber",
-       "ok": true
-      }
-     ],
-     "ms": 2565,
-     "ok": true
-    },
-    "N07": {
-     "case": "N07",
-     "checks": [
-      {
-       "detail": "",
-       "name": "the node restarted",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the client reconnected and signed in again",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the subscription resumed: another client's change arrived",
-       "ok": true
-      }
-     ],
-     "ms": 1309,
-     "ok": true
-    },
-    "N08": {
-     "case": "N08",
-     "checks": [
-      {
-       "detail": "",
-       "name": "a connection dropped during the upload",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the upload resumed and completed, verified by SHA-256",
-       "ok": true
-      }
-     ],
-     "ms": 493,
-     "ok": true
-    },
-    "P01": {
-     "case": "P01",
-     "checks": [
-      {
-       "detail": "",
-       "name": "protocol 1.0 negotiated",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the session names its principal",
-       "ok": true
-      }
-     ],
-     "ms": 2,
-     "ok": true
-    },
-    "P02": {
-     "case": "P02",
-     "checks": [
-      {
-       "detail": "",
-       "name": "password: connected and read",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "api key: connected and read",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "bearer token: connected and read",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a wrong password: a typed IAM error, not retryable, not retried",
-       "ok": true
-      }
-     ],
-     "ms": 491,
-     "ok": true
-    },
-    "P03": {
-     "case": "P03",
-     "checks": [
-      {
-       "detail": "",
-       "name": "the process, one commit and three versions",
-       "ok": true
-      }
-     ],
-     "ms": 46,
-     "ok": true
-    },
-    "P04": {
-     "case": "P04",
-     "checks": [
-      {
-       "detail": "",
-       "name": "update",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "branch main: the latest version with its version and evidence",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "time: the snapshot before the update",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "commit: the version of that commit",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "commit: the first version at its commit",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "time and asof: the evidence names the snapshot's commit and the valid segment",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a missing object: IamNotFound",
-       "ok": true
-      }
-     ],
-     "ms": 1363,
-     "ok": true
-    },
-    "P05": {
-     "case": "P05",
-     "checks": [
-      {
-       "detail": "",
-       "name": "three pages of 10, 10 and 5 items",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "every page of the first page's snapshot",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "ordered, without duplicates",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a new query sees the commit made between pages",
-       "ok": true
-      }
-     ],
-     "ms": 1298,
-     "ok": true
-    },
-    "P06": {
-     "case": "P06",
-     "checks": [
-      {
-       "detail": "",
-       "name": "history: the two commits of the object",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "timeline: the valid-time segments",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "diff: the change between the two commits names the object",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "explain: the decision of a port",
-       "ok": true
-      }
-     ],
-     "ms": 272,
-     "ok": true
-    },
-    "P07": {
-     "case": "P07",
-     "checks": [
-      {
-       "detail": "",
-       "name": "the port's result",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "its effect on the branch",
-       "ok": true
-      }
-     ],
-     "ms": 156,
-     "ok": true
-    },
-    "P08": {
-     "case": "P08",
-     "checks": [
-      {
-       "detail": "",
-       "name": "the same key returns the first process",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "in another session too",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "one commit for the three calls",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "another payload under the key: TxnIdempotencyMismatch",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a new key runs again",
-       "ok": true
-      }
-     ],
-     "ms": 369,
-     "ok": true
-    },
-    "P09": {
-     "case": "P09",
-     "checks": [
-      {
-       "detail": "",
-       "name": "the reply was cut by the proxy",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "the retried commit returns the first result",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "committed once",
-       "ok": true
-      },
-      {
-       "detail": "",
-       "name": "a stale base: TxnHeadMoved, not retried",
-       "ok": true
-      }
-     ],
-     "ms": 765,
+     "ms": 867,
      "ok": true
     },
     "P10": {
@@ -2259,7 +1972,7 @@
        "ok": true
       }
      ],
-     "ms": 203,
+     "ms": 226,
      "ok": true
     },
     "P12": {
@@ -2311,7 +2024,7 @@
        "ok": true
       }
      ],
-     "ms": 754,
+     "ms": 515,
      "ok": true
     },
     "P13": {
@@ -2348,7 +2061,7 @@
        "ok": true
       }
      ],
-     "ms": 820,
+     "ms": 1058,
      "ok": true
     },
     "P14": {
@@ -2385,7 +2098,7 @@
        "ok": true
       }
      ],
-     "ms": 52,
+     "ms": 82,
      "ok": true
     },
     "P15": {
@@ -2422,34 +2135,953 @@
        "ok": true
       }
      ],
-     "ms": 633,
+     "ms": 835,
+     "ok": true
+    },
+    "P16": {
+     "case": "P16",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a branch from main",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a branch from a branch",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a commit on the source branch",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the merge preview lists the change and no conflict",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the merge: one process, its commit and the version written",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the target reads the merged version",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a conflicting merge is VER.MERGE_CONFLICT, not retried",
+       "ok": true
+      }
+     ],
+     "ms": 779,
+     "ok": true
+    },
+    "P17": {
+     "case": "P17",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a commit on the source",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "open",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "submit: the preview is recorded",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "approve: the approver is the session's principal",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "merge: merged with its commit",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the target reads the change",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "an action out of state is FLOW.TRANSITION_NOT_ALLOWED",
+       "ok": true
+      }
+     ],
+     "ms": 814,
+     "ok": true
+    },
+    "P18": {
+     "case": "P18",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a dry run names the commit and commits nothing",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "revert: one process and one commit",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the reverted object no longer reads at the head",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a bulk process commits its chunks as children",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the bulk process record counts its children",
+       "ok": true
+      }
+     ],
+     "ms": 632,
+     "ok": true
+    },
+    "P19": {
+     "case": "P19",
+     "checks": [
+      {
+       "detail": "",
+       "name": "the effective class with its linearization",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "dispatch names the implementing class",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the head commit with its state root",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a ledger key without entries is empty",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the process record with its journal and metering",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the replay is identical",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "an unknown process is IAM.NOT_FOUND",
+       "ok": true
+      }
+     ],
+     "ms": 202,
      "ok": true
     }
    },
    "failed": [],
    "missing": [],
-   "seconds": 22.5
+   "seconds": 29.1
+  },
+  "typescript/ws": {
+   "cases": {
+    "N01": {
+     "case": "N01",
+     "checks": [
+      {
+       "detail": "",
+       "name": "before",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the proxy dropped the connections",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the next request reconnects",
+       "ok": true
+      }
+     ],
+     "ms": 207,
+     "ok": true
+    },
+    "N02": {
+     "case": "N02",
+     "checks": [
+      {
+       "detail": "",
+       "name": "the reply was cut",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the read retried and answered",
+       "ok": true
+      }
+     ],
+     "ms": 814,
+     "ok": true
+    },
+    "N03": {
+     "case": "N03",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a read completes",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a commit completes",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the latency was applied",
+       "ok": true
+      }
+     ],
+     "ms": 1309,
+     "ok": true
+    },
+    "N04": {
+     "case": "N04",
+     "checks": [
+      {
+       "detail": "",
+       "name": "the request completed after the partition healed",
+       "ok": true
+      }
+     ],
+     "ms": 3232,
+     "ok": true
+    },
+    "N05": {
+     "case": "N05",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a transport error, retryable",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "within the deadline and one request timeout",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "served again after the partition",
+       "ok": true
+      }
+     ],
+     "ms": 5061,
+     "ok": true
+    },
+    "N06": {
+     "case": "N06",
+     "checks": [
+      {
+       "detail": "",
+       "name": "all 9 updates arrived across 3 dropped connections, without a request of the subscriber",
+       "ok": true
+      }
+     ],
+     "ms": 2278,
+     "ok": true
+    },
+    "N07": {
+     "case": "N07",
+     "checks": [
+      {
+       "detail": "",
+       "name": "the node restarted",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the client reconnected and signed in again",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the subscription resumed: another client's change arrived",
+       "ok": true
+      }
+     ],
+     "ms": 1374,
+     "ok": true
+    },
+    "N08": {
+     "case": "N08",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a connection dropped during the upload",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the upload resumed and completed, verified by SHA-256",
+       "ok": true
+      }
+     ],
+     "ms": 812,
+     "ok": true
+    },
+    "P01": {
+     "case": "P01",
+     "checks": [
+      {
+       "detail": "",
+       "name": "protocol 1.0 negotiated",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the session names its principal",
+       "ok": true
+      }
+     ],
+     "ms": 3,
+     "ok": true
+    },
+    "P02": {
+     "case": "P02",
+     "checks": [
+      {
+       "detail": "",
+       "name": "password: connected and read",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "api key: connected and read",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "bearer token: connected and read",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a wrong password: a typed IAM error, not retryable, not retried",
+       "ok": true
+      }
+     ],
+     "ms": 698,
+     "ok": true
+    },
+    "P03": {
+     "case": "P03",
+     "checks": [
+      {
+       "detail": "",
+       "name": "the process, one commit and three versions",
+       "ok": true
+      }
+     ],
+     "ms": 67,
+     "ok": true
+    },
+    "P04": {
+     "case": "P04",
+     "checks": [
+      {
+       "detail": "",
+       "name": "update",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "branch main: the latest version with its version and evidence",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "time: the snapshot before the update",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "commit: the version of that commit",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "commit: the first version at its commit",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "time and asof: the evidence names the snapshot's commit and the valid segment",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a missing object: IamNotFound",
+       "ok": true
+      }
+     ],
+     "ms": 1413,
+     "ok": true
+    },
+    "P05": {
+     "case": "P05",
+     "checks": [
+      {
+       "detail": "",
+       "name": "three pages of 10, 10 and 5 items",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "every page of the first page's snapshot",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "ordered, without duplicates",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a new query sees the commit made between pages",
+       "ok": true
+      }
+     ],
+     "ms": 2432,
+     "ok": true
+    },
+    "P06": {
+     "case": "P06",
+     "checks": [
+      {
+       "detail": "",
+       "name": "history: the two commits of the object",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "timeline: the valid-time segments",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "diff: the change between the two commits names the object",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "explain: the decision of a port",
+       "ok": true
+      }
+     ],
+     "ms": 290,
+     "ok": true
+    },
+    "P07": {
+     "case": "P07",
+     "checks": [
+      {
+       "detail": "",
+       "name": "the port's result",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "its effect on the branch",
+       "ok": true
+      }
+     ],
+     "ms": 121,
+     "ok": true
+    },
+    "P08": {
+     "case": "P08",
+     "checks": [
+      {
+       "detail": "",
+       "name": "the same key returns the first process",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "in another session too",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "one commit for the three calls",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "another payload under the key: TxnIdempotencyMismatch",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a new key runs again",
+       "ok": true
+      }
+     ],
+     "ms": 442,
+     "ok": true
+    },
+    "P09": {
+     "case": "P09",
+     "checks": [
+      {
+       "detail": "",
+       "name": "the reply was cut by the proxy",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the retried commit returns the first result",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "committed once",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a stale base: TxnHeadMoved, not retried",
+       "ok": true
+      }
+     ],
+     "ms": 835,
+     "ok": true
+    },
+    "P10": {
+     "case": "P10",
+     "checks": [
+      {
+       "detail": "",
+       "name": "112 registered codes: retried exactly when retryable",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "TXN.HEAD_MOVED retried when the call has no base",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "transport failures retried",
+       "ok": true
+      }
+     ],
+     "ms": 30,
+     "ok": true
+    },
+    "P11": {
+     "case": "P11",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a missing object: IamNotFound (404)",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a malformed query: QryInvalidQuery (400)",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a failed validation: RuleValidationFailed (422)",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "its details name the validation",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "an unknown class: a registered error",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a float: LogicFloatToDecimal at the boundary with its path",
+       "ok": true
+      }
+     ],
+     "ms": 190,
+     "ok": true
+    },
+    "P12": {
+     "case": "P12",
+     "checks": [
+      {
+       "detail": "",
+       "name": "object: the change emitted",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "query: a new matching object emitted",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "events: the released AccountClosed emitted",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a handler receives the update",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the cursor of the last update",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "object: unsubscribed",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "query: unsubscribed",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "events: unsubscribed",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "handler: unsubscribed",
+       "ok": true
+      }
+     ],
+     "ms": 839,
+     "ok": true
+    },
+    "P13": {
+     "case": "P13",
+     "checks": [
+      {
+       "detail": "",
+       "name": "the first attempt interrupted by a dropped connection",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the node kept a part",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "resumed from its location, completed and verified by SHA-256",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "referred to by a blob field",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the whole file downloaded and verified",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a range",
+       "ok": true
+      }
+     ],
+     "ms": 1173,
+     "ok": true
+    },
+    "P14": {
+     "case": "P14",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a 30-digit decimal committed",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "read back exactly",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "money in canonical form",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "negative zero is zero",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "an exponent is refused",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a float refused with its path",
+       "ok": true
+      }
+     ],
+     "ms": 81,
+     "ok": true
+    },
+    "P15": {
+     "case": "P15",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a typed read with its money",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the builder compiles to DAT-Query",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the same results as the text query",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "polymorphic results narrowed by class",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a variant's own fields",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a typed port call",
+       "ok": true
+      }
+     ],
+     "ms": 1103,
+     "ok": true
+    },
+    "P16": {
+     "case": "P16",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a branch from main",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a branch from a branch",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a commit on the source branch",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the merge preview lists the change and no conflict",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the merge: one process, its commit and the version written",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the target reads the merged version",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a conflicting merge is VER.MERGE_CONFLICT, not retried",
+       "ok": true
+      }
+     ],
+     "ms": 655,
+     "ok": true
+    },
+    "P17": {
+     "case": "P17",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a commit on the source",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "open",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "submit: the preview is recorded",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "approve: the approver is the session's principal",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "merge: merged with its commit",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the target reads the change",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "an action out of state is FLOW.TRANSITION_NOT_ALLOWED",
+       "ok": true
+      }
+     ],
+     "ms": 987,
+     "ok": true
+    },
+    "P18": {
+     "case": "P18",
+     "checks": [
+      {
+       "detail": "",
+       "name": "a dry run names the commit and commits nothing",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "revert: one process and one commit",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the reverted object no longer reads at the head",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a bulk process commits its chunks as children",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the bulk process record counts its children",
+       "ok": true
+      }
+     ],
+     "ms": 638,
+     "ok": true
+    },
+    "P19": {
+     "case": "P19",
+     "checks": [
+      {
+       "detail": "",
+       "name": "the effective class with its linearization",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "dispatch names the implementing class",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the head commit with its state root",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "a ledger key without entries is empty",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the process record with its journal and metering",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "the replay is identical",
+       "ok": true
+      },
+      {
+       "detail": "",
+       "name": "an unknown process is IAM.NOT_FOUND",
+       "ok": true
+      }
+     ],
+     "ms": 233,
+     "ok": true
+    }
+   },
+   "failed": [],
+   "missing": [],
+   "seconds": 27.9
   }
  },
- "seconds": 92.4,
- "step": "PH-1 17d (DEC-078)",
+ "seconds": 107.6,
+ "step": "PH-1 17d, 18c (DEC-078, DEC-079)",
  "suite": "SUITE-SDK-PROTO, SUITE-SDK-NET, SUITE-SDK-TYPES",
  "summary": {
   "rust/http": {
    "SUITE-SDK-NET": "8 of 8",
-   "SUITE-SDK-PROTO": "15 of 15"
+   "SUITE-SDK-PROTO": "19 of 19"
   },
   "rust/ws": {
    "SUITE-SDK-NET": "8 of 8",
-   "SUITE-SDK-PROTO": "15 of 15"
+   "SUITE-SDK-PROTO": "19 of 19"
   },
   "typescript/http": {
    "SUITE-SDK-NET": "8 of 8",
-   "SUITE-SDK-PROTO": "15 of 15"
+   "SUITE-SDK-PROTO": "19 of 19"
   },
   "typescript/ws": {
    "SUITE-SDK-NET": "8 of 8",
-   "SUITE-SDK-PROTO": "15 of 15"
+   "SUITE-SDK-PROTO": "19 of 19"
   }
  },
  "types": {
@@ -2471,7 +3103,7 @@
     "ok": true
    },
    {
-    "detail": "../../../tmp/sdk-suite-ozajadpo/removed-field/use.ts(7,49): error TS2339: Property 'email' does not exist on type 'Customer'.\n../../../tmp/sdk-suite-ozajadpo/removed-field/use.ts(12,21): error TS2339: Property 'email' does not exist on type 'Customer'.\n../../../tmp/sdk-suite-ozajadpo/removed-field/use.ts(13,32): error TS2345: Argument of type '\"email\"' is not assignable to parameter of type '\"name\" | \"country\" | \"credit_limit\" | \"rating\"'.\n",
+    "detail": "../../../tmp/sdk-suite-0ak_v9k3/removed-field/use.ts(7,49): error TS2339: Property 'email' does not exist on type 'Customer'.\n../../../tmp/sdk-suite-0ak_v9k3/removed-field/use.ts(12,21): error TS2339: Property 'email' does not exist on type 'Customer'.\n../../../tmp/sdk-suite-0ak_v9k3/removed-field/use.ts(13,32): error TS2345: Argument of type '\"email\"' is not assignable to parameter of type '\"name\" | \"country\" | \"credit_limit\" | \"rating\"'.\n",
     "name": "the same program fails to compile once the model removes a field it uses (DSN-FRG-102)",
     "ok": true
    }

@@ -9,10 +9,11 @@
 //!    credentials (password sign-in, API keys, bearer tokens), and reconnection with
 //!    back-off and re-authentication that resumes subscriptions from their last
 //!    acknowledged cursors.
-//! 3. **Operations** ([`ops`], [`files`]): reads and queries with branch and temporal
-//!    selectors, paging that follows snapshot cursors, mutations with automatic UUIDv7
-//!    idempotency keys and the registry's retry classification, subscriptions, resumable
-//!    uploads and ranged downloads.
+//! 3. **Operations** ([`ops`], [`files`], [`versioning`]): reads and queries with branch
+//!    and temporal selectors, paging that follows snapshot cursors, mutations with automatic
+//!    UUIDv7 idempotency keys and the registry's retry classification, subscriptions,
+//!    resumable uploads and ranged downloads; branches, change sets, merges, reverts, bulk
+//!    processes and introspection (BPA 1.0-rc4, step 18c).
 //! 4. **Typed API** ([`typed`]): what `forge types` generates builds on — typed items,
 //!    enums over a class and its subclasses, and query builders compiling to DAT-Query.
 //!
@@ -41,6 +42,7 @@ pub mod session;
 pub mod transport;
 pub mod typed;
 pub mod util;
+pub mod versioning;
 
 pub use decimal::{Decimal, Money};
 pub use error::{Error, Result};
@@ -52,3 +54,4 @@ pub use session::{Auth, Client, Config, Update};
 pub use transport::Binding;
 pub use typed::{Cmp, Literal, Query, Typed};
 pub use util::TraceContext;
+pub use versioning::ChangeSetAction;

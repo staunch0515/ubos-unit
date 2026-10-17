@@ -35,7 +35,7 @@ impl Selectors {
         }
     }
 
-    fn apply(&self, body: &mut Value) {
+    pub(crate) fn apply(&self, body: &mut Value) {
         for (k, v) in [
             ("branch", &self.branch),
             ("asof", &self.asof),
@@ -122,6 +122,10 @@ impl MutateResult {
     pub fn commits(&self) -> &Value {
         &self.0["commits"]
     }
+    /// The version hashes of the objects the commits wrote.
+    pub fn versions(&self) -> &Value {
+        &self.0["versions"]
+    }
     /// A pending change (`require` decision), when there is one.
     pub fn pending(&self) -> Option<&Value> {
         self.0.get("pending")
@@ -145,7 +149,7 @@ impl Client {
     }
 
     /// A query request with retries of transport failures and retryable errors.
-    async fn ask(&self, body: Value) -> Result<Value> {
+    pub(crate) async fn ask(&self, body: Value) -> Result<Value> {
         let deadline = self.deadline(None);
         self.inner
             .cfg
@@ -156,7 +160,7 @@ impl Client {
             .await
     }
 
-    fn body(&self, extra: Value) -> Value {
+    pub(crate) fn body(&self, extra: Value) -> Value {
         let mut b = json!({"vae": self.inner.cfg.vae});
         if let (Some(o), Value::Object(e)) = (b.as_object_mut(), extra) {
             o.extend(e);

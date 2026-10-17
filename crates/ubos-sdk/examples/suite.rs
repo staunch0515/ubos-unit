@@ -23,8 +23,8 @@ use types::{Party, PartyAny};
 use ubos_sdk::registry::REGISTRY;
 use ubos_sdk::typed::Cmp;
 use ubos_sdk::{
-    Auth, Binding, CallOptions, Client, Code, Config, Decimal, Error, Money, RetryPolicy,
-    Selectors, Target, TraceContext, Update, UploadOptions,
+    Auth, Binding, CallOptions, ChangeSetAction, Client, Code, Config, Decimal, Error, Money,
+    RetryPolicy, Selectors, Target, TraceContext, Update, UploadOptions,
 };
 
 struct Args(HashMap<String, String>);
@@ -1015,6 +1015,313 @@ async fn run(e: &Env, id: &str) -> Case {
                 );
             }
         }
+        // ---- versioning and introspection (BPA 1.0-rc4, step 18c) ----
+        "P16" => {
+            let (a, b) = (
+                format!("feature/{}-p16a", e.tag),
+                format!("feature/{}-p16b", e.tag),
+            );
+            let on = |br: &str| CallOptions {
+                branch: Some(br.to_string()),
+                ..CallOptions::default()
+            };
+            let r = c.create_branch(&a, "main", &none).await;
+            k.check(
+                "a branch from main",
+                r.as_ref().is_ok_and(|m| m.result()["branch"] == json!(a)),
+                r.as_ref().map(|m| m.0.clone()),
+            );
+            let Ok((oid, slug)) = e.customer(c, "p16", json!({})).await else {
+                k.check("setup", false, "");
+                return k;
+            };
+            let a2 = format!("{a}x");
+            let _ = c.create_branch(&a2, "main", &none).await;
+            let r = c.create_branch(&b, &a2, &none).await;
+            k.check("a branch from a branch", r.is_ok(), r.err());
+            let item = c
+                .read(&e.uri("Customer", &slug), &Selectors::branch(&b))
+                .await;
+            let base = item
+                .as_ref()
+                .map(|i| i.version().to_string())
+                .unwrap_or_default();
+            let w = c
+                .commit(json!([{"op": "update", "object_id": oid, "base": base, "body": {"name": "p16 on b"}}]), &on(&b))
+                .await;
+            k.check("a commit on the source branch", w.is_ok(), w.as_ref().err());
+            let p = c.merge_preview(&b, &Selectors::branch(&a2)).await;
+            k.check(
+                "the merge preview lists the change and no conflict",
+                p.as_ref().is_ok_and(|v| {
+                    v["changes"].as_array().is_some_and(|x| !x.is_empty())
+                        && v["conflicts"].as_array().is_some_and(Vec::is_empty)
+                }),
+                &p,
+            );
+            let m = c.merge(&b, None, &on(&a2)).await;
+            k.check(
+                "the merge: one process, its commit and the version written",
+                m.as_ref().is_ok_and(|m| {
+                    !m.process_id().is_empty()
+                        && m.commits().as_array().is_some_and(|x| !x.is_empty())
+                        && m.versions().get(&oid).is_some()
+                }),
+                m.as_ref().map(|m| m.0.clone()),
+            );
+            let after = c
+                .read(&e.uri("Customer", &slug), &Selectors::branch(&a2))
+                .await;
+            k.check(
+                "the target reads the merged version",
+                after.as_ref().is_ok_and(|i| i.body()["name"] == "p16 on b"),
+                after.as_ref().map(|i| i.0.clone()),
+            );
+            // both branches change the same field: the merge is a typed conflict
+            let base = after
+                .as_ref()
+                .map(|i| i.version().to_string())
+                .unwrap_or_default();
+            let _ = c
+                .commit(json!([{"op": "update", "object_id": oid, "base": base, "body": {"name": "p16 on a"}}]), &on(&a2))
+                .await;
+            let item = c
+                .read(&e.uri("Customer", &slug), &Selectors::branch(&b))
+                .await;
+            let base = item
+                .as_ref()
+                .map(|i| i.version().to_string())
+                .unwrap_or_default();
+            let _ = c
+                .commit(json!([{"op": "update", "object_id": oid, "base": base, "body": {"name": "p16 on b again"}}]), &on(&b))
+                .await;
+            let x = c.merge(&b, None, &on(&a2)).await;
+            k.check(
+                "a conflicting merge is VER.MERGE_CONFLICT, not retried",
+                x.as_ref()
+                    .err()
+                    .is_some_and(|x| x.code_text == "VER.MERGE_CONFLICT" && !x.retryable()),
+                x.as_ref().map(|m| m.0.clone()),
+            );
+        }
+        "P17" => {
+            let (t, s) = (
+                format!("feature/{}-p17t", e.tag),
+                format!("feature/{}-p17s", e.tag),
+            );
+            let on = CallOptions {
+                branch: Some(t.clone()),
+                ..CallOptions::default()
+            };
+            let _ = c.create_branch(&t, "main", &none).await;
+            let _ = c.create_branch(&s, &t, &none).await;
+            let (oid, slug) = e.oid();
+            let w = c
+                .commit(json!([{"op": "create", "class": "Customer", "object_id": oid, "slug": slug, "body": {"name": "p17", "country": e.tag}}]),
+                    &CallOptions { branch: Some(s.clone()), ..CallOptions::default() })
+                .await;
+            k.check("a commit on the source", w.is_ok(), w.err());
+            let id = ubos_sdk::util::uuid7();
+            let state = |r: &ubos_sdk::Result<ubos_sdk::MutateResult>| {
+                r.as_ref()
+                    .map(|m| m.result()["state"].clone())
+                    .unwrap_or(Value::Null)
+            };
+            let r = c.open_change_set(&id, &s, "p17", &on).await;
+            k.check("open", state(&r) == "open", r.as_ref().map(|m| m.0.clone()));
+            let r = c.change_set(&id, ChangeSetAction::Submit, None, &on).await;
+            k.check(
+                "submit: the preview is recorded",
+                state(&r) == "submitted"
+                    && r.as_ref().is_ok_and(|m| m.result()["preview"].is_string()),
+                r.as_ref().map(|m| m.0.clone()),
+            );
+            let r = c.change_set(&id, ChangeSetAction::Approve, None, &on).await;
+            let me = c.session()["principal"]["did"].clone();
+            k.check(
+                "approve: the approver is the session's principal",
+                state(&r) == "approved"
+                    && r.as_ref()
+                        .is_ok_and(|m| m.result()["approvals"][0]["approver"] == me),
+                (r.as_ref().map(|m| m.0.clone()), &me),
+            );
+            let r = c.change_set(&id, ChangeSetAction::Merge, None, &on).await;
+            k.check(
+                "merge: merged with its commit",
+                state(&r) == "merged"
+                    && r.as_ref()
+                        .is_ok_and(|m| m.result()["merged_commit"].is_string()),
+                r.as_ref().map(|m| m.0.clone()),
+            );
+            let got = c
+                .read(&e.uri("Customer", &slug), &Selectors::branch(&t))
+                .await;
+            k.check("the target reads the change", got.is_ok(), got.err());
+            let r = c.change_set(&id, ChangeSetAction::Submit, None, &on).await;
+            k.check(
+                "an action out of state is FLOW.TRANSITION_NOT_ALLOWED",
+                r.as_ref()
+                    .err()
+                    .is_some_and(|x| x.code_text == "FLOW.TRANSITION_NOT_ALLOWED"),
+                r.as_ref().map(|m| m.0.clone()),
+            );
+        }
+        "P18" => {
+            let br = format!("feature/{}-p18", e.tag);
+            let on = CallOptions {
+                branch: Some(br.clone()),
+                ..CallOptions::default()
+            };
+            let _ = c.create_branch(&br, "main", &none).await;
+            let (oid, slug) = e.oid();
+            let w = c
+                .commit(json!([{"op": "create", "class": "Customer", "object_id": oid, "slug": slug, "body": {"name": "p18", "country": e.tag}}]), &on)
+                .await;
+            let pid = w
+                .as_ref()
+                .map(|m| m.process_id().to_string())
+                .unwrap_or_default();
+            let dry = c
+                .revert(json!({"process_id": pid, "dry_run": true}), &on)
+                .await;
+            k.check(
+                "a dry run names the commit and commits nothing",
+                dry.as_ref().is_ok_and(|m| {
+                    m.result()["reverted"]
+                        .as_array()
+                        .is_some_and(|x| x.len() == 1)
+                        && m.commits().as_array().is_some_and(Vec::is_empty)
+                }),
+                dry.as_ref().map(|m| m.0.clone()),
+            );
+            let r = c.revert(json!({"process_id": pid}), &on).await;
+            k.check(
+                "revert: one process and one commit",
+                r.as_ref().is_ok_and(|m| {
+                    !m.process_id().is_empty()
+                        && m.commits().as_array().is_some_and(|x| x.len() == 1)
+                }),
+                r.as_ref().map(|m| m.0.clone()),
+            );
+            let gone = c
+                .read(&e.uri("Customer", &slug), &Selectors::branch(&br))
+                .await;
+            k.check(
+                "the reverted object no longer reads at the head",
+                gone.as_ref().err().is_some_and(|x| {
+                    x.code_text == "QRY.NOT_FOUND_AT_TIME" || x.code_text == "IAM.NOT_FOUND"
+                }),
+                gone.as_ref().map(|i| i.0.clone()),
+            );
+            let changes: Vec<Value> = (0..3)
+                .map(|i| {
+                    let (oid, slug) = e.oid();
+                    json!({"op": "create", "class": "Customer", "object_id": oid, "slug": slug, "body": {"name": format!("p18 bulk {i}"), "country": e.tag}})
+                })
+                .collect();
+            let b = c
+                .bulk(json!({"changes": changes, "max_changes": 1}), &on)
+                .await;
+            k.check(
+                "a bulk process commits its chunks as children",
+                b.as_ref().is_ok_and(|m| {
+                    m.result()["state"] == "committed"
+                        && m.result()["children"]
+                            .as_array()
+                            .is_some_and(|x| x.len() == 3)
+                        && m.commits().as_array().is_some_and(|x| x.len() == 3)
+                }),
+                b.as_ref().map(|m| m.0.clone()),
+            );
+            let bid = b
+                .as_ref()
+                .map(|m| m.process_id().to_string())
+                .unwrap_or_default();
+            let rec = c.process(&bid, false, false).await;
+            k.check(
+                "the bulk process record counts its children",
+                rec.as_ref().is_ok_and(|v| v["children"] == 3),
+                &rec,
+            );
+        }
+        "P19" => {
+            let sdk = CallOptions {
+                branch: Some("feature/sdk".into()),
+                ..CallOptions::default()
+            };
+            let sel = Selectors::branch("feature/sdk");
+            let cls = c.effective_class("Customer", &sel).await;
+            k.check(
+                "the effective class with its linearization",
+                cls.as_ref()
+                    .is_ok_and(|v| v["linearization"][0] == "Customer"),
+                &cls,
+            );
+            let d = c.dispatch("Account", "rename", &sel).await;
+            k.check(
+                "dispatch names the implementing class",
+                d.as_ref()
+                    .is_ok_and(|v| v["class"] == "Account" && v["impl"].is_string()),
+                &d,
+            );
+            let ci = c.commit_info(&sel).await;
+            k.check(
+                "the head commit with its state root",
+                ci.as_ref().is_ok_and(|v| {
+                    v["branch"] == "feature/sdk"
+                        && v["root"].is_string()
+                        && v["commit_id"].is_string()
+                }),
+                &ci,
+            );
+            let l = c.ledger("Account", json!({"account": "none"}), &sel).await;
+            k.check(
+                "a ledger key without entries is empty",
+                l.as_ref().is_ok_and(Vec::is_empty),
+                &l,
+            );
+            let Ok((_, aslug)) = e.account().await else {
+                k.check("setup", false, "");
+                return k;
+            };
+            let r = c
+                .invoke(
+                    &e.uri("Account", &aslug),
+                    "rename",
+                    json!({"name": "p19"}),
+                    &sdk,
+                )
+                .await;
+            let pid = r
+                .as_ref()
+                .map(|m| m.process_id().to_string())
+                .unwrap_or_default();
+            let rec = c.process(&pid, true, true).await;
+            k.check(
+                "the process record with its journal and metering",
+                rec.as_ref().is_ok_and(|v| {
+                    v["state"] == "committed"
+                        && v["journal"]["context"].is_object()
+                        && v["metering"]["units"].is_u64()
+                }),
+                &rec,
+            );
+            let rp = c.replay(&pid).await;
+            k.check(
+                "the replay is identical",
+                rp.as_ref().is_ok_and(|v| v["outcome"] == "identical"),
+                &rp,
+            );
+            let none_pid = c.process(&ubos_sdk::util::uuid7(), false, false).await;
+            k.check(
+                "an unknown process is IAM.NOT_FOUND",
+                none_pid
+                    .as_ref()
+                    .err()
+                    .is_some_and(|x| x.code_text == "IAM.NOT_FOUND"),
+                &none_pid,
+            );
+        }
         // ---- SUITE-SDK-NET ----
         "N01" => {
             let r0 = c
@@ -1285,7 +1592,7 @@ async fn main() {
     let cases: Vec<String> = match e.a.0.get("cases") {
         Some(l) => l.split(',').map(str::to_string).collect(),
         None => [
-            (1..=15).map(|i| format!("P{i:02}")).collect::<Vec<_>>(),
+            (1..=19).map(|i| format!("P{i:02}")).collect::<Vec<_>>(),
             (1..=8).map(|i| format!("N{i:02}")).collect(),
         ]
         .concat(),

@@ -1,5 +1,5 @@
 {
-  "description": "The cases of SUITE-SDK-PROTO and SUITE-SDK-NET shared by every SDK (PH-1 step 17d, DEC-078). Each SDK's runner implements every case and reports it by its identifier; verify/sdk/sdk_suite.py runs them against a node behind a fault proxy.",
+  "description": "The cases of SUITE-SDK-PROTO and SUITE-SDK-NET shared by every SDK (PH-1 step 17d, DEC-078; P16–P19 since step 18c, DEC-079). Each SDK's runner implements every case and reports it by its identifier; verify/sdk/sdk_suite.py runs them against a node behind a fault proxy.",
   "suites": {
     "SUITE-SDK-PROTO": [
       {
@@ -76,6 +76,26 @@
         "id": "P15",
         "title": "typed API: a polymorphic read and query narrow by class; the builder's DAT-Query matches the text query; a typed port call",
         "requirements": "DSN-SDK-012, DSN-FRG-102"
+      },
+      {
+        "id": "P16",
+        "title": "branches and merges: a branch from main and from a branch, a merge preview with the change and no conflict, a merge as one process with its commit and versions; a conflicting merge is a typed VER.MERGE_CONFLICT, not retried",
+        "requirements": "IF-SDK-004, STD-PROTO-014, STD-PROTO-015"
+      },
+      {
+        "id": "P17",
+        "title": "change sets: open, submit with its preview, approve by the session's principal, merge with its commit; an action out of state is FLOW.TRANSITION_NOT_ALLOWED",
+        "requirements": "IF-SDK-004, STD-PROTO-014"
+      },
+      {
+        "id": "P18",
+        "title": "revert and bulk: a dry run commits nothing, a revert of a process makes one commit and the object no longer reads; a bulk process commits its chunks as children",
+        "requirements": "IF-SDK-004, STD-PROTO-014"
+      },
+      {
+        "id": "P19",
+        "title": "introspection: the effective class, port dispatch, the head commit with its root, an empty ledger key, a process record with journal and metering, an identical replay; an unknown process is IAM.NOT_FOUND",
+        "requirements": "STD-PROTO-015"
       }
     ],
     "SUITE-SDK-NET": [

@@ -8,6 +8,7 @@ import { withRetry } from "./retry.js";
 import { type ConnectOptions, Session, type Update } from "./session.js";
 import { Files } from "./files.js";
 import { type TraceContext, uuid7 } from "./util.js";
+import { Branches, ChangeSets, Inspect } from "./versioning.js";
 
 /** The coordinates of a read (DSN-SDK-006, STD-ADDR-002); at most one of `time` and
  * `commit`. */
@@ -219,6 +220,12 @@ export class Subscription implements AsyncIterable<Update> {
 export class Client extends Session {
   /** Uploads and downloads (IF-SDK-006). */
   readonly files: Files = new Files(this);
+  /** Branches (IF-SDK-004). */
+  readonly branches: Branches = new Branches(this);
+  /** Change sets (IF-SDK-004). */
+  readonly changeSets: ChangeSets = new ChangeSets(this);
+  /** Introspection queries (STD-PROTO-015). */
+  readonly inspect: Inspect = new Inspect(this);
   #nextSub = 1;
 
   #deadline(ms?: number): number {
@@ -282,6 +289,36 @@ export class Client extends Session {
   diff(from: { branch?: string; cseq: number }, to: { branch?: string; cseq: number }): Promise<Json> {
     const c = (x: { branch?: string; cseq: number }) => ({ branch: x.branch ?? "main", time: x.cseq });
     return this.#ask(this.#body({ diff: { from: c(from), to: c(to) } }));
+  }
+
+  /** @internal An introspection query (STD-PROTO-015) at the coordinates. */
+  inspectRequest(kind: string, request: Json, sel?: Selectors): Promise<Json> {
+    return this.#ask(selectors(this.#body({ [kind]: request }), sel));
+  }
+
+  /** Merge branch `source` into the branch of the call options (`branch.merge`). */
+  merge(source: string, o: CallOptions & { resolutions?: unknown } = {}): Promise<MutateResult> {
+    const m: Json = { source };
+    if (o.resolutions !== undefined) m.resolutions = o.resolutions;
+    return this.mutate({ merge: m }, o);
+  }
+
+  /** The preview of merging `source` into the branch of the selectors. */
+  mergePreview(source: string, sel?: Selectors): Promise<Json> {
+    return this.inspect.mergePreview(source, sel);
+  }
+
+  /** Revert the commits of a process (`{process_id}`), a merged change set
+   * (`{change_set}`) or one commit (`{time}` or `{commit}`) on the branch of the call
+   * options, with `reversal_ids` and `dry_run` (`revert`). */
+  revert(spec: Json, o?: CallOptions): Promise<MutateResult> {
+    return this.mutate({ revert: spec }, o);
+  }
+
+  /** A bulk process (`{changes, max_changes?, mode?, staging?}` or `{resume}`) on the
+   * branch of the call options (`commit.raw`). */
+  bulk(spec: Json, o?: CallOptions): Promise<MutateResult> {
+    return this.mutate({ bulk: spec }, o);
   }
 
   /** `explain {target, kind, property | port}`. */

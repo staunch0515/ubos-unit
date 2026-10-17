@@ -411,6 +411,100 @@ async function run(c: Client, direct: Client, id: string): Promise<Case> {
       k.check("a typed port call", r instanceof MutateResult && r.result === "p15 renamed", r);
       break;
     }
+    // ---- versioning and introspection (BPA 1.0-rc4, step 18c) ----
+    case "P16": {
+      const a = `feature/${tag}-p16a`;
+      const b = `feature/${tag}-p16b`;
+      const r = await attempt(c.branches.create(a, "main"));
+      k.check("a branch from main", r instanceof MutateResult && (r.result as Json).branch === a, r);
+      const [id2, slug] = await customer(c, "p16");
+      const a2 = `${a}x`;
+      await attempt(c.branches.create(a2, "main"));
+      const rb = await attempt(c.branches.create(b, a2));
+      k.check("a branch from a branch", !(rb instanceof Error), rb);
+      const it = await c.get(uri("Customer", slug), { branch: b });
+      const w = await attempt(c.commit([{ op: "update", object_id: id2, base: it.version, body: { name: "p16 on b" } }], { branch: b }));
+      k.check("a commit on the source branch", !(w instanceof Error), w);
+      const p = await attempt(c.mergePreview(b, { branch: a2 }));
+      k.check("the merge preview lists the change and no conflict", !(p instanceof Error) && (p.changes as unknown[]).length > 0 && (p.conflicts as unknown[]).length === 0, p);
+      const m = await attempt(c.merge(b, { branch: a2 }));
+      k.check("the merge: one process, its commit and the version written", m instanceof MutateResult && m.processId !== "" && m.commits.length > 0 && m.versions[id2] !== undefined, m);
+      const after = await c.get(uri("Customer", slug), { branch: a2 });
+      k.check("the target reads the merged version", (after.body as Json).name === "p16 on b", after);
+      await c.commit([{ op: "update", object_id: id2, base: after.version, body: { name: "p16 on a" } }], { branch: a2 });
+      const ib = await c.get(uri("Customer", slug), { branch: b });
+      await c.commit([{ op: "update", object_id: id2, base: ib.version, body: { name: "p16 on b again" } }], { branch: b });
+      const x = await attempt(c.merge(b, { branch: a2 }));
+      k.check("a conflicting merge is VER.MERGE_CONFLICT, not retried", x instanceof UbosError && x.code === "VER.MERGE_CONFLICT" && !x.retryable, x);
+      break;
+    }
+    case "P17": {
+      const t2 = `feature/${tag}-p17t`;
+      const s = `feature/${tag}-p17s`;
+      await attempt(c.branches.create(t2, "main"));
+      await attempt(c.branches.create(s, t2));
+      const [id2, slug] = oid();
+      const w = await attempt(c.commit([{ op: "create", class: "Customer", object_id: id2, slug, body: { name: "p17", country: tag } }], { branch: s }));
+      k.check("a commit on the source", !(w instanceof Error), w);
+      const csid = uuid7();
+      const state = (r: MutateResult | Error) => (r instanceof MutateResult ? (r.result as Json).state : undefined);
+      const r1 = await attempt(c.changeSets.open(csid, s, "p17", { branch: t2 }));
+      k.check("open", state(r1) === "open", r1);
+      const r2 = await attempt(c.changeSets.submit(csid, { branch: t2 }));
+      k.check("submit: the preview is recorded", state(r2) === "submitted" && r2 instanceof MutateResult && typeof (r2.result as Json).preview === "string", r2);
+      const r3 = await attempt(c.changeSets.approve(csid, { branch: t2 }));
+      const me = (c.session.principal as Json | undefined)?.did;
+      const approvals = r3 instanceof MutateResult ? ((r3.result as Json).approvals as Json[] | undefined) : undefined;
+      k.check("approve: the approver is the session's principal", state(r3) === "approved" && approvals?.[0]?.approver === me, [r3, me]);
+      const r4 = await attempt(c.changeSets.merge(csid, { branch: t2 }));
+      k.check("merge: merged with its commit", state(r4) === "merged" && r4 instanceof MutateResult && typeof (r4.result as Json).merged_commit === "string", r4);
+      const got = await attempt(c.get(uri("Customer", slug), { branch: t2 }));
+      k.check("the target reads the change", !(got instanceof Error), got);
+      const r5 = await attempt(c.changeSets.submit(csid, { branch: t2 }));
+      k.check("an action out of state is FLOW.TRANSITION_NOT_ALLOWED", r5 instanceof UbosError && r5.code === "FLOW.TRANSITION_NOT_ALLOWED", r5);
+      break;
+    }
+    case "P18": {
+      const br = `feature/${tag}-p18`;
+      await attempt(c.branches.create(br, "main"));
+      const [id2, slug] = oid();
+      const w = await c.commit([{ op: "create", class: "Customer", object_id: id2, slug, body: { name: "p18", country: tag } }], { branch: br });
+      const dry = await attempt(c.revert({ process_id: w.processId, dry_run: true }, { branch: br }));
+      k.check("a dry run names the commit and commits nothing", dry instanceof MutateResult && ((dry.result as Json).reverted as unknown[]).length === 1 && dry.commits.length === 0, dry);
+      const r = await attempt(c.revert({ process_id: w.processId }, { branch: br }));
+      k.check("revert: one process and one commit", r instanceof MutateResult && r.processId !== "" && r.commits.length === 1, r);
+      const gone = await attempt(c.get(uri("Customer", slug), { branch: br }));
+      k.check("the reverted object no longer reads at the head", gone instanceof UbosError && (gone.code === "QRY.NOT_FOUND_AT_TIME" || gone.code === "IAM.NOT_FOUND"), gone);
+      const changes = [0, 1, 2].map((i) => {
+        const [id3, slug3] = oid();
+        return { op: "create", class: "Customer", object_id: id3, slug: slug3, body: { name: `p18 bulk ${i}`, country: tag } };
+      });
+      const b = await attempt(c.bulk({ changes, max_changes: 1 }, { branch: br }));
+      k.check("a bulk process commits its chunks as children", b instanceof MutateResult && (b.result as Json).state === "committed" && ((b.result as Json).children as unknown[]).length === 3 && b.commits.length === 3, b);
+      const rec = await attempt(c.inspect.process(b instanceof MutateResult ? b.processId : ""));
+      k.check("the bulk process record counts its children", !(rec instanceof Error) && rec.children === 3, rec);
+      break;
+    }
+    case "P19": {
+      const sel = { branch: BR };
+      const cls = await attempt(c.inspect.class("Customer", sel));
+      k.check("the effective class with its linearization", !(cls instanceof Error) && (cls.linearization as string[])[0] === "Customer", cls);
+      const d = await attempt(c.inspect.dispatch("Account", "rename", sel));
+      k.check("dispatch names the implementing class", !(d instanceof Error) && d.class === "Account" && typeof d.impl === "string", d);
+      const ci = await attempt(c.inspect.commit(sel));
+      k.check("the head commit with its state root", !(ci instanceof Error) && ci.branch === BR && typeof ci.root === "string" && typeof ci.commit_id === "string", ci);
+      const l = await attempt(c.inspect.ledger("Account", { account: "none" }, sel));
+      k.check("a ledger key without entries is empty", Array.isArray(l) && l.length === 0, l);
+      const [, aslug] = await account(c);
+      const r = await c.invoke(uri("Account", aslug), "rename", { name: "p19" }, { branch: BR });
+      const rec = await attempt(c.inspect.process(r.processId, { journal: true, metering: true }));
+      k.check("the process record with its journal and metering", !(rec instanceof Error) && rec.state === "committed" && typeof (rec.journal as Json).context === "object" && typeof (rec.metering as Json).units === "number", rec);
+      const rp = await attempt(c.inspect.replay(r.processId));
+      k.check("the replay is identical", !(rp instanceof Error) && rp.outcome === "identical", rp);
+      const none = await attempt(c.inspect.process(uuid7()));
+      k.check("an unknown process is IAM.NOT_FOUND", none instanceof IamNotFound, none);
+      break;
+    }
     // ---- SUITE-SDK-NET ----
     case "N01": {
       const r0 = await attempt(c.queryPage("from Customer", undefined, 1));
@@ -532,7 +626,7 @@ if (c instanceof Error || direct instanceof Error) {
 }
 const ids = args.has("cases")
   ? arg("cases").split(",")
-  : [...Array.from({ length: 15 }, (_, i) => `P${String(i + 1).padStart(2, "0")}`), ...Array.from({ length: 8 }, (_, i) => `N${String(i + 1).padStart(2, "0")}`)];
+  : [...Array.from({ length: 19 }, (_, i) => `P${String(i + 1).padStart(2, "0")}`), ...Array.from({ length: 8 }, (_, i) => `N${String(i + 1).padStart(2, "0")}`)];
 let failed = 0;
 for (const id of ids) {
   const t0 = Date.now();
