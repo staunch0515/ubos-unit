@@ -5,7 +5,9 @@
 //! may commit through other operations between two calls and receive the emits on the
 //! next one. The message types and codecs are `ubos-proto`; this module gives them their
 //! semantics over the engine, and the Server hands its transport frames to the same code
-//! (FR-INT-015).
+//! (FR-INT-015). Since BPA 1.0-rc4 (PH-1 step 18b, DEC-079) `mutate` carries the
+//! versioning requests of STD-PROTO-014 and `query` the introspection requests of
+//! STD-PROTO-015.
 
 use crate::stateful::Engine;
 use serde_json::{Map, Value, json};
@@ -129,6 +131,46 @@ impl Session {
         }
         c
     }
+}
+
+/// The versioning requests of `mutate` (STD-PROTO-014, since 1.0-rc4).
+const VERSIONING: [&str; 5] = ["create_branch", "change_set", "merge", "revert", "bulk"];
+
+/// The introspection requests of `query` (STD-PROTO-015, since 1.0-rc4).
+const INTROSPECTION: [&str; 7] = [
+    "class",
+    "dispatch",
+    "commit_info",
+    "merge_preview",
+    "ledger",
+    "process",
+    "replay",
+];
+
+/// The permission a versioning request needs, if any (STD-PROTO-014).
+fn permission(kind: &str, v: &Map<String, Value>) -> Option<&'static str> {
+    match kind {
+        "create_branch" => Some("branch.create"),
+        "merge" => Some("branch.merge"),
+        "revert" => Some("revert"),
+        "bulk" => Some("commit.raw"),
+        _ => match v.get("action").and_then(Value::as_str) {
+            Some("approve" | "reject") => Some("changeset.approve"),
+            Some("merge") => Some("branch.merge"),
+            _ => None,
+        },
+    }
+}
+
+/// The members of `v` named in `keys` that are present and not null.
+fn pick(v: &Map<String, Value>, keys: &[&str]) -> Value {
+    let mut out = Map::new();
+    for k in keys {
+        if let Some(x) = v.get(*k).filter(|x| !x.is_null()) {
+            out.insert((*k).to_string(), x.clone());
+        }
+    }
+    Value::Object(out)
 }
 
 /// The kinds of a request body, exactly one of which must be present.
@@ -286,7 +328,16 @@ impl Engine {
             .and_then(Value::as_str)
             .unwrap_or("main")
             .to_string();
-        if b.contains_key("port") == b.contains_key("commit") {
+        let versioning = VERSIONING.iter().copied().find(|k| b.contains_key(*k));
+        if versioning.is_some() {
+            let mut all = vec!["port", "commit"];
+            all.extend(VERSIONING);
+            one_of(
+                b,
+                &all,
+                "mutate carries exactly one of port, commit, create_branch, change_set, merge, revert, bulk",
+            )?;
+        } else if b.contains_key("port") == b.contains_key("commit") {
             return Err(invalid("mutate carries port or commit"));
         }
         let key = b
@@ -314,7 +365,10 @@ impl Engine {
         // record is written with the commit.
         let validate_only = b.get("validate_only") == Some(&json!(true));
         let mut replayed = None;
-        if let Some(k) = key.as_ref().filter(|_| !validate_only) {
+        if let Some(k) = key
+            .as_ref()
+            .filter(|_| !validate_only && versioning.is_none())
+        {
             let request = match (b.get("commit"), b.get("port").unwrap_or(&Value::Null)) {
                 (Some(c), _) => {
                     json!({"branch": branch, "changes": c.get("changes").cloned().unwrap_or(json!([]))})
@@ -347,10 +401,15 @@ impl Engine {
                 extra.insert(k.into(), json!(v));
             }
         }
-        if let Some(k) = key.as_ref().filter(|_| !validate_only) {
+        if let Some(k) = key
+            .as_ref()
+            .filter(|_| !validate_only && versioning.is_none())
+        {
             extra.insert("idempotency_key".into(), json!(k));
         }
-        let body = if let Some(c) = b.get("commit") {
+        let body = if let Some(kind) = versioning {
+            self.versioning(session, b, kind, &branch, extra)?
+        } else if let Some(c) = b.get("commit") {
             let changes = match c
                 .as_object()
                 .and_then(|o| o.get("changes"))
@@ -430,6 +489,230 @@ impl Engine {
             session.idem.insert(k, (hash, body.clone()));
         }
         Ok(body)
+    }
+
+    // ---- versioning requests (STD-PROTO-014, since 1.0-rc4) ----
+
+    /// The head of every branch.
+    fn branch_heads(&mut self) -> Result<BTreeMap<String, u64>, BpaError> {
+        let mut out = BTreeMap::new();
+        for name in self.store.branch_names()? {
+            if let Some(b) = self.store.branch(&name)? {
+                out.insert(name, b.head);
+            }
+        }
+        Ok(out)
+    }
+
+    /// A versioning request of `mutate`: the operation it names, with the commits it made
+    /// and the versions they wrote.
+    fn versioning(
+        &mut self,
+        session: &Session,
+        b: &Map<String, Value>,
+        kind: &str,
+        branch: &str,
+        extra: Map<String, Value>,
+    ) -> Result<Value, BpaError> {
+        let Some(v) = b.get(kind).and_then(Value::as_object).cloned() else {
+            return Err(invalid(&format!("{kind} is a map")));
+        };
+        if b.get("validate_only") == Some(&json!(true)) {
+            return Err(invalid("validate_only applies to port and commit"));
+        }
+        if let (Some(g), Some(p)) = (&session.grants, permission(kind, &v))
+            && !g.iter().any(|x| x == p)
+        {
+            return Err(err(
+                "IAM.DENIED",
+                &format!("{kind} needs the {p} permission"),
+            ));
+        }
+        let before = self.branch_heads()?;
+        let mut pid = None;
+        let process = |pid: &mut Option<String>, this: &mut Self| {
+            let id = this.next_pid();
+            let mut x = extra.clone();
+            x.insert("process_id".into(), json!(id));
+            *pid = Some(id);
+            session.process(x)
+        };
+        let r = match kind {
+            "create_branch" => {
+                let name = v.get("name").cloned().unwrap_or(Value::Null);
+                let mut i = pick(&v, &["name", "time"]);
+                i["from"] = v.get("from").cloned().unwrap_or_else(|| json!(branch));
+                let r = self.other("create_branch", &i)?;
+                json!({"branch": name, "head": r["head"]})
+            }
+            "change_set" => {
+                let mut i = pick(
+                    &v,
+                    &[
+                        "action",
+                        "id",
+                        "source",
+                        "target",
+                        "title",
+                        "description",
+                        "resolutions",
+                    ],
+                );
+                let action = s(&i, "action").unwrap_or_default().to_string();
+                if action == "open" && i.get("target").is_none() {
+                    i["target"] = json!(branch);
+                }
+                if action == "approve" || action == "reject" {
+                    i["approver"] = json!(session.principal);
+                }
+                self.change_set(&i)?
+            }
+            "merge" => {
+                let mut i = pick(&v, &["source", "resolutions"]);
+                i["target"] = json!(branch);
+                i["process"] = process(&mut pid, self);
+                self.merge(&i)?
+            }
+            "revert" => {
+                let mut i = pick(
+                    &v,
+                    &[
+                        "process_id",
+                        "change_set",
+                        "time",
+                        "commit",
+                        "reversal_ids",
+                        "dry_run",
+                    ],
+                );
+                i["branch"] = json!(branch);
+                if v.get("dry_run") != Some(&json!(true)) {
+                    i["process"] = process(&mut pid, self);
+                }
+                self.revert(&i)?
+            }
+            _ => {
+                let mut i = pick(&v, &["changes", "max_changes", "mode", "staging"]);
+                let id = match v.get("resume").filter(|x| !x.is_null()) {
+                    Some(r) => {
+                        i["resume"] = json!(true);
+                        r.as_str().unwrap_or_default().to_string()
+                    }
+                    None => self.next_pid(),
+                };
+                i["process_id"] = json!(id);
+                i["branch"] = json!(branch);
+                i["process"] = session.process(extra.clone());
+                pid = Some(id);
+                self.bulk(&i)?
+            }
+        };
+        // the commits the request made: on each branch whose head moved, back along the
+        // first parents to the head before or to the commit the branch was created from
+        let after = self.branch_heads()?;
+        let mut made = BTreeSet::new();
+        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+        for (name, head) in &after {
+            let stop = before.get(name).copied();
+            let mut id = *head;
+            while Some(id) != stop {
+                let c = repo.commit(id)?;
+                if c.branch != *name || !made.insert(id) {
+                    break;
+                }
+                match c.parents.first() {
+                    Some(p) => id = *p,
+                    None => break,
+                }
+            }
+        }
+        let (mut commits, mut versions) = (Vec::new(), Map::new());
+        for id in made {
+            let c = repo.commit(id)?;
+            commits.push(json!(c.commit_id));
+            let ids: Vec<String> = c.ops.keys().cloned().collect();
+            for (oid, o) in repo.objects_in_ids(&c.branch, c.cseq, &ids)? {
+                versions.insert(oid, json!(o.head));
+            }
+        }
+        let mut body =
+            json!({"commits": commits, "versions": versions, "warnings": [], "result": r});
+        if let Some(p) = pid {
+            body["process_id"] = json!(p);
+        }
+        Ok(body)
+    }
+
+    // ---- introspection requests (STD-PROTO-015, since 1.0-rc4) ----
+
+    fn introspect(&mut self, b: &Map<String, Value>, kind: &str) -> Result<Value, BpaError> {
+        let (branch, sel) = Self::coords(b);
+        let Some(v) = b.get(kind).filter(|v| v.is_object()).cloned() else {
+            return Err(invalid(&format!("{kind} is a map")));
+        };
+        if kind == "process" || kind == "replay" {
+            let pid = s(&v, "process_id").unwrap_or_default().to_string();
+            let item = if kind == "replay" {
+                self.replay_process(&pid, None, None)?
+            } else {
+                let mut item = self.process_info(&pid)?;
+                if v.get("journal") == Some(&json!(true)) {
+                    item["journal"] = self.journal(&pid)?;
+                }
+                if v.get("metering") == Some(&json!(true)) {
+                    item["metering"] = self.metering_record(&pid)?;
+                }
+                item
+            };
+            return Ok(json!({"items": [item], "evaluated_at": {}}));
+        }
+        let mut i = json!({"branch": branch});
+        for (k, x) in &sel {
+            if k != "asof" {
+                i[k] = x.clone();
+            }
+        }
+        let (view, _) = Repo::new(self.store.as_mut(), &self.registry).view(&branch, &i)?;
+        let items = match kind {
+            "class" => {
+                let mut c = i.clone();
+                c["class"] = v.get("name").cloned().unwrap_or(Value::Null);
+                vec![self.other("class_at", &c)?]
+            }
+            "dispatch" => {
+                let exts = {
+                    let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+                    crate::relations::extensions_of(&mut repo, &view.state)?
+                };
+                let reg = self.registry.with_extensions(&exts)?;
+                vec![reg.dispatch(
+                    s(&v, "class").unwrap_or_default(),
+                    s(&v, "port").unwrap_or_default(),
+                    s(&v, "after"),
+                )?]
+            }
+            "commit_info" => {
+                let mut item = self.commit_info(&i)?;
+                item["root"] = self.commit_record(&i)?["root"].clone();
+                vec![item]
+            }
+            "merge_preview" => {
+                vec![self.merge_preview(s(&v, "source").unwrap_or_default(), &branch)?]
+            }
+            _ => {
+                let mut l = i.clone();
+                l["class"] = v.get("class").cloned().unwrap_or(Value::Null);
+                l["ledger_key"] = v.get("ledger_key").cloned().unwrap_or(Value::Null);
+                if let Some(a) = sel.get("asof") {
+                    l["asof"] = a.clone();
+                }
+                self.read_ledger(&l)?["entries"]
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default()
+            }
+        };
+        Ok(json!({"items": items, "evaluated_at": view.evaluated_at}))
     }
 
     /// The response to a mutation the kernel replayed from its idempotency record: the
@@ -530,6 +813,12 @@ impl Engine {
         let kinds = [
             "read", "query", "view", "explain", "history", "timeline", "diff",
         ];
+        if INTROSPECTION.iter().any(|k| b.contains_key(*k)) {
+            let mut all = kinds.to_vec();
+            all.extend(INTROSPECTION);
+            let k = one_of(b, &all, "query carries exactly one request kind")?;
+            return self.introspect(b, k);
+        }
         let k = one_of(
             b,
             &kinds,

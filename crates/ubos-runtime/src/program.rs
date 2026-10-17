@@ -114,6 +114,9 @@ pub struct Replay {
     pub records: Vec<Value>,
     /// First divergence found.
     pub divergence: Option<Value>,
+    /// The snapshot pins the journal recorded (branch → commit ID): a replay reads the
+    /// state the process read (STD-CTX-012; since BPA 1.0-rc4, DEC-079).
+    pub pins: BTreeMap<String, String>,
 }
 
 /// The state of one attempt of one process.

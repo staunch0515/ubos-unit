@@ -21,8 +21,9 @@ const CLAIMED_RELEASE: &str = "1.0-rc1";
 /// The release in implementation (PH-1 steps 11–14): a vector of it runs when every clause
 /// it verifies is implemented (DEC-070: the governance sheets of step 11b, the rules and
 /// the Core clauses of step 11c; DEC-071: the lifecycles of step 12b; DEC-073: the queries
-/// of step 13a; DEC-075: the in-process UBTP binding of step 14a).
-const NEXT_RELEASE: &str = "1.0-rc3";
+/// of step 13a; DEC-075: the in-process UBTP binding of step 14a; DEC-079: the versioning
+/// messages and introspection queries of step 18b).
+const NEXT_RELEASE: &str = "1.0-rc4";
 const RC2_CLAUSES: &[&str] = &[
     "STD-LGS-001",
     "STD-LGS-002",
@@ -57,6 +58,9 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-PROTO-012",
     "STD-PROTO-013",
     "STD-PROTO-020",
+    // BPA 1.0-rc4 (step 18b): versioning messages and introspection queries
+    "STD-PROTO-014",
+    "STD-PROTO-015",
 ];
 
 /// The clauses a vector verifies.
