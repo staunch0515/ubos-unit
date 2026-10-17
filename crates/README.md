@@ -224,6 +224,13 @@ reads, a query builder compiling to DAT-Query and typed port calls, over the typ
 of the SDKs (`ubos_sdk::typed`, `@ubos/sdk`). The SDK suites run from
 `verify/sdk/sdk_suite.py` (see `verify/README.md`).
 
+`forge dev` of step 17e (`ubos-forge/src/dev.rs`): `forge dev [<project>] [--database
+<connection string>] [--listen 127.0.0.1:7070] [--test] [--types]` starts `ubos-server` in
+the `dev` preset (on PostgreSQL, or in memory without `--database`), installs the project
+over UBTP on `feature/dev` and watches its sources: a changed script is installed again at
+once, a changed model or seed rebuilds the development VAE (`verify/reports/forge-dev/`).
+The server binary is `--server`, else `UBOS_SERVER`, else the one next to `forge`.
+
 The TypeScript SDK of step 17c lives in `packages/sdk-ts/` (`@ubos/sdk`, Apache-2.0; see its
 README). Browser applications on another origin need it listed in the node's
 `server.cors_origins`.
