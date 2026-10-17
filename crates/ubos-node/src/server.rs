@@ -1780,9 +1780,7 @@ impl Server {
                 }
                 if sweep {
                     let (me, k) = (self.clone(), key.clone());
-                    let now = ubos_dvm::types::time::format_instant(
-                        &chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::now()),
-                    );
+                    let now = crate::clock::now_text();
                     let _ = blocking(move || match me.events_of(&k)? {
                         Some(e) => e.sweep(&now).map(|_| ()),
                         None => Ok(()),
@@ -1866,7 +1864,7 @@ impl Server {
             .identity_async(key.split('/').next().unwrap_or_default())
             .await
             .ok();
-        let now = chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::now());
+        let now = crate::clock::now();
         let done = blocking(move || {
             let store = me.schedules_of(&k)?;
             let mut out = Vec::new();
@@ -3236,6 +3234,12 @@ async fn admin_api(
             Err(e) => problem_response(&e),
         };
     }
+    if p.first() == Some(&"clock") {
+        return match admin_clock(&s, &tenant, &vae, &key, &method, &body, &me.did).await {
+            Ok(v) => Json(v).into_response(),
+            Err(e) => problem_response(&e),
+        };
+    }
     if p.first() == Some(&"tenant") {
         return match admin_tenant(&s, &tenant, &method, &q, &body, &me.did).await {
             Ok(v) => Json(v).into_response(),
@@ -3622,6 +3626,55 @@ async fn admin_schedules(
     }
 }
 
+/// `/api/v1/admin/clock` (PH-1 step 18b, DEC-079): the node's clock; in the `dev` preset
+/// an operator sets it (`{set: instant | null}`) or advances it (`{advance: "<n>d|h|m|s"}`),
+/// after which the VAE of the request fires its due became-effective timers and schedules.
+async fn admin_clock(
+    s: &Shared,
+    tenant: &str,
+    vae: &str,
+    key: &str,
+    method: &Method,
+    body: &Value,
+    by: &str,
+) -> Result<Value, BpaError> {
+    if method == Method::GET {
+        return Ok(json!({"now": crate::clock::now_text(), "test": crate::clock::is_test()}));
+    }
+    if method != Method::POST {
+        return Err(BpaError::new(
+            "MODEL.INVALID_VALUE",
+            "GET or POST the clock",
+        ));
+    }
+    if s.preset != Preset::Dev {
+        return Err(BpaError::new(
+            "LOGIC.NOT_AVAILABLE",
+            "the test clock is available in the dev preset only",
+        ));
+    }
+    if let Some(at) = body.get("set") {
+        crate::clock::set(at.as_str())?;
+    }
+    if let Some(by) = body.get("advance") {
+        let by = by
+            .as_str()
+            .ok_or_else(|| BpaError::new("MODEL.INVALID_VALUE", "advance is <n>d|h|m|s"))?;
+        crate::clock::advance(by)?;
+    }
+    let now = crate::clock::now_text();
+    if let Ok(id) = s.identity_async(tenant).await {
+        let entry = json!({"now": now, "test": crate::clock::is_test(), "by": by});
+        let _ = blocking(move || id.log("admin.clock", entry)).await;
+    }
+    let h = s.vae_async(tenant, vae).await?;
+    let pending = h.call("host.tick", json!({})).await?;
+    let fired = s.evaluate_schedules(key, &h).await?;
+    Ok(
+        json!({"now": now, "test": crate::clock::is_test(), "pending": pending["pending"], "schedules_fired": fired}),
+    )
+}
+
 fn need_admin(me: Option<&Authenticated>) -> Result<&Authenticated, BpaError> {
     match me {
         Some(a) if a.is_admin() => Ok(a),
@@ -3897,7 +3950,7 @@ fn identity_call(
 }
 
 /// A memory VAE for the `memory` preset and the suites: an engine over the memory store
-/// with the system clock and OS entropy, the genesis classes loaded when given.
+/// with the node's clock and OS entropy, the genesis classes loaded when given.
 pub fn memory_vae(classes: Option<&Value>) -> Result<Vae, BpaError> {
     memory_vae_with(classes, None, None)
 }
@@ -3908,9 +3961,7 @@ pub fn memory_vae_with(
     events: Option<Arc<MemEventLog>>,
     jobs: Option<Arc<MemJobQueue>>,
 ) -> Result<Vae, BpaError> {
-    use ubos_dvm::host::{
-        NoConnectors, NoModels, OsEntropy, OutboxSink, Recorder, Services, SystemClock,
-    };
+    use ubos_dvm::host::{NoConnectors, NoModels, OsEntropy, OutboxSink, Recorder, Services};
     let mut engine = ubos_dvm::Engine::new(Box::new(ubos_dvm::store::MemStore::default()))?;
     if let Some(c) = classes {
         engine.load_genesis(c, None)?;
@@ -3921,7 +3972,7 @@ pub fn memory_vae_with(
         None => rec.clone(),
     };
     let services = Services {
-        clock: Arc::new(SystemClock),
+        clock: Arc::new(crate::clock::NodeClock),
         entropy: Arc::new(OsEntropy),
         connectors: Arc::new(NoConnectors),
         models: Arc::new(NoModels),

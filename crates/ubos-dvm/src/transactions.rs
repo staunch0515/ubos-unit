@@ -805,7 +805,17 @@ impl Engine {
                 let mut next = self.next_process;
                 let p = process(
                     self.store.as_mut(),
-                    Some(&json!({"process_id": s(i, "process_id"), "kind": "job"})),
+                    Some(&{
+                        // the process of the caller (the UBTP session, STD-PROTO-014)
+                        let mut p = i
+                            .get("process")
+                            .filter(|p| p.is_object())
+                            .cloned()
+                            .unwrap_or_else(|| json!({}));
+                        p["process_id"] = json!(s(i, "process_id"));
+                        p["kind"] = json!("job");
+                        p
+                    }),
                     "job",
                     &mut next,
                     &self.principal,

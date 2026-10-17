@@ -16,6 +16,7 @@
 //! The Server of gate 1b (UBTP, sessions, schedules, backup) builds on these services.
 
 pub mod backup;
+pub mod clock;
 pub mod config;
 pub mod db;
 pub mod diagnostics;
@@ -713,7 +714,7 @@ impl Node {
         keys::Hierarchy::open(self.db.clone(), self.root, &tenant.id).map(Arc::new)
     }
 
-    /// The host services of a tenant's VAE: real clock and entropy, the node's connectors
+    /// The host services of a tenant's VAE: the node's clock (DEC-079) and real entropy, the node's connectors
     /// (with the tenant's secrets), no models, the event log, the job table and telemetry.
     pub fn vae_services(&self, tenant: &Tenant, vae_id: &str) -> Result<Services, BpaError> {
         let scoped = self.scoped(tenant)?;
@@ -724,7 +725,7 @@ impl Node {
             secrets,
         });
         Ok(Services {
-            clock: Arc::new(ubos_dvm::host::SystemClock),
+            clock: Arc::new(clock::NodeClock),
             entropy: Arc::new(ubos_dvm::host::OsEntropy),
             connectors,
             models: Arc::new(ubos_dvm::host::NoModels),

@@ -1780,6 +1780,9 @@ impl Engine {
             };
             let mut core = Core::new(i, seed, &p.id, s(&p.p, "kind").unwrap_or("action"))?;
             core.replay = replay.clone();
+            if let Some(r) = &replay {
+                core.pins = r.pins.clone();
+            }
             let today = self.now[..10].to_string();
             core.build_context(
                 i,

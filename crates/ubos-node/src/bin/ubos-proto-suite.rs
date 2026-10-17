@@ -385,6 +385,23 @@ fn label_of(step: &Value, phase: &str, n: usize) -> String {
         .unwrap_or_else(|| format!("{}{}", &phase[..1], n + 1))
 }
 
+/// An expectation without the `entropy_seed` of process journals: every binding of this
+/// suite runs over a hosted VAE, which seeds a process from its host entropy (CTR-002),
+/// while the vectors carry the seed the adapter derives from the process identifier
+/// (STD-PROTO-015 journals, DEC-079).
+fn host_seeded(v: &Value) -> Value {
+    match v {
+        Value::Object(m) => Value::Object(
+            m.iter()
+                .filter(|(k, _)| k.as_str() != "entropy_seed")
+                .map(|(k, x)| (k.clone(), host_seeded(x)))
+                .collect(),
+        ),
+        Value::Array(a) => Value::Array(a.iter().map(host_seeded).collect()),
+        other => other.clone(),
+    }
+}
+
 /// Run one vector over a driver; `reference` is the in-process run (frame counts).
 fn run_vector(
     d: &mut Driver,
@@ -470,7 +487,7 @@ fn run_vector(
                                 _ => Some(format!("not the same as {r}")),
                             }
                         } else if exp["match"] == "subset" {
-                            (!subset(&exp["result"], v))
+                            (!subset(&host_seeded(&exp["result"]), v))
                                 .then(|| format!("subset mismatch: got {v}"))
                         } else {
                             let actual = if stateful { strip(v) } else { v.clone() };
@@ -730,11 +747,6 @@ struct Suite {
     identical: Vec<Value>,
 }
 
-/// The Protocol clauses of the release in development that the kernel does not implement
-/// yet: their vectors are skipped until PH-1 step 18b implements the versioning messages and
-/// introspection queries of BPA 1.0-rc4 (DEC-079).
-const PENDING: &[&str] = &["STD-PROTO-014", "STD-PROTO-015"];
-
 fn load_vectors(dir: &std::path::Path) -> Result<Vec<Value>, BpaError> {
     let superseded: Vec<String> = std::fs::read_to_string(dir.join("../superseded.txt"))
         .map(|t| t.split_whitespace().map(str::to_string).collect())
@@ -749,13 +761,7 @@ fn load_vectors(dir: &std::path::Path) -> Result<Vec<Value>, BpaError> {
     for p in paths {
         let v: Value =
             serde_json::from_str(&std::fs::read_to_string(&p).map_err(err)?).map_err(err)?;
-        let pending = v["clauses"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .any(|c| c.as_str().is_some_and(|c| PENDING.contains(&c)));
         if v["profile"] == "Protocol"
-            && !pending
             && !superseded
                 .iter()
                 .any(|s| Some(s.as_str()) == v["id"].as_str())

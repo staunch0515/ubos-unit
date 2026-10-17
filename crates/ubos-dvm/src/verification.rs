@@ -476,6 +476,12 @@ impl Engine {
             Some(Replay {
                 records,
                 divergence: None,
+                pins: j["snapshots"]
+                    .as_object()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|(b, c)| c.as_str().map(|c| (b.clone(), c.to_string())))
+                    .collect(),
             }),
         );
         self.now = saved_now;

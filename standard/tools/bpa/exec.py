@@ -92,6 +92,9 @@ class Run:
         self.families = {}
         self.uow, self.pending, self.reads, self.triples = [], {}, {}, []
         self.effects, self.records, self.pins, self.pinned, self.logic = [], [], {}, {}, []
+        if replay is not None:
+            # STD-CTX-012: a replay reads the snapshots the journal recorded (since 1.0-rc4)
+            self.pins = dict(replay['journal'].get('snapshots') or {})
         self.frames = []
         # STD-ISA-017 (1.0-rc3): the transitions of this process by object and the guards passed
         self.transitions, self.guards = {}, []
