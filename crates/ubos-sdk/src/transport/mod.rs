@@ -19,6 +19,7 @@ use net::Endpoint;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::sync::{Mutex, mpsc, oneshot};
 use tokio_tungstenite::tungstenite::Message;
@@ -46,6 +47,7 @@ pub struct Link {
     pending: Pending,
     emits: mpsc::UnboundedSender<Value>,
     reader: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    lost: Arc<AtomicBool>,
 }
 
 impl Link {
@@ -65,7 +67,13 @@ impl Link {
             pending: Arc::new(std::sync::Mutex::new(HashMap::new())),
             emits,
             reader: std::sync::Mutex::new(None),
+            lost: Arc::new(AtomicBool::new(false)),
         }
+    }
+
+    /// Whether the stream ended by itself (the session must be opened again).
+    pub fn lost(&self) -> bool {
+        self.lost.load(Ordering::SeqCst)
     }
 
     /// The endpoint.
@@ -84,6 +92,7 @@ impl Link {
         if let Some(h) = self.reader.lock().expect("reader").take() {
             h.abort();
         }
+        self.lost.store(false, Ordering::SeqCst);
         if let Some(mut s) = self.ws.lock().await.take() {
             let _ = s.close().await;
         }
@@ -152,16 +161,27 @@ impl Link {
 
     /// Read the session's server-sent events into the emit channel.
     fn start_sse(&self, session: String) {
-        let (ep, emits) = (self.ep.clone(), self.emits.clone());
+        let (ep, emits, lost) = (self.ep.clone(), self.emits.clone(), self.lost.clone());
         let h = tokio::spawn(async move {
+            Link::read_sse(&ep, &session, &emits).await;
+            // the stream ended by itself (an abort on reset never gets here)
+            lost.store(true, Ordering::SeqCst);
+        });
+        if let Some(old) = self.reader.lock().expect("reader").replace(h) {
+            old.abort();
+        }
+    }
+
+    async fn read_sse(ep: &Endpoint, session: &str, emits: &mpsc::UnboundedSender<Value>) {
+        {
             let path = format!("/ubtp/v1/stream?session={session}");
-            let Ok(req) = net::builder(&ep, "GET", &path)
+            let Ok(req) = net::builder(ep, "GET", &path)
                 .header("accept", "text/event-stream")
                 .body(Full::new(Bytes::new()))
             else {
                 return;
             };
-            let Ok(resp) = net::request(&ep, req).await else {
+            let Ok(resp) = net::request(ep, req).await else {
                 return;
             };
             let mut body = resp.into_body();
@@ -184,9 +204,6 @@ impl Link {
                     }
                 }
             }
-        });
-        if let Some(old) = self.reader.lock().expect("reader").replace(h) {
-            old.abort();
         }
     }
 
@@ -214,6 +231,7 @@ impl Link {
             .map_err(Error::transport)?;
         let (sink, mut stream) = ws.split();
         let (pending, emits) = (self.pending.clone(), self.emits.clone());
+        let lost = self.lost.clone();
         let h = tokio::spawn(async move {
             while let Some(Ok(m)) = stream.next().await {
                 let text = match m {
@@ -238,6 +256,7 @@ impl Link {
             }
             // the connection ended: every waiting request fails with a transport error
             pending.lock().expect("pending").clear();
+            lost.store(true, Ordering::SeqCst);
         });
         if let Some(old) = self.reader.lock().expect("reader").replace(h) {
             old.abort();

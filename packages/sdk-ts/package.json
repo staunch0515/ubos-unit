@@ -1,7 +1,7 @@
 {
   "name": "@ubos/sdk",
   "version": "0.2.0",
-  "description": "The TypeScript SDK of UBOS for browsers and Node.js: transport, session, operations, files and exact decimals over UBTP (DSN-SDK-001…017; PH-1 step 17c, DEC-078)",
+  "description": "The TypeScript SDK of UBOS for browsers and Node.js: transport, session, operations, files and exact decimals over UBTP (DSN-SDK-001\u2026017; PH-1 step 17c, DEC-078)",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,11 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist", "LICENSE", "README.md"],
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
   "engines": {
     "node": ">=22"
   },

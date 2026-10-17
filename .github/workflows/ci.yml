@@ -44,6 +44,38 @@ jobs:
       - name: browser core under 60 KB gzipped (DSN-SDK-017)
         run: npm run size
 
+  sdk-suites:
+    name: sdk suites
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: bpa
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: toolchain from rust-toolchain.toml
+        run: rustup toolchain install || rustup show
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/sdk-ts/package-lock.json
+      - name: build the node, forge and the Rust runner
+        run: cargo build --locked -p ubos-node --bin ubos-server -p ubos-forge -p ubos-sdk --example suite
+      - name: build the TypeScript runner
+        working-directory: packages/sdk-ts
+        run: npm ci && npm run examples
+      - name: SUITE-SDK-PROTO, SUITE-SDK-NET and SUITE-SDK-TYPES, both SDKs over HTTP and WebSocket (EXIT-1-15)
+        run: |
+          python3 verify/sdk/sdk_suite.py --server target/debug/ubos-server --forge target/debug/forge \
+            --rust target/debug/examples/suite --ts packages/sdk-ts/build/suite/suite.js \
+            --database "host=127.0.0.1 user=postgres dbname=bpa" --report sdk-suite.json
+
   rust:
     name: rust workspace
     runs-on: ubuntu-latest

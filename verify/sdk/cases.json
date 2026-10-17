@@ -1,0 +1,124 @@
+{
+  "description": "The cases of SUITE-SDK-PROTO and SUITE-SDK-NET shared by every SDK (PH-1 step 17d, DEC-078). Each SDK's runner implements every case and reports it by its identifier; verify/sdk/sdk_suite.py runs them against a node behind a fault proxy.",
+  "suites": {
+    "SUITE-SDK-PROTO": [
+      {
+        "id": "P01",
+        "title": "handshake: protocol 1.0 negotiated, the principal named",
+        "requirements": "IF-SDK-001, DSN-SDK-014"
+      },
+      {
+        "id": "P02",
+        "title": "credentials: password sign-in, API key, bearer token; a wrong password is a typed IAM error, not retried",
+        "requirements": "DSN-SDK-010, DSN-SDK-007"
+      },
+      {
+        "id": "P03",
+        "title": "raw commit: the process, the commits and the new versions",
+        "requirements": "IF-SDK-003"
+      },
+      {
+        "id": "P04",
+        "title": "reads with branch, commit, asof and time selectors and their evidence; a missing object is a typed error",
+        "requirements": "DSN-SDK-006, IF-SDK-002"
+      },
+      {
+        "id": "P05",
+        "title": "paging: every item of a query in pages within one snapshot, unchanged by a commit between pages",
+        "requirements": "DSN-SDK-005"
+      },
+      {
+        "id": "P06",
+        "title": "history, timeline, diff and explain",
+        "requirements": "IF-SDK-002"
+      },
+      {
+        "id": "P07",
+        "title": "port invocation on a branch: the result and the effect",
+        "requirements": "IF-SDK-003"
+      },
+      {
+        "id": "P08",
+        "title": "idempotency: the same key returns the first result and commits once; a new key runs again",
+        "requirements": "DSN-SDK-002"
+      },
+      {
+        "id": "P09",
+        "title": "retries: a reply lost after the commit is retried with the same key and commits once; a stale base is TXN.HEAD_MOVED, not retried",
+        "requirements": "DSN-SDK-002, DSN-SDK-003"
+      },
+      {
+        "id": "P10",
+        "title": "retry classification: exactly the codes the registry marks retryable (and transport failures) are retried",
+        "requirements": "DSN-SDK-003, DSN-SDK-007"
+      },
+      {
+        "id": "P11",
+        "title": "error mapping: node errors are instances of their code's type with area, status and details",
+        "requirements": "DSN-SDK-007"
+      },
+      {
+        "id": "P12",
+        "title": "subscriptions to an object, a query and events, with cursors and unsubscribe",
+        "requirements": "IF-SDK-005, DSN-SDK-004"
+      },
+      {
+        "id": "P13",
+        "title": "files: an upload in chunks with progress, resumed from its location after an interruption; whole and ranged downloads verified",
+        "requirements": "DSN-SDK-011, IF-SDK-006"
+      },
+      {
+        "id": "P14",
+        "title": "exact decimals and money: a 30-digit decimal round-trips exactly; floats are refused at the API boundary",
+        "requirements": "DSN-SDK-013"
+      },
+      {
+        "id": "P15",
+        "title": "typed API: a polymorphic read and query narrow by class; the builder's DAT-Query matches the text query; a typed port call",
+        "requirements": "DSN-SDK-012, DSN-FRG-102"
+      }
+    ],
+    "SUITE-SDK-NET": [
+      {
+        "id": "N01",
+        "title": "connections dropped between requests: the next request reconnects",
+        "requirements": "DSN-SDK-004"
+      },
+      {
+        "id": "N02",
+        "title": "a connection dropped during a read: the read is retried",
+        "requirements": "DSN-SDK-003"
+      },
+      {
+        "id": "N03",
+        "title": "300 ms latency each way: operations complete",
+        "requirements": "DSN-SDK-004"
+      },
+      {
+        "id": "N04",
+        "title": "a 3 s partition: a request made during it completes after it heals",
+        "requirements": "DSN-SDK-004"
+      },
+      {
+        "id": "N05",
+        "title": "a partition longer than the deadline: a typed, retryable transport error within the deadline",
+        "requirements": "DSN-SDK-003"
+      },
+      {
+        "id": "N06",
+        "title": "a subscription across dropped connections receives every update committed meanwhile",
+        "requirements": "DSN-SDK-004"
+      },
+      {
+        "id": "N07",
+        "title": "a node restart: reconnection, re-authentication and the subscription resumed",
+        "requirements": "DSN-SDK-004, DSN-SDK-010"
+      },
+      {
+        "id": "N08",
+        "title": "an upload interrupted by a dropped connection resumes from the node's offset and completes verified",
+        "requirements": "DSN-SDK-011"
+      }
+    ]
+  }
+}

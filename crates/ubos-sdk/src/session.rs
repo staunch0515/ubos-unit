@@ -142,7 +142,33 @@ impl Client {
         let c = Client { inner };
         c.spawn_router(rx);
         c.establish().await?;
+        c.spawn_watchdog();
         Ok(c)
+    }
+
+    /// Reopen the session when its stream ended by itself while subscriptions are open, so
+    /// that they resume from their cursors without waiting for a request (DSN-SDK-004).
+    fn spawn_watchdog(&self) {
+        let weak = Arc::downgrade(&self.inner);
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_millis(500)).await;
+                let Some(inner) = weak.upgrade() else { break };
+                let subscribed = inner
+                    .subs
+                    .lock()
+                    .expect("subs")
+                    .values()
+                    .any(|s| s.server_id.is_some());
+                if subscribed && inner.link.lost() {
+                    let c = Client { inner };
+                    let seen = c.inner.generation.load(Ordering::SeqCst);
+                    c.inner.connected.store(false, Ordering::SeqCst);
+                    let deadline = std::time::Instant::now() + c.inner.cfg.retry.deadline;
+                    let _ = c.reconnect(seen, deadline).await;
+                }
+            }
+        });
     }
 
     /// The handshake result: `{version, abi, session_id, principal, limits, features}`.
@@ -200,7 +226,12 @@ impl Client {
     async fn credentials(&self) -> Result<Value> {
         Ok(match &self.inner.cfg.auth {
             Auth::Password { username, password } => {
-                let t = self.sign_in(username, password).await?;
+                // a reconnection reuses the session token while the node accepts it
+                let held = self.inner.token.lock().expect("token").clone();
+                let t = match held {
+                    Some(t) => t,
+                    None => self.sign_in(username, password).await?,
+                };
                 *self.inner.token.lock().expect("token") = Some(t.clone());
                 json!({"kind": "bearer", "token": t})
             }
@@ -210,8 +241,21 @@ impl Client {
         })
     }
 
-    /// Open the session: credentials, handshake, then resubscribe.
+    /// Open the session: credentials, handshake, then resubscribe. A held session token
+    /// the node refuses (expired, revoked) is dropped and the client signs in again.
     async fn establish(&self) -> Result<()> {
+        let held = matches!(self.inner.cfg.auth, Auth::Password { .. })
+            && self.inner.token.lock().expect("token").is_some();
+        match self.establish_once().await {
+            Err(e) if held && !e.is_transport() && e.code_text.starts_with("IAM.") => {
+                *self.inner.token.lock().expect("token") = None;
+                self.establish_once().await
+            }
+            r => r,
+        }
+    }
+
+    async fn establish_once(&self) -> Result<()> {
         let inner = &self.inner;
         inner.link.reset().await;
         let credentials = self.credentials().await?;
@@ -293,6 +337,9 @@ impl Client {
     ) -> Result<Value> {
         for round in 0..2 {
             let generation = self.inner.generation.load(Ordering::SeqCst);
+            if self.inner.link.lost() {
+                self.inner.connected.store(false, Ordering::SeqCst);
+            }
             if !self.inner.connected.load(Ordering::SeqCst) {
                 self.reconnect(generation, deadline).await?;
             }

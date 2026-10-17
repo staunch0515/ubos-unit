@@ -17,7 +17,7 @@ static ALLOC: cap::Cap<std::alloc::System> = cap::Cap::new(std::alloc::System, u
 const USAGE: &str = "usage:
   forge init <dir> [--name <name>] [--json]
   forge check [<project dir>] [--json]
-  forge types [<project dir>] [--out <dir>] [--json]
+  forge types [<project dir>] [--out <dir>] [--sdk <module>] [--json]
   forge test [<project dir>] [--report <json file>] [--junit <xml file>] [--records <dir>] \
 [--key <file with 64 hex chars>] [--backend memory|postgres] [--database <connection string>] [--json]
   forge conform --vectors <dir> [--tag <tag>] [--profiles <p1,p2>] [--report <file>] \
@@ -260,7 +260,9 @@ fn check(args: &[String]) -> Result<bool, String> {
 fn types(args: &[String]) -> Result<bool, String> {
     let (dir, opts, json_out) = options(args);
     let project = load(&dir)?;
-    let (ts, rs, header) = ubos_forge::types::generate(&project).map_err(|e| e.to_string())?;
+    let sdk = opts.get("sdk").map(String::as_str).unwrap_or("@ubos/sdk");
+    let (ts, rs, header) =
+        ubos_forge::types::generate_with(&project, sdk).map_err(|e| e.to_string())?;
     let out = opts
         .get("out")
         .map(PathBuf::from)

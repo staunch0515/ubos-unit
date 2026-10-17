@@ -11,15 +11,16 @@ use serde_json::{Map, Value, json};
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
-/// The coordinates of a read (DSN-SDK-006): `branch`, `asof` (transaction time), `time`
-/// (valid time) and `commit`.
+/// The coordinates of a read (DSN-SDK-006, STD-ADDR-002): `branch`, `time` (transaction
+/// time: the snapshot at that instant), `commit` (at most one of `time` and `commit`) and
+/// `asof` (valid time).
 #[derive(Debug, Clone, Default)]
 pub struct Selectors {
     /// Branch (default `main`).
     pub branch: Option<String>,
-    /// Transaction time (RFC 3339).
+    /// Valid time: a date or a canonical instant (`2026-10-17T08:00:00.000000Z`).
     pub asof: Option<String>,
-    /// Valid time.
+    /// Transaction time: a canonical instant.
     pub time: Option<String>,
     /// A commit.
     pub commit: Option<String>,
@@ -258,10 +259,14 @@ impl Client {
         self.ask(b).await
     }
 
-    /// `diff {from, to}`: the differences between two commits or branches.
-    pub async fn diff(&self, from: &str, to: &str) -> Result<Value> {
-        self.ask(self.body(json!({"diff": {"from": from, "to": to}})))
-            .await
+    /// `diff {from, to}`: the differences between two coordinates, each a branch and a
+    /// commit sequence (`cseq`, as a mutation's result gives it).
+    pub async fn diff(&self, from: (&str, u64), to: (&str, u64)) -> Result<Value> {
+        self.ask(
+            self.body(json!({"diff": {"from": {"branch": from.0, "time": from.1},
+            "to": {"branch": to.0, "time": to.1}}})),
+        )
+        .await
     }
 
     /// `explain {target, kind, property | port}`.

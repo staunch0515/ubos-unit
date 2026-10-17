@@ -37,6 +37,8 @@ pub struct UploadOptions<'a> {
     pub on_progress: Option<&'a mut dyn FnMut(u64, u64)>,
     /// Resume this upload (`Location`) instead of creating one.
     pub resume: Option<String>,
+    /// Called with the location once the upload exists (keep it to resume later).
+    pub on_location: Option<&'a mut dyn FnMut(&str)>,
 }
 
 fn hex(b: &[u8]) -> String {
@@ -128,6 +130,9 @@ impl Client {
                     .ok_or_else(|| Error::transport("no Location"))?
             }
         };
+        if let Some(f) = opts.on_location.as_mut() {
+            f(&location);
+        }
         let chunk = opts.chunk_size.unwrap_or(4 << 20).max(1);
         let deadline = Instant::now()
             + self

@@ -362,6 +362,7 @@ the records from DEC-060 on follow.
   - Phase notes on DSN-SDK-010 and DSN-SDK-014.
   - Migration 0015 adds the tables `upload` and `file`; the node depends on the `fastcdc` crate (MIT).
   - New configuration keys `files.max_upload_mb` and `files.download_link_seconds`.
+  - 17d: the SDK suites found three defects of the node's UBTP binding, fixed with the step: an idempotency key was remembered per session, so a client retrying in a new session after a lost reply ran the mutation again (STD-TXN-040 scopes a key by principal; the binding now carries the key into the kernel's process, whose record is written with the commit, and replays a recorded key before it checks `base`); a read ignored the message's `commit` coordinate; a `timeline` without `from` failed. A `--genesis` file may also name branches to create.
   - 17c: browsers reach the node across origins through the reloadable key `server.cors_origins` (none by default; preflights answered, the session, tus and download headers exposed, bearer credentials only, no cookies); the WebSocket binding takes the tenant from the `tenant` query parameter as well as `Ubtp-Tenant`, since browsers cannot set WebSocket headers.
 - **Alternatives considered:**
   - Whole-file assembly at the end of an upload was rejected: memory grows with the file; cutting chunks as bytes arrive keeps at most one chunk per upload.

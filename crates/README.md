@@ -218,6 +218,12 @@ example `tour` (`cargo run -p ubos-sdk --example tour -- URL VAE USER PASSWORD w
 every layer. `tools/gen_registry.py` generates the typed error registries of the Rust and
 TypeScript SDKs from STD-ERR-002.
 
+The typed API of step 17d: `forge types` generates for every class its body type, the
+union of the class and its subclasses (a TypeScript discriminated union, a Rust enum), typed
+reads, a query builder compiling to DAT-Query and typed port calls, over the typed layers
+of the SDKs (`ubos_sdk::typed`, `@ubos/sdk`). The SDK suites run from
+`verify/sdk/sdk_suite.py` (see `verify/README.md`).
+
 The TypeScript SDK of step 17c lives in `packages/sdk-ts/` (`@ubos/sdk`, Apache-2.0; see its
 README). Browser applications on another origin need it listed in the node's
 `server.cors_origins`.

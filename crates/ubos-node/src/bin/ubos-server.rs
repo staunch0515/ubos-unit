@@ -28,7 +28,8 @@
 //! clock, root key), applies the migrations, creates the default tenant and VAE and prints
 //! a one-time administrator invitation link; it can run again and completes what is
 //! missing. `--genesis FILE` declares the classes of a JSON list in the memory VAE, or in
-//! the default VAE when it is created.
+//! the default VAE when it is created; a `{classes, branches}` object also creates the
+//! branches the VAE lacks.
 //!
 //! `diagnostics` (DSN-NOD-615, step 16d) writes the offline part of a diagnostic bundle
 //! (versions, host, configuration, prerequisites, database counts) for a node that does
@@ -136,11 +137,32 @@ fn database(cfg: &Config) -> Option<(String, [u8; 32])> {
     Some((url, root))
 }
 
+/// The `--genesis` file: a list of class declarations, or `{classes, branches}` where the
+/// branches are created from `main` when missing (suites run uncertified logic on them).
 fn classes(opt: &dyn Fn(&str) -> Option<String>) -> Option<Value> {
     opt("--genesis").map(|p| {
         let t = std::fs::read_to_string(&p).unwrap_or_else(|e| fail(format!("{p}: {e}")));
-        serde_json::from_str(&t).unwrap_or_else(|e| fail(format!("{p}: {e}")))
+        let v: Value = serde_json::from_str(&t).unwrap_or_else(|e| fail(format!("{p}: {e}")));
+        if v.is_array() {
+            json!({"classes": v, "branches": []})
+        } else {
+            v
+        }
     })
+}
+
+/// Create the genesis branches a VAE lacks.
+fn genesis_branches(
+    call: &mut dyn FnMut(&str, &Value) -> Result<Value, BpaError>,
+    genesis: &Value,
+) -> Result<(), BpaError> {
+    for b in genesis["branches"].as_array().into_iter().flatten() {
+        let name = b.as_str().unwrap_or_default();
+        if call("branch_info", &json!({"branch": name})).is_err() {
+            call("create_branch", &json!({"name": name, "from": "main"}))?;
+        }
+    }
+    Ok(())
 }
 
 /// Provision the default tenant and VAE (DSN-NOD-402: resumable steps, genesis Buks,
@@ -159,7 +181,7 @@ fn ensure_tenant(
             .tenant(tenant)?
             .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "tenant"))?;
         let mut vae = node.open_vae(&t, authority)?;
-        let fresh: Vec<Value> = c
+        let fresh: Vec<Value> = c["classes"]
             .as_array()
             .into_iter()
             .flatten()
@@ -174,6 +196,7 @@ fn ensure_tenant(
         if !fresh.is_empty() {
             vae.call("load_genesis", &json!({"classes": fresh}))?;
         }
+        genesis_branches(&mut |op, input| vae.call(op, input), c)?;
     }
     Ok(report)
 }
@@ -795,7 +818,8 @@ fn main() {
                 let mut v = memory_vae_with(None, Some(ev), Some(jb))?;
                 ubos_node::genesis::install_all(&mut v)?;
                 if let Some(c) = classes {
-                    v.call("load_genesis", &json!({"classes": c}))?;
+                    v.call("load_genesis", &json!({"classes": c["classes"]}))?;
+                    genesis_branches(&mut |op, input| v.call(op, input), &c)?;
                 }
                 Ok(v)
             })
