@@ -125,6 +125,9 @@ fn iso(t: chrono::DateTime<chrono::Utc>) -> String {
 
 // ---- HTTP ----
 
+/// A raw HTTP response: status, headers (lower-case names), body bytes.
+type RawResponse = (u16, HashMap<String, String>, Vec<u8>);
+
 /// One HTTP request with raw bytes and extra headers: the status, the headers (lower-case
 /// names) and the body bytes.
 fn http_raw(
@@ -134,7 +137,7 @@ fn http_raw(
     token: Option<&str>,
     headers: &[(&str, String)],
     body: &[u8],
-) -> Result<(u16, HashMap<String, String>, Vec<u8>), BpaError> {
+) -> Result<RawResponse, BpaError> {
     use std::io::{Read, Write};
     let mut s = std::net::TcpStream::connect(addr).map_err(err)?;
     s.set_read_timeout(Some(Duration::from_secs(60)))
