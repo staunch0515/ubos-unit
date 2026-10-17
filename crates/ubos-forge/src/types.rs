@@ -84,6 +84,68 @@ fn pascal(name: &str) -> String {
         .collect()
 }
 
+/// The model of a project for generic clients (the engineering UI, PH-1 step 17f):
+/// `{project, branch, model_hash, classes}` where every class has its parent, kind,
+/// linearization, its fields with type, required flag and constraints (inherited ones
+/// included, `declared_by` naming the class that declares each) and its ports with their
+/// parameters.
+pub fn model(project: &Project) -> Result<Value, ubos_dvm::BpaError> {
+    let base = ubos_dvm::expressions::registry();
+    let decls = project.declarations();
+    let vts = project.value_type_decls();
+    let reg = base.load(&decls, if vts.is_empty() { None } else { Some(&vts) })?;
+    let mut names: Vec<String> = decls
+        .iter()
+        .filter_map(|d| d.get("name").and_then(Value::as_str).map(str::to_string))
+        .collect();
+    names.sort();
+    let mut classes = Vec::new();
+    for name in &names {
+        let c = reg.class(name)?;
+        let decl = decls
+            .iter()
+            .find(|d| d["name"] == serde_json::json!(name))
+            .cloned()
+            .unwrap_or(Value::Null);
+        let fields: Vec<Value> = c
+            .fields
+            .iter()
+            .map(|(f, d)| {
+                let declared_by = c
+                    .linearization
+                    .iter()
+                    .rev()
+                    .find(|cls| reg.class(cls).is_ok_and(|x| x.fields.contains_key(f)))
+                    .cloned()
+                    .unwrap_or_else(|| name.clone());
+                serde_json::json!({"name": f, "type": d.get("type").cloned().unwrap_or(Value::Null),
+                    "required": d.get("required") == Some(&Value::Bool(true)),
+                    "label": d.get("label").cloned().unwrap_or_else(|| serde_json::json!(f)),
+                    "constraints": d.get("constraints").cloned().unwrap_or(Value::Null),
+                    "default": d.get("default").cloned().unwrap_or(Value::Null),
+                    "classification": d.get("classification").cloned().unwrap_or(Value::Null),
+                    "declared_by": declared_by})
+            })
+            .collect();
+        let ports: Vec<Value> = c
+            .ports
+            .iter()
+            .map(|(p, port)| {
+                serde_json::json!({"name": p, "kind": port.decl.get("kind").cloned().unwrap_or(serde_json::json!("command")),
+                    "params": port.decl.get("params").cloned().unwrap_or(serde_json::json!([])),
+                    "declared_by": port.declared_by})
+            })
+            .collect();
+        classes.push(serde_json::json!({"name": name, "label": decl.get("label").cloned().unwrap_or_else(|| serde_json::json!(name)),
+            "parent": c.linearization.get(1).cloned(), "kind": c.kind, "linearization": c.linearization,
+            "fields": fields, "ports": ports}));
+    }
+    Ok(
+        serde_json::json!({"project": project.manifest.name, "branch": project.manifest.branch,
+        "model_hash": project.model_hash()?, "vae": project.manifest.vae, "classes": classes}),
+    )
+}
+
 /// Generate `types.ts` and `types.rs` with the TypeScript SDK imported as `@ubos/sdk`.
 pub fn generate(project: &Project) -> Result<(String, String, Value), ubos_dvm::BpaError> {
     generate_with(project, "@ubos/sdk")

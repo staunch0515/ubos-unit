@@ -1,0 +1,275 @@
+{
+  "project": "sdk-suite",
+  "branch": "main",
+  "model_hash": "sha256:496d8ae820fa06903d16225c018b3e0b3e7555148d9af2bd49bf502d33cdcd0f",
+  "vae": "acme",
+  "classes": [
+    {
+      "name": "Account",
+      "label": "Account",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Account",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "balance",
+          "type": "decimal",
+          "required": false,
+          "label": "balance",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Account"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Account"
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "required": false,
+          "label": "status",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Account"
+        },
+        {
+          "name": "tag",
+          "type": "text",
+          "required": false,
+          "label": "tag",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Account"
+        }
+      ],
+      "ports": [
+        {
+          "name": "close",
+          "kind": "command",
+          "params": [],
+          "declared_by": "Account"
+        },
+        {
+          "name": "mark",
+          "kind": "command",
+          "params": [
+            {
+              "name": "tag",
+              "label": "tag",
+              "description": "tag",
+              "type": "text",
+              "required": true
+            }
+          ],
+          "declared_by": "Account"
+        },
+        {
+          "name": "rename",
+          "kind": "command",
+          "params": [
+            {
+              "name": "name",
+              "label": "name",
+              "description": "name",
+              "type": "text",
+              "required": true
+            }
+          ],
+          "declared_by": "Account"
+        }
+      ]
+    },
+    {
+      "name": "Customer",
+      "label": "Customer",
+      "parent": "Party",
+      "kind": "definition",
+      "linearization": [
+        "Customer",
+        "Party",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "country",
+          "type": "text",
+          "required": false,
+          "label": "country",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Party"
+        },
+        {
+          "name": "credit_limit",
+          "type": "money",
+          "required": false,
+          "label": "credit_limit",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Customer"
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "required": false,
+          "label": "email",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Customer"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Party"
+        },
+        {
+          "name": "rating",
+          "type": "integer",
+          "required": false,
+          "label": "rating",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Customer"
+        }
+      ],
+      "ports": []
+    },
+    {
+      "name": "Document",
+      "label": "Document",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Document",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "passport",
+          "type": "blob",
+          "required": false,
+          "label": "passport",
+          "constraints": null,
+          "default": null,
+          "classification": "personal",
+          "declared_by": "Document"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "label": "title",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Document"
+        }
+      ],
+      "ports": []
+    },
+    {
+      "name": "Party",
+      "label": "Party",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Party",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "country",
+          "type": "text",
+          "required": false,
+          "label": "country",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Party"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Party"
+        }
+      ],
+      "ports": []
+    },
+    {
+      "name": "Supplier",
+      "label": "Supplier",
+      "parent": "Party",
+      "kind": "definition",
+      "linearization": [
+        "Supplier",
+        "Party",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "country",
+          "type": "text",
+          "required": false,
+          "label": "country",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Party"
+        },
+        {
+          "name": "iban",
+          "type": "text",
+          "required": false,
+          "label": "iban",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Supplier"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Party"
+        }
+      ],
+      "ports": []
+    }
+  ]
+}

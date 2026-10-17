@@ -229,7 +229,9 @@ of the SDKs (`ubos_sdk::typed`, `@ubos/sdk`). The SDK suites run from
 the `dev` preset (on PostgreSQL, or in memory without `--database`), installs the project
 over UBTP on `feature/dev` and watches its sources: a changed script is installed again at
 once, a changed model or seed rebuilds the development VAE (`verify/reports/forge-dev/`).
-The server binary is `--server`, else `UBOS_SERVER`, else the one next to `forge`.
+The server binary is `--server`, else `UBOS_SERVER`, else the one next to `forge`; the node
+allows the engineering UI's local origin (`packages/eng-ui/`, `--cors` adds others).
+`forge types` also writes `model.json`, the model the engineering UI generates its forms from.
 
 The TypeScript SDK of step 17c lives in `packages/sdk-ts/` (`@ubos/sdk`, Apache-2.0; see its
 README). Browser applications on another origin need it listed in the node's

@@ -68,6 +68,7 @@ component names below are used throughout this volume; each maps to a top-level 
 | `@ubos/portal` | external portal | `@ubos/render`, `@ubos/sdk` |
 | `@ubos/office` | Live Doc editor, Smart Grid, War Room components | `@ubos/render` |
 | `@ubos/verify-web` | static web verifier | `ubos-verify` compiled to WASM |
+| `@ubos/eng-ui` | engineering UI prototype used for the acceptance of PH-1b (DEC-078); superseded by `@ubos/workspace` | `@ubos/sdk` |
 
 ### AR-031 — Enforced dependency graph
 - **Rule:** The crate and package dependency graph in sections 2 and 3 is normative. CI MUST fail on any dependency not listed.

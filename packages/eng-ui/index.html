@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UBOS engineering UI</title>
+<style>
+  :root { --fg: #1d2330; --muted: #6b7280; --line: #e3e6eb; --bg: #f7f8fa; --panel: #fff; --accent: #2f5bd3; --bad: #b42318; --good: #12763b; font: 14px/1.45 system-ui, sans-serif; color: var(--fg); background: var(--bg); }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  header { display: flex; gap: 12px; align-items: center; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header b { margin-right: 8px; }
+  header label { color: var(--muted); font-size: 12px; display: flex; gap: 4px; align-items: center; }
+  main { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 50px); }
+  nav { border-right: 1px solid var(--line); background: var(--panel); padding: 8px; overflow: auto; }
+  nav a { display: block; padding: 3px 6px; border-radius: 4px; color: var(--fg); text-decoration: none; }
+  nav a.active, nav a:hover { background: #eef2fc; }
+  section { padding: 16px 20px; overflow: auto; }
+  h1 { font-size: 18px; margin: 0 0 12px; } h2 { font-size: 15px; margin: 20px 0 8px; }
+  table { border-collapse: collapse; width: 100%; background: var(--panel); }
+  th, td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; }
+  tr.row:hover { background: #f2f5fb; cursor: pointer; }
+  input, select, textarea, button { font: inherit; }
+  input, select, textarea { border: 1px solid #c9ced6; border-radius: 4px; padding: 4px 6px; background: #fff; }
+  textarea { width: 100%; min-height: 80px; font-family: ui-monospace, monospace; font-size: 12px; }
+  button { border: 1px solid #c9ced6; background: #fff; border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .form { display: grid; grid-template-columns: 180px 1fr; gap: 8px 12px; align-items: center; max-width: 760px; }
+  .form .req::after { content: " *"; color: var(--bad); }
+  .form > button, .form > .bar { justify-self: start; }
+  .muted { color: var(--muted); } .mono { font-family: ui-monospace, monospace; font-size: 12px; }
+  .error { border: 1px solid #f3c6c2; background: #fdf1f0; color: var(--bad); padding: 8px 10px; border-radius: 4px; margin: 8px 0; white-space: pre-wrap; }
+  .ok { border: 1px solid #b7e2c6; background: #effaf3; color: var(--good); padding: 8px 10px; border-radius: 4px; margin: 8px 0; white-space: pre-wrap; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+  .flash { animation: flash 1.2s; } @keyframes flash { from { background: #fff7cc; } to { background: transparent; } }
+  pre { margin: 0; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

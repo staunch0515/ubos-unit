@@ -21,7 +21,7 @@ const USAGE: &str = "usage:
   forge test [<project dir>] [--report <json file>] [--junit <xml file>] [--records <dir>] \
 [--key <file with 64 hex chars>] [--backend memory|postgres] [--database <connection string>] [--json]
   forge dev [<project dir>] [--database <connection string>] [--listen <host:port>] \
-[--server <ubos-server>] [--test] [--types] [--once] [--json]
+[--server <ubos-server>] [--cors <origin>]... [--test] [--types] [--once] [--json]
   forge conform --vectors <dir> [--tag <tag>] [--profiles <p1,p2>] [--report <file>] \
 [--key <file with 64 hex chars>] [--standard <version>] [--build <hash>] \
 [--backend memory|postgres] [--database <connection string>] [--l2] [--verbose]";
@@ -272,11 +272,15 @@ fn types(args: &[String]) -> Result<bool, String> {
     std::fs::create_dir_all(&out).map_err(|e| e.to_string())?;
     std::fs::write(out.join("types.ts"), ts).map_err(|e| e.to_string())?;
     std::fs::write(out.join("types.rs"), rs).map_err(|e| e.to_string())?;
+    let model = ubos_forge::types::model(&project).map_err(|e| e.to_string())?;
+    let model_text = serde_json::to_string_pretty(&model).unwrap_or_default() + "\n";
+    std::fs::write(out.join("model.json"), model_text).map_err(|e| e.to_string())?;
     emit(
         json_out,
-        &json!({"command": "types", "header": header, "files": [out.join("types.ts").display().to_string(), out.join("types.rs").display().to_string()]}),
+        &json!({"command": "types", "header": header, "files": [out.join("types.ts").display().to_string(),
+            out.join("types.rs").display().to_string(), out.join("model.json").display().to_string()]}),
         &format!(
-            "forge types: types.ts and types.rs written to {} (model {})",
+            "forge types: types.ts, types.rs and model.json written to {} (model {})",
             out.display(),
             header["model_hash"]
         ),
@@ -292,6 +296,10 @@ fn dev(args: &[String]) -> Result<bool, String> {
         server: ubos_forge::dev::default_server(),
         database: std::env::var("UBOS_DEV_DATABASE").ok(),
         listen: "127.0.0.1:7070".into(),
+        cors: vec![
+            "http://127.0.0.1:7080".into(),
+            "http://localhost:7080".into(),
+        ],
         test: false,
         types: false,
         once: false,
@@ -321,6 +329,10 @@ fn dev(args: &[String]) -> Result<bool, String> {
             }
             "--server" => {
                 o.server = PathBuf::from(value()?);
+                i += 1;
+            }
+            "--cors" => {
+                o.cors.push(value()?);
                 i += 1;
             }
             a if a.starts_with("--") => return Err(format!("unknown option {a}\n{USAGE}")),

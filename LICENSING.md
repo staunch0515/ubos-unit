@@ -11,7 +11,8 @@ is private.
 | `crates/ubos-sdk/` | `ubos-sdk` (the Rust SDK, DEC-078) | Apache-2.0 | `crates/ubos-sdk/LICENSE` |
 | `crates/` | `ubos` (kernel, node, Forge) | AGPL-3.0-only as the open edition; a commercial licence is available for embedding and hosted use without AGPL obligations | `crates/LICENSE` |
 | `packages/sdk-ts/` | `@ubos/sdk` (the TypeScript SDK, DEC-078) | Apache-2.0 | `packages/sdk-ts/LICENSE` |
-| `packages/` | `ubos` (other clients) | per DEC-019; the engineering UI `packages/eng-ui/` AGPL-3.0-only (DEC-078) | — |
+| `packages/eng-ui/` | `@ubos/eng-ui` (the engineering UI prototype, DEC-078) | AGPL-3.0-only | `packages/eng-ui/LICENSE` |
+| `packages/` | `ubos` (other clients) | per DEC-019 | — |
 | `buks/` (not yet created) | `ubos-buks` | commercial (source available to customers) | — |
 | `docs/` | specification, finance requirements, tools, reports | internal | — |
 
