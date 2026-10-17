@@ -200,9 +200,16 @@ impl Client {
     }
     /// One UBTP mutate (with its handshake); the mutate's response.
     fn mutate(&self, body: Value) -> Result<Value, BpaError> {
+        self.mutate_traced(body, None)
+    }
+    /// A mutate carrying a W3C trace context in its envelope.
+    fn mutate_traced(&self, body: Value, trace: Option<&str>) -> Result<Value, BpaError> {
+        let mut m = json!({"v": "1.0", "id": "m", "type": "mutate", "body": body});
+        if let Some(t) = trace {
+            m["trace"] = json!(t);
+        }
         let msgs = json!([{"v": "1.0", "id": "h", "type": "handshake", "body": {"vae": "acme", "versions": ["1.0"],
-                "credentials": {"kind": "bearer", "token": self.token}}},
-            {"v": "1.0", "id": "m", "type": "mutate", "body": body}]);
+                "credentials": {"kind": "bearer", "token": self.token}}}, m]);
         let (_, r) = http(&self.addr, "POST", "/ubtp/v1", None, &msgs)?;
         Ok(r["responses"][1].clone())
     }
@@ -1136,6 +1143,81 @@ fn failover(e: &Env) -> Result<Value, BpaError> {
     )?;
     drop(nodes);
     Ok(json!({"takeover_s": (took.0 * 10.0).round() / 10.0, "tokens": [t1, took.1]}))
+}
+
+/// NR-OBS-001, FR-OPS-041, DSN-NOD-610, -611: a traced port call yields one trace linking
+/// the request, the DVM operation, its flush and storage phases and the job of the
+/// subscription it triggered, with the process ID as an attribute; no business value
+/// reaches a span.
+fn traces(e: &Env) -> Result<Value, BpaError> {
+    let slug = e.slug("trace");
+    e.c.accounts(std::slice::from_ref(&slug))?;
+    let hex = uuid().replace('-', "");
+    let (trace_id, client_span) = (hex.clone(), hex[..16].to_string());
+    let tp = format!("00-{trace_id}-{client_span}-01");
+    let canary = format!("canary{}", &uuid().replace('-', "")[..12]);
+    let r = e.c.mutate_traced(
+        json!({"vae": "acme", "branch": BR, "port": {"target": format!("ubos://acme/Account/{slug}"), "name": "ping", "params": {"n": canary}}}),
+        Some(&tp),
+    )?;
+    check_v(r["type"] == "result", "the traced ping", &r)?;
+    let spans = wait(15.0, || {
+        let s = e.c.get(&format!(
+            "/api/v1/admin/telemetry/spans?trace={trace_id}&limit=500"
+        ))?["items"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        Ok(s.iter().any(|x| x["name"] == "job.delivery").then_some(s))
+    })?
+    .ok_or_else(|| err("no job span in the trace"))?;
+    let by = |n: &str| {
+        spans
+            .iter()
+            .find(|x| x["name"] == n)
+            .cloned()
+            .unwrap_or(Value::Null)
+    };
+    let (edge, dvm, flush, store, job) = (
+        by("ubtp.mutate"),
+        by("dvm.ubtp"),
+        by("dvm.flush"),
+        by("store.flush"),
+        by("job.delivery"),
+    );
+    let names: Vec<&str> = spans.iter().filter_map(|x| x["name"].as_str()).collect();
+    check_v(
+        !edge.is_null() && !dvm.is_null() && !flush.is_null() && !store.is_null() && !job.is_null(),
+        "edge, DVM, flush, storage and job spans in one trace",
+        &json!(names),
+    )?;
+    check_v(
+        edge["parent"] == json!(client_span),
+        "the edge span continues the client's trace",
+        &edge,
+    )?;
+    check_v(
+        dvm["parent"] == edge["span_id"]
+            && flush["parent"] == dvm["span_id"]
+            && store["parent"] == dvm["span_id"],
+        "the DVM span under the edge, the phases under the DVM span",
+        &json!([edge["span_id"], dvm, flush, store]),
+    )?;
+    check_v(
+        edge["parent"].is_string()
+            && edge["attributes"]["ubos.process_id"].is_string()
+            && job["parent"] == edge["span_id"],
+        "the job joins the request's trace, with the process ID",
+        &json!([edge, job]),
+    )?;
+    let spans_all: Value = e.c.get("/api/v1/admin/telemetry/spans?limit=2000")?;
+    let metrics: Value = e.c.get("/api/v1/admin/telemetry/metrics")?;
+    let all = format!("{spans_all}{metrics}");
+    check(
+        !all.contains(&canary),
+        "no business value in telemetry (DSN-NOD-611)",
+    )?;
+    Ok(json!({"trace_id": trace_id, "spans": names}))
 }
 
 // ---- SUITE-NOD-JOBS ----
@@ -2175,6 +2257,7 @@ const EVENTS: &[Case] = &[
         event_log_query_retention,
     ),
     ("leader_leases", "DSN-NOD-228", leader_leases),
+    ("traces", "NR-OBS-001", traces),
     ("crash_recovery", "NR-DUR-006", crash_recovery),
     ("failover", "DSN-NOD-228", failover),
 ];

@@ -189,6 +189,12 @@ genesis Buks `system` and `ontology` are installed when a tenant is provisioned
 genesis-verify` checks their signatures and `genesis-sign` re-signs edited manifests. The
 registry's platform settings appear in each VAE as the read-only `Tenant` object.
 
+Telemetry and health of step 16c (`ubos-node/src/telemetry.rs`, `ubos-types/src/trace.rs`):
+spans from the UBTP edge through the kernel phases to the jobs a commit causes, exported to
+stderr or over OTLP/HTTP (`[telemetry]` in `ubos.toml`); `/livez`, `/readyz`, `/startupz`;
+periodic self-checks and the degraded modes `read_only` and `effects_paused`
+(`/api/v1/admin/health`).
+
 SUITE-NOD-EVENTS and SUITE-NOD-JOBS of step 15e run in `ubos-events-suite` (memory, or a
 fresh tenant on PostgreSQL; the crash and failover cases run nodes as child processes with
 `--serve` and kill them), and `ubos-events-suite --bench` measures MET-PERF-017, NR-PERF-012

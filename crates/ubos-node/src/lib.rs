@@ -25,6 +25,7 @@ pub mod platform;
 pub mod schedule;
 pub mod server;
 pub mod services;
+pub mod telemetry;
 
 use db::Db;
 use serde_json::{Value, json};
@@ -260,6 +261,65 @@ impl Node {
             .iter()
             .filter_map(|r| r["authority"].as_str().map(str::to_string))
             .collect())
+    }
+
+    // ---- probes of the health endpoints and self-checks (step 16c) ----
+
+    /// Probe the database on a fresh connection within 2 s (DSN-NOD-613, -616): whether it
+    /// answers, whether it accepts writes (not read-only, not in recovery) and the clock
+    /// skew against it in ms.
+    pub fn probe_database(&self) -> Value {
+        let url = self.url.clone();
+        let run = || -> Result<Value, String> {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|e| e.to_string())?;
+            rt.block_on(async move {
+                use sqlx::{Connection, Row};
+                let opts = ubos_dvm::store::pg_options(&url).map_err(|e| e.to_string())?;
+                let fut = async {
+                    let mut c = sqlx::PgConnection::connect_with(&opts).await?;
+                    let r = sqlx::query(
+                        "SELECT current_setting('transaction_read_only') AS ro, pg_is_in_recovery() AS rec, \
+                         (extract(epoch FROM clock_timestamp()) * 1000)::bigint AS ms",
+                    )
+                    .fetch_one(&mut c)
+                    .await?;
+                    let ro: String = r.try_get("ro")?;
+                    let rec: bool = r.try_get("rec")?;
+                    let ms: i64 = r.try_get("ms")?;
+                    let _ = c.close().await;
+                    Ok::<_, sqlx::Error>((ro == "on", rec, ms))
+                };
+                match tokio::time::timeout(std::time::Duration::from_secs(2), fut).await {
+                    Err(_) => Err("no answer within 2 s".to_string()),
+                    Ok(Err(e)) => Err(e.to_string()),
+                    Ok(Ok((ro, rec, ms))) => {
+                        let ours = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| d.as_millis() as i64)
+                            .unwrap_or_default();
+                        Ok(json!({"ok": true, "writable": !ro && !rec, "read_only": ro, "in_recovery": rec, "clock_skew_ms": ours - ms}))
+                    }
+                }
+            })
+        };
+        run().unwrap_or_else(|e| json!({"ok": false, "detail": e}))
+    }
+
+    /// Whether the key hierarchy of a tenant opens (the root KEK unwraps its KEK).
+    pub fn probe_keys(&self, slug: &str) -> Value {
+        let r = (|| -> Result<(), BpaError> {
+            let t = self
+                .tenant(slug)?
+                .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown tenant"))?;
+            self.keys(&t).map(|_| ())
+        })();
+        match r {
+            Ok(()) => json!({"ok": true}),
+            Err(e) => json!({"ok": false, "detail": e.to_string()}),
+        }
     }
 
     // ---- the tenant registry and tenant creation (DSN-NOD-401, -402; step 16b) ----

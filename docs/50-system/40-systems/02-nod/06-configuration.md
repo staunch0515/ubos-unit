@@ -54,6 +54,9 @@ Secrets are references (`env:`, `file:`, `kms:`), never inline (DSN-NOD-605). Th
 | `sync.pack_chunk_mb` | 4 | 1–64 | yes | DSN-NOD-501 |
 | `telemetry.otlp_endpoint` | — | URL | yes | DSN-NOD-610 |
 | `telemetry.attribute_allowlist` | built-in | list | yes | DSN-NOD-611 |
+| `server.tls_certificate` | — | path | yes | DSN-NOD-614 |
+| `selfcheck.interval_secs` | 60 | 5–3600 | yes | DSN-NOD-614 |
+| `selfcheck.disk_min_free_mb` | 1024 | 0–10000000 | yes | DSN-NOD-614 |
 | `backup.wal_archive` | — | target reference | no | DSN-NOD-620 |
 | `backup.retention_days` | 35 | 7–3650 | yes | DSN-NOD-623 |
 | `ctl.endpoint` | — | URL (optional) | no | DSN-NOD-643 |
