@@ -256,6 +256,8 @@ def corpus():
         "backup.retention_days": [0, 366, -1, "35", 1.5, True, 1000, "", -35, [35]],
         "backup.restore_point_minutes": [-1, 1441, "10", 2.5, True, "", 100000, -10, "often", [10]],
         "bootstrap.admin_username": ["", 1, True, "x" * 1025, ["a"], 2.5, 7, False, 0, -1],
+        "server.cors_origins": ["https://app.example", ["app.example"], ["https://a.example/"], ["ftp://a"], [1],
+                                ["https://"], ["https://a.example/x"], ["http://a b"], True, ["https://a"] * 65],
     }
     cases = []
     for path, vals in keys.items():

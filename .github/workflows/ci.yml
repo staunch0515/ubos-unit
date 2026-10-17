@@ -20,6 +20,30 @@ jobs:
       - name: generated files are committed
         run: git diff --exit-code
 
+  typescript:
+    name: typescript sdk
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/sdk-ts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/sdk-ts/package-lock.json
+      - name: install (locked)
+        run: npm ci
+      - name: type check (tsc --strict, UBS-ARC-07 §4)
+        run: npm run typecheck
+      - name: lint (eslint)
+        run: npm run lint
+      - name: build
+        run: npm run build
+      - name: browser core under 60 KB gzipped (DSN-SDK-017)
+        run: npm run size
+
   rust:
     name: rust workspace
     runs-on: ubuntu-latest
@@ -42,7 +66,7 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: dependency graph (AR-031, DEC-028)
         run: python3 docs/tools/check_deps.py
-      - name: the SDK error registry is generated from STD-ERR-002 (DSN-SDK-007)
+      - name: the SDK error registries (Rust and TypeScript) are generated from STD-ERR-002 (DSN-SDK-007)
         run: python3 crates/ubos-sdk/tools/gen_registry.py --check
       - name: test bodies of the mutation score — vectors, scenarios and property sample (VER-INSP-0001, DEC-061)
         run: cargo test -p ubos-forge -p ubos-dvm --locked

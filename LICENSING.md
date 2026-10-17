@@ -10,7 +10,8 @@ is private.
 | `verify/` | `ubos-verify` | Apache-2.0 | `verify/LICENSE` |
 | `crates/ubos-sdk/` | `ubos-sdk` (the Rust SDK, DEC-078) | Apache-2.0 | `crates/ubos-sdk/LICENSE` |
 | `crates/` | `ubos` (kernel, node, Forge) | AGPL-3.0-only as the open edition; a commercial licence is available for embedding and hosted use without AGPL obligations | `crates/LICENSE` |
-| `packages/` (not yet created) | `ubos` (SDKs and clients) | SDKs Apache-2.0; other packages per DEC-019 | — |
+| `packages/sdk-ts/` | `@ubos/sdk` (the TypeScript SDK, DEC-078) | Apache-2.0 | `packages/sdk-ts/LICENSE` |
+| `packages/` | `ubos` (other clients) | per DEC-019; the engineering UI `packages/eng-ui/` AGPL-3.0-only (DEC-078) | — |
 | `buks/` (not yet created) | `ubos-buks` | commercial (source available to customers) | — |
 | `docs/` | specification, finance requirements, tools, reports | internal | — |
 

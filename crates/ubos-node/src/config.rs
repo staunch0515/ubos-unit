@@ -47,6 +47,8 @@ pub enum Kind {
     Database,
     /// A tenant slug or a VAE authority (`[a-z0-9-]`, 1…63).
     Name,
+    /// A list of web origins `http[s]://host[:port]` (at most 64).
+    Origins,
 }
 
 /// A key of the schema.
@@ -83,7 +85,7 @@ const fn key(
 /// The log levels.
 pub const LEVELS: &[&str] = &["error", "warn", "info", "debug", "trace"];
 
-/// The schema of `ubos.toml` (schema version 1; 19 keys).
+/// The schema of `ubos.toml` (schema version 1; 23 keys).
 pub const SCHEMA: &[Key] = &[
     key(
         "server.listen",
@@ -210,6 +212,13 @@ pub const SCHEMA: &[Key] = &[
         Some("10"),
         true,
         "the interval of named restore points with recorded heads (0: none)",
+    ),
+    key(
+        "server.cors_origins",
+        Kind::Origins,
+        Some("[]"),
+        true,
+        "the web origins whose browsers may call the node (CORS); none by default",
     ),
     key(
         "server.tls_certificate",
@@ -368,6 +377,22 @@ fn check_value(k: &Key, v: &Value) -> Result<(), String> {
             }
             if t.is_empty() || t.len() > 4096 {
                 return Err("a connection string".into());
+            }
+        }
+        Kind::Origins => {
+            let list = v.as_array().ok_or("a list of origins")?;
+            if list.len() > 64 {
+                return Err("at most 64 origins".into());
+            }
+            for o in list {
+                let t = o.as_str().unwrap_or_default();
+                let rest = t
+                    .strip_prefix("https://")
+                    .or_else(|| t.strip_prefix("http://"))
+                    .unwrap_or_default();
+                if rest.is_empty() || rest.contains(['/', '?', '#', ' ']) || t.len() > 255 {
+                    return Err("origins http[s]://host[:port] without a path".into());
+                }
             }
         }
         Kind::Name => {
