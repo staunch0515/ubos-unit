@@ -1,0 +1,540 @@
+<title>UBOS Workspace Reference Screens</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: an accounting workbench. Left navigation, a context bar that always names the company,
+   branch, as-of date and as-known-on date, a working area of dense tables, a right drawer for
+   explanations. Neutrals lean slightly blue toward the single accent; semantic colours always
+   come with text. */
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-2: #f9fafc;
+  --line: #dde2ea;
+  --line-strong: #c4ccd8;
+  --fg: #16202c;
+  --muted: #5a6677;
+  --faint: #8a95a5;
+  --accent: #1d4e89;
+  --accent-fg: #ffffff;
+  --accent-weak: #e6eef8;
+  --pos: #1c7a4b;
+  --pos-weak: #e3f3ea;
+  --neg: #b42318;
+  --neg-weak: #fde8e6;
+  --amber: #8a4b06;
+  --amber-weak: #fdf1d8;
+  --focus: #2f6fd1;
+  --note-bg: #fffbea;
+  --note-line: #e8d9a6;
+  --font-ui: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --row: 30px;
+  --cell-x: 10px;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131a; --surface: #151b24; --surface-2: #1a212c; --line: #29323f; --line-strong: #394555;
+    --fg: #e5e9ef; --muted: #9aa6b6; --faint: #6e7a8b; --accent: #7fa7de; --accent-fg: #0e131a;
+    --accent-weak: #1c2a3f; --pos: #5cc08b; --pos-weak: #143425; --neg: #f08b80; --neg-weak: #3a1a17;
+    --amber: #f2b84b; --amber-weak: #392a0c; --focus: #8db6ef; --note-bg: #22201a; --note-line: #4a4430;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #151b24; --surface-2: #1a212c; --line: #29323f; --line-strong: #394555;
+  --fg: #e5e9ef; --muted: #9aa6b6; --faint: #6e7a8b; --accent: #7fa7de; --accent-fg: #0e131a;
+  --accent-weak: #1c2a3f; --pos: #5cc08b; --pos-weak: #143425; --neg: #f08b80; --neg-weak: #3a1a17;
+  --amber: #f2b84b; --amber-weak: #392a0c; --focus: #8db6ef; --note-bg: #22201a; --note-line: #4a4430;
+  color-scheme: dark;
+}
+:root[data-density="comfortable"] { --row: 38px; --cell-x: 14px; }
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 13px; line-height: 1.45;
+  font-feature-settings: "cv11", "ss01";
+}
+.wrap {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 32px;
+  max-width: 1440px; margin: 0 auto; display: grid; gap: 14px;
+}
+.mono { font-family: var(--font-mono); font-size: 12px; letter-spacing: -0.01em; }
+.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* ---- the review frame around the mockup (Chinese, for the owner) ---- */
+.review { display: grid; gap: 10px; }
+.review h1 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
+.review p { margin: 0; color: var(--muted); max-width: 75ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: transparent; padding: 4px 10px; cursor: pointer; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+.ctl-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--faint); margin-right: 6px; }
+.note {
+  background: var(--note-bg); border: 1px solid var(--note-line); border-radius: var(--radius);
+  padding: 10px 12px; display: grid; gap: 4px; font-size: 13px;
+}
+.note b { font-weight: 600; }
+.note ul { margin: 0; padding-left: 18px; color: var(--muted); }
+
+/* ---- the application frame ---- */
+.app {
+  display: grid; grid-template-columns: 208px minmax(0, 1fr); border: 1px solid var(--line);
+  border-radius: 8px; overflow: hidden; background: var(--surface); min-height: 640px;
+}
+.nav { background: var(--surface-2); border-right: 1px solid var(--line); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+.brand { display: flex; align-items: center; gap: 8px; padding: 4px 8px 12px; font-weight: 600; }
+.brand .mark { width: 22px; height: 22px; border-radius: 5px; background: var(--accent); color: var(--accent-fg); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.nav-group { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--faint); padding: 10px 8px 4px; }
+.nav button { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; border: 0; background: transparent; padding: 6px 8px; border-radius: 5px; cursor: pointer; color: var(--fg); }
+.nav button:hover { background: var(--accent-weak); }
+.nav button[aria-current="page"] { background: var(--accent-weak); color: var(--accent); font-weight: 600; }
+.nav .count { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.nav .static { padding: 6px 8px; color: var(--muted); }
+
+.main { display: flex; flex-direction: column; min-width: 0; }
+.context {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line);
+}
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; background: var(--surface); white-space: nowrap; }
+.chip .k { color: var(--faint); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.search { margin-left: auto; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: var(--radius); padding: 3px 8px; color: var(--faint); min-width: 220px; background: var(--surface-2); }
+kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--muted); background: var(--surface); }
+.asof { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; background: var(--amber-weak); color: var(--amber); padding: 6px 12px; border-bottom: 1px solid var(--line); font-weight: 500; }
+.asof[hidden] { display: none !important; }
+
+.screen { padding: 14px 16px 18px; display: grid; gap: 12px; min-width: 0; }
+.head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.crumbs { font-size: 12px; color: var(--muted); }
+.head h2 { font-size: 17px; font-weight: 600; margin: 2px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; text-wrap: balance; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.btn { border: 1px solid var(--line-strong); background: var(--surface); padding: 5px 10px; border-radius: var(--radius); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 500; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.btn kbd { background: transparent; color: inherit; border-color: currentColor; opacity: 0.7; }
+
+/* state pills: always text, colour only supports it */
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; border-radius: 4px; padding: 1px 6px; border: 1px solid transparent; white-space: nowrap; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pill.draft { color: var(--muted); border-color: var(--line-strong); }
+.pill.draft::before { background: transparent; border: 1.5px solid currentColor; width: 4px; height: 4px; }
+.pill.posted { color: var(--pos); background: var(--pos-weak); }
+.pill.pending { color: var(--amber); background: var(--amber-weak); }
+.pill.blocked { color: var(--neg); background: var(--neg-weak); }
+.pill.reversed { color: var(--muted); border-color: var(--line-strong); text-decoration: line-through; }
+.pill.recon { color: var(--accent); background: var(--accent-weak); }
+
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px 14px; }
+.field { display: grid; gap: 3px; min-width: 0; }
+.field label, .field .lbl { font-size: 11px; color: var(--muted); font-weight: 500; }
+.field .val, .field input { border: 1px solid var(--line); border-radius: var(--radius); padding: 5px 8px; background: var(--surface); min-height: 30px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.banner { display: flex; gap: 10px; align-items: flex-start; border-radius: var(--radius); padding: 8px 10px; border: 1px solid; }
+.banner.warn { background: var(--amber-weak); color: var(--amber); border-color: color-mix(in srgb, var(--amber) 35%, transparent); }
+.banner.info { background: var(--accent-weak); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+.banner .why { color: var(--fg); }
+.banner a, .linkish { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; background: none; border: 0; padding: 0; }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { height: var(--row); padding: 0 var(--cell-x); border-bottom: 1px solid var(--line); white-space: nowrap; text-align: left; }
+th { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; background: var(--surface-2); position: sticky; top: 0; }
+th.num, td.num { text-align: right; }
+tbody tr:hover td { background: var(--surface-2); }
+tr.sub td { background: var(--surface-2); font-weight: 600; }
+tr.total td { font-weight: 700; border-top: 1px solid var(--line-strong); border-bottom: 3px double var(--line-strong); }
+tr.open td, tr.close td { color: var(--muted); font-style: italic; }
+tr.focusrow td { box-shadow: inset 0 1px 0 var(--focus), inset 0 -1px 0 var(--focus); }
+td.memo { max-width: 340px; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+td input.amt { width: 116px; text-align: right; border: 1px solid transparent; background: transparent; padding: 3px 6px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+td input.amt:hover { border-color: var(--line); }
+td input.amt:focus { border-color: var(--focus); background: var(--surface); outline: none; }
+.acct { display: inline-flex; gap: 8px; align-items: baseline; }
+.acct .mono { color: var(--accent); }
+.neg-val { color: var(--neg); }
+
+.lookup { position: relative; }
+.popover { position: absolute; left: 0; top: calc(100% - 2px); z-index: 3; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: 0 8px 24px rgb(0 0 0 / 0.14); min-width: 300px; padding: 4px; }
+.popover div { display: flex; gap: 10px; padding: 4px 8px; border-radius: 4px; }
+.popover div.sel { background: var(--accent-weak); }
+.popover small { margin-left: auto; color: var(--faint); }
+.typing { border: 1px solid var(--focus); border-radius: 4px; padding: 2px 6px; display: inline-block; min-width: 120px; background: var(--surface); }
+.typing::after { content: ""; display: inline-block; width: 1px; height: 13px; background: var(--fg); margin-left: 1px; vertical-align: -2px; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .typing::after { animation: none; } }
+
+.balance { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; justify-content: flex-end; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+.balance .k { color: var(--muted); font-size: 12px; margin-right: 6px; }
+.balance .state { font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+.balance .state.ok { color: var(--pos); }
+.balance .state.bad { color: var(--neg); }
+.keys { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 12px; }
+
+/* two-pane: report + drill drawer */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; align-items: start; }
+.drawer { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); display: grid; gap: 0; }
+.drawer h3 { font-size: 13px; margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--line); font-weight: 600; }
+.drawer .body { padding: 10px 12px; display: grid; gap: 10px; }
+.drawer table td, .drawer table th { padding: 4px 8px; height: auto; min-height: var(--row); white-space: normal; }
+.drawer table td.num, .drawer table th.num { white-space: nowrap; vertical-align: top; }
+.drawer .acct { display: inline; }
+.drawer .acct .mono { margin-right: 6px; }
+.prov { font-size: 11px; color: var(--faint); border-top: 1px solid var(--line); padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+td.drill { cursor: pointer; }
+td.drill:hover { text-decoration: underline; text-underline-offset: 2px; color: var(--accent); }
+tr.picked td { background: var(--accent-weak) !important; }
+td.l1 { padding-left: calc(var(--cell-x) + 14px); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.toolbar .chip { cursor: default; }
+
+/* close cockpit */
+.check { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); align-items: start; }
+.check:last-child { border-bottom: 0; }
+.ico { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; margin-top: 1px; }
+.ico.ok { background: var(--pos-weak); color: var(--pos); }
+.ico.no { background: var(--neg-weak); color: var(--neg); }
+.check .t { font-weight: 600; }
+.check .d { color: var(--muted); font-size: 12px; grid-column: 2; }
+.check .r { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.kpi { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; background: var(--surface); display: grid; gap: 2px; }
+.kpi .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.kpi .v { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* diff */
+.diffcell { display: grid; gap: 1px; }
+.was { color: var(--faint); text-decoration: line-through; }
+.now { font-weight: 600; }
+.delta.up { color: var(--fg); }
+.side-by-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.panel h3 { font-size: 13px; margin: 0; padding: 9px 12px; border-bottom: 1px solid var(--line); font-weight: 600; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.panel .body { padding: 10px 12px; display: grid; gap: 8px; }
+.timeline { display: grid; gap: 8px; }
+.timeline div { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 10px; font-size: 12px; }
+.timeline span:first-child { color: var(--faint); font-variant-numeric: tabular-nums; }
+textarea { width: 100%; min-height: 56px; border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; background: var(--surface); color: var(--fg); font: inherit; resize: vertical; }
+
+@media (max-width: 980px) {
+  .split, .side-by-side { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 6px; }
+  .nav .brand, .nav-group, .nav .static { display: none; }
+  .nav button { white-space: nowrap; }
+  .search { min-width: 0; width: 100%; margin-left: 0; }
+}
+</style>
+
+<div class="wrap">
+  <section class="review" aria-label="About these screens">
+    <h1>UBOS design system 1.0 · reference screens · Northwind Components, Inc.</h1>
+    <p>Static reference screens of the PH-2 Web workspace (DEC-081, DSN-WSP-211…214). Figures come from the frozen Northwind expected results (FIN-DOC-21). Switch screens with the left navigation; the controls switch the theme, the table density and the display of negative amounts.</p>
+    <div class="controls">
+      <span><span class="ctl-label">Theme</span><span class="seg" role="group" aria-label="Theme">
+        <button type="button" id="t-system" data-theme-set="system" aria-pressed="true">System</button><button type="button" id="t-light" data-theme-set="light" aria-pressed="false">Light</button><button type="button" id="t-dark" data-theme-set="dark" aria-pressed="false">Dark</button></span></span>
+      <span><span class="ctl-label">Density</span><span class="seg" role="group" aria-label="Density">
+        <button type="button" id="d-compact" data-density-set="compact" aria-pressed="true">Compact</button><button type="button" id="d-comfortable" data-density-set="comfortable" aria-pressed="false">Comfortable</button></span></span>
+      <span><span class="ctl-label">Negatives</span><span class="seg" role="group" aria-label="Negative amounts">
+        <button type="button" id="n-paren" data-neg-set="paren" aria-pressed="true">(1,234.00)</button><button type="button" id="n-minus" data-neg-set="minus" aria-pressed="false">-1,234.00</button></span></span>
+    </div>
+    <div class="note" id="note" aria-live="polite"></div>
+  </section>
+
+  <div class="app">
+    <nav class="nav" aria-label="Workspace">
+      <div class="brand"><span class="mark">U</span>UBOS Workspace</div>
+      <div class="nav-group">General ledger</div>
+      <button type="button" data-screen="entry"><span>Journal entry</span><span class="count">Draft</span></button>
+      <button type="button" data-screen="register"><span>Account register</span><span class="count">1010</span></button>
+      <div class="nav-group">Reporting</div>
+      <button type="button" data-screen="report"><span>Balance sheet</span></button>
+      <div class="nav-group">Period</div>
+      <button type="button" data-screen="close"><span>Close January 2026</span><span class="count">8/9</span></button>
+      <div class="nav-group">Review</div>
+      <button type="button" data-screen="review"><span>Change sets</span><span class="count">1</span></button>
+      <div class="nav-group">Receivables</div>
+      <div class="static">Customers · Invoices · Receipts</div>
+      <div class="nav-group">Payables</div>
+      <div class="static">Vendors · Bills · Payment runs</div>
+    </nav>
+
+    <div class="main">
+      <div class="context">
+        <span class="chip"><span class="k">Company</span>Northwind Components, Inc.</span>
+        <span class="chip"><span class="k">Branch</span><span class="mono" id="ctx-branch">main</span></span>
+        <span class="chip"><span class="k">As of</span><span id="ctx-asof">01/31/2026</span></span>
+        <span class="chip"><span class="k">As known on</span><span id="ctx-known">Now</span></span>
+        <span class="search" role="search">Search accounts, documents, parties<kbd>Ctrl K</kbd></span>
+      </div>
+      <div class="asof" id="asof-banner" hidden></div>
+      <div id="screen"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- data (Northwind Components, Inc.; FIN-DOC-21) ----------
+  const ACCTS = {
+    "1010": "Cash - Operating (Lakeside National Bank)", "1050": "Cash - Savings (Lakeside National Bank)",
+    "1200": "Accounts Receivable", "1210": "Allowance for Doubtful Accounts", "1300": "Prepaid Expenses",
+    "1500": "Machinery and Equipment", "1510": "Vehicles", "1520": "Computer Equipment", "1590": "Accumulated Depreciation",
+    "2000": "Accounts Payable", "2100": "Accrued Liabilities", "2150": "Payroll Liabilities", "2200": "Sales Tax Payable",
+    "2300": "Line of Credit", "2400": "Income Tax Payable", "3000": "Common Stock", "3100": "Additional Paid-in Capital",
+    "3200": "Retained Earnings", "5000": "Cost of Goods Sold - Purchases", "6100": "Salaries and Wages", "6150": "Payroll Taxes",
+    "6400": "Professional Fees"
+  };
+  const REGISTER = [
+    ["2026-01-05", "RCPT-0001", "Receipt", "Acme Robotics, Inc.", "Receipt for INV-1001", 32475, 0, "recon"],
+    ["2026-01-08", "PAY-RUN-01", "Payment run", "Precision Parts Co.; City Power & Light", "ACH payment run 01: P-7781 28,300.00; CPL-1225 4,000.00", 0, 32300, "recon"],
+    ["2026-01-15", "JE-0001", "Journal", "", "Payout of 2025 bonus accrued at year end", 0, 15000, "recon"],
+    ["2026-01-16", "RCPT-0002", "Receipt", "Cascade Machining LLC", "Receipt for INV-1002 (past due)", 24025, 0, "recon"],
+    ["2026-01-20", "STX-PAY-2512", "Tax payment", "Texas Comptroller", "Texas sales tax return December 2025", 0, 3300, "recon"],
+    ["2026-01-22", "PAY-RUN-02", "Payment run", "Delta Consulting LLC; Metro Properties LLC; Jordan Rivera", "ACH payment run 02: DC-2025-12; MP-2026-01; JR-014", 0, 19000, "recon"],
+    ["2026-01-25", "RCPT-0003", "Receipt", "Lone Star Distributors, Inc.", "Partial receipt for INV-1003", 20000, 0, "recon"],
+    ["2026-01-30", "PAYROLL-2601", "Journal", "Payroll provider", "Payroll summary from external provider (imported)", 0, 45000, "posted"],
+    ["2026-01-31", "BANK-INT-2601", "Bank", "Lakeside National Bank", "Line of credit interest 50,000.00 x 7.20% / 12", 0, 300, "recon"],
+    ["2026-01-31", "BANK-FEE-2601", "Bank", "Lakeside National Bank", "Account service fee", 0, 45, "recon"]
+  ];
+  // balance sheet: [label, Jan 31 2026, Dec 31 2025, kind, accounts for drill-down [code, Jan balance]]
+  const BS = [
+    ["Assets", null, null, "group"],
+    ["Cash and cash equivalents", 311680, 350000, "line", [["1010", 211555], ["1050", 100125]]],
+    ["Accounts receivable, net of allowance of 4,000.00", 154735, 82500, "line", [["1200", 158735], ["1210", -4000]]],
+    ["Prepaid expenses", 11000, 12000, "line", [["1300", 11000]]],
+    ["Total current assets", 477415, 444500, "sub"],
+    ["Property and equipment, at cost", 202000, 190000, "line", [["1500", 120000], ["1510", 70000], ["1520", 12000]]],
+    ["Less: accumulated depreciation", -62000, -58000, "line", [["1590", -62000]]],
+    ["Property and equipment, net", 140000, 132000, "sub"],
+    ["Total assets", 617415, 576500, "total"],
+    ["Liabilities and stockholders' equity", null, null, "group"],
+    ["Accounts payable", 46300, 41300, "line", [["2000", 46300]]],
+    ["Accrued liabilities", 25000, 15000, "line", [["2100", 25000]]],
+    ["Payroll liabilities", 19590, 0, "line", [["2150", 19590]]],
+    ["Sales tax payable", 3135, 3300, "line", [["2200", 3135]]],
+    ["Income tax payable", 9362.9, 8000, "line", [["2400", 9362.9]]],
+    ["Line of credit", 50000, 50000, "line", [["2300", 50000]]],
+    ["Total liabilities", 153387.9, 117600, "sub"],
+    ["Common stock", 100000, 100000, "line", [["3000", 100000]]],
+    ["Additional paid-in capital", 200000, 200000, "line", [["3100", 200000]]],
+    ["Retained earnings", 164027.1, 158900, "line", [["3200", 158900], ["NI", 5127.1]]],
+    ["Total stockholders' equity", 464027.1, 458900, "sub"],
+    ["Total liabilities and stockholders' equity", 617415, 576500, "total"]
+  ];
+
+  // ---------- formatting (DSN-WSP-120) ----------
+  const state = { screen: "entry", neg: "paren", picked: 1, unbalanced: false };
+  const nf = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const money = (v, blankZero) => {
+    if (v === null || v === undefined) return "";
+    if (blankZero && v === 0) return "";
+    const s = nf.format(Math.abs(v));
+    if (v < 0) return state.neg === "paren" ? "(" + s + ")" : "-" + s;
+    return s;
+  };
+  const usDate = (iso) => { const [y, m, d] = iso.split("-"); return m + "/" + d + "/" + y; };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const acct = (code) => '<span class="acct"><span class="mono">' + code + "</span><span>" + esc(ACCTS[code] || "") + "</span></span>";
+
+  // ---------- notes for the owner, per screen ----------
+  const NOTES = {
+    entry: ["Keyboard-first journal entry (DSN-WSP-116, -214)", ["Edit any amount: the difference updates at once, and Submit is disabled with the reason while debits and credits differ.",
+      "Accounts are looked up by code or name as you type (line 5 shows \"61\"); Enter adds a line, and every button shows its shortcut.",
+      "States are text badges; the approval banner names the rule and its sheet version, with the explanation one action away."]],
+    register: ["Account register with running balance (DSN-WSP-117, -213)", ["Opening, running and closing balances agree with FIN-EXP-10 (211,555.00); amount columns use tabular figures.",
+      "Filters stay visible as chips above the table; reconciliation states are text.",
+      "The product virtualises the table beyond 100,000 lines and exports XLSX and CSV."]],
+    report: ["Balance sheet with drill-down (DSN-WSP-118, -212)", ["Select a line to list its accounts in the drawer, then open the register; totals agree with FIN-EXP-05.",
+      "Comparative columns; choosing an earlier as-known-on date raises the attention banner under the context bar.",
+      "The footer states report version, run time, as-of and as-known-on dates."]],
+    close: ["Period close cockpit (DSN-WSP-119, -214)", ["Eight of nine checks pass; JE-0002 (25,000.00) waits for approval and blocks the close, and the disabled action says why.",
+      "Subledger-to-control agreement uses FIN-EXP-08 and FIN-EXP-09 (158,735.00 and 46,300.00).",
+      "Pass and fail are shown by icon and text, not by colour alone."]],
+    review: ["Change review of a back-dated correction (DSN-WSP-110, FIN-EXP-16)", ["JE-0005, recorded 02/20 and effective 02/03: the trial balance as known on 02/05 beside the one as known on 02/28; only 5000 and 6400 change.",
+      "The rule requiring approval comes from a governance sheet; the approver is the signed-in principal, and the comment and timeline go to the evidence.",
+      "Bitemporal differences are put in front of the approver."]]
+  };
+
+  // ---------- screens ----------
+  const lines = [
+    { code: "6100", memo: "Gross wages January", dr: 60000, cr: 0 },
+    { code: "6150", memo: "Employer payroll taxes", dr: 4590, cr: 0 },
+    { code: "1010", memo: "Net pay", dr: 0, cr: 45000 },
+    { code: "2150", memo: "Withholdings and employer taxes", dr: 0, cr: 19590 }
+  ];
+  function entryScreen() {
+    const dr = lines.reduce((a, l) => a + l.dr, 0), cr = lines.reduce((a, l) => a + l.cr, 0);
+    const diff = Math.round((dr - cr) * 100) / 100, ok = diff === 0;
+    const rows = lines.map((l, i) => '<tr><td class="num" style="color:var(--faint)">' + (i + 1) + "</td><td>" + acct(l.code) + '</td><td class="memo">' + esc(l.memo) +
+      '</td><td class="num"><input class="amt" id="dr-' + i + '" data-i="' + i + '" data-side="dr" inputmode="decimal" aria-label="Debit line ' + (i + 1) + '" value="' + (l.dr ? nf.format(l.dr) : "") +
+      '"></td><td class="num"><input class="amt" id="cr-' + i + '" data-i="' + i + '" data-side="cr" inputmode="decimal" aria-label="Credit line ' + (i + 1) + '" value="' + (l.cr ? nf.format(l.cr) : "") +
+      '"></td><td style="color:var(--muted)">Operations</td></tr>').join("");
+    return '<div class="head"><div><div class="crumbs">General ledger › Journal entries › New</div><h2><span class="mono" style="font-size:15px">PAYROLL-2601</span> Payroll summary January 2026 <span class="pill draft">Draft</span></h2></div>' +
+      '<div class="actions"><button class="btn" type="button">Apply template<kbd>Ctrl T</kbd></button><button class="btn" type="button">Copy entry</button><button class="btn" type="button">Save draft<kbd>Ctrl S</kbd></button>' +
+      '<button class="btn primary" type="button" id="submit"' + (ok ? "" : " disabled") + ">Submit for approval<kbd>Ctrl ↵</kbd></button></div></div>" +
+      '<div class="banner warn"><span aria-hidden="true">!</span><div><b>Approval required.</b> <span class="why">Journal entries over 10,000.00 need a Controller\'s approval before posting.</span> <button class="linkish" type="button">Why?</button> <span style="color:var(--muted)">Rule <span class="mono">finance.approvals · journal.over_limit</span>, sheet version 3</span></div></div>' +
+      '<div class="fields"><div class="field"><span class="lbl">Posting date</span><span class="val">01/30/2026</span></div><div class="field"><span class="lbl">Journal</span><span class="val">General journal</span></div>' +
+      '<div class="field"><span class="lbl">Source</span><span class="val">Imported · payroll provider</span></div><div class="field"><span class="lbl">Period</span><span class="val">January 2026 · Open</span></div>' +
+      '<div class="field" style="grid-column:1/-1"><span class="lbl">Memo</span><span class="val">Payroll summary from external provider: gross 60,000.00; employer taxes 4,590.00; net pay 45,000.00</span></div></div>' +
+      '<div class="tbl-wrap"><table><thead><tr><th class="num">#</th><th>Account</th><th>Line memo</th><th class="num">Debit</th><th class="num">Credit</th><th>Department</th></tr></thead><tbody>' + rows +
+      '<tr class="focusrow"><td class="num" style="color:var(--faint)">5</td><td><div class="lookup"><span class="typing mono">61</span><div class="popover" role="listbox" aria-label="Account lookup"><div class="sel"><span class="mono">6100</span><span>Salaries and Wages</span><small>Expense</small></div><div><span class="mono">6150</span><span>Payroll Taxes</span><small>Expense</small></div></div></div></td><td></td><td></td><td></td><td></td></tr>' +
+      '<tr><td colspan="6" style="height:44px"></td></tr></tbody></table></div>' +
+      '<div class="balance"><span><span class="k">Total debits</span><b class="num">' + money(dr) + '</b></span><span><span class="k">Total credits</span><b class="num">' + money(cr) + "</b></span>" +
+      '<span><span class="k">Difference</span><b class="num ' + (ok ? "" : "neg-val") + '">' + money(diff) + "</b></span>" +
+      (ok ? '<span class="state ok">✓ Balanced</span>' : '<span class="state bad">✕ Out of balance. Submission is blocked until debits equal credits.</span>') + "</div>" +
+      '<div class="keys"><span><kbd>Tab</kbd> next field</span><span><kbd>↵</kbd> add line</span><span><kbd>Ctrl D</kbd> copy line above</span><span><kbd>Ctrl R</kbd> reverse entry</span><span><kbd>Esc</kbd> close lookup</span></div>';
+  }
+
+  function registerScreen() {
+    let bal = 250000, tdr = 0, tcr = 0;
+    const body = REGISTER.map((r) => {
+      bal += r[5] - r[6]; tdr += r[5]; tcr += r[6];
+      const pill = r[7] === "recon" ? '<span class="pill recon">Reconciled</span>' : '<span class="pill posted">Posted</span>';
+      return "<tr><td>" + usDate(r[0]) + '</td><td class="mono">' + r[1] + "</td><td>" + r[2] + "</td><td>" + esc(r[3]) + '</td><td class="memo" title="' + esc(r[4]) + '">' + esc(r[4]) +
+        '</td><td class="num">' + money(r[5], true) + '</td><td class="num">' + money(r[6], true) + '</td><td class="num"><b>' + money(bal) + "</b></td><td>" + pill + "</td></tr>";
+    }).join("");
+    return '<div class="head"><div><div class="crumbs">General ledger › Registers</div><h2>' + acct("1010") + "</h2></div>" +
+      '<div class="actions"><button class="btn" type="button">Columns</button><button class="btn" type="button">Export XLSX</button><button class="btn" type="button">Export CSV</button></div></div>' +
+      '<div class="toolbar"><span class="chip"><span class="k">Period</span>January 2026</span><span class="chip"><span class="k">Status</span>All</span><span class="chip"><span class="k">Source</span>All</span><button class="btn" type="button">+ Filter</button>' +
+      '<span style="margin-left:auto;color:var(--muted)">10 lines</span></div>' +
+      '<div class="kpis"><div class="kpi"><span class="k">Opening balance 01/01</span><span class="v">' + money(250000) + '</span></div><div class="kpi"><span class="k">Debits</span><span class="v">' + money(tdr) +
+      '</span></div><div class="kpi"><span class="k">Credits</span><span class="v">' + money(tcr) + '</span></div><div class="kpi"><span class="k">Closing balance 01/31</span><span class="v">' + money(bal) + "</span></div></div>" +
+      '<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Document</th><th>Type</th><th>Party</th><th>Memo</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th><th>Status</th></tr></thead><tbody>' +
+      '<tr class="open"><td>01/01/2026</td><td></td><td colspan="3">Opening balance</td><td></td><td></td><td class="num">' + money(250000) + "</td><td></td></tr>" + body +
+      '<tr class="total"><td colspan="5">Closing balance 01/31/2026</td><td class="num">' + money(tdr) + '</td><td class="num">' + money(tcr) + '</td><td class="num">' + money(bal) + "</td><td></td></tr></tbody></table></div>";
+  }
+
+  function reportScreen() {
+    const rows = BS.map((r, i) => {
+      if (r[3] === "group") return '<tr class="sub"><td colspan="4">' + esc(r[0]) + "</td></tr>";
+      const cls = r[3] === "total" ? "total" : r[3] === "sub" ? "sub" : "";
+      const chg = r[1] - r[2];
+      const drill = r[3] === "line";
+      return '<tr class="' + cls + (state.picked === i ? " picked" : "") + '"><td class="' + (drill ? "drill l1" : "") + '"' + (drill ? ' data-pick="' + i + '" tabindex="0" role="button"' : "") + ">" + esc(r[0]) +
+        '</td><td class="num">' + money(r[1]) + '</td><td class="num">' + money(r[2]) + '</td><td class="num">' + money(chg) + "</td></tr>";
+    }).join("");
+    const p = BS[state.picked];
+    const drawer = p && p[4] ? '<div class="drawer"><h3>' + esc(p[0]) + '</h3><div class="body"><div class="tbl-wrap"><table><thead><tr><th>Account</th><th class="num">01/31/2026</th></tr></thead><tbody>' +
+      p[4].map((a) => "<tr><td>" + (a[0] === "NI" ? "Net income, January 2026" : acct(a[0])) + '</td><td class="num">' + money(a[1]) + "</td></tr>").join("") +
+      '<tr class="total"><td>Statement line</td><td class="num">' + money(p[1]) + "</td></tr></tbody></table></div>" +
+      (p[4].some((a) => a[0] === "1010") ? '<button class="btn" type="button" id="to-register">Open register 1010 →</button>' : '<span style="color:var(--muted);font-size:12px">Select an account to list its entries.</span>') +
+      '<span style="color:var(--muted);font-size:12px">The accounts sum exactly to the line. Drill-down continues to entries and source documents.</span></div></div>' : "";
+    const known = document.getElementById("ctx-known").textContent;
+    return '<div class="head"><div><div class="crumbs">Reporting › Financial statements</div><h2>Balance sheet <span class="pill posted">Final</span></h2></div>' +
+      '<div class="actions"><span class="seg" role="group" aria-label="As known on"><button type="button" id="k-now" aria-pressed="' + (known === "Now") + '">Known now</button><button type="button" id="k-jan" aria-pressed="' + (known !== "Now") + '">Known on 01/31</button></span><button class="btn" type="button">Export PDF</button><button class="btn" type="button">Export XLSX</button></div></div>' +
+      '<div class="split"><div class="tbl-wrap"><table><thead><tr><th>Northwind Components, Inc.</th><th class="num">01/31/2026</th><th class="num">12/31/2025</th><th class="num">Change</th></tr></thead><tbody>' + rows +
+      '</tbody></table><div class="prov"><span>Report <span class="mono">finance.balance_sheet</span> v1.0</span><span>Run 02/01/2026 9:14 AM ET</span><span>As of 01/31/2026</span><span>As known on ' + (known === "Now" ? "02/01/2026" : "01/31/2026") + "</span><span>USD</span></div></div>" + drawer + "</div>";
+  }
+
+  function closeScreen() {
+    const C = [
+      [true, "Unposted entries", "No drafts or imported entries left unposted in January.", "0"],
+      [false, "Pending approvals", 'JE-0002 · Accrue annual audit fee · 25,000.00 · waiting for Controller since 01/31.', "1 open", "Review JE-0002"],
+      [true, "Bank reconciliation 1010", "Statement 256,555.00 less outstanding PAYROLL-2601 45,000.00 = books 211,555.00. Difference 0.00.", "Reconciled"],
+      [true, "Bank reconciliation 1050", "Savings statement agrees with books at 100,125.00.", "Reconciled"],
+      [true, "Depreciation run", "DEP-2601 posted 4,000.00 for FA-001, FA-002, FA-003.", "Posted"],
+      [true, "Foreign currency revaluation", "FXR-2601 posted 350.00 gain on INV-1005; reverses on 02/01/2026.", "Posted"],
+      [true, "Receivables agree to control account", "Aging 158,735.00 = account 1200 158,735.00.", "Agrees"],
+      [true, "Payables agree to control account", "Aging 46,300.00 = account 2000 46,300.00.", "Agrees"],
+      [true, "Sales tax liability", "Texas sales tax payable 3,135.00 matches the January sales tax report.", "Agrees"]
+    ];
+    const items = C.map((c) => '<div class="check"><span class="ico ' + (c[0] ? "ok" : "no") + '" aria-hidden="true">' + (c[0] ? "✓" : "!") + '</span><div><div class="t">' + c[1] +
+      '</div></div><div class="r"><span class="pill ' + (c[0] ? "posted" : "blocked") + '">' + (c[0] ? "Done" : "Blocking") + '</span><span style="font-size:12px;color:var(--muted)">' + c[3] + "</span></div>" +
+      '<div class="d">' + esc(c[2]) + (c[4] ? ' <button class="linkish" type="button" data-go="review">' + c[4] + " →</button>" : "") + "</div></div>").join("");
+    return '<div class="head"><div><div class="crumbs">Period › January 2026</div><h2>Close January 2026 <span class="pill pending">Closing</span></h2></div>' +
+      '<div class="actions"><button class="btn" type="button">Reopen rules</button><button class="btn primary" type="button" disabled title="1 check is blocking">Close period</button></div></div>' +
+      '<div class="banner warn"><span aria-hidden="true">!</span><div><b>1 check is blocking the close.</b> <span class="why">JE-0002 must be approved or rejected before January can be closed. Closing needs the Controller\'s approval.</span></div></div>' +
+      '<div class="kpis"><div class="kpi"><span class="k">Checks passed</span><span class="v">8 of 9</span></div><div class="kpi"><span class="k">Net income, January</span><span class="v">' + money(5127.1) +
+      '</span></div><div class="kpi"><span class="k">Trial balance</span><span class="v">' + money(826012.9) + '</span></div><div class="kpi"><span class="k">Debits − credits</span><span class="v">' + money(0) + "</span></div></div>" +
+      '<div class="panel">' + items + "</div>";
+  }
+
+  function reviewScreen() {
+    const tb = (known) => '<div class="tbl-wrap"><table><thead><tr><th>Account</th><th class="num">Balance</th></tr></thead><tbody>' +
+      [["5000", known ? 37000 : 22000, known], ["6400", known ? 34000 : 49000, known]].map((r) => "<tr><td>" + acct(r[0]) + '</td><td class="num">' +
+        (known ? '<span class="diffcell"><span class="was">' + money(r[0] === "5000" ? 22000 : 49000) + '</span><span class="now">' + money(r[1]) + "</span></span>" : money(r[1])) + "</td></tr>").join("") +
+      '<tr><td style="color:var(--muted)">All other accounts</td><td class="num" style="color:var(--muted)">unchanged</td></tr></tbody></table></div>';
+    return '<div class="head"><div><div class="crumbs">Review › Change sets</div><h2><span class="mono" style="font-size:15px">JE-0005</span> Reclassify P-8010 to cost of goods sold <span class="pill pending">Waiting for approval</span></h2></div>' +
+      '<div class="actions"><button class="btn" type="button">Reject</button><button class="btn primary" type="button">Approve<kbd>Ctrl ↵</kbd></button></div></div>' +
+      '<div class="banner info"><span aria-hidden="true">i</span><div><b>Back-dated entry.</b> <span class="why">Effective 02/03/2026, recorded 02/20/2026. Reports run as known on 02/05/2026 keep showing the earlier figures; reports known on 02/28/2026 include this correction.</span></div></div>' +
+      '<div class="tbl-wrap"><table><thead><tr><th>Account</th><th>Memo</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead><tbody>' +
+      "<tr><td>" + acct("5000") + '</td><td class="memo">Components purchased (BILL-P-8010)</td><td class="num">' + money(15000) + '</td><td></td></tr><tr><td>' + acct("6400") +
+      '</td><td class="memo">Coded in error to professional fees</td><td></td><td class="num">' + money(15000) + "</td></tr></tbody></table></div>" +
+      '<div class="side-by-side"><div class="panel"><h3><span>Trial balance as known on 02/05/2026</span><span class="pill posted">Before</span></h3><div class="body">' + tb(false) +
+      '</div></div><div class="panel"><h3><span>Trial balance as known on 02/28/2026</span><span class="pill pending">With JE-0005</span></h3><div class="body">' + tb(true) +
+      '<span style="font-size:12px;color:var(--muted)">Difference: 5000 +15,000.00 · 6400 ' + money(-15000) + ". February is open, so no closed period changes.</span></div></div></div>" +
+      '<div class="side-by-side"><div class="panel"><h3>Why approval is needed</h3><div class="body"><span>Back-dated journal entries over 10,000.00 need a Controller\'s approval.</span><span style="color:var(--muted);font-size:12px">Rule <span class="mono">finance.approvals · journal.backdated</span> · sheet version 3 · decided on 02/20/2026</span><label for="cmt" style="font-size:11px;color:var(--muted)">Comment for the record</label><textarea id="cmt">Agrees with vendor invoice P-8010 (components).</textarea></div></div>' +
+      '<div class="panel"><h3>Timeline</h3><div class="body timeline"><div><span>02/03/2026</span><span>BILL-P-8010 posted to 6400 Professional Fees</span></div><div><span>02/20/2026 10:02</span><span>JE-0005 prepared by AP clerk, effective 02/03/2026</span></div><div><span>02/20/2026 10:02</span><span>Rule <span class="mono">journal.backdated</span> requires Controller approval</span></div><div><span>Now</span><span>Waiting for your decision</span></div></div></div></div>';
+  }
+
+  const SCREENS = { entry: entryScreen, register: registerScreen, report: reportScreen, close: closeScreen, review: reviewScreen };
+
+  function render() {
+    document.querySelectorAll(".nav button[data-screen]").forEach((b) => b.setAttribute("aria-current", b.dataset.screen === state.screen ? "page" : "false"));
+    const n = NOTES[state.screen];
+    document.getElementById("note").innerHTML = "<b>" + n[0] + "</b><ul>" + n[1].map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul>";
+    const known = document.getElementById("ctx-known").textContent;
+    const banner = document.getElementById("asof-banner");
+    banner.hidden = !(state.screen === "report" && known !== "Now");
+    banner.innerHTML = "<span>You are viewing the books as known on 01/31/2026.</span><span style=\"font-weight:400\">Entries recorded later are not shown. Figures may differ from the current view.</span><button class=\"linkish\" type=\"button\" id=\"back-now\">Return to now</button>";
+    const host = document.getElementById("screen");
+    host.innerHTML = '<div class="screen">' + SCREENS[state.screen]() + "</div>";
+  }
+
+  function setKnown(v) { document.getElementById("ctx-known").textContent = v; render(); }
+
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button, td[data-pick]");
+    if (!t) return;
+    if (t.dataset.screen) { state.screen = t.dataset.screen; render(); return; }
+    if (t.dataset.go) { state.screen = t.dataset.go; render(); return; }
+    if (t.dataset.pick) { state.picked = +t.dataset.pick; render(); return; }
+    if (t.id === "to-register") { state.screen = "register"; render(); return; }
+    if (t.id === "k-now" || t.id === "back-now") { setKnown("Now"); return; }
+    if (t.id === "k-jan") { setKnown("01/31/2026"); return; }
+    if (t.dataset.themeSet) {
+      const v = t.dataset.themeSet;
+      if (v === "system") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", v);
+      document.querySelectorAll("[data-theme-set]").forEach((b) => b.setAttribute("aria-pressed", String(b === t)));
+      return;
+    }
+    if (t.dataset.densitySet) {
+      document.documentElement.setAttribute("data-density", t.dataset.densitySet);
+      document.querySelectorAll("[data-density-set]").forEach((b) => b.setAttribute("aria-pressed", String(b === t)));
+      return;
+    }
+    if (t.dataset.negSet) {
+      state.neg = t.dataset.negSet;
+      document.querySelectorAll("[data-neg-set]").forEach((b) => b.setAttribute("aria-pressed", String(b === t)));
+      render();
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    const t = e.target;
+    if (t.matches && t.matches("td[data-pick]") && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); state.picked = +t.dataset.pick; render(); }
+  });
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (!t.classList || !t.classList.contains("amt")) return;
+    const v = parseFloat(String(t.value).replace(/[^0-9.\-]/g, ""));
+    lines[+t.dataset.i][t.dataset.side] = isFinite(v) ? Math.round(v * 100) / 100 : 0;
+    const id = t.id;
+    render();
+    const again = document.getElementById(id);
+    if (again) again.focus();
+  });
+
+  render();
+})();
+</script>

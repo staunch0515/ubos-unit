@@ -10,8 +10,10 @@ depends_on: [UBS-SYS-WSP-02]
 
 | Setting | Level | Default | Design |
 |---|---|---|---|
-| branding (logo, colours, fonts) | tenant | UBOS theme | DSN-WSP-206 |
+| branding (logo, colours, fonts) | tenant | UBOS theme (design system 1.0, DSN-WSP-211) | DSN-WSP-206 |
 | default locale and time-zone display | tenant, user | en-US, business time zone | DSN-WSP-207 |
+| theme and table density | user | system theme, compact | DSN-WSP-211, DSN-WSP-213 |
+| negative amounts | user | parentheses | DSN-WSP-120, DSN-WSP-213 |
 | layer vocabulary list | platform | built-in | DSN-WSP-114 |
 | draft autosave interval | platform | 5 s | DSN-WSP-105 |
 | as-of banner colour | tenant | amber | DSN-WSP-108 |

@@ -37,6 +37,8 @@ W-1（从 PH-0 结转的存储基准，DEC-035）：业主租到主机时随时�
 | 19 | 安全与验证收口：隔离套件、日志与追踪的密钥扫描、安全事件覆盖、隐私与分类（NR-PRIV、CR-GDPR）、边缘基准（SUITE-NOD-BENCH）、追溯报告；安全报告 | EXIT-1-16、-17、-20 | 待做 |
 | 20 | Gate 1b 验收：场景、安全、运维报告，验收委员会加运维负责人，验收 DEC | 全部 | 待做 |
 
+PH-2 准备：业主于 2026-10-17 选定 Web 工作台的视觉风格（DEC-081，UBOS 设计系统 1.0：DSN-WSP-211…214，令牌 `docs/50-system/40-systems/06-wsp/design/tokens.json`，参考样张 `design/mockups.html`）。18d 完成后提交“冻结 `release/ph1`、PH-2 开工 DEC 与分步计划”的方案。
+
 ## 2. 需要业主做的事
 
 | 时间 | 事项 |
