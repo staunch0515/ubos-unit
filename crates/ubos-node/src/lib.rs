@@ -17,6 +17,7 @@
 
 pub mod config;
 pub mod db;
+pub mod diagnostics;
 pub mod genesis;
 pub mod identity;
 pub mod keys;
@@ -306,6 +307,11 @@ impl Node {
             })
         };
         run().unwrap_or_else(|e| json!({"ok": false, "detail": e}))
+    }
+
+    /// The database part of a diagnostic bundle (DSN-NOD-615): counts and sizes only.
+    pub fn diagnostics(&self) -> Value {
+        diagnostics::database(&self.db)
     }
 
     /// Whether the key hierarchy of a tenant opens (the root KEK unwraps its KEK).

@@ -529,6 +529,11 @@ pub trait VaeSource: Send + Sync {
     fn probe_keys(&self, _tenant: &str) -> Option<Value> {
         None
     }
+    /// The database part of a diagnostic bundle (DSN-NOD-615); `None` when the source has
+    /// no database.
+    fn diagnostics(&self) -> Option<Value> {
+        None
+    }
     /// The registry record of a tenant (DSN-NOD-401); `None` when the source keeps no
     /// registry.
     fn tenant_record(&self, _slug: &str) -> Result<Option<Value>, BpaError> {
@@ -663,6 +668,9 @@ impl VaeSource for NodeVaes {
     }
     fn probe_keys(&self, tenant: &str) -> Option<Value> {
         Some(self.0.probe_keys(tenant))
+    }
+    fn diagnostics(&self) -> Option<Value> {
+        Some(self.0.diagnostics())
     }
     fn set_tenant_settings(&self, slug: &str, patch: &Value) -> Result<Option<Value>, BpaError> {
         self.0.set_tenant_settings(slug, patch).map(Some)
@@ -1199,7 +1207,7 @@ impl Server {
             Ok(Some(l)) => l,
             Ok(None) => vec![(self.default_tenant.clone(), self.default_authority.clone())],
             Err(e) => {
-                eprintln!("ubos-server: work scan: {e}");
+                self.log_error("work scan", format!("work scan"), &e);
                 return;
             }
         };
@@ -1213,7 +1221,7 @@ impl Server {
                 continue;
             }
             if let Err(e) = self.vae(&t, &a) {
-                eprintln!("ubos-server: cannot open {t}/{a}: {e}");
+                self.log_error("open", format!("cannot open {t}/{a}"), &e);
             }
         }
     }
@@ -1264,7 +1272,7 @@ impl Server {
                             break;
                         }
                         Err(e) => {
-                            eprintln!("ubos-server: release: {e}");
+                            self.log_error("release", format!("release"), &e);
                             self.release_failed(&e);
                             break;
                         }
@@ -1319,7 +1327,7 @@ impl Server {
                     match self.run_one(key, h).await {
                         Ok(true) => any = true,
                         Ok(false) => {}
-                        Err(e) => eprintln!("ubos-server: job {key}: {e}"),
+                        Err(e) => self.log_error("job", format!("job {key}"), &e),
                     }
                 }
                 if !any {
@@ -1651,13 +1659,13 @@ impl Server {
                     continue;
                 }
                 if let Err(e) = h.call("host.tick", json!({})).await {
-                    eprintln!("ubos-server: tick {key}: {e}");
+                    self.log_error("tick", format!("tick {key}"), &e);
                 }
                 if let Err(e) = self.evaluate_schedules(&key, &h).await {
-                    eprintln!("ubos-server: schedules {key}: {e}");
+                    self.log_error("schedules", format!("schedules {key}"), &e);
                 }
                 if sweep_jobs && let Err(e) = self.sweep_jobs(&key, &h).await {
-                    eprintln!("ubos-server: job sweep {key}: {e}");
+                    self.log_error("job sweep", format!("job sweep {key}"), &e);
                 }
                 if sweep {
                     let (me, k) = (self.clone(), key.clone());
@@ -1768,7 +1776,7 @@ impl Server {
                         }
                     }
                     // a schedule whose rule does not parse has no slots until it is fixed
-                    Err(e) => eprintln!("ubos-server: schedule {k} {sid}: {e}"),
+                    Err(e) => me.log_error("schedule", format!("schedule {k} {sid}"), &e),
                 }
             }
             Ok((store, out))
@@ -3033,6 +3041,12 @@ async fn admin_api(
             Err(e) => problem_response(&e),
         };
     }
+    if (method.as_str(), p.as_slice()) == ("POST", &["diagnostics"][..]) {
+        return match s.diagnostics(&me.did).await {
+            Ok(v) => Json(v).into_response(),
+            Err(e) => problem_response(&e),
+        };
+    }
     if matches!(p.first(), Some(&"health" | &"telemetry")) {
         return match admin_ops(&s, &method, &p, &q).await {
             Ok(v) => Json(v).into_response(),
@@ -4172,13 +4186,7 @@ impl Server {
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             tick += 1;
-            let gauges = {
-                let modes = self.modes.lock().expect("modes").clone();
-                json!({"sessions": self.sessions.lock().expect("sessions").len(), "vaes_open": self.vaes.lock().expect("vaes").len(),
-                    "isolation_defects": crate::db::ISOLATION_DEFECTS.load(std::sync::atomic::Ordering::Relaxed),
-                    "spans_dropped": self.tracer.dropped.load(std::sync::atomic::Ordering::Relaxed),
-                    "read_only": modes.read_only.is_some() as i64, "effects_paused": modes.effects_paused.is_some() as i64})
-            };
+            let gauges = self.gauges();
             let t = self.tracer.clone();
             let with_metrics = tick.is_multiple_of(10);
             let _ = tokio::task::spawn_blocking(move || t.flush(&gauges, with_metrics)).await;
@@ -4382,5 +4390,84 @@ async fn admin_ops(
             "dropped": s.tracer.dropped.load(std::sync::atomic::Ordering::Relaxed),
             "export_errors": s.tracer.export_errors.load(std::sync::atomic::Ordering::Relaxed)})),
         _ => Err(BpaError::new("IAM.NOT_FOUND", "unknown admin route")),
+    }
+}
+
+// ---- diagnostic bundles (step 16d) ----
+
+impl Server {
+    /// An operational error: to stderr in full, to the telemetry logs as its operation and
+    /// code only (no message, which may quote a value: DSN-NOD-611).
+    fn log_error(&self, operation: &str, what: String, e: &BpaError) {
+        eprintln!("ubos-server: {what}: {e}");
+        self.tracer.log(
+            "ERROR",
+            json!({"name": "node.error", "operation": operation, "code": e.code}),
+        );
+    }
+
+    /// The node gauges of the metrics export and the diagnostic bundle.
+    fn gauges(&self) -> Value {
+        let modes = self.modes.lock().expect("modes").clone();
+        json!({"sessions": self.sessions.lock().expect("sessions").len(), "vaes_open": self.vaes.lock().expect("vaes").len(),
+            "isolation_defects": crate::db::ISOLATION_DEFECTS.load(std::sync::atomic::Ordering::Relaxed),
+            "spans_dropped": self.tracer.dropped.load(std::sync::atomic::Ordering::Relaxed),
+            "release_failures": self.release_failures.load(std::sync::atomic::Ordering::Relaxed),
+            "read_only": modes.read_only.is_some() as i64, "effects_paused": modes.effects_paused.is_some() as i64})
+    }
+
+    /// A diagnostic bundle of the running node (DSN-NOD-615, NR-OPER-005): operational
+    /// sources only, checked against the configured secrets ([`crate::diagnostics`]);
+    /// audited as `diagnostics.bundle`.
+    async fn diagnostics(self: &Shared, by: &str) -> Result<Value, BpaError> {
+        let started = std::time::Instant::now();
+        let cfg = self.config();
+        let selfchecks = self.run_selfchecks().await;
+        let me = self.clone();
+        let (history, readiness, database, log) = blocking(move || {
+            let history = me.config_versions(20).unwrap_or_default();
+            let (_, readiness) = me.readiness();
+            let database = me.source.diagnostics();
+            let log = me
+                .identity(&me.default_tenant)
+                .and_then(|id| id.security_log(None, None, Some(10_000)))
+                .map(|l| crate::diagnostics::log_summary(&l))
+                .unwrap_or_else(|e| json!({"error": e.to_string()}));
+            Ok((history, readiness, database, log))
+        })
+        .await?;
+        let export = self.tracer.export();
+        let mut m = Map::new();
+        m.insert("versions".into(), crate::diagnostics::versions());
+        m.insert("host".into(), crate::diagnostics::host());
+        m.insert(
+            "configuration".into(),
+            json!({"hash": cfg.hash(), "values": cfg.values(), "versions": history}),
+        );
+        m.insert(
+            "health".into(),
+            json!({"readiness": readiness, "selfchecks": selfchecks}),
+        );
+        m.insert("telemetry".into(), json!({"export": {"mode": export.mode, "endpoint": export.endpoint, "ratio": export.ratio},
+            "metrics": self.tracer.metrics(),
+            "dropped": self.tracer.dropped.load(std::sync::atomic::Ordering::Relaxed),
+            "export_errors": self.tracer.export_errors.load(std::sync::atomic::Ordering::Relaxed)}));
+        m.insert("spans".into(), json!(self.tracer.recent(None, 500)));
+        m.insert("logs".into(), json!(self.tracer.history(500)));
+        m.insert(
+            "runtime".into(),
+            json!({"node": self.node_id, "preset": format!("{:?}", self.preset),
+            "gauges": self.gauges(), "leaders": self.leaders.lock().expect("leaders").len()}),
+        );
+        m.insert("database".into(), database.unwrap_or(Value::Null));
+        m.insert("security_log".into(), log);
+        let bundle =
+            crate::diagnostics::finish(m, &crate::config::secret_values(&cfg), "online", started);
+        let mf = &bundle["manifest"];
+        self.audit(
+            "diagnostics.bundle",
+            json!({"author": by, "content_hash": mf["content_hash"], "duration_ms": mf["duration_ms"], "redactions": mf["redactions"]}),
+        );
+        Ok(bundle)
     }
 }

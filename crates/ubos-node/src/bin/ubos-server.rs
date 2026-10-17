@@ -7,6 +7,7 @@
 //! ubos-server check-config ubos.toml
 //! ubos-server config-schema
 //! ubos-server genesis-verify | genesis-sign [DIR]
+//! ubos-server diagnostics --config ubos.toml [--out FILE]
 //!
 //! ubos-server [--listen 127.0.0.1:8080] [--database URL | --memory [--genesis FILE]]
 //!             [--tenant SLUG] [--vae AUTHORITY] [--preset dev|server]
@@ -23,6 +24,10 @@
 //! a one-time administrator invitation link; it can run again and completes what is
 //! missing. `--genesis FILE` declares the classes of a JSON list in the memory VAE, or in
 //! the default VAE when it is created.
+//!
+//! `diagnostics` (DSN-NOD-615, step 16d) writes the offline part of a diagnostic bundle
+//! (versions, host, configuration, prerequisites, database counts) for a node that does
+//! not start; the running node serves the full bundle at `POST /api/v1/admin/diagnostics`.
 
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -340,6 +345,59 @@ fn main() {
                     report_invalid(&e);
                     std::process::exit(2)
                 }
+            }
+            return;
+        }
+        Some("diagnostics") => {
+            // the offline part of a diagnostic bundle, for a node that does not start
+            // (DSN-NOD-615); the running node serves the full bundle at
+            // POST /api/v1/admin/diagnostics
+            let started = std::time::Instant::now();
+            let (cfg, file) = load(&opt, &flag);
+            let mut m = serde_json::Map::new();
+            m.insert("versions".into(), ubos_node::diagnostics::versions());
+            m.insert("host".into(), ubos_node::diagnostics::host());
+            m.insert(
+                "configuration".into(),
+                json!({"file": file.as_ref().map(|f| f.display().to_string()),
+                "hash": cfg.hash(), "values": cfg.values()}),
+            );
+            if let Some(url) = cfg.text("database.url") {
+                match ubos_node::config::resolve(url) {
+                    Ok(url) => {
+                        m.insert(
+                            "prerequisites".into(),
+                            json!(ubos_node::Node::prerequisites(&url, ubos_node::EXTENSIONS)),
+                        );
+                        m.insert(
+                            "database".into(),
+                            match ubos_node::db::Db::owner(&url) {
+                                Ok(db) => ubos_node::diagnostics::database(&db),
+                                Err(e) => json!({"error": e.to_string()}),
+                            },
+                        );
+                    }
+                    Err(e) => {
+                        m.insert("database".into(), json!({"error": e.to_string()}));
+                    }
+                }
+            }
+            let bundle = ubos_node::diagnostics::finish(
+                m,
+                &ubos_node::config::secret_values(&cfg),
+                "offline",
+                started,
+            );
+            let text = serde_json::to_string_pretty(&bundle).unwrap_or_default() + "\n";
+            match opt("--out") {
+                Some(p) => {
+                    std::fs::write(&p, text).unwrap_or_else(|e| fail(format!("{p}: {e}")));
+                    eprintln!(
+                        "diagnostic bundle written to {p} ({} ms, {} redactions)",
+                        bundle["manifest"]["duration_ms"], bundle["manifest"]["redactions"]
+                    );
+                }
+                None => print!("{text}"),
             }
             return;
         }

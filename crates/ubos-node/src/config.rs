@@ -541,6 +541,38 @@ impl Config {
     }
 }
 
+/// The secret values the configuration refers to, resolved where they resolve: the
+/// diagnostic bundle is checked against them (DSN-NOD-615). A connection string yields its
+/// password too.
+pub fn secret_values(cfg: &Config) -> Vec<String> {
+    let mut out = Vec::new();
+    for k in SCHEMA
+        .iter()
+        .filter(|k| matches!(k.kind, Kind::Secret | Kind::Database))
+    {
+        let Some(v) = cfg.text(k.path) else { continue };
+        let Ok(v) = resolve(v) else { continue };
+        if k.kind == Kind::Database {
+            out.extend(password_of(&v));
+        }
+        out.push(v);
+    }
+    out.retain(|s| s.len() >= 6);
+    out
+}
+
+/// The password of a connection string (`password=…` or `scheme://user:password@host`).
+fn password_of(url: &str) -> Option<String> {
+    for part in url.split_whitespace() {
+        if let Some(p) = part.strip_prefix("password=") {
+            return Some(p.trim_matches('\'').to_string());
+        }
+    }
+    let rest = url.split_once("://")?.1;
+    let (auth, _) = rest.split_once('@')?;
+    auth.split_once(':').map(|(_, p)| p.to_string())
+}
+
 /// Resolve a secret reference: `env:NAME` from the environment, `file:/path` from the
 /// file (trimmed). `kms:` references need the KMS integration (PH-2).
 pub fn resolve(reference: &str) -> Result<String, BpaError> {

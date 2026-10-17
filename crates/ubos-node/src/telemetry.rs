@@ -159,6 +159,8 @@ pub struct Tracer {
     queue: Mutex<VecDeque<Span>>,
     ring: Mutex<VecDeque<Span>>,
     logs: Mutex<VecDeque<Value>>,
+    /// The recent log records, kept whatever the export (the diagnostic bundle).
+    history: Mutex<VecDeque<Value>>,
     metrics: Mutex<BTreeMap<String, (u64, u64, u64)>>,
     /// Spans dropped because the queue was full.
     pub dropped: AtomicU64,
@@ -181,6 +183,7 @@ impl Tracer {
             queue: Mutex::new(VecDeque::new()),
             ring: Mutex::new(VecDeque::new()),
             logs: Mutex::new(VecDeque::new()),
+            history: Mutex::new(VecDeque::new()),
             metrics: Mutex::new(BTreeMap::new()),
             dropped: AtomicU64::new(0),
             export_errors: AtomicU64::new(0),
@@ -284,6 +287,14 @@ impl Tracer {
 
     /// Record a log record (already redacted).
     pub fn log(&self, severity: &str, body: Value) {
+        let rec = json!({"severity": severity, "time_ns": now_ns(), "body": body});
+        {
+            let mut h = self.history.lock().expect("history");
+            if h.len() >= RING {
+                h.pop_front();
+            }
+            h.push_back(rec.clone());
+        }
         if self.export().mode == "none" {
             return;
         }
@@ -291,7 +302,19 @@ impl Tracer {
         if l.len() >= QUEUE {
             l.pop_front();
         }
-        l.push_back(json!({"severity": severity, "time_ns": now_ns(), "body": body}));
+        l.push_back(rec);
+    }
+
+    /// The recent log records, newest first.
+    pub fn history(&self, limit: usize) -> Vec<Value> {
+        self.history
+            .lock()
+            .expect("history")
+            .iter()
+            .rev()
+            .take(limit)
+            .cloned()
+            .collect()
     }
 
     /// The recent spans (the operator API), of one trace or all.
