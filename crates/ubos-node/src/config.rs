@@ -191,6 +191,13 @@ pub const SCHEMA: &[Key] = &[
         "the point-in-time window in days",
     ),
     key(
+        "backup.restore_point_minutes",
+        Kind::Int(0, 1440),
+        Some("10"),
+        true,
+        "the interval of named restore points with recorded heads (0: none)",
+    ),
+    key(
         "server.tls_certificate",
         Kind::Path,
         None,

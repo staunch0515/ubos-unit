@@ -199,6 +199,11 @@ Diagnostic bundles of step 16d (`ubos-node/src/diagnostics.rs`): `POST
 /api/v1/admin/diagnostics` on the running node, `ubos-server diagnostics --config
 ubos.toml` offline; operational sources only, configured secrets redacted as a second line.
 
+Backups, restore and upgrade of step 16e (`ubos-node/src/backup.rs`): `ubos-server backup
+base | point NAME | list | prune | wal-push | wal-fetch`, `restore --into DIR --point NAME`,
+`verify --point NAME` and `upgrade --binary NEW`; files under `backup.dir` are sealed with
+the backup key.
+
 SUITE-NOD-EVENTS and SUITE-NOD-JOBS of step 15e run in `ubos-events-suite` (memory, or a
 fresh tenant on PostgreSQL; the crash and failover cases run nodes as child processes with
 `--serve` and kill them), and `ubos-events-suite --bench` measures MET-PERF-017, NR-PERF-012

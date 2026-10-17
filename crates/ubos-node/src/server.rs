@@ -534,6 +534,19 @@ pub trait VaeSource: Send + Sync {
     fn diagnostics(&self) -> Option<Value> {
         None
     }
+    /// Create a named restore point with the heads recorded (step 16e); `None` when the
+    /// source has no database.
+    fn restore_point(
+        &self,
+        _target: &crate::backup::Target,
+        _name: &str,
+    ) -> Option<Result<Value, BpaError>> {
+        None
+    }
+    /// The WAL archiver's state (`pg_stat_archiver`); `None` when the source has none.
+    fn archiver(&self) -> Option<Value> {
+        None
+    }
     /// The registry record of a tenant (DSN-NOD-401); `None` when the source keeps no
     /// registry.
     fn tenant_record(&self, _slug: &str) -> Result<Option<Value>, BpaError> {
@@ -671,6 +684,31 @@ impl VaeSource for NodeVaes {
     }
     fn diagnostics(&self) -> Option<Value> {
         Some(self.0.diagnostics())
+    }
+    fn restore_point(
+        &self,
+        target: &crate::backup::Target,
+        name: &str,
+    ) -> Option<Result<Value, BpaError>> {
+        Some(crate::backup::restore_point(
+            self.0.owner_db(),
+            target,
+            name,
+        ))
+    }
+    fn archiver(&self) -> Option<Value> {
+        Some(
+            self.0
+                .owner_db()
+                .query(
+                    "SELECT archived_count, failed_count, last_archived_wal, \
+                     (last_failed_time IS NOT NULL AND (last_archived_time IS NULL OR last_failed_time > last_archived_time)) AS failing, \
+                     current_setting('archive_mode') AS archive_mode FROM pg_stat_archiver",
+                    &[],
+                )
+                .map(|r| r.into_iter().next().unwrap_or(Value::Null))
+                .unwrap_or_else(|e| json!({"error": e.to_string()})),
+        )
     }
     fn set_tenant_settings(&self, slug: &str, patch: &Value) -> Result<Option<Value>, BpaError> {
         self.0.set_tenant_settings(slug, patch).map(Some)
@@ -4080,30 +4118,59 @@ impl Server {
                 )),
             }
         }
-        match cfg.text("backup.dir") {
-            Some(d) => match newest_mtime(d) {
-                Some(age) if age <= 26 * 3600 => out.push(check(
-                    "backup age",
-                    "ok",
-                    json!(format!("the newest backup is {} h old", age / 3600)),
-                )),
-                Some(age) => out.push(check(
+        let me = self.clone();
+        let archiver = blocking(move || Ok(me.source.archiver()))
+            .await
+            .ok()
+            .flatten();
+        match crate::backup::Target::of(&cfg) {
+            Ok(Some(t)) => {
+                let st = crate::backup::status(&t);
+                match st["base_age_secs"].as_u64() {
+                    Some(age) if age <= 26 * 3600 => out.push(check(
+                        "backup age",
+                        "ok",
+                        json!(format!("the newest base backup is {} h old", age / 3600)),
+                    )),
+                    Some(age) => out.push(check(
+                        "backup age",
+                        "warning",
+                        json!(format!("the newest base backup is {} h old", age / 3600)),
+                    )),
+                    None => out.push(check(
+                        "backup age",
+                        "warning",
+                        json!(format!("{}: no base backup yet", t.dir.display())),
+                    )),
+                }
+                match &archiver {
+                    Some(a) if a["archive_mode"] == "off" => out.push(check(
+                        "wal archive",
+                        "warning",
+                        json!("archive_mode is off: no point-in-time restore"),
+                    )),
+                    Some(a) if a["failing"] == json!(true) => out.push(check(
+                        "wal archive",
+                        "error",
+                        json!(format!("archiving fails ({} failures)", a["failed_count"])),
+                    )),
+                    Some(a) if a.get("error").is_none() => out.push(check(
+                        "wal archive",
+                        "ok",
+                        json!(format!("{} segments archived", a["archived_count"])),
+                    )),
+                    _ => {}
+                }
+            }
+            Err(e) => out.push(check("backup age", "error", json!(e.to_string()))),
+            Ok(None) if db.is_some() && cfg.text("server.preset") == Some("server") => {
+                out.push(check(
                     "backup age",
                     "warning",
-                    json!(format!("the newest backup is {} h old", age / 3600)),
-                )),
-                None => out.push(check(
-                    "backup age",
-                    "warning",
-                    json!(format!("{d}: no backup yet")),
-                )),
-            },
-            None if db.is_some() && cfg.text("server.preset") == Some("server") => out.push(check(
-                "backup age",
-                "warning",
-                json!("no backup directory configured (backup.dir)"),
-            )),
-            None => out.push(check(
+                    json!("no backup directory configured (backup.dir)"),
+                ))
+            }
+            Ok(None) => out.push(check(
                 "backup age",
                 "ok",
                 json!("no backups expected (development)"),
@@ -4183,6 +4250,7 @@ impl Server {
             .store(true, std::sync::atomic::Ordering::Relaxed);
         let mut tick: u64 = 0;
         let mut last_checks = std::time::Instant::now() - std::time::Duration::from_secs(3600);
+        let mut last_point = std::time::Instant::now();
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
             tick += 1;
@@ -4202,6 +4270,28 @@ impl Server {
                         self.set_mode("read_only", Some(why.to_string()));
                     } else if db["ok"] == json!(true) {
                         self.set_mode("read_only", None);
+                    }
+                }
+            }
+            let cfg = self.config();
+            let minutes = cfg.int("backup.restore_point_minutes");
+            if minutes > 0 && last_point.elapsed().as_secs() >= minutes as u64 * 60 {
+                last_point = std::time::Instant::now();
+                if let Ok(Some(t)) = crate::backup::Target::of(&cfg) {
+                    let me = self.clone();
+                    let name = format!(
+                        "ubos-{}",
+                        chrono::DateTime::<chrono::Utc>::from(std::time::SystemTime::now())
+                            .format("%Y%m%dT%H%M%SZ")
+                    );
+                    match blocking(move || Ok(me.source.restore_point(&t, &name))).await {
+                        Ok(Some(Err(e))) => {
+                            self.log_error("restore point", "restore point".to_string(), &e)
+                        }
+                        Ok(Some(Ok(p))) => self
+                            .tracer
+                            .log("INFO", json!({"name": "backup.point", "vaes": p["vaes"]})),
+                        _ => {}
                     }
                 }
             }
@@ -4227,30 +4317,6 @@ fn disk_free_mb(path: &str) -> Option<u64> {
         .parse::<u64>()
         .ok()
         .map(|k| k / 1024)
-}
-
-/// The age in seconds of the newest file under a directory (one level of subdirectories).
-fn newest_mtime(dir: &str) -> Option<u64> {
-    let mut newest: Option<std::time::SystemTime> = None;
-    let mut visit = |p: &std::path::Path| {
-        if let Ok(m) = std::fs::metadata(p)
-            && m.is_file()
-            && let Ok(t) = m.modified()
-        {
-            newest = Some(newest.map_or(t, |n| n.max(t)));
-        }
-    };
-    for e in std::fs::read_dir(dir).ok()?.flatten() {
-        let p = e.path();
-        if p.is_dir() {
-            for f in std::fs::read_dir(&p).into_iter().flatten().flatten() {
-                visit(&f.path());
-            }
-        } else {
-            visit(&p);
-        }
-    }
-    newest.and_then(|t| t.elapsed().ok()).map(|d| d.as_secs())
 }
 
 /// The `notAfter` of the first certificate of a PEM text (DER: Certificate → tbsCertificate
