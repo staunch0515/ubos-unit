@@ -41,14 +41,14 @@ DAT-UbtpEnvelope:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-5440…5469
 - **Satisfies:** FR-FLOW-022, FR-TXN-031, FR-FLOW-042
-- **Notes:** Raw `commit` bodies are allowed only for principals with `commit.raw` permission (import and Forge). Since 1.0-rc2 (DEC-068): `port` maps to one process of `execute` and `commit` to the adapter's `commit`, with the session's principal, principal kind, role and channel `api` as the process and context; `message` and `reason` go to the process (STD-LGS-011 `audit_level`); `process_id` is assigned by the implementation. The stored pending change of a `require` outcome and its approval come with PH-2 (FR-FLOW-042, DSN-DVM-740): in 1.0-rc2 `pending_change_id` is the process identifier and nothing is stored. `validate_only` on a `port` body is the simulation of PH-2 (`LOGIC.NOT_AVAILABLE`).
+- **Notes:** Raw `commit` bodies are allowed only for principals with `commit.raw` permission (import and Forge). Since 1.0-rc2 (DEC-068): `port` maps to one process of `execute` and `commit` to the adapter's `commit`, with the session's principal, principal kind, role and channel `api` as the process and context; `message` and `reason` go to the process (STD-LGS-011 `audit_level`); `process_id` is assigned by the implementation. The stored pending change of a `require` outcome and its approval come with PH-2 (FR-FLOW-042, DSN-DVM-740): in 1.0-rc2 `pending_change_id` is the process identifier and nothing is stored. `validate_only` on a `port` body is the simulation of PH-2 (`LOGIC.NOT_AVAILABLE`). Since 1.0-rc4 (DEC-079): the versioning requests of STD-PROTO-014 are further alternatives to `port` and `commit`.
 
 ### STD-PROTO-011 — `query`
 - **Clause:** The body is `{vae, read: uri | query: DAT-Query | view: {target, mode} | explain | history | timeline | diff}` with coordinates `{branch?, time?, commit?, asof?}`, exactly one request kind. The response carries the items, the cursor and `evaluated_at`.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-5470…5499
 - **Satisfies:** FR-QRY-011, FR-TIME-034, FR-UX-011
-- **Notes:** Since 1.0-rc2 (DEC-068): `read` resolves the URI as the operation `resolve`, the message's coordinates completing the selectors the URI lacks, and returns one item; `query` takes a `DAT-Query` or its text (STD-EXPR-010) and returns the matching objects as read items with `object_id` and `class`, paging with the query cursor; `explain` is `{target, kind: cascade | decision, property | port}` (STD-LGS-023, -031); `history` `{target, from?, to?}` and `timeline` `{target, from?, to?}` return the commits and the valid-time segments of the object (STD-TIME-014); `diff` `{from, to}` the `DAT-DiffEntry` items (STD-VER-030). `view` payloads come with the views of PH-1 step 13 (`LOGIC.NOT_AVAILABLE`).
+- **Notes:** Since 1.0-rc2 (DEC-068): `read` resolves the URI as the operation `resolve`, the message's coordinates completing the selectors the URI lacks, and returns one item; `query` takes a `DAT-Query` or its text (STD-EXPR-010) and returns the matching objects as read items with `object_id` and `class`, paging with the query cursor; `explain` is `{target, kind: cascade | decision, property | port}` (STD-LGS-023, -031); `history` `{target, from?, to?}` and `timeline` `{target, from?, to?}` return the commits and the valid-time segments of the object (STD-TIME-014); `diff` `{from, to}` the `DAT-DiffEntry` items (STD-VER-030). `view` payloads come with the views of PH-1 step 13 (`LOGIC.NOT_AVAILABLE`). Since 1.0-rc4 (DEC-079): the introspection requests of STD-PROTO-015 are further request kinds.
 
 ### STD-PROTO-012 — `subscribe`
 - **Clause:** The body is `{vae, branch?, target: uri | query: DAT-Query | events: {types?}, from_cursor?}`, exactly one of the three. The response is `{subscription_id, cursor}`. The server MUST send `emit` messages containing changes in commit order per object, each with a cursor. A client reconnecting with a cursor within the retention window MUST receive every missed change exactly once. Beyond the window, the server MUST send `error` `INT.CURSOR_EXPIRED`, and the client re-queries. `unsubscribe {subscription_id}` ends a subscription.
@@ -63,6 +63,42 @@ DAT-UbtpEnvelope:
 - **Conformance vectors:** VER-CONF-5530…5544
 - **Satisfies:** FR-INT-014, FR-AI-022
 - **Notes:** Since 1.0-rc2 (DEC-068): the window is the `limits.window` of the handshake; an `ack` releases every emit up to its cursor. The in-process binding handles each message to completion, so cancellation of a running process is verified with the Server (PH-1 step 14, SUITE-NOD-PROTO).
+
+### STD-PROTO-014 — Versioning messages
+- **Clause:** Since 1.0-rc4, a `mutate` body MAY carry, in place of `port` or `commit`, exactly one of the versioning requests below; the body's `branch` (default `main`) names the branch they act on, and `base`, `idempotency_key`, `message` and `reason` apply as in STD-PROTO-010. The response `result` MUST carry `{commits, versions, warnings, result}`, with `process_id` when the request runs a process (`merge`, `revert`, `bulk`); `commits` lists the identifiers of the commits the request made in order (empty when none), `versions` the version hashes of the objects they changed, and `result` the outcome of the operation named below.
+
+  | Request | Body | Operation and `result` | Permission |
+  |---|---|---|---|
+  | `create_branch` | `{name, from?, time?}` | creates branch `name` from branch `from` (default: the body's `branch`) at its head or at transaction time `time` (STD-VER-010, -013); `{branch, head}` | `branch.create` |
+  | `change_set` | `{action, id, source?, target?, title?, description?, resolutions?}` | the change set action `open`, `get`, `submit`, `approve`, `reject`, `merge` or `abandon` (STD-VER-020, -021); the approver of `approve` and `reject` is the session's principal; `{state, preview?, approvals?, merged_commit?, cseq?}` | `changeset.approve` for `approve` and `reject`, `branch.merge` for `merge` |
+  | `merge` | `{source, resolutions?}` | merges branch `source` into the body's `branch` (STD-VER-050…058); the merge result | `branch.merge` |
+  | `revert` | `{process_id? \| change_set? \| time? \| commit?, reversal_ids?, dry_run?}` | reverts the commits of a process, a merged change set or one commit of the body's `branch` (STD-VER-070, -071); `{reverted, dependents, commits?}` | `revert` |
+  | `bulk` | `{changes, max_changes?, mode?, staging?, resume?}` | the bulk process of STD-TXN-070 on the body's `branch`, its identifier the `process_id`; `resume` names the `process_id` of a failed bulk process to resume; `{state, children, merge?, error?}` | `commit.raw` |
+
+  A body with more than one of `port`, `commit` and the requests above, or with none, is `MODEL.INVALID_VALUE`; so is `validate_only` with a versioning request. A session restricted by its grants (STD-PROTO-002) that lacks the permission of the request MUST receive `IAM.DENIED` before anything is changed. The errors of the operation are returned as `error` frames.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5600…5649
+- **Satisfies:** FR-INT-011, FR-VER-021, FR-VER-031, FR-VER-051, FR-VER-071, FR-TXN-015
+- **Notes:** Since 1.0-rc4 (DEC-079): the requests map to the adapter operations of the same names (STD-CONF-005) with the session's principal, principal kind, role and channel `api` as the process; the emits of the commits they make follow the response (STD-PROTO-012). Change sets carry their `id` from the client because the change set is an object of the target branch (STD-VER-020). The pending change of a `require` decision and its approval remain PH-2 (STD-PROTO-010).
+
+### STD-PROTO-015 — Introspection queries
+- **Clause:** Since 1.0-rc4, a `query` body MAY carry, in place of the request kinds of STD-PROTO-011, exactly one of the introspection requests below, with the coordinates `{branch?, time?, commit?, asof?}` of STD-PROTO-011. The response MUST carry `items` and `evaluated_at` as in STD-PROTO-011, and the items MUST be those the named operation gives at the coordinates.
+
+  | Request | Body | Items |
+  |---|---|---|
+  | `class` | `{name}` | one item: the effective class `name` at the coordinates, with the extensions in force (STD-CLS-012, STD-CLS-030) |
+  | `dispatch` | `{class, port, after?}` | one item: the port resolution of STD-CLS-020 at the coordinates |
+  | `commit_info` | `{}` | one item: the commit the coordinates select, `{branch, cseq, commit_id, tx_time, parents, rule_binding, process_id?, change_set?, resolutions?, reverts?, root}`, `root` the state root of its commit record (STD-VER-001, STD-PROOF-003) |
+  | `merge_preview` | `{source}` | one item: the merge preview of the head of branch `source` into the head of the coordinates' branch (STD-VER-057); `time` and `commit` do not apply |
+  | `ledger` | `{class, ledger_key}` | the entries of the ledger key at the coordinates in sequence order, filtered by `asof` (STD-KIND-020, -022) |
+  | `process` | `{process_id, journal?, metering?}` | one item: the process record (STD-TXN-001), with its execution journal (STD-CTX-011) when `journal` is true and its metering record (STD-CTX-006) when `metering` is true |
+  | `replay` | `{process_id}` | one item: the outcome of re-executing the process from its journal, `{outcome: identical}` or `{outcome: diverged, divergence}` (STD-CTX-012) |
+
+  A body with more than one request kind, or with none, is `MODEL.INVALID_VALUE`. An unknown process or branch is `IAM.NOT_FOUND` and an unknown class `MODEL.REFERENCE_INVALID`, as for the operations.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5650…5699
+- **Satisfies:** FR-INT-011, FR-QRY-013, FR-MODEL-025, FR-VER-057, FR-LEDG-042, FR-LOGIC-063, FR-LOGIC-072, FR-LOGIC-073
+- **Notes:** Since 1.0-rc4 (DEC-079): the requests map to the adapter operations `class_at`, `dispatch` (over the class declarations and extensions in force), `commit_info` with the `root` of `commit_record`, `merge_preview`, `read_ledger`, `process_info`, `journal`, `metering` and `replay` (STD-CONF-005). `replay` re-executes without changing state; the test hooks of the adapter operation (`tamper`, `drop`) are not part of the protocol. A process record, journal and metering record are readable by the process's initiator and by principals with `process.read`; the in-process binding does not restrict them.
 
 ## 3. Bindings
 

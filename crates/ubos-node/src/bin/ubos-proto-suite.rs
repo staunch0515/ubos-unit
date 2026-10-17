@@ -730,6 +730,11 @@ struct Suite {
     identical: Vec<Value>,
 }
 
+/// The Protocol clauses of the release in development that the kernel does not implement
+/// yet: their vectors are skipped until PH-1 step 18b implements the versioning messages and
+/// introspection queries of BPA 1.0-rc4 (DEC-079).
+const PENDING: &[&str] = &["STD-PROTO-014", "STD-PROTO-015"];
+
 fn load_vectors(dir: &std::path::Path) -> Result<Vec<Value>, BpaError> {
     let superseded: Vec<String> = std::fs::read_to_string(dir.join("../superseded.txt"))
         .map(|t| t.split_whitespace().map(str::to_string).collect())
@@ -744,7 +749,13 @@ fn load_vectors(dir: &std::path::Path) -> Result<Vec<Value>, BpaError> {
     for p in paths {
         let v: Value =
             serde_json::from_str(&std::fs::read_to_string(&p).map_err(err)?).map_err(err)?;
+        let pending = v["clauses"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|c| c.as_str().is_some_and(|c| PENDING.contains(&c)));
         if v["profile"] == "Protocol"
+            && !pending
             && !superseded
                 .iter()
                 .any(|s| Some(s.as_str()) == v["id"].as_str())

@@ -1,5 +1,6 @@
 """The in-process UBTP binding of the reference implementation (BPA 1.0-rc2, STD-PROTO-001,
--002, -010, -011, -012, -013, -020; PH-1 step 10d, DEC-068).
+-002, -010, -011, -012, -013, -020; PH-1 step 10d, DEC-068), with the versioning messages and
+introspection queries of BPA 1.0-rc4 (STD-PROTO-014, -015; PH-1 step 18a, DEC-079).
 
 The adapter operation `ubtp {session, messages}` feeds a sequence of `DAT-UbtpEnvelope`
 messages to a session and returns the frames the server produced in order: `result`,
@@ -14,6 +15,12 @@ TYPES = ('handshake', 'mutate', 'query', 'subscribe', 'unsubscribe', 'emit', 'sy
          'ping', 'pong', 'cancel')
 REQUESTS = ('handshake', 'mutate', 'query', 'subscribe', 'unsubscribe', 'ack', 'ping', 'cancel', 'sync')
 LIMITS = {'frame_bytes': 16 * 1024 * 1024, 'window': 8, 'retention': 100}
+# STD-PROTO-014 (1.0-rc4): the versioning requests of `mutate` and their permissions
+VERSIONING = ('create_branch', 'change_set', 'merge', 'revert', 'bulk')
+PERMISSIONS = {'create_branch': 'branch.create', 'merge': 'branch.merge', 'revert': 'revert', 'bulk': 'commit.raw'}
+CHANGE_SET_PERMISSIONS = {'approve': 'changeset.approve', 'reject': 'changeset.approve', 'merge': 'branch.merge'}
+# STD-PROTO-015 (1.0-rc4): the introspection requests of `query`
+INTROSPECTION = ('class', 'dispatch', 'commit_info', 'merge_preview', 'ledger', 'process', 'replay')
 
 
 def _err(code, detail=None):
@@ -185,7 +192,11 @@ class Ubtp:
 
     def _mutate(self, s, b):
         branch = b.get('branch', 'main')
-        if ('port' in b) == ('commit' in b):
+        kinds = [k for k in ('port', 'commit') + VERSIONING if k in b]
+        if any(k in b for k in VERSIONING):
+            if len(kinds) != 1:
+                _err('MODEL.INVALID_VALUE', 'mutate carries exactly one of port, commit, ' + ', '.join(VERSIONING))
+        elif ('port' in b) == ('commit' in b):
             _err('MODEL.INVALID_VALUE', 'mutate carries port or commit')
         key = b.get('idempotency_key')
         payload = {k: v for k, v in b.items() if k != 'idempotency_key'}
@@ -203,7 +214,9 @@ class Ubtp:
         extra = {'message': b['message']} if b.get('message') else {}
         if b.get('reason'):
             extra['reason'] = b['reason']
-        if 'commit' in b:
+        if kinds[0] in VERSIONING:
+            body = self._versioning(s, b, kinds[0], branch, extra)
+        elif 'commit' in b:
             c = b['commit']
             if not isinstance(c, dict) or not isinstance(c.get('changes'), list):
                 _err('MODEL.INVALID_VALUE', 'commit is {changes}')
@@ -251,6 +264,61 @@ class Ubtp:
             s.idem[key] = (h, body)
         return body
 
+    # -- versioning requests (STD-PROTO-014, since 1.0-rc4) --
+
+    def _versioning(self, s, b, kind, branch, extra):
+        v = b[kind]
+        if not isinstance(v, dict):
+            _err('MODEL.INVALID_VALUE', '%s is a map' % kind)
+        if b.get('validate_only'):
+            _err('MODEL.INVALID_VALUE', 'validate_only applies to port and commit')
+        perm = CHANGE_SET_PERMISSIONS.get(v.get('action')) if kind == 'change_set' else PERMISSIONS[kind]
+        if s.grants is not None and perm is not None and perm not in s.grants:
+            _err('IAM.DENIED', '%s needs the %s permission' % (kind, perm))
+        before = set(self.commits)
+        pid = None
+        if kind == 'create_branch':
+            r = self.create_branch(v.get('name'), v.get('from', branch), v.get('time'))
+            r = {'branch': v['name'], 'head': r['head']}
+        elif kind == 'change_set':
+            i = {k: v[k] for k in ('action', 'id', 'source', 'target', 'title', 'description', 'resolutions') if k in v}
+            if i.get('action') == 'open':
+                i.setdefault('target', branch)
+            if i.get('action') in ('approve', 'reject'):
+                i['approver'] = s.principal
+            r = self.change_set(i)
+        elif kind == 'merge':
+            pid = self._process_id()
+            r = self.merge(v.get('source'), branch, v.get('resolutions'),
+                           self._ubtp_process(s, dict(extra, process_id=pid)))
+        elif kind == 'revert':
+            i = {k: v[k] for k in ('process_id', 'change_set', 'time', 'commit', 'reversal_ids', 'dry_run') if k in v}
+            i['branch'] = branch
+            if not v.get('dry_run'):
+                pid = self._process_id()
+                i['process'] = self._ubtp_process(s, dict(extra, process_id=pid))
+            r = self.revert(i)
+        else:
+            i = {k: v[k] for k in ('changes', 'max_changes', 'mode', 'staging') if k in v}
+            if v.get('resume') is not None:
+                pid = v['resume']
+                i['resume'] = True
+            else:
+                pid = self._process_id()
+            i.update(process_id=pid, branch=branch, process=self._ubtp_process(s, extra))
+            r = self.bulk(i)
+        commits, versions = [], {}
+        for cid in [c for c in self.commits if c not in before]:
+            c = self.commits[cid]
+            commits.append(c['commit_id'])
+            for oid in sorted(c.get('ops') or {}):
+                if oid in c['state']['objects']:
+                    versions[oid] = c['state']['objects'][oid]['head']
+        body = {'commits': commits, 'versions': versions, 'warnings': [], 'result': r}
+        if pid is not None:
+            body['process_id'] = pid
+        return body
+
     # -- query (STD-PROTO-011) --
 
     def _coords(self, b):
@@ -266,7 +334,12 @@ class Ubtp:
         return dict(r, object_id=oid, **{'class': o['class']})
 
     def _query(self, s, b):
-        kinds = [k for k in ('read', 'query', 'view', 'explain', 'history', 'timeline', 'diff') if k in b]
+        kinds = [k for k in ('read', 'query', 'view', 'explain', 'history', 'timeline', 'diff') + INTROSPECTION
+                 if k in b]
+        if any(k in b for k in INTROSPECTION):
+            if len(kinds) != 1:
+                _err('MODEL.INVALID_VALUE', 'query carries exactly one request kind')
+            return self._introspect(s, b, kinds[0])
         if len(kinds) != 1:
             _err('MODEL.INVALID_VALUE', 'query carries exactly one of read, query, view, explain, history, timeline, diff')
         k = kinds[0]
@@ -319,6 +392,41 @@ class Ubtp:
         d = b['diff']
         items = self.diff(d['from'], d['to'])
         return {'items': items, 'evaluated_at': {}}
+
+    # -- introspection queries (STD-PROTO-015, since 1.0-rc4) --
+
+    def _introspect(self, s, b, kind):
+        from .classes import dispatch
+        branch, sel = self._coords(b)
+        snap = {k: v for k, v in sel.items() if k != 'asof'}
+        v = b[kind]
+        if not isinstance(v, dict):
+            _err('MODEL.INVALID_VALUE', '%s is a map' % kind)
+        if kind in ('process', 'replay'):
+            pid = v.get('process_id')
+            if kind == 'replay':
+                return {'items': [self.replay(pid)], 'evaluated_at': {}}
+            item = self.process_info(pid)
+            if v.get('journal'):
+                item['journal'] = self.journal(pid)
+            if v.get('metering'):
+                item['metering'] = self.metering_record(pid)
+            return {'items': [item], 'evaluated_at': {}}
+        st, _, ev, _ = self._state(branch, snap)
+        if kind == 'class':
+            items = [self.class_at(branch, v.get('name'), snap)]
+        elif kind == 'dispatch':
+            items = [dispatch(list(self.decls.values()), v.get('class'), v.get('port'), v.get('after'),
+                              self._extensions(st))]
+        elif kind == 'commit_info':
+            item = self.commit_info(branch, snap)
+            item['root'] = self.commit_record(branch, snap)['root']
+            items = [item]
+        elif kind == 'merge_preview':
+            items = [self.merge_preview(v.get('source'), branch)]
+        else:
+            items = self.read_ledger(branch, v.get('class'), v.get('ledger_key'), sel.get('asof'), snap)['entries']
+        return {'items': items, 'evaluated_at': ev}
 
     def _object_of(self, branch, target, sel):
         if isinstance(target, str) and target.startswith('ubos://'):

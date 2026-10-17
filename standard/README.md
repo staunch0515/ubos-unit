@@ -18,8 +18,10 @@ hashes (DSN-BPA-001, DEC-030). BPA 0.1 is PH-0 step 3 (EXIT-0-01) and is frozen 
 (DEC-045) and frozen as tagged. BPA 1.0-rc2 (PH-1 step 10, EXIT-1-14, DEC-064) adds the
 Governance and Protocol profiles and is released as `bpa-v1.0.0-rc2` (DEC-069) and frozen as
 tagged. BPA 1.0-rc3 (PH-1 step 12, DEC-071) adds the lifecycle declaration and `read.actions`
-and is released as `bpa-v1.0.0-rc3` (DEC-072); `spec/` and `vectors/` hold it until a decision
-opens the next release. Its scope follows a rule stated in its `scope.json`: the scope of 1.0-rc1 plus the clauses of its six profiles that serve PH-1
+and is released as `bpa-v1.0.0-rc3` (DEC-072) and frozen as tagged. BPA 1.0-rc4 (PH-1 step 18,
+DEC-079) adds the versioning messages and introspection queries of UBTP (STD-PROTO-014, -015)
+and is released as `bpa-v1.0.0-rc4`; `spec/` and `vectors/` hold it until a decision opens the
+next release. Its scope follows a rule stated in its `scope.json`: the scope of 1.0-rc1 plus the clauses of its six profiles that serve PH-1
 gate 1b; the builder rejects a scope that differs from the rule. Vectors are only added; the
 released vectors keep their identifiers and content, and a released vector that asserts a limit
 the next release lifts is superseded (`vectors/superseded.txt`, STD-CONF-030).
@@ -31,7 +33,7 @@ and `release/<version>/` except `scope.json` is generated — never edit it by h
 
 ```sh
 python3 standard/tools/genvectors.py      # vectors from the cases, expected results from the oracle
-python3 standard/tools/build_release.py   # release in development (1.0-rc3): clauses, schemas, checks, coverage, manifest
+python3 standard/tools/build_release.py   # release in development (1.0-rc4): clauses, schemas, checks, coverage, manifest
 ```
 
 Both run from `bash docs/tools/regen_all.sh`. Python 3.9 or later, standard library only.
