@@ -1,8 +1,9 @@
 """Vector cases of BPA 1.0-rc2 for the UBTP protocol (PH-1 step 10d, DEC-068): the message
 envelope (STD-PROTO-001), the handshake (STD-PROTO-002), `mutate` (STD-PROTO-010), `query`
 (STD-PROTO-011), `subscribe` (STD-PROTO-012), flow control and cancellation (STD-PROTO-013)
-and the bindings (STD-PROTO-020), through the in-process binding `ubtp`. Not required of the
-PH-0 prototype."""
+and the bindings (STD-PROTO-020), through the in-process binding `ubtp`; since BPA 1.0-rc4
+(PH-1 step 18a, DEC-079) the versioning messages (STD-PROTO-014) and the introspection queries
+(STD-PROTO-015). Not required of the PH-0 prototype."""
 from .common import uid, create, base, NOW
 from .common import commit as _commit
 from .sheets import sheet
@@ -89,6 +90,8 @@ def cases(g):
     subscribe(S)
     flow(S)
     bindings(S)
+    versioning(S)
+    introspection(S)
 
 
 def envelope(S):
@@ -307,3 +310,166 @@ def bindings(S):
     S('STD-PROTO-020', 'sync frames come with PH-3', [U([hs(), env(1, 'sync')])])
     S('STD-PROTO-020', 'the frames of one call are the frames the message sequence produces, in order', [
         commit([c1]), U([hs(), env(1, 'ping'), query(2, read='ubos://acme/Customer/acme'), env(3, 'ping')])])
+
+
+# ---- BPA 1.0-rc4 (PH-1 step 18a, DEC-079) ----
+
+FX = 'feature/x'
+PID = 'u/responses/1/body/process_id'
+A1 = 'ubos://acme/Account/a-1'
+
+
+def vmut(i, kind, value, branch=BR, **extra):
+    body = {'vae': 'acme', 'branch': branch, kind: value}
+    body.update(extra)
+    return env(i, 'mutate', body)
+
+
+def ref(path):
+    return {'$ref': path}
+
+
+def mv(n, account, amount, valid_at='2026-03-15'):
+    return {'op': 'append', 'class': 'CashMove', 'entry_id': uid(n), 'ledger_key': {'account': account},
+            'valid_at': valid_at, 'body': {'account': account, 'amount': amount}}
+
+
+def versioning(S):
+    c1 = cr(1, 'acme', {'country': 'US', 'rating': 3})
+    c2 = cr(2, 'beta', {'country': 'CA', 'rating': 1})
+    upd = lambda label, n, body: {'op': 'update', 'object_id': uid(n), 'base': base(label, uid(n)), 'body': body}  # noqa: E731
+    fx = commit([c2], branch=FX)
+    S('STD-PROTO-014', 'create_branch creates a branch from the branch of the body', [
+        commit([c1]), U([hs(), vmut(1, 'create_branch', {'name': FX})]), {'op': 'branch_info', 'input': {'branch': FX}},
+        {'op': 'read', 'input': {'branch': FX, 'object_id': uid(1)}}])
+    S('STD-PROTO-014', 'create_branch takes the source branch from from', [
+        commit([c1]), U([hs(), vmut(1, 'create_branch', {'name': FX, 'from': 'main'})]),
+        {'op': 'read', 'input': {'branch': FX, 'object_id': uid(1)}, 'error': 'IAM.NOT_FOUND'}])
+    S('STD-PROTO-014', 'create_branch at a transaction time starts from the commit of that time', [
+        commit([c1], label='a'), commit([upd('a', 1, {'rating': 4})]),
+        U([hs(), vmut(1, 'create_branch', {'name': FX, 'time': 1})]), {'op': 'read', 'input': {'branch': FX, 'object_id': uid(1)}}])
+    S('STD-PROTO-014', 'create_branch needs the branch.create permission when the credentials carry grants', [
+        U([hs(grants=('read',)), vmut(1, 'create_branch', {'name': FX})])])
+    S('STD-PROTO-014', 'an existing branch name is rejected', [U([hs(), vmut(1, 'create_branch', {'name': BR})])])
+    S('STD-PROTO-014', 'a branch name outside the grammar is rejected', [U([hs(), vmut(1, 'create_branch', {'name': 'Not A Name'})])])
+    S('STD-PROTO-014', 'merge merges the source into the branch of the body as one process', [
+        commit([c1]), {'op': 'create_branch', 'input': {'name': FX, 'from': BR}}, fx,
+        U([hs(), vmut(1, 'merge', {'source': FX})]), {'op': 'read', 'input': {'branch': BR, 'object_id': uid(2)}}])
+    S('STD-PROTO-014', 'the commit of a merge carries the process of the session', [
+        {'op': 'create_branch', 'input': {'name': FX, 'from': BR}}, fx,
+        U([hs(principal=DID), vmut(1, 'merge', {'source': FX})], label='u'),
+        {'op': 'process_info', 'input': {'process_id': ref(PID)}}])
+    S('STD-PROTO-014', 'merge needs the branch.merge permission when the credentials carry grants', [
+        {'op': 'create_branch', 'input': {'name': FX, 'from': BR}}, fx,
+        U([hs(grants=('read', 'commit.raw')), vmut(1, 'merge', {'source': FX})])])
+    S('STD-PROTO-014', 'a merge conflict comes back as an error frame', [
+        commit([c1], label='a'), {'op': 'create_branch', 'input': {'name': FX, 'from': BR}},
+        commit([upd('a', 1, {'rating': 4})], branch=FX), commit([upd('a', 1, {'rating': 5})]),
+        U([hs(), vmut(1, 'merge', {'source': FX})])])
+    S('STD-PROTO-014', 'a merge emits its changes to the subscriptions of the target', [
+        {'op': 'create_branch', 'input': {'name': FX, 'from': BR}}, fx,
+        U([hs(), sub(1, query={'from': 'Customer'}), vmut(2, 'merge', {'source': FX})])])
+    S('STD-PROTO-014', 'base guards a merge against a moved head', [
+        {'op': 'create_branch', 'input': {'name': FX, 'from': BR}}, fx, commit([c1]),
+        U([hs(), vmut(1, 'merge', {'source': FX}, base=0)])])
+    S('STD-PROTO-014', 'an idempotency key returns the first result of a repeated merge', [
+        {'op': 'create_branch', 'input': {'name': FX, 'from': BR}}, fx,
+        U([hs(), vmut(1, 'merge', {'source': FX}, idempotency_key='m'), vmut(2, 'merge', {'source': FX}, idempotency_key='m')]),
+        {'op': 'commit_info', 'input': {'branch': BR}}])
+    S('STD-PROTO-014', 'a change set is opened, submitted, approved by the session principal and merged', [
+        {'op': 'create_branch', 'input': {'name': FX, 'from': BR}}, fx,
+        U([hs(principal=DID),
+           vmut(1, 'change_set', {'action': 'open', 'id': uid(700), 'source': FX, 'title': 'beta'}),
+           vmut(2, 'change_set', {'action': 'submit', 'id': uid(700)}),
+           vmut(3, 'change_set', {'action': 'approve', 'id': uid(700)}),
+           vmut(4, 'change_set', {'action': 'merge', 'id': uid(700)})]),
+        {'op': 'read', 'input': {'branch': BR, 'object_id': uid(2)}}])
+    S('STD-PROTO-014', 'get returns the state of a change set', [
+        {'op': 'create_branch', 'input': {'name': FX, 'from': BR}}, fx,
+        U([hs(), vmut(1, 'change_set', {'action': 'open', 'id': uid(700), 'source': FX, 'title': 'beta'}),
+           vmut(2, 'change_set', {'action': 'get', 'id': uid(700)})])])
+    S('STD-PROTO-014', 'approving a change set needs the changeset.approve permission when the credentials carry grants', [
+        {'op': 'create_branch', 'input': {'name': FX, 'from': BR}}, fx,
+        U([hs(grants=('read',)),
+           vmut(1, 'change_set', {'action': 'open', 'id': uid(700), 'source': FX, 'title': 'beta'}),
+           vmut(2, 'change_set', {'action': 'submit', 'id': uid(700)}),
+           vmut(3, 'change_set', {'action': 'approve', 'id': uid(700)})])])
+    S('STD-PROTO-014', 'a change set action out of its state is rejected', [
+        {'op': 'create_branch', 'input': {'name': FX, 'from': BR}}, fx,
+        U([hs(), vmut(1, 'change_set', {'action': 'open', 'id': uid(700), 'source': FX, 'title': 'beta'}),
+           vmut(2, 'change_set', {'action': 'merge', 'id': uid(700)})])])
+    S('STD-PROTO-014', 'revert reverts the commits of a process', [
+        U([hs(), mutate(1, [c1])], label='u'), U([vmut(2, 'revert', {'process_id': ref(PID)})]),
+        {'op': 'read', 'input': {'branch': BR, 'object_id': uid(1)}, 'error': 'QRY.NOT_FOUND_AT_TIME'}])
+    S('STD-PROTO-014', 'a dry run of revert reports the commits and the dependents without committing', [
+        U([hs(), mutate(1, [c1])], label='u'), U([vmut(2, 'revert', {'process_id': ref(PID), 'dry_run': True})]),
+        {'op': 'read', 'input': {'branch': BR, 'object_id': uid(1)}}])
+    S('STD-PROTO-014', 'revert of one commit by its transaction time', [
+        commit([c1]), commit([c2]), U([hs(), vmut(1, 'revert', {'time': 1})]),
+        {'op': 'list_objects', 'input': {'branch': BR, 'class': 'Customer'}}])
+    S('STD-PROTO-014', 'revert needs the revert permission when the credentials carry grants', [
+        commit([c1]), U([hs(grants=('read',)), vmut(1, 'revert', {'time': 1})])])
+    S('STD-PROTO-014', 'revert of an unknown process fails', [U([hs(), vmut(1, 'revert', {'process_id': uid(799)})])])
+    S('STD-PROTO-014', 'bulk commits the changes in chunks as children of one process', [
+        U([hs(), vmut(1, 'bulk', {'changes': [c1, c2], 'max_changes': 1})], label='u'),
+        {'op': 'process_info', 'input': {'process_id': ref(PID)}}])
+    S('STD-PROTO-014', 'an all-or-nothing bulk process stages its chunks and merges once', [
+        U([hs(), vmut(1, 'bulk', {'changes': [c1, c2], 'max_changes': 1, 'mode': 'all_or_nothing', 'staging': 'feature/stage'})]),
+        {'op': 'list_objects', 'input': {'branch': BR, 'class': 'Customer'}}])
+    S('STD-PROTO-014', 'a failing chunk fails the bulk process with the error', [
+        U([hs(), vmut(1, 'bulk', {'changes': [c1, cr(3, 'gamma', {'rating': 9})], 'max_changes': 1})])])
+    S('STD-PROTO-014', 'resuming an unknown bulk process fails', [
+        U([hs(), vmut(1, 'bulk', {'changes': [c1], 'resume': uid(799)})])])
+    S('STD-PROTO-014', 'bulk needs the commit.raw permission when the credentials carry grants', [
+        U([hs(grants=('read',)), vmut(1, 'bulk', {'changes': [c1]})])])
+    S('STD-PROTO-014', 'mutate carries exactly one of port, commit and the versioning requests', [
+        U([hs(), mutate(1, [c1], merge={'source': FX})])])
+    S('STD-PROTO-014', 'validate_only applies to port and commit only', [
+        U([hs(), vmut(1, 'create_branch', {'name': FX}, validate_only=True)])])
+    S('STD-PROTO-014', 'a versioning request is a map', [U([hs(), vmut(1, 'merge', FX)])])
+
+
+def introspection(S):
+    c1 = cr(1, 'acme', {'country': 'US', 'rating': 3})
+    c2 = cr(2, 'beta', {'country': 'CA', 'rating': 1})
+    acct = create(uid(5), 'Account', 'a-1', {'name': 'Acme', 'balance': '100', 'status': 'open'})
+    T = 'ubos://acme/Account/a-1'
+    S('STD-PROTO-015', 'class returns the effective class at the coordinates', [U([hs(), query(1, **{'class': {'name': 'Customer'}})])])
+    S('STD-PROTO-015', 'class of an unknown class fails', [U([hs(), query(1, **{'class': {'name': 'Nothing'}})])])
+    S('STD-PROTO-015', 'dispatch returns the class whose implementation runs the port', [
+        U([hs(), query(1, dispatch={'class': 'Account', 'port': 'close'})])])
+    S('STD-PROTO-015', 'dispatch of a port without implementation fails', [
+        U([hs(), query(1, dispatch={'class': 'Customer', 'port': 'close'})])])
+    S('STD-PROTO-015', 'commit_info returns the head commit with its state root', [
+        commit([c1]), U([hs(), query(1, commit_info={})])])
+    S('STD-PROTO-015', 'commit_info with a transaction time selects that commit', [
+        commit([c1]), commit([c2]), U([hs(), query(1, commit_info={}, time=1)])])
+    S('STD-PROTO-015', 'the root of commit_info is the root of the commit record', [
+        commit([c1]), {'op': 'commit_record', 'label': 'r', 'input': {'branch': BR}},
+        U([hs(), query(1, commit_info={})], label='u'),
+        {'op': 'normalize_text', 'input': {'text': {'$ref': 'u/responses/1/body/items/0/root'}}, 'same_as': 'r/root'}])
+    S('STD-PROTO-015', 'merge_preview previews the merge of the source into the branch', [
+        commit([c1]), {'op': 'create_branch', 'input': {'name': 'feature/x', 'from': BR}},
+        commit([c2], branch='feature/x'), U([hs(), query(1, merge_preview={'source': 'feature/x'})])])
+    S('STD-PROTO-015', 'ledger returns the entries of a ledger key in sequence order', [
+        commit([ACCT, acct, mv(30, A1, '10'), mv(31, A1, '-4')]),
+        U([hs(), query(1, ledger={'class': 'CashMove', 'ledger_key': {'account': A1}})])])
+    S('STD-PROTO-015', 'ledger filters the entries by asof', [
+        commit([ACCT, acct, mv(30, A1, '10', '2026-03-15'), mv(31, A1, '-4', '2026-03-20')]),
+        U([hs(), query(1, ledger={'class': 'CashMove', 'ledger_key': {'account': A1}}, asof='2026-03-17')])])
+    S('STD-PROTO-015', 'process returns the record of a process with its journal and metering', [
+        commit([ACCT, acct]), U([hs(), mutate(1, port={'target': T, 'name': 'close'})], label='u'),
+        U([query(2, process={'process_id': ref(PID), 'journal': True, 'metering': True})])])
+    S('STD-PROTO-015', 'process without journal or metering returns the record only', [
+        commit([ACCT, acct]), U([hs(), mutate(1, port={'target': T, 'name': 'close'})], label='u'),
+        U([query(2, process={'process_id': ref(PID)})])])
+    S('STD-PROTO-015', 'process of an unknown process fails', [U([hs(), query(1, process={'process_id': uid(799)})])])
+    S('STD-PROTO-015', 'replay re-executes a process from its journal', [
+        commit([ACCT, acct]), U([hs(), mutate(1, port={'target': T, 'name': 'peek'})], label='u'),
+        {'op': 'branch_info', 'input': {'branch': BR}, 'label': 'b'},
+        U([query(2, replay={'process_id': ref(PID)})]), {'op': 'branch_info', 'input': {'branch': BR}, 'same_as': 'b'}])
+    S('STD-PROTO-015', 'replay of a process without journal fails', [
+        U([hs(), mutate(1, [c1])], label='u'), U([query(2, replay={'process_id': ref(PID)})])])
+    S('STD-PROTO-015', 'query carries exactly one request kind with the introspection requests', [
+        U([hs(), query(1, commit_info={}, read='ubos://acme/Customer/acme')])])
+    S('STD-PROTO-015', 'an introspection request is a map', [U([hs(), query(1, commit_info='head')])])

@@ -536,7 +536,7 @@ class Workflow:
         else:
             if b is not None:
                 raise BpaError('TXN.ALREADY_EXISTS', 'bulk process exists')
-            p = self._process({'process_id': pid, 'kind': 'job'})
+            p = self._process(dict(i.get('process') or {}, process_id=pid, kind='job'))
             self._check_active(branch)
             b = {'branch': branch, 'mode': mode, 'staging': None, 'children': [], 'state': 'running'}
             if mode == 'all_or_nothing':
