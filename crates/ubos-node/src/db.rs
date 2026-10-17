@@ -167,9 +167,12 @@ pub enum Param<'a> {
     Int(i64),
     /// JSON.
     Json(&'a Value),
+    /// Text or NULL.
+    OptText(Option<&'a str>),
 }
 
 enum Owned {
+    OptText(Option<String>),
     Text(String),
     Bytes(Vec<u8>),
     Int(i64),
@@ -183,6 +186,7 @@ impl Param<'_> {
             Param::Bytes(b) => Owned::Bytes(b.to_vec()),
             Param::Int(i) => Owned::Int(*i),
             Param::Json(v) => Owned::Json((*v).clone()),
+            Param::OptText(t) => Owned::OptText(t.map(str::to_string)),
         }
     }
 }
@@ -197,6 +201,7 @@ impl Owned {
             Owned::Bytes(b) => q.bind(b.as_slice()),
             Owned::Int(i) => q.bind(*i),
             Owned::Json(v) => q.bind(v),
+            Owned::OptText(t) => q.bind(t.as_deref()),
         }
     }
 }

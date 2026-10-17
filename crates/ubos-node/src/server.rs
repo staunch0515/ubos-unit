@@ -425,6 +425,37 @@ fn host_call(vae: &mut Vae, op: &str, input: &Value) -> Result<Value, BpaError> 
                 json!({"checked": r.checked, "findings": r.findings.iter().map(|f| json!({"check": f.check, "key": f.key, "detail": f.detail})).collect::<Vec<_>>()}),
             )
         }
+        "host.field_classification" => {
+            // the classification of a field, declared or inherited (STD-FND-027)
+            let field = input["field"].as_str().unwrap_or_default();
+            let mut class = input["class"].as_str().unwrap_or_default().to_string();
+            let mut default: Option<String> = None;
+            for _ in 0..64 {
+                let d = vae.engine_mut().registry.decl(&class)?;
+                if default.is_none() {
+                    default = d["classification_default"].as_str().map(str::to_string);
+                }
+                if let Some(f) = d["fields"]
+                    .as_array()
+                    .and_then(|a| a.iter().find(|f| f["name"] == json!(field)))
+                {
+                    let c = f["classification"]
+                        .as_str()
+                        .map(str::to_string)
+                        .or(default)
+                        .unwrap_or_else(|| "internal".into());
+                    return Ok(json!({"classification": c, "type": f["type"]}));
+                }
+                match d["parent"].as_str() {
+                    Some(p) => class = p.to_string(),
+                    None => break,
+                }
+            }
+            Err(BpaError::new(
+                "LOGIC.UNKNOWN_FIELD",
+                format!("{class} has no field {field}"),
+            ))
+        }
         "host.project_tenant" => {
             crate::platform::project_tenant(vae, input).map(|w| json!({"written": w}))
         }
@@ -546,6 +577,11 @@ pub trait VaeSource: Send + Sync {
     /// The WAL archiver's state (`pg_stat_archiver`); `None` when the source has none.
     fn archiver(&self) -> Option<Value> {
         None
+    }
+    /// The file service of a tenant (step 17a); `None` when the source keeps files in
+    /// memory (the Server then keeps them per tenant itself).
+    fn files(&self, _tenant: &str) -> Result<Option<crate::files::Files>, BpaError> {
+        Ok(None)
     }
     /// The registry record of a tenant (DSN-NOD-401); `None` when the source keeps no
     /// registry.
@@ -696,6 +732,21 @@ impl VaeSource for NodeVaes {
             name,
         ))
     }
+    fn files(&self, tenant: &str) -> Result<Option<crate::files::Files>, BpaError> {
+        let Some(t) = self.0.tenant(tenant)? else {
+            return Ok(None);
+        };
+        let db = self.0.tenant_db(&t)?;
+        let keys = self.0.keys(&t)?;
+        let link_key = keys.derive("ubos.files.v1", "links");
+        Ok(Some(crate::files::Files::new(
+            Arc::new(crate::files::PgRows::new(db.clone(), &t.id)),
+            keys,
+            Arc::new(crate::services::PgBlobs::new(db, &t.id)),
+            &t.id,
+            link_key,
+        )))
+    }
     fn archiver(&self) -> Option<Value> {
         Some(
             self.0
@@ -821,6 +872,8 @@ pub struct Server {
     release_failures: std::sync::atomic::AtomicU64,
     /// Security-log entries the database refused (a read-only node), written with the next.
     audit_backlog: Mutex<Vec<(String, Value)>>,
+    /// The file service of each tenant (step 17a).
+    files: Mutex<HashMap<String, Arc<crate::files::Files>>>,
     /// The running configuration (DSN-NOD-603).
     config: std::sync::RwLock<Arc<Config>>,
     /// The file the configuration is read from, if any.
@@ -872,6 +925,7 @@ impl Server {
             checks: Mutex::new(Vec::new()),
             release_failures: std::sync::atomic::AtomicU64::new(0),
             audit_backlog: Mutex::new(Vec::new()),
+            files: Mutex::new(HashMap::new()),
             config_file: Mutex::new(None),
             config_log: Mutex::new(Vec::new()),
             budgets: Mutex::new(HashMap::new()),
@@ -934,6 +988,7 @@ impl Server {
             checks: Mutex::new(Vec::new()),
             release_failures: std::sync::atomic::AtomicU64::new(0),
             audit_backlog: Mutex::new(Vec::new()),
+            files: Mutex::new(HashMap::new()),
             config_file: Mutex::new(None),
             config_log: Mutex::new(Vec::new()),
             budgets: Mutex::new(HashMap::new()),
@@ -1158,6 +1213,23 @@ impl Server {
             .route("/api/v1/{vae}/{class}", get(rest_query))
             .route("/api/v1/{vae}/{class}/{slug}", get(rest_read))
             .route("/api/v1/{vae}/{class}/{slug}/{port}", post(rest_mutate))
+            .route(
+                "/files/v1/download/{token}",
+                get(file_download).head(file_download),
+            )
+            .route(
+                "/files/v1/{vae}",
+                post(upload_create).options(upload_options),
+            )
+            .route("/files/v1/{vae}/links", post(file_link))
+            .route(
+                "/files/v1/{vae}/uploads/{id}",
+                get(upload_state)
+                    .head(upload_head)
+                    .patch(upload_patch)
+                    .delete(upload_delete)
+                    .layer(DefaultBodyLimit::max(UPLOAD_PATCH_MAX)),
+            )
             .route("/api/v1/identity/{*rest}", axum::routing::any(identity_api))
             .route("/api/v1/admin/{*rest}", axum::routing::any(admin_api))
             .layer(DefaultBodyLimit::max(MAX_FRAME))
@@ -4536,4 +4608,493 @@ impl Server {
         );
         Ok(bundle)
     }
+}
+
+// ---- files: tus-compatible uploads, links and downloads (step 17a, DEC-078) ----
+
+/// The largest body of one upload request.
+const UPLOAD_PATCH_MAX: usize = 64 << 20;
+/// The tus protocol version served.
+const TUS: &str = "1.0.0";
+
+impl Server {
+    /// The file service of a tenant: the source's (PostgreSQL) or one in memory.
+    fn files_of(&self, tenant: &str) -> Result<Arc<crate::files::Files>, BpaError> {
+        if let Some(f) = self.files.lock().expect("files").get(tenant) {
+            return Ok(f.clone());
+        }
+        let f = Arc::new(match self.source.files(tenant)? {
+            Some(f) => f,
+            None => crate::files::Files::memory(tenant)?,
+        });
+        self.files
+            .lock()
+            .expect("files")
+            .insert(tenant.to_string(), f.clone());
+        Ok(f)
+    }
+
+    /// The tenant and principal of a session (`dev` without authentication).
+    fn session_principal(&self, key: &str) -> Option<(String, String)> {
+        self.sessions.lock().expect("sessions").get(key).map(|e| {
+            (
+                e.tenant.clone(),
+                e.auth
+                    .as_ref()
+                    .map(|a| a.principal.clone())
+                    .unwrap_or_else(|| "dev".into()),
+            )
+        })
+    }
+}
+
+/// A file-API error: the problem body with the tus header.
+fn file_problem(e: &BpaError) -> Response {
+    let status =
+        StatusCode::from_u16(status_of(e.code)).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+    (
+        status,
+        [
+            (header::CONTENT_TYPE, "application/problem+json".to_string()),
+            (
+                header::HeaderName::from_static("tus-resumable"),
+                TUS.to_string(),
+            ),
+        ],
+        Json(problem(e)),
+    )
+        .into_response()
+}
+
+/// The session, tenant and principal of a file request (the facade's authentication).
+async fn file_caller(
+    s: &Shared,
+    headers: &HeaderMap,
+    vae: &str,
+    peer: &SocketAddr,
+) -> Result<(String, String, String), BpaError> {
+    let key = facade_session(s, headers, vae, &peer.ip().to_string()).await?;
+    let (tenant, principal) = s
+        .session_principal(&key)
+        .ok_or_else(|| BpaError::new("IAM.DENIED", "no session"))?;
+    Ok((key, tenant, principal))
+}
+
+/// `OPTIONS /files/v1/{vae}`: the tus capabilities.
+async fn upload_options(State(s): State<Shared>) -> Response {
+    let max = (s.config().int("files.max_upload_mb").max(1) as u64) << 20;
+    (
+        StatusCode::NO_CONTENT,
+        [
+            ("tus-resumable", TUS.to_string()),
+            ("tus-version", TUS.to_string()),
+            ("tus-extension", "creation,termination".to_string()),
+            ("tus-max-size", max.to_string()),
+        ],
+    )
+        .into_response()
+}
+
+/// tus metadata `key base64,key base64`.
+fn tus_metadata(h: Option<String>) -> HashMap<String, String> {
+    h.unwrap_or_default()
+        .split(',')
+        .filter_map(|kv| {
+            let mut it = kv.trim().splitn(2, ' ');
+            let k = it.next()?.to_string();
+            let v = it
+                .next()
+                .and_then(base64_decode)
+                .and_then(|b| String::from_utf8(b).ok())
+                .unwrap_or_default();
+            (!k.is_empty()).then_some((k, v))
+        })
+        .collect()
+}
+
+/// `POST /files/v1/{vae}`: create an upload (`Upload-Length`, `Upload-Metadata` with
+/// `filename` and `filetype`); 201 with its `Location`.
+async fn upload_create(
+    State(s): State<Shared>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Path(vae): Path<String>,
+) -> Response {
+    let (_, tenant, principal) = match file_caller(&s, &headers, &vae, &peer).await {
+        Ok(c) => c,
+        Err(e) => return file_problem(&e),
+    };
+    let Some(length) = header(&headers, "upload-length").and_then(|l| l.parse::<u64>().ok()) else {
+        return file_problem(&BpaError::new(
+            "MODEL.INVALID_VALUE",
+            "Upload-Length is the size of the file in bytes",
+        ));
+    };
+    let meta = tus_metadata(header(&headers, "upload-metadata"));
+    let max = (s.config().int("files.max_upload_mb").max(1) as u64) << 20;
+    let me = s.clone();
+    let r = blocking(move || {
+        let f = me.files_of(&tenant)?;
+        f.create(
+            &principal,
+            length,
+            meta.get("filetype").map(String::as_str),
+            meta.get("filename").map(String::as_str),
+            max,
+        )
+    })
+    .await;
+    match r {
+        Ok(u) => {
+            let mut resp = (
+                StatusCode::CREATED,
+                [
+                    ("tus-resumable", TUS.to_string()),
+                    ("location", format!("/files/v1/{vae}/uploads/{}", u.id)),
+                    ("upload-offset", u.received.to_string()),
+                ],
+                Json(u.json()),
+            )
+                .into_response();
+            if let Some(f) = &u.file_id
+                && let Ok(v) = f.parse()
+            {
+                resp.headers_mut().insert("ubos-file", v);
+            }
+            resp
+        }
+        Err(e) => file_problem(&e),
+    }
+}
+
+/// `HEAD /files/v1/{vae}/uploads/{id}`: the offset to resume from.
+async fn upload_head(
+    State(s): State<Shared>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Path((vae, id)): Path<(String, String)>,
+) -> Response {
+    match upload_get(&s, &headers, &vae, &id, &peer).await {
+        Ok(u) => (
+            StatusCode::OK,
+            [
+                ("tus-resumable", TUS.to_string()),
+                ("upload-offset", u.received.to_string()),
+                ("upload-length", u.length.to_string()),
+                ("cache-control", "no-store".to_string()),
+            ],
+        )
+            .into_response(),
+        Err(e) => file_problem(&e).status().into_response(),
+    }
+}
+
+async fn upload_get(
+    s: &Shared,
+    headers: &HeaderMap,
+    vae: &str,
+    id: &str,
+    peer: &SocketAddr,
+) -> Result<crate::files::Upload, BpaError> {
+    let (_, tenant, principal) = file_caller(s, headers, vae, peer).await?;
+    let (me, id) = (s.clone(), id.to_string());
+    blocking(move || me.files_of(&tenant)?.upload(&id, &principal)).await
+}
+
+/// `GET /files/v1/{vae}/uploads/{id}`: the upload's state and, once complete, the file
+/// reference to put into an object field.
+async fn upload_state(
+    State(s): State<Shared>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Path((vae, id)): Path<(String, String)>,
+) -> Response {
+    let (_, tenant, principal) = match file_caller(&s, &headers, &vae, &peer).await {
+        Ok(c) => c,
+        Err(e) => return file_problem(&e),
+    };
+    let me = s.clone();
+    let r = blocking(move || {
+        let f = me.files_of(&tenant)?;
+        let u = f.upload(&id, &principal)?;
+        let mut v = u.json();
+        if let Some(fid) = &u.file_id {
+            v["reference"] = f.file(fid)?.reference(u.name.as_deref());
+        }
+        Ok(v)
+    })
+    .await;
+    match r {
+        Ok(v) => ([("tus-resumable", TUS)], Json(v)).into_response(),
+        Err(e) => file_problem(&e),
+    }
+}
+
+/// `PATCH /files/v1/{vae}/uploads/{id}`: bytes at `Upload-Offset`
+/// (`application/offset+octet-stream`); 204 with the new offset, and `Ubos-File` when the
+/// upload completed.
+async fn upload_patch(
+    State(s): State<Shared>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Path((vae, id)): Path<(String, String)>,
+    body: Bytes,
+) -> Response {
+    if header(&headers, "content-type").as_deref() != Some("application/offset+octet-stream") {
+        return file_problem(&BpaError::new(
+            "MODEL.INVALID_VALUE",
+            "Content-Type is application/offset+octet-stream",
+        ));
+    }
+    let Some(offset) = header(&headers, "upload-offset").and_then(|o| o.parse::<u64>().ok()) else {
+        return file_problem(&BpaError::new(
+            "MODEL.INVALID_VALUE",
+            "Upload-Offset is required",
+        ));
+    };
+    let (_, tenant, principal) = match file_caller(&s, &headers, &vae, &peer).await {
+        Ok(c) => c,
+        Err(e) => return file_problem(&e),
+    };
+    let me = s.clone();
+    match blocking(move || me.files_of(&tenant)?.append(&id, &principal, offset, &body)).await {
+        Ok(u) => {
+            let mut resp = (
+                StatusCode::NO_CONTENT,
+                [
+                    ("tus-resumable", TUS.to_string()),
+                    ("upload-offset", u.received.to_string()),
+                ],
+            )
+                .into_response();
+            if let Some(f) = &u.file_id
+                && let Ok(v) = f.parse()
+            {
+                resp.headers_mut().insert("ubos-file", v);
+            }
+            resp
+        }
+        Err(e) => file_problem(&e),
+    }
+}
+
+/// `DELETE /files/v1/{vae}/uploads/{id}`: abandon an upload (tus termination).
+async fn upload_delete(
+    State(s): State<Shared>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Path((vae, id)): Path<(String, String)>,
+) -> Response {
+    let (_, tenant, principal) = match file_caller(&s, &headers, &vae, &peer).await {
+        Ok(c) => c,
+        Err(e) => return file_problem(&e),
+    };
+    let me = s.clone();
+    match blocking(move || me.files_of(&tenant)?.terminate(&id, &principal)).await {
+        Ok(()) => (StatusCode::NO_CONTENT, [("tus-resumable", TUS)]).into_response(),
+        Err(e) => file_problem(&e),
+    }
+}
+
+/// `POST /files/v1/{vae}/links` `{object, field}`: a short-lived signed download link for
+/// the file an object version's `blob` field refers to (DSN-NOD-327). The object is read with the
+/// caller's session, so the caller's authorization applies; the link is bound to the
+/// principal and the version read.
+async fn file_link(
+    State(s): State<Shared>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Path(vae): Path<String>,
+    body: Bytes,
+) -> Response {
+    let req: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
+    let (Some(object), Some(field)) = (req["object"].as_str(), req["field"].as_str()) else {
+        return file_problem(&BpaError::new(
+            "MODEL.INVALID_VALUE",
+            "the body is {object: ubos:// URI, field}",
+        ));
+    };
+    let (key, tenant, principal) = match file_caller(&s, &headers, &vae, &peer).await {
+        Ok(c) => c,
+        Err(e) => return file_problem(&e),
+    };
+    // message identifiers are unique within the (shared facade) session
+    let mid = format!("link-{}", crate::uuid().unwrap_or_default());
+    let msg = json!({"v": ubos_proto::VERSION, "id": mid, "type": "query", "body": {"vae": vae, "read": object}});
+    let (_, frames) = s
+        .handle(Some(key.clone()), None, &peer.ip().to_string(), msg)
+        .await;
+    let item = match frames.first() {
+        Some(f) if f["type"] == json!("result") => f["body"]["items"][0].clone(),
+        Some(f) => {
+            return file_problem(&BpaError::with_details(
+                f["body"]["code"]
+                    .as_str()
+                    .unwrap_or("IAM.DENIED")
+                    .to_string()
+                    .leak(),
+                f["body"]["details"].clone(),
+            ));
+        }
+        None => return file_problem(&BpaError::new("IAM.NOT_FOUND", "no object")),
+    };
+    let reference = item["body"][field].clone();
+    let Some(file) = reference["content_id"].as_str().map(str::to_string) else {
+        return file_problem(&BpaError::with_details(
+            "MODEL.REFERENCE_INVALID",
+            json!({"reason": "not_a_file", "field": field}),
+        ));
+    };
+    let class = item["class"].as_str().unwrap_or_default().to_string();
+    let classification = match s.session(&key) {
+        Some((_, h)) => h
+            .call(
+                "host.field_classification",
+                json!({"class": class, "field": field}),
+            )
+            .await
+            .ok()
+            .and_then(|c| c["classification"].as_str().map(str::to_string))
+            .unwrap_or_else(|| "internal".into()),
+        None => "internal".into(),
+    };
+    let ttl = s
+        .config()
+        .int("files.download_link_seconds")
+        .clamp(30, 3600);
+    let me = s.clone();
+    let r = blocking(move || {
+        let f = me.files_of(&tenant)?;
+        let rec = f.file(&file)?;
+        let exp = crate::files::unix_now() + ttl;
+        let claims = json!({"t": tenant, "f": rec.id, "p": principal, "o": item["object_id"],
+            "v": item["version_hash"], "c": classification, "n": reference["name"],
+            "m": rec.media_type, "e": exp});
+        let token = f.sign_link(&claims);
+        Ok(
+            json!({"url": format!("/files/v1/download/{token}"), "expires_in": ttl, "file": rec.id,
+            "size": rec.size, "sha256": rec.sha256, "classification": claims["c"]}),
+        )
+    })
+    .await;
+    match r {
+        Ok(v) => Json(v).into_response(),
+        Err(e) => file_problem(&e),
+    }
+}
+
+/// `GET /files/v1/download/{token}`: the file of a valid link, streamed chunk by chunk,
+/// with `Range` support; a download of personal or sensitive personal content is written
+/// to the tenant's security log (DSN-NOD-327).
+async fn file_download(
+    State(s): State<Shared>,
+    method: Method,
+    headers: HeaderMap,
+    Path(token): Path<String>,
+) -> Response {
+    let Some(tenant) = crate::files::link_tenant(&token) else {
+        return file_problem(&BpaError::new("IAM.DENIED", "malformed link"));
+    };
+    let me = s.clone();
+    let tok = token.clone();
+    let r = blocking(move || {
+        let f = me.files_of(&tenant)?;
+        let claims = f.verify_link(&tok)?;
+        let rec = f.file(claims["f"].as_str().unwrap_or_default())?;
+        Ok((f, claims, rec, tenant))
+    })
+    .await;
+    let (files, claims, rec, tenant) = match r {
+        Ok(x) => x,
+        Err(e) => return file_problem(&e),
+    };
+    // Range: bytes=a-b | a- | -n
+    let (start, end, partial) = match header(&headers, "range") {
+        None => (0, rec.size, false),
+        Some(r) => {
+            let spec = r.strip_prefix("bytes=").unwrap_or("");
+            let (a, b) = spec.split_once('-').unwrap_or(("", ""));
+            let (start, end) = match (a.parse::<u64>().ok(), b.parse::<u64>().ok()) {
+                (Some(a), Some(b)) => (a, b.saturating_add(1).min(rec.size)),
+                (Some(a), None) => (a, rec.size),
+                (None, Some(n)) => (rec.size.saturating_sub(n), rec.size),
+                _ => (u64::MAX, 0),
+            };
+            if start >= end || start >= rec.size {
+                return (
+                    StatusCode::RANGE_NOT_SATISFIABLE,
+                    [("content-range", format!("bytes */{}", rec.size))],
+                )
+                    .into_response();
+            }
+            (start, end, true)
+        }
+    };
+    let personal = matches!(
+        claims["c"].as_str(),
+        Some("personal") | Some("sensitive_personal")
+    );
+    if personal && method == Method::GET {
+        let me = s.clone();
+        let rec_log = json!({"principal": claims["p"], "object": claims["o"], "version": claims["v"],
+            "file": rec.id, "classification": claims["c"], "range": [start, end]});
+        let _ = blocking(move || me.identity(&tenant)?.log("file.download", rec_log)).await;
+    }
+    let mut hdrs = vec![
+        ("accept-ranges", "bytes".to_string()),
+        ("content-length", (end - start).to_string()),
+        (
+            "content-type",
+            rec.media_type
+                .clone()
+                .unwrap_or_else(|| "application/octet-stream".into()),
+        ),
+        ("etag", format!("\"{}\"", rec.id)),
+        ("ubos-content-sha256", rec.sha256.clone()),
+        ("cache-control", "private, no-store".to_string()),
+    ];
+    if let Some(n) = claims["n"].as_str() {
+        let safe: String = n
+            .chars()
+            .filter(|c| c.is_ascii_graphic() && *c != '"' && *c != '\\' || *c == ' ')
+            .collect();
+        hdrs.push((
+            "content-disposition",
+            format!("attachment; filename=\"{safe}\""),
+        ));
+    }
+    if partial {
+        hdrs.push((
+            "content-range",
+            format!("bytes {start}-{}/{}", end - 1, rec.size),
+        ));
+    }
+    let status = if partial {
+        StatusCode::PARTIAL_CONTENT
+    } else {
+        StatusCode::OK
+    };
+    let mut builder = Response::builder().status(status);
+    for (k, v) in hdrs {
+        builder = builder.header(k, v);
+    }
+    if method == Method::HEAD {
+        return builder
+            .body(axum::body::Body::empty())
+            .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
+    }
+    let (tx, rx) = tokio::sync::mpsc::channel::<Result<Bytes, std::io::Error>>(4);
+    tokio::task::spawn_blocking(move || {
+        let r = files.read_range(&rec, start, end, |b| {
+            tx.blocking_send(Ok(Bytes::from(b))).is_ok()
+        });
+        if let Err(e) = r {
+            let _ = tx.blocking_send(Err(std::io::Error::other(e.to_string())));
+        }
+    });
+    let stream =
+        futures_util::stream::unfold(rx, |mut rx| async move { rx.recv().await.map(|b| (b, rx)) });
+    builder
+        .body(axum::body::Body::from_stream(stream))
+        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
 }

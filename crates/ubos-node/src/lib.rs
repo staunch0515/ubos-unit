@@ -19,6 +19,7 @@ pub mod backup;
 pub mod config;
 pub mod db;
 pub mod diagnostics;
+pub mod files;
 pub mod genesis;
 pub mod identity;
 pub mod keys;

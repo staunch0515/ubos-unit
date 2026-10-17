@@ -107,6 +107,7 @@ depends_on: [UBS-SYS-SDK-01]
   1. Given an expiring access token, when a call is made, then the SDK refreshes it transparently.
 - **Verification:** CONF, SEC
 - **Origin:** FR-INT-081, FR-IAM-104
+- **Phase note:** PH-1 step 17 (DEC-078): the PH-1 SDKs implement password sign-in, sessions with refresh and API keys; browser OIDC with PKCE and OAuth client credentials follow with DSN-NOD-103 and DSN-NOD-151 in PH-2, device-bound tokens with DSN-NOD-107 in PH-4.
 
 ### DSN-SDK-011 — Uploads and downloads
 - **Statement:** SDKs MUST provide resumable upload and ranged download helpers with progress events and hash verification.
@@ -147,6 +148,7 @@ depends_on: [UBS-SYS-SDK-01]
   1. Given SDK N and node N−1, when the protocol suite runs, then it passes.
 - **Verification:** CONF
 - **Origin:** FR-DEV-063, NR-COMPAT-002
+- **Phase note:** PH-1 step 17 (DEC-078): the SDKs negotiate the protocol version and pass the version-skew cases; the test against two node minors runs when protocol 1.1 exists.
 
 ### DSN-SDK-015 — Additional languages
 - **Statement:** The Python SDK MUST follow in PH-3 (FR-DEV-062) with the same layers and conformance; further languages MUST pass the SDK protocol suite before being called official.

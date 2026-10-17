@@ -89,6 +89,7 @@ cedar-policy = "4.13"
 # Forge project sources (DSN-FRG-002): YAML sources and the TOML manifest
 serde_yaml_ng = "0.10"
 toml = "0.8"
+fastcdc = "5"
 
 # Argon2id at 64 MiB and 3 iterations (DSN-NOD-101) is optimised even in debug builds, so
 # that a sign-in on a development build takes well under a second
