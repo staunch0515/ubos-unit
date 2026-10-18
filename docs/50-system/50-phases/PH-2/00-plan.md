@@ -248,3 +248,44 @@ Non-normative. 9 months. Team of 12–14: 4 kernel, 3 node/platform, 3 front-end
 2 Buk developers with an accounting analyst, 1 Forge, 1 quality, 1 security, plus design, the
 standards steward, the engineering lead and the product owner. The growth beyond the 8–12
 core follows ASM-001.
+
+**Execution (DEC-085):** as in PH-1, the phase is executed by the product owner with AI
+sessions, one pull request per step part, merged by the owner; `main` is the development line
+of PH-2 and PH-1 is kept on the frozen line `release/ph1`. Standard before code (AR-033): a
+step that needs a kernel capability without clauses starts with the clauses and vectors of a
+BPA 1.0 release candidate. The figures above remain a reference only. Steps:
+
+| Step | Content | Exits |
+|---|---|---|
+| 0 | alignment: DEC-085, this section, status tracking (`docs/reports/ph2-plan-zh.md`) | — |
+
+Gate 2a — the standard, the kernel and the finance core on a single node:
+
+| Step | Content | Exits |
+|---|---|---|
+| 1 | BPA 1.0 release candidates for the PH-2 kernel: schema evolution and lenses, decision tables (STD-LGS-040), approvals and deferred commits, workflows and sagas, relationship authorization, masking and crypto-shredding, simulation, periods and close, matching, the REST facade (STD-PROTO-021); standard before code, split by clause area | EXIT-2-01 (candidates) |
+| 2 | extended formal models: approvals, sagas | EXIT-2-02 |
+| 3 | money and periods: currencies and rates, business calendars, double entry, period close, retroactive correction and restatement, reconciliation and matching (CAP-LOC-02, -04, CAP-LEDG-05, -06, -07, CAP-TIME-04, -06) | — |
+| 4 | approvals and work: deferred commits for `require` decisions, approvals and segregation of duties, tasks and work queues, SLAs and escalation, delegation (CAP-FLOW-04, -05, -08, -09) | — |
+| 5 | decision tables and rule operations: decision tables, attach and detach with effective periods, simulation and impact analysis, rule testing, the simulator (CAP-RULE-04, -06, -07, -08, CAP-DEV-04) | — |
+| 6 | durable work: workflows and sagas, long-running processes, post-commit effects, replay and backfill (CAP-FLOW-06, -07, CAP-TXN-05, -06, CAP-EVT-07) | — |
+| 7 | models and packages: schema evolution and lenses, base ontology, model export; the Buk format, dependencies, installation, upgrade, removal, verification and signing (CAP-MODEL-08, -09, -10, CAP-PKG-01…07) | — |
+| 8 | protection: relationship authorization, masking and filtering, encrypted fields and crypto-shredding, access logging (CAP-IAM-05, -06, CAP-PROOF-07, CAP-AUD-05) | — |
+| 9 | `finance` Buk, part 1: chart of accounts, journals, periods and close, the general ledger and the financial statements of the sample company, tied out to the expected results in process | EXIT-2-04 (inspection) |
+| 10 | `finance` Buk, part 2: receivables, payables with 1099, bank reconciliation, fixed assets, multi-currency (ASC 830), basic state sales tax; SCN-501…510 in process; review by the accounting reviewer | EXIT-2-16 (in process) |
+
+Gate 2b — the production edge, the clients and acceptance:
+
+| Step | Content | Exits |
+|---|---|---|
+| 11 | HA Server and disaster recovery: replication and failover, split-brain protection, rolling upgrades, the VAE hierarchy and tenant lifecycle and portability (CAP-OPS-03, -06, CAP-TEN-04, -05, -06) | EXIT-2-07, EXIT-2-14 |
+| 12 | integration and identity edge: REST facade, webhooks, connector framework, API credentials, bank file formats, mail; OIDC, SAML, SCIM, step-up, sessions and devices, KMS adapters (CAP-INT-02, -03, -04, -06, -08, CAP-LOGIC-10, CAP-IAM-02, -07, -09, -10) | — |
+| 13 | notifications, files and search: notification rules, channels and digests; content safety, previews and extraction, VFS paths; full-text search, saved queries, aggregation, reports (CAP-NTF-01…03, CAP-FILE-02…04, CAP-QRY-02, -04, -06, CAP-ANL-03) | — |
+| 14 | Web workspace, part 1 (DEC-081): renderer and catalogue, shell, forms, lists and details, progressive disclosure, history and as-of, change review, explanations (CAP-UX-01…06); an early usability check with accountants (RSK-021) | — |
+| 15 | Web workspace, part 2: Smart Grid and keyboard-first entry, registers, report viewer with drill-down, close cockpit, rendering and export, localisation and formats, accessibility (CAP-OFFICE-04, -08, CAP-LOC-01, -05) | — |
+| 16 | Studio (lean) and Forge 1.0: model, sheet, decision-table, lifecycle and view editors, change sets, simulation, releases; replay debugger, LSP, VS Code extension, documentation (CAP-DEV-01, -07, -08, -09) | — |
+| 17 | Bridge: spreadsheet and CSV import, bulk loads with history, mappings, reconciliation; the sample company migrated (CAP-MIG-01, -03, -04, -05) | EXIT-2-17 |
+| 18 | finance on the HA Server: SCN-501…510 and SCN-012…016 through the Workspace and UBTP; the accounting-correctness report signed by the reviewer; benchmarks and scale | EXIT-2-04, -05, -06, -16 |
+| 19 | external verification and release: penetration test, SBOM and SLSA provenance, privacy scenario SCN-016, WCAG 2.2 AA audit, usability study; BPA 1.0 final | EXIT-2-01, -08, -09, -10, -11, -18 |
+| 20 | PH-2 acceptance: traceability and PH-1 regression, the comparison data set (DEC-026), acceptance decision | EXIT-2-15, EXIT-2-19, all |
+

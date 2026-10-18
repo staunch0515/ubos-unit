@@ -38,6 +38,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-082 | PH-1 step 18d in parts 18d-1…18d-3: BPA 1.0-rc5 (an `error` answering a `mutate` whose process was recorded carries `process_id`; the replay vector of STD-CTX-012), the scenario runner as a UBTP backend of `forge test` with dev-preset fixtures (test clock at genesis, fixed-response connectors), and SCN-001, -009, -017 with the EXIT-1-19 report; SCN-002 A1 and SCN-003 A1 run as a rejected genesis, SCN-011 through a port, SCN-011 A1 (the replay test hook) stays in process | Accepted |
 | DEC-083 | BPA 1.0-rc6 closes the two Protocol gaps 18d-2 found: `revert` takes `resolutions` as a merge does (STD-VER-070, -071, STD-PROTO-014), and an events subscription delivers the effects released without a commit such as `BecameEffective`, after the commits of its branch, with the cursor `<branch>:<cseq>.<n>` (STD-PROTO-012, STD-TIME-050); the node refuses a project genesis that redeclares a class of the platform genesis Buks | Accepted |
 | DEC-084 | BPA 1.0-rc7 closes the two findings of part 18d-3b: the static sheet checks of STD-LGS-022 also run on the sheets a merge or a revert brings into the target (F4), and the rule binding lists the governance sheets the commit enforcement evaluated (STD-TIME-040, F5); SCN-009 A1 is verified at the merge and its binding postcondition observed | Accepted |
+| DEC-085 | PH-1 close-out and PH-2 start: step 19 in parts 19a–19d; after step 19 the frozen line `release/ph1` (tag `ph1-rc1`) carries the gate-1b acceptance and the reference runs, fixes reaching it from `main`; `main` becomes the development line of PH-2; the PH-2 step plan (steps 0–20, gates 2a and 2b) in UBS-PH-2 §11 | Accepted |
 
 ---
 
@@ -499,3 +500,21 @@ the records from DEC-060 on follow.
   - Listing every live sheet of the branch in the binding was rejected: the binding names what the commit was checked with, and a sheet whose scope excludes the class was not evaluated.
   - Leaving the merge unchecked and relying on the evaluation-time error was rejected: an ambiguous set would then block every commit that touches a matching object.
 - **Affects:** STD-LGS-022, STD-LGS-030, STD-TIME-040, STD-VER-055, SCN-009, EXIT-1-19, DEC-082
+
+### DEC-085 — PH-1 close-out, the frozen line `release/ph1`, and the PH-2 step plan
+- **Date:** 2026-10-18 · **Status:** Accepted
+- **Context:** PH-1 steps 1–18 are merged; EXIT-1-19 is met on the workstation (DEC-082, DEC-084). Left in PH-1: step 19 (security and verification close-out: EXIT-1-16, the rest of EXIT-1-17, EXIT-1-20) and step 20 (gate-1b acceptance), and the reference runs that wait on rented environments (EXIT-1-09 on ENV-REF-SERVER, EXIT-1-18 and EXIT-1-19 on ENV-REF-SMALL) and the external reviewer. The owner wants PH-2 to start without disturbing the verification of PH-1.
+- **Decision:**
+  1. **Step 19 in parts**, one pull request each: 19a the isolation suite, secret scanning of logs and traces and the security-event coverage (EXIT-1-16); 19b privacy and classification in the PH-1 scope (NR-PRIV, CR-GDPR items of PH-1); 19c the edge benchmarks of SUITE-NOD-BENCH on the workstation (the rest of EXIT-1-17); 19d the PH-1 traceability report (EXIT-1-20) and the security report in Chinese. They are the verification that the PH-1 exit criteria require (CLAUDE.md rule 4).
+  2. **The frozen line.** When step 19 is merged, the branch `release/ph1` is cut from `main` and tagged `ph1-rc1`. The gate-1b acceptance (step 20) and the reference runs use it. It takes only fixes of acceptance findings, made on `main` first and then cherry-picked; each fix moves the tag to the next `ph1-rcN`. The accepted state is tagged `ph1`.
+  3. **The development line.** `main` is the development line of PH-2 from the cut; there is no long-lived PH-2 branch. A PH-2 change that touches PH-1 behaviour keeps the PH-1 suites passing (UBS-PH-2 §7.6, EXIT-2-15).
+  4. **The PH-2 step plan** is UBS-PH-2 §11: step 0 alignment; gate 2a (steps 1–10) the BPA 1.0 release candidates for the PH-2 kernel, the formal models, the kernel capabilities in the order the `finance` Buk needs them and the Buk itself in process; gate 2b (steps 11–20) the HA Server, the integration and identity edge, notifications, files and search, the Web workspace in two parts, Studio and Forge, Bridge, finance on the HA Server, the external verification with BPA 1.0 final, and the acceptance. Each step is split into parts by its own decision when it starts. PH-2 steps 0–8 may run while the PH-1 acceptance waits on environments.
+  5. **External dependencies** the owner arranges: the accounting reviewer before step 9, the HA reference environment before step 11, accountants for the early usability check of step 14 and the study of step 19, the accessibility auditor and the penetration-test vendor before step 19.
+- **Consequences:**
+  - UBS-PH-2 §11 carries the step table; `docs/reports/ph2-plan-zh.md` tracks the PH-2 status for the owner, `docs/reports/ph1-plan-zh.md` the rest of PH-1.
+  - The gate-1a acceptance (step 9) and the gate-1b acceptance (step 20) can share one rental of ENV-REF-SERVER and ENV-REF-SMALL.
+- **Alternatives considered:**
+  - A long-lived PH-2 branch beside `main` was rejected: two development lines need repeated merges, and PH-1 only needs a stable line, not a second development line.
+  - Freezing PH-1 before step 19 was rejected: the acceptance needs the evidence of step 19 on the frozen line.
+  - Starting PH-2 with the clients (Workspace) was rejected: the clients need the kernel capabilities and the Buk to show; the standard comes first (AR-033).
+- **Affects:** UBS-PH-1, UBS-PH-2, EXIT-1-09, EXIT-1-16, EXIT-1-17, EXIT-1-18, EXIT-1-19, EXIT-1-20, EXIT-2-15, DEC-063, DEC-081

@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (84)
+## DEC (85)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -178,4 +178,5 @@ depends_on: [UBS-IDX-00]
 | DEC-082 | PH-1 step 18d: the scenarios over UBTP, parts 18d-1…18d-3, BPA 1.0-rc5 | `90-decisions/000-index.md` |
 | DEC-083 | BPA 1.0-rc6: revert resolutions and timer effects of events subscriptions | `90-decisions/000-index.md` |
 | DEC-084 | BPA 1.0-rc7: sheet checks at merge, sheets in the rule binding | `90-decisions/000-index.md` |
+| DEC-085 | PH-1 close-out, the frozen line `release/ph1`, and the PH-2 step plan | `90-decisions/000-index.md` |
 
