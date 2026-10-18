@@ -69,3 +69,10 @@ classes `Party` and `Job` are named `Counterparty` and `BatchJob`, because the p
 Buks of every Server hold `Party` and `Job`, and `FeeCase` has the port `calculate` through
 which SCN-011 starts its process (its journal now begins with the port's decision record). The
 in-process run after the change: 22 of 22 in memory and 22 of 22 on PostgreSQL (2026-10-18).
+
+## Since PH-1 step 18d-3b (DEC-082)
+
+The project also holds SCN-009 of gate 1b (`tests/scn-009.yaml`: the classes `MoneyMovement`,
+`Payment` and `Refund`, the logic `acme.money`), run over UBTP for EXIT-1-19. The gate-1a
+tests are unchanged; the in-process run after the change: 24 of 24 in memory and 24 of 24 on
+PostgreSQL (2026-10-18).

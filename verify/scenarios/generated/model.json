@@ -1,7 +1,7 @@
 {
   "project": "gate-1a-scenarios",
   "branch": "main",
-  "model_hash": "sha256:83446286b87e96a1a67b0651673b8bf6765a54704159ccbe1302cd3b03ea3e3f",
+  "model_hash": "sha256:ff000e513efe3e210a9b96cf16fcfe67c7616a0140bffae2008bad63146e3eb3",
   "vae": "acme",
   "classes": [
     {
@@ -289,6 +289,99 @@
       ]
     },
     {
+      "name": "MoneyMovement",
+      "label": "MoneyMovement",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "MoneyMovement",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "amount",
+          "type": "decimal",
+          "required": true,
+          "label": "amount",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "MoneyMovement"
+        },
+        {
+          "name": "memo",
+          "type": "text",
+          "required": false,
+          "label": "memo",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "MoneyMovement"
+        }
+      ],
+      "ports": [
+        {
+          "name": "issue",
+          "kind": "command",
+          "params": [],
+          "declared_by": "MoneyMovement"
+        }
+      ]
+    },
+    {
+      "name": "Payment",
+      "label": "Payment",
+      "parent": "MoneyMovement",
+      "kind": "definition",
+      "linearization": [
+        "Payment",
+        "MoneyMovement",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "amount",
+          "type": "decimal",
+          "required": true,
+          "label": "amount",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "MoneyMovement"
+        },
+        {
+          "name": "memo",
+          "type": "text",
+          "required": false,
+          "label": "memo",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "MoneyMovement"
+        },
+        {
+          "name": "payee",
+          "type": "text",
+          "required": false,
+          "label": "payee",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Payment"
+        }
+      ],
+      "ports": [
+        {
+          "name": "issue",
+          "kind": "command",
+          "params": [],
+          "declared_by": "MoneyMovement"
+        }
+      ]
+    },
+    {
       "name": "PriceList",
       "label": "PriceList",
       "parent": "DataObject",
@@ -379,6 +472,58 @@
         }
       ],
       "ports": []
+    },
+    {
+      "name": "Refund",
+      "label": "Refund",
+      "parent": "MoneyMovement",
+      "kind": "definition",
+      "linearization": [
+        "Refund",
+        "MoneyMovement",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "amount",
+          "type": "decimal",
+          "required": true,
+          "label": "amount",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "MoneyMovement"
+        },
+        {
+          "name": "customer",
+          "type": "text",
+          "required": false,
+          "label": "customer",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Refund"
+        },
+        {
+          "name": "memo",
+          "type": "text",
+          "required": false,
+          "label": "memo",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "MoneyMovement"
+        }
+      ],
+      "ports": [
+        {
+          "name": "issue",
+          "kind": "command",
+          "params": [],
+          "declared_by": "MoneyMovement"
+        }
+      ]
     },
     {
       "name": "ServiceAgreement",

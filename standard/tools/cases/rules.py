@@ -222,6 +222,12 @@ def enforcement(S):
         commit([{'op': 'update', 'object_id': uid(1), 'base': base('c', uid(1)), 'body': {'email': 'b@x.com'}}],
                branch='sandbox/try', error='RULE.DECLARATION_UNSATISFIED', details=True),
         commit([{'op': 'update', 'object_id': uid(1), 'base': base('c', uid(1)), 'body': {'email': 'b@x.com'}}])])
+    # since BPA 1.0-rc7 (DEC-084): the rule binding lists the sheets the enforcement evaluated
+    S('STD-LGS-030', 'the rule binding of a commit lists the sheets its enforcement evaluated', [
+        commit([sheet(SHEET, 'strict', 'Customer { audit_level: "strict"; }'),
+                sheet(uid(902), 'acct', 'Account { read_only: true; }')]),
+        commit([acme], process={'message': 'new customer', 'reason': 'onboarding'}), op('commit_info', branch=BR)],
+      also=('STD-TIME-040',))
 
 
 def decisions(S):

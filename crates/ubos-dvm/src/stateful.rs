@@ -1510,6 +1510,7 @@ pub(crate) fn commit_on(
         .chain(tx.appended.iter().map(|e| e.class.clone()))
         .collect();
     // STD-LGS-011, -030: commit properties, validations and invariants (DEC-067).
+    let sheets_bound: BTreeSet<String>;
     {
         let written: Vec<(String, String)> = changes
             .iter()
@@ -1522,7 +1523,7 @@ pub(crate) fn commit_on(
             })
             .collect();
         let _phase = ubos_types::trace::span("dvm.rules");
-        let warnings = crate::rules::enforce(
+        let (warnings, bound) = crate::rules::enforce(
             &mut repo,
             &tx,
             reg,
@@ -1541,6 +1542,7 @@ pub(crate) fn commit_on(
         if !warnings.is_empty() {
             result["warnings"] = Value::Array(warnings);
         }
+        sheets_bound = bound;
     }
     // STD-VER-012: write policy on protected branches.
     if !via_change_set && ubos_version::PROTECTED.contains(&meta.kind.as_str()) {
@@ -1560,6 +1562,7 @@ pub(crate) fn commit_on(
         &logic,
         &lcs,
         &flow,
+        &sheets_bound,
     )?;
     tx.extra.insert("rule_binding".into(), binding);
     if dry {
@@ -1622,6 +1625,7 @@ fn rule_binding_of(
     logic: &BTreeSet<String>,
     lcs: &crate::flow::Lifecycles,
     flow: &ubos_flow::Flow,
+    sheets: &BTreeSet<String>,
 ) -> Result<Value, BpaError> {
     let mut names: BTreeSet<String> = BTreeSet::new();
     for oid in versions.as_object().map(|m| m.keys()).into_iter().flatten() {
@@ -1672,6 +1676,23 @@ fn rule_binding_of(
     }
     if !flow.guards.is_empty() {
         out["guards"] = json!(flow.guards);
+    }
+    // STD-TIME-040 (1.0-rc7): the sheets the commit enforcement evaluated, in the order of
+    // the sheet objects
+    if !sheets.is_empty() {
+        let mut bound: Vec<(String, String)> = Vec::new();
+        for (oid, o) in &tx.state.objects {
+            if o.class != "GovernanceSheet" {
+                continue;
+            }
+            for vh in std::iter::once(&o.head).chain(o.timeline.iter().map(|x| &x.version)) {
+                if sheets.contains(vh) && !bound.iter().any(|(_, v)| v == vh) {
+                    bound.push((oid.clone(), vh.clone()));
+                }
+            }
+        }
+        bound.sort();
+        out["sheets"] = json!(bound.into_iter().map(|(_, v)| v).collect::<Vec<_>>());
     }
     Ok(out)
 }

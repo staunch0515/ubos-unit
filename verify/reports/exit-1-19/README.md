@@ -1,44 +1,121 @@
-# EXIT-1-19 — The PH-1 scenarios over UBTP on the single-node Server (parts 18d-2 and 18d-3a, interim)
+# EXIT-1-19 — The thirteen PH-1 scenarios over UBTP on the single-node Server
 
 | Item | Value |
 |---|---|
-| Criterion | EXIT-1-19: all 13 PH-1 scenarios pass over UBTP on the single-node Server (UBS-PH-1 §3) |
-| This part | PH-1 step 18d-2 (DEC-082): the ten gate-1a scenarios (SCN-002, -003, -004, -005, -006, -007, -008, -010, -011, -018); re-run in part 18d-3a on BPA 1.0-rc6 (DEC-083), which closes the gaps G1 and G2; SCN-001, -009 and -017 and the final report come with part 18d-3b |
-| Result | **21 of 22 scenario tests pass over WebSocket and 21 of 22 over HTTP; SCN-011 A1 is verified in process only** (DEC-082 item 4). In part 18d-2 SCN-006 main and SCN-018 main failed on two gaps of the Protocol (G1, G2 below), closed by BPA 1.0-rc6 |
-| Runner | `forge test verify/scenarios --backend ubtp --server target/debug/ubos-server --database "host=127.0.0.1 user=postgres dbname=bpa" --binding ws|http --report …` (`crates/ubos-forge/src/ubtp_test.rs`), the Rust SDK `ubos-sdk` 0.2 |
-| Node | `ubos-server` (debug build), `dev` preset, PostgreSQL 16; one Server and one fresh tenant per test, the genesis written at the fixture clock (`dev.test_clock`), the test's connectors as `dev.connectors`, the clock moved through `/api/v1/admin/clock` |
-| Standard | BPA 1.0-rc6 (part 18d-2: 1.0-rc5) |
-| Time | 56.6 s over WebSocket, 57.1 s over HTTP (sum of the tests), development workstation (4 vCPU, linux x86_64); 2026-10-18 |
-| Reports | `scenarios-ubtp-ws.json`, `scenarios-ubtp-http.json` |
+| Criterion | EXIT-1-19: all 13 PH-1 scenarios pass over UBTP on the single-node Server (UBS-PH-1 §3); VER-SCN-1001 |
+| Parts | PH-1 step 18d (DEC-082, DEC-083, DEC-084): 18d-2 the runner and the ten gate-1a scenarios; 18d-3a BPA 1.0-rc6 closing the gaps G1 and G2; 18d-3b SCN-001, SCN-009 and SCN-017, BPA 1.0-rc7 closing the findings F4 and F5, this report and the CI job |
+| Result | **The 13 scenarios pass over UBTP on the single-node Server, main and alternate flows; one alternate flow is verified in process.** The scenario project: 23 of 24 tests pass over WebSocket and 23 of 24 over HTTP, SCN-011 A1 in process only (DEC-082 item 4). The operator scenarios SCN-001 and SCN-017: 19 of 19 checks over HTTP. The two findings of part 18d-3b (F4, F5) are closed by BPA 1.0-rc7 (DEC-084) |
+| Runners | `forge test verify/scenarios --backend ubtp --server target/debug/ubos-server --database … --binding ws\|http` (`crates/ubos-forge/src/ubtp_test.rs`, the Rust SDK `ubos-sdk` 0.2); `verify/scenarios/server/scn_server.py --binary target/debug/ubos-server` (the node's operator commands on an installed Server, UBTP over HTTP) |
+| Node | `ubos-server` (debug build). The scenario project: `dev` preset on PostgreSQL 16, one Server and one fresh tenant per test, the genesis written at the fixture clock (`dev.test_clock`), the test's connectors as `dev.connectors`. The operator scenarios: the `server` preset installed by the steps of SUITE-NOD-OPS on a PostgreSQL 16 cluster of its own with WAL archiving |
+| Standard | BPA 1.0-rc7 |
+| Environment | development workstation (4 vCPU, linux x86_64), 2026-10-18; the ENV-REF-SMALL run is made with step 19 (UBS-PH-1 §11) |
+| Time | the scenario project 107.6 s over WebSocket and 78.0 s over HTTP (sum of the tests); the operator scenarios 49.0 s |
+| Reports | `scenarios-ubtp-ws.json`, `scenarios-ubtp-http.json`, `scenarios-server.json` |
+| CI | the job `scenarios over UBTP` of `.github/workflows/ci.yml` runs both runners on every push |
 
-## 1. Results
+## 1. The scenario project over UBTP
+
+SCN-002…008, -010, -011, -018 (gate 1a) and SCN-009 (gate 1b), from `verify/scenarios/`.
 
 | Test | Steps | WebSocket | HTTP | ms (WS / HTTP) |
 |---|---|---|---|---|
-| SCN-002 main: the subclass narrows title and a 150-character title is rejected | 6 | pass | pass | 1954 / 1675 |
-| SCN-002 A1: widening title in the subclass is a narrowing violation | 1 | pass | pass | 1951 / 1794 |
-| SCN-002 post: querying Agreement includes the ServiceAgreement instance | 4 | pass | pass | 1813 / 1786 |
-| SCN-003 main: the override guard fails inside the notice period; the base logic terminates a plain agreement | 7 | pass | pass | 2555 / 2321 |
-| SCN-003 A1: an override narrowing a parameter type is rejected | 1 | pass | pass | 1779 / 1635 |
-| SCN-004 main: a draft branch, 15 changes, the diff, the approved change set merged in one commit | 29 | pass | pass | 6099 / 5763 |
-| SCN-004 A1: the same field changed on main and the draft is a conflict; nothing merges | 6 | pass | pass | 1741 / 1794 |
-| SCN-004 A2: a different field of the same product merges automatically | 6 | pass | pass | 1837 / 1891 |
-| SCN-005 main: a stale base is rejected with TXN.HEAD_MOVED and the chain stays linear | 7 | pass | pass | 1738 / 1781 |
-| SCN-005 A1: 100 concurrent writers on one base version, exactly one succeeds | 3 | pass | pass | 3770 / 4378 |
-| SCN-006 main: a future-dated price is read by asof and becomes effective on its day without a job | 8 | pass | pass | 5538 / 5537 |
-| SCN-006 A1: a second future version; every date resolves to one version | 7 | pass | pass | 1891 / 1818 |
-| SCN-007 main: what did we believe on March 1 and March 11 about February 15 | 9 | pass | pass | 4981 / 5864 |
-| SCN-007 A1: a time before the creation is not found at that time | 2 | pass | pass | 1876 / 1922 |
-| SCN-008 main: a wrong posting is reversed and re-posted; history stays | 4 | pass | pass | 1715 / 1901 |
-| SCN-008 A1: a ledger entry cannot be updated | 2 | pass | pass | 1777 / 1591 |
-| SCN-008 A2: a branch with ledger entries merges by appending in branch order | 6 | pass | pass | 2147 / 1961 |
-| SCN-010 main: runaway L2 logic is stopped, nothing is committed or released, the run is metered | 4 | pass | pass | 4896 / 4609 |
-| SCN-010 A1: a script that opens a network connection is refused | 1 | pass | pass | 1517 / 1969 |
-| SCN-011 main: a process with the clock, entropy and a connector replays identically | 4 | pass | pass | 1718 / 1733 |
+| SCN-002 main: the subclass narrows title and a 150-character title is rejected | 6 | pass | pass | 15950 / 3665 |
+| SCN-002 A1: widening title in the subclass is a narrowing violation | 1 | pass | pass | 7144 / 3905 |
+| SCN-002 post: querying Agreement includes the ServiceAgreement instance | 4 | pass | pass | 5966 / 1971 |
+| SCN-003 main: the override guard fails inside the notice period; the base logic terminates a plain agreement | 7 | pass | pass | 7378 / 2669 |
+| SCN-003 A1: an override narrowing a parameter type is rejected | 1 | pass | pass | 4244 / 1897 |
+| SCN-004 main: a draft branch, 15 changes, the diff, the approved change set merged in one commit | 29 | pass | pass | 6610 / 6101 |
+| SCN-004 A1: the same field changed on main and the draft is a conflict; nothing merges | 6 | pass | pass | 3631 / 2271 |
+| SCN-004 A2: a different field of the same product merges automatically | 6 | pass | pass | 2401 / 3063 |
+| SCN-005 main: a stale base is rejected with TXN.HEAD_MOVED and the chain stays linear | 7 | pass | pass | 2078 / 2227 |
+| SCN-005 A1: 100 concurrent writers on one base version, exactly one succeeds | 3 | pass | pass | 7270 / 4552 |
+| SCN-006 main: a future-dated price is read by asof and becomes effective on its day without a job | 8 | pass | pass | 6869 / 6530 |
+| SCN-006 A1: a second future version; every date resolves to one version | 7 | pass | pass | 3363 / 2243 |
+| SCN-007 main: what did we believe on March 1 and March 11 about February 15 | 9 | pass | pass | 5426 / 4749 |
+| SCN-007 A1: a time before the creation is not found at that time | 2 | pass | pass | 3254 / 2785 |
+| SCN-008 main: a wrong posting is reversed and re-posted; history stays | 4 | pass | pass | 2539 / 2816 |
+| SCN-008 A1: a ledger entry cannot be updated | 2 | pass | pass | 2443 / 3342 |
+| SCN-008 A2: a branch with ledger entries merges by appending in branch order | 6 | pass | pass | 2277 / 2707 |
+| SCN-009 main: a control merged as a sheet rejects a large refund without audit data and requires a signature | 12 | pass | pass | 2850 / 2730 |
+| SCN-009 A1: a second sheet setting audit_level with equal specificity and priority is rejected at its merge | 7 | pass | pass | 2105 / 3025 |
+| SCN-010 main: runaway L2 logic is stopped, nothing is committed or released, the run is metered | 4 | pass | pass | 5497 / 5107 |
+| SCN-010 A1: a script that opens a network connection is refused | 1 | pass | pass | 2101 / 2823 |
+| SCN-011 main: a process with the clock, entropy and a connector replays identically | 4 | pass | pass | 1937 / 2539 |
 | SCN-011 A1: a missing journal record stops the replay without calling the connector | 0 | in process only | in process only | 0 / 0 |
-| SCN-018 main: a bulk process is reverted; the 5 objects changed since are conflicts, resolved to keep the later change | 59 | pass | pass | 3263 / 3392 |
+| SCN-018 main: a bulk process is reverted; the 5 objects changed since are conflicts, resolved to keep the later change | 59 | pass | pass | 4286 / 4332 |
 
-## 2. How the steps map onto UBTP
+## 2. The operator scenarios
+
+SCN-001 and SCN-017 run the node's operator commands (`bootstrap`, `backup`, `restore`,
+`verify`) on a Server installed as INSTALL.md describes; clients read through UBTP over HTTP
+with the administrator's bearer token (`scenarios-server.json`).
+
+| Check | Result |
+|---|---|
+| SCN-001 A2: an invalid genesis Buk signature stops bootstrap with PKG.SIGNATURE_INVALID | pass |
+| SCN-001 A2: nothing written: no tenant, no setup step, no VAE | pass |
+| SCN-001 A1: bootstrap interrupted after the genesis step | pass |
+| SCN-001 A1: the rerun completes the missing steps and leaves the done ones | pass |
+| SCN-001 step 3: the administrator principal with its DID, role and key pair | pass |
+| SCN-001 step 1: the tenant, the default VAE and its branch main answer over UBTP | pass |
+| SCN-001 step 2: the genesis Buks system and ontology recorded once each (no duplicates) | pass |
+| SCN-001 postcondition 1: the history of main shows exactly two genesis installations, one commit each | pass |
+| SCN-001 postcondition 2: every genesis installation records a Buk that verifies against the publisher key | pass |
+| SCN-001 step 4: the class Party with its inheritance chain and fields over UBTP | pass |
+| SCN-001 postcondition 3: the Merkle root of main is reported | pass |
+| SCN-017 precondition: continuous backup (a base backup, WAL archived) | pass |
+| SCN-017: commits before and after the chosen time | pass |
+| SCN-017 step 1: restored to the chosen time in a separate cluster | pass |
+| SCN-017 step 2: the heads and DVM roots of the restored branches equal those recorded at the chosen time | pass |
+| SCN-017 step 3: the projections rebuilt from the restored commits equal the restored ones | pass |
+| SCN-017 postcondition: the restore report lists the heads, roots and verification results | pass |
+| SCN-017: a Server on the restored database answers the root of main recorded at the chosen time over UBTP | pass |
+| SCN-017 A1: a broken backup chain: the restore reports the last consistent point and does not restore past it | pass |
+
+How the flows map:
+- **SCN-001.** Bootstrap creates the tenant, the default VAE and `main`, installs the genesis
+  Buks `system` and `ontology` by one signed commit each (the phase note of SCN-001: the loader
+  branch follows in PH-2) and invites the administrator, whose principal holds the role
+  `admin` with a DID and a key pair generated by the node (`tenant-admin` in the scenario
+  text). Step 4 is `query class` (STD-PROTO-015). Postcondition 2: each installation commit
+  records the Buk with its content hash and the publisher's signature, and the node verifies
+  those manifests against the publisher key (`genesis-verify`). A1 interrupts bootstrap after
+  the genesis step (`UBOS_FAULT_AFTER_STEP`); A2 injects an invalid signature into the
+  `ontology` Buk (`UBOS_FAULT_BUK_SIGNATURE`): bootstrap now verifies every genesis Buk before
+  its first step, so nothing is written.
+- **SCN-017.** The chosen time is that of a restore point taken between two series of
+  commits; the restore targets that time (`restore --time`) in a separate cluster; `verify`
+  compares the heads and DVM roots with those the point recorded and rebuilds the projections
+  (the indexes of the last 1,000 commits) against the restored ones; a Server started on the
+  restored database answers the same commit and root of `main` over UBTP. A1 removes a WAL
+  segment after the chosen point: a restore to the later point is refused with
+  `wal_chain_broken` and the chosen point as the last consistent one.
+- **SCN-009.** The sheet `MoneyMovement[this.amount > 10000] { audit_level: "strict";
+  require_signature: true; }` is authored on a draft branch and merged into the branch where
+  the ports run. A refund of 12,000 committed without audit data is rejected with
+  `RULE.DECLARATION_UNSATISFIED` naming the declaration (`audit_level`); with a message and a
+  reason it commits, and its command port then requires a signature step
+  (`RULE.DECISION_REQUIRES`, a pending change over UBTP; `require_signature` is an action
+  property, STD-LGS-011, -031). A payment of 9,000 needs neither. The cascade explanation
+  (`query explain`, kind `cascade`) names the sheet, the selector, the specificity and the
+  winning value, and the rule binding of the refund's commit lists the sheet's version
+  (STD-TIME-040, BPA 1.0-rc7). A1 authors the two sheets on separate drafts: the merge preview
+  reports `RULE.AMBIGUOUS_CASCADE` and the second merge is rejected with it (STD-LGS-022,
+  BPA 1.0-rc7).
+
+## 3. Findings of part 18d-3b, closed by BPA 1.0-rc7 (DEC-084)
+
+- **F4 — a merge did not check the sheet set.** The static checks of STD-LGS-022 ran only
+  when a commit wrote a sheet; two sheets authored on separate branches with equal specificity
+  and priority both merged, and the cascade of a matching object then failed with
+  `RULE.AMBIGUOUS_CASCADE` at evaluation. Since 1.0-rc7 a merge or a revert runs the checks on
+  the sheets it brings in, and `merge_preview` reports them (VER-CONF-5013…5015).
+- **F5 — the rule binding did not list sheets.** STD-TIME-040 binds the governance sheets of
+  a commit with the Governance profile, but the reference model and the kernel recorded only
+  classes, extensions, lifecycles, logic and guards. Since 1.0-rc7 `sheets` lists the versions
+  of the sheets the commit enforcement evaluated (VER-CONF-5063).
+
+## 4. Part 18d-2: how the steps map onto UBTP
 
 The runner runs the same project as EXIT-1-13 (`verify/scenarios/`), test by test on its own
 fixture: the genesis on a fresh tenant at the fixture clock, the seed on `main` and the logic on
@@ -53,7 +130,7 @@ genesis Buks add commits on `main`. An expected error of `effective_class` or `d
 inline declarations (SCN-002 A1, SCN-003 A1) is a `bootstrap` whose genesis the node rejects
 with that code (DEC-082 item 2).
 
-## 3. Findings of this part
+## 5. Findings of part 18d-2
 
 - **Fixed in the node:** the Server's engines ran with the L2 host off (only the conformance
   adapter keeps it off, DEC-058), so the L2 ports of SCN-003 and SCN-010 failed with
@@ -71,7 +148,7 @@ with that code (DEC-082 item 2).
   released by the timers of the node, not by a commit, so a client never receives it over UBTP
   (the node's event log has it). SCN-006 main expects it.
 
-## 4. Part 18d-3a: BPA 1.0-rc6 (DEC-083)
+## 6. Part 18d-3a: BPA 1.0-rc6 (DEC-083)
 
 - **G1 closed.** A revert takes `resolutions` as a merge does (STD-VER-070, -071 notes): `source`
   keeps the reverted value, `target` the later change, `base` the value after the reverted

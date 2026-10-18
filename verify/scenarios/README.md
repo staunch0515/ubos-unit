@@ -2,7 +2,10 @@
 
 A Forge project (DSN-FRG-002) holding the ten gate-1a scenarios of UBS-PH-1 §3 as `forge test`
 scenario tests: SCN-002, -003, -004, -005, -006, -007, -008, -010, -011, -018, main and
-alternate flows, one file per scenario under `tests/`.
+alternate flows, one file per scenario under `tests/`; since PH-1 step 18d-3b also SCN-009 of
+gate 1b. `forge test … --backend ubtp` runs the same tests over UBTP on a Server, and
+`server/scn_server.py` runs the operator scenarios SCN-001 and SCN-017 on an installed Server
+(EXIT-1-19, `verify/reports/exit-1-19/`).
 
 The project is written by `tools/gen_scenarios.py` (run it from the repository root after a
 change; the generated YAML is committed so that the tests read without the generator).

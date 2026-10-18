@@ -12,12 +12,13 @@
 //! | Step | UBTP |
 //! |---|---|
 //! | `read` | `query read` of the object's URI (the runner knows the slugs of the seed and of the objects the test creates); `tx_time` is the `time` selector, a commit sequence becomes the `commit` selector, `provenance` is the last commit of the object's `history` |
-//! | `commit` (also `concurrent`) | `mutate commit` |
+//! | `commit` (also `concurrent`) | `mutate commit`, with the `message` and `reason` of the step's process |
 //! | `query`, `history`, `diff` | `query` of the same kind |
 //! | `create_branch`, `change_set`, `merge`, `revert`, `bulk` | the versioning requests of `mutate` (STD-PROTO-014) |
 //! | `commit_info`, `export_state`, `merge_preview`, `read_ledger`, `process_info`, `metering`, `journal`, `replay` | the introspection requests of `query` (STD-PROTO-015) |
 //! | `effective_class`, `dispatch` | `query class`, `query dispatch` of the installed model; an expected error is a `bootstrap` whose genesis the node rejects |
-//! | `execute` of a port | `mutate port`; the result carries the process's metering |
+//! | `execute` of a port | `mutate port`; the result carries the process's metering; a pending change (a `require` decision) is `RULE.DECISION_REQUIRES` with its steps, as in process |
+//! | `explain_cascade` | `query explain` of kind `cascade` (STD-PROTO-011) |
 //! | `released_effects` | the emits of events subscriptions on `main` and `feature/forge` |
 //! | `advance` | `POST /api/v1/admin/clock {advance}` |
 //!
@@ -502,7 +503,18 @@ impl Run<'_> {
             "commit" => {
                 let changes = i.get("changes").cloned().unwrap_or(json!([]));
                 self.learn(&changes);
-                let body = json!({"branch": branch, "commit": {"changes": changes}});
+                let mut body = json!({"branch": branch, "commit": {"changes": changes}});
+                // the message and reason of the test's process go with the mutation
+                // (STD-PROTO-010; `audit_level: strict` needs both, SCN-009)
+                for k in ["message", "reason"] {
+                    if let Some(v) = i
+                        .get("process")
+                        .and_then(|p| p.get(k))
+                        .filter(|v| !v.is_null())
+                    {
+                        body[k] = v.clone();
+                    }
+                }
                 if let Some(n) = concurrent {
                     let mut tasks = Vec::new();
                     for _ in 0..n {
@@ -672,6 +684,14 @@ impl Run<'_> {
                     .mutate(json!({"branch": branch, "port": port}), test_pid.as_deref())
                     .await?;
                 let pid = s(&r, "process_id").unwrap_or_default().to_string();
+                // a `require` decision is a pending change over UBTP and an error in process
+                // (STD-PROTO-010, STD-LGS-031)
+                if let Some(p) = r.get("pending").filter(|p| !p.is_null()) {
+                    return Err(BpaError::with_details(
+                        "RULE.DECISION_REQUIRES",
+                        json!({"steps": p["steps"], "process_id": pid}),
+                    ));
+                }
                 let rec = self
                     .one(json!({"process": {"process_id": pid, "metering": true}}))
                     .await?;
@@ -699,6 +719,12 @@ impl Run<'_> {
                 self.one(json!({"replay": {"process_id": pid}})).await
             }
             "released_effects" => Ok(self.released().await),
+            "explain_cascade" => {
+                let oid = s(i, "object_id").unwrap_or_default().to_string();
+                let b = json!({"explain": {"target": self.uri(&oid)?, "kind": "cascade",
+                    "property": i["property"]}, "branch": branch});
+                self.one(b).await
+            }
             other => Err(err(
                 "LOGIC.NOT_AVAILABLE",
                 format!("{other} has no UBTP mapping"),
