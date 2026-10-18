@@ -1,6 +1,8 @@
 """The in-process UBTP binding of the reference implementation (BPA 1.0-rc2, STD-PROTO-001,
 -002, -010, -011, -012, -013, -020; PH-1 step 10d, DEC-068), with the versioning messages and
-introspection queries of BPA 1.0-rc4 (STD-PROTO-014, -015; PH-1 step 18a, DEC-079).
+introspection queries of BPA 1.0-rc4 (STD-PROTO-014, -015; PH-1 step 18a, DEC-079); since
+BPA 1.0-rc5 (PH-1 step 18d, DEC-082) the error of a `mutate` whose process was recorded carries
+its `process_id`.
 
 The adapter operation `ubtp {session, messages}` feeds a sequence of `DAT-UbtpEnvelope`
 messages to a session and returns the frames the server produced in order: `result`,
@@ -41,6 +43,7 @@ class Session:
         self.next_sub = 0
         self.subs = {}
         self.idem = {}
+        self.pid = None         # the process of the mutate being handled (1.0-rc5)
 
     def sid(self):
         self.next_id += 1
@@ -64,11 +67,18 @@ class Ubtp:
             f['trace'] = trace
         return f
 
-    def _error_frame(self, s, reply_to, e, trace=None):
+    def _error_frame(self, s, reply_to, e, trace=None, process_id=None):
         body = {'code': e.code, 'message': e.code}
         if e.detail is not None:
             body['details'] = e.detail
+        if process_id is not None:
+            body['process_id'] = process_id
         return self._frame(s, 'error', body, reply_to, trace)
+
+    def _ubtp_pid(self, s):
+        """A process identifier for the mutate being handled, remembered for its error (1.0-rc5)."""
+        s.pid = self._process_id()
+        return s.pid
 
     # -- entry --
 
@@ -93,6 +103,7 @@ class Ubtp:
             return [self._error_frame(s, rid, e)]
         rid, trace = m['id'], m.get('trace')
         t = m['type']
+        s.pid = None
         try:
             if t == 'handshake':
                 body = self._handshake(s, m['body'])
@@ -113,7 +124,9 @@ class Ubtp:
             else:
                 _err('LOGIC.NOT_AVAILABLE', 'sync comes with PH-3')
         except BpaError as e:
-            return [self._error_frame(s, rid, e, trace)]
+            # STD-PROTO-010 (1.0-rc5): a mutate whose process was recorded names it
+            pid = s.pid if t == 'mutate' and s.pid in self.processes else None
+            return [self._error_frame(s, rid, e, trace, pid)]
         frames = [self._frame(s, 'result', body, rid, trace)]
         if t in ('mutate', 'ack'):
             frames += self._catch_up(s)
@@ -226,7 +239,7 @@ class Ubtp:
                 r = self.validate(branch, c['changes'], self._ubtp_process(s, extra))
                 body = {'validated': True, 'violations': r['violations'], 'warnings': r['warnings']}
             else:
-                pid = self._process_id()
+                pid = self._ubtp_pid(s)
                 r = self.commit(branch, c['changes'], self._ubtp_process(s, dict(extra, process_id=pid)))
                 body = {'process_id': pid, 'commits': [r['commit_id']], 'versions': r['versions'],
                         'warnings': r.get('warnings', []),
@@ -237,7 +250,7 @@ class Ubtp:
                 _err('MODEL.INVALID_VALUE', 'port is {target, name, params}')
             if b.get('validate_only'):
                 _err('LOGIC.NOT_AVAILABLE', 'the preview of a port call comes with the simulation of PH-2')
-            pid = self._process_id()
+            pid = self._ubtp_pid(s)
             i = {'branch': branch, 'target': p['target'], 'port': p['name'], 'params': p.get('params') or {},
                  'process': self._ubtp_process(s, dict(extra, process_id=pid)), 'ctx': self._ctx(s)}
             if s.grants is not None:
@@ -288,23 +301,23 @@ class Ubtp:
                 i['approver'] = s.principal
             r = self.change_set(i)
         elif kind == 'merge':
-            pid = self._process_id()
+            pid = self._ubtp_pid(s)
             r = self.merge(v.get('source'), branch, v.get('resolutions'),
                            self._ubtp_process(s, dict(extra, process_id=pid)))
         elif kind == 'revert':
             i = {k: v[k] for k in ('process_id', 'change_set', 'time', 'commit', 'reversal_ids', 'dry_run') if k in v}
             i['branch'] = branch
             if not v.get('dry_run'):
-                pid = self._process_id()
+                pid = self._ubtp_pid(s)
                 i['process'] = self._ubtp_process(s, dict(extra, process_id=pid))
             r = self.revert(i)
         else:
             i = {k: v[k] for k in ('changes', 'max_changes', 'mode', 'staging') if k in v}
             if v.get('resume') is not None:
-                pid = v['resume']
+                pid = s.pid = v['resume']
                 i['resume'] = True
             else:
-                pid = self._process_id()
+                pid = self._ubtp_pid(s)
             i.update(process_id=pid, branch=branch, process=self._ubtp_process(s, extra))
             r = self.bulk(i)
         commits, versions = [], {}

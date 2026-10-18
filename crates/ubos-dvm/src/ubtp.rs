@@ -7,7 +7,8 @@
 //! semantics over the engine, and the Server hands its transport frames to the same code
 //! (FR-INT-015). Since BPA 1.0-rc4 (PH-1 step 18b, DEC-079) `mutate` carries the
 //! versioning requests of STD-PROTO-014 and `query` the introspection requests of
-//! STD-PROTO-015.
+//! STD-PROTO-015; since BPA 1.0-rc5 (step 18d, DEC-082) the error of a `mutate` whose
+//! process was recorded carries its `process_id`.
 
 use crate::stateful::Engine;
 use serde_json::{Map, Value, json};
@@ -237,6 +238,7 @@ impl Engine {
                 trace.as_deref(),
             )]);
         }
+        self.ubtp_pid = None;
         let body = match t {
             "handshake" => self.handshake(session, &req.body),
             "cancel" => Ok(json!({"cancelled": false})),
@@ -249,7 +251,17 @@ impl Engine {
         };
         let body = match body {
             Ok(b) => b,
-            Err(e) => return Ok(vec![session.error(&e, Some(&rid), trace.as_deref())]),
+            Err(e) => {
+                let mut f = session.error(&e, Some(&rid), trace.as_deref());
+                // STD-PROTO-010 (1.0-rc5): a mutate whose process was recorded names it
+                if t == "mutate"
+                    && let Some(pid) = self.ubtp_pid.take()
+                    && self.store.process_rec(&pid)?.is_some()
+                {
+                    f["body"]["process_id"] = json!(pid);
+                }
+                return Ok(vec![f]);
+            }
         };
         let mut frames = vec![session.frame("result", body, Some(&rid), trace.as_deref())];
         if t == "mutate" || t == "ack" {
@@ -311,7 +323,9 @@ impl Engine {
     /// process counter, which the implicit processes of other operations advance too.
     fn next_pid(&mut self) -> String {
         self.next_process += 1;
-        format!("00000000-0000-4000-8000-{:012x}", self.next_process)
+        let pid = format!("00000000-0000-4000-8000-{:012x}", self.next_process);
+        self.ubtp_pid = Some(pid.clone());
+        pid
     }
 
     fn head_cseq(&mut self, branch: &str) -> Result<u64, BpaError> {
@@ -596,7 +610,9 @@ impl Engine {
                 let id = match v.get("resume").filter(|x| !x.is_null()) {
                     Some(r) => {
                         i["resume"] = json!(true);
-                        r.as_str().unwrap_or_default().to_string()
+                        let id = r.as_str().unwrap_or_default().to_string();
+                        self.ubtp_pid = Some(id.clone());
+                        id
                     }
                     None => self.next_pid(),
                 };

@@ -15,6 +15,9 @@ export class UbosError extends Error {
   readonly code: string;
   /** Code-specific details (the node's `details` or `explanation`). */
   readonly details: unknown;
+  /** The process of a failed mutation, when it was recorded (STD-PROTO-010, BPA 1.0-rc5):
+   * read it with `client.inspect.process`. */
+  processId?: string;
 
   constructor(message: string, details?: unknown, code?: string) {
     const c = code ?? (new.target as typeof UbosError).code;

@@ -1,5 +1,5 @@
 {
- "date": "2026-10-17T23:12:29+00:00",
+ "date": "2026-10-18T00:47:00+00:00",
  "failed": 0,
  "host": {
   "machine": "x86_64",
@@ -29,7 +29,7 @@
        "ok": true
       }
      ],
-     "ms": 78,
+     "ms": 101,
      "ok": true
     },
     "N02": {
@@ -46,7 +46,7 @@
        "ok": true
       }
      ],
-     "ms": 651,
+     "ms": 841,
      "ok": true
     },
     "N03": {
@@ -68,7 +68,7 @@
        "ok": true
       }
      ],
-     "ms": 1287,
+     "ms": 1275,
      "ok": true
     },
     "N04": {
@@ -80,7 +80,7 @@
        "ok": true
       }
      ],
-     "ms": 3230,
+     "ms": 3227,
      "ok": true
     },
     "N05": {
@@ -102,7 +102,7 @@
        "ok": true
       }
      ],
-     "ms": 4986,
+     "ms": 5015,
      "ok": true
     },
     "N06": {
@@ -114,7 +114,7 @@
        "ok": true
       }
      ],
-     "ms": 2024,
+     "ms": 2515,
      "ok": true
     },
     "N07": {
@@ -136,7 +136,7 @@
        "ok": true
       }
      ],
-     "ms": 1246,
+     "ms": 1613,
      "ok": true
     },
     "N08": {
@@ -153,7 +153,7 @@
        "ok": true
       }
      ],
-     "ms": 768,
+     "ms": 810,
      "ok": true
     },
     "P01": {
@@ -197,7 +197,7 @@
        "ok": true
       }
      ],
-     "ms": 474,
+     "ms": 455,
      "ok": true
     },
     "P03": {
@@ -209,7 +209,7 @@
        "ok": true
       }
      ],
-     "ms": 48,
+     "ms": 51,
      "ok": true
     },
     "P04": {
@@ -251,7 +251,7 @@
        "ok": true
       }
      ],
-     "ms": 1288,
+     "ms": 1316,
      "ok": true
     },
     "P05": {
@@ -288,7 +288,7 @@
        "ok": true
       }
      ],
-     "ms": 1506,
+     "ms": 1523,
      "ok": true
     },
     "P06": {
@@ -315,7 +315,7 @@
        "ok": true
       }
      ],
-     "ms": 251,
+     "ms": 239,
      "ok": true
     },
     "P07": {
@@ -332,7 +332,7 @@
        "ok": true
       }
      ],
-     "ms": 165,
+     "ms": 119,
      "ok": true
     },
     "P08": {
@@ -364,7 +364,7 @@
        "ok": true
       }
      ],
-     "ms": 407,
+     "ms": 364,
      "ok": true
     },
     "P09": {
@@ -391,7 +391,7 @@
        "ok": true
       }
      ],
-     "ms": 718,
+     "ms": 692,
      "ok": true
     },
     "P10": {
@@ -450,7 +450,7 @@
        "ok": true
       }
      ],
-     "ms": 155,
+     "ms": 127,
      "ok": true
     },
     "P12": {
@@ -492,7 +492,7 @@
        "ok": true
       }
      ],
-     "ms": 438,
+     "ms": 367,
      "ok": true
     },
     "P13": {
@@ -529,7 +529,7 @@
        "ok": true
       }
      ],
-     "ms": 1172,
+     "ms": 1081,
      "ok": true
     },
     "P14": {
@@ -566,7 +566,7 @@
        "ok": true
       }
      ],
-     "ms": 65,
+     "ms": 50,
      "ok": true
     },
     "P15": {
@@ -608,7 +608,7 @@
        "ok": true
       }
      ],
-     "ms": 716,
+     "ms": 734,
      "ok": true
     },
     "P16": {
@@ -650,7 +650,7 @@
        "ok": true
       }
      ],
-     "ms": 501,
+     "ms": 566,
      "ok": true
     },
     "P17": {
@@ -692,7 +692,7 @@
        "ok": true
       }
      ],
-     "ms": 605,
+     "ms": 675,
      "ok": true
     },
     "P18": {
@@ -724,7 +724,7 @@
        "ok": true
       }
      ],
-     "ms": 484,
+     "ms": 520,
      "ok": true
     },
     "P19": {
@@ -762,17 +762,22 @@
       },
       {
        "detail": "",
+       "name": "a failed port call names its process, whose record is failed",
+       "ok": true
+      },
+      {
+       "detail": "",
        "name": "an unknown process is IAM.NOT_FOUND",
        "ok": true
       }
      ],
-     "ms": 191,
+     "ms": 279,
      "ok": true
     }
    },
    "failed": [],
    "missing": [],
-   "seconds": 23.9
+   "seconds": 25.0
   },
   "rust/ws": {
    "cases": {
@@ -795,7 +800,7 @@
        "ok": true
       }
      ],
-     "ms": 58,
+     "ms": 180,
      "ok": true
     },
     "N02": {
@@ -812,7 +817,7 @@
        "ok": true
       }
      ],
-     "ms": 666,
+     "ms": 621,
      "ok": true
     },
     "N03": {
@@ -834,7 +839,7 @@
        "ok": true
       }
      ],
-     "ms": 1276,
+     "ms": 1390,
      "ok": true
     },
     "N04": {
@@ -846,7 +851,7 @@
        "ok": true
       }
      ],
-     "ms": 3222,
+     "ms": 3213,
      "ok": true
     },
     "N05": {
@@ -868,7 +873,7 @@
        "ok": true
       }
      ],
-     "ms": 4994,
+     "ms": 5037,
      "ok": true
     },
     "N06": {
@@ -880,7 +885,7 @@
        "ok": true
       }
      ],
-     "ms": 2234,
+     "ms": 3135,
      "ok": true
     },
     "N07": {
@@ -902,7 +907,7 @@
        "ok": true
       }
      ],
-     "ms": 1196,
+     "ms": 1391,
      "ok": true
     },
     "N08": {
@@ -919,7 +924,7 @@
        "ok": true
       }
      ],
-     "ms": 670,
+     "ms": 762,
      "ok": true
     },
     "P01": {
@@ -963,7 +968,7 @@
        "ok": true
       }
      ],
-     "ms": 722,
+     "ms": 414,
      "ok": true
     },
     "P03": {
@@ -975,7 +980,7 @@
        "ok": true
       }
      ],
-     "ms": 63,
+     "ms": 40,
      "ok": true
     },
     "P04": {
@@ -1017,7 +1022,7 @@
        "ok": true
       }
      ],
-     "ms": 1275,
+     "ms": 1237,
      "ok": true
     },
     "P05": {
@@ -1054,7 +1059,7 @@
        "ok": true
       }
      ],
-     "ms": 995,
+     "ms": 1027,
      "ok": true
     },
     "P06": {
@@ -1081,7 +1086,7 @@
        "ok": true
       }
      ],
-     "ms": 213,
+     "ms": 185,
      "ok": true
     },
     "P07": {
@@ -1098,7 +1103,7 @@
        "ok": true
       }
      ],
-     "ms": 120,
+     "ms": 139,
      "ok": true
     },
     "P08": {
@@ -1130,7 +1135,7 @@
        "ok": true
       }
      ],
-     "ms": 312,
+     "ms": 386,
      "ok": true
     },
     "P09": {
@@ -1157,7 +1162,7 @@
        "ok": true
       }
      ],
-     "ms": 715,
+     "ms": 756,
      "ok": true
     },
     "P10": {
@@ -1179,7 +1184,7 @@
        "ok": true
       }
      ],
-     "ms": 28,
+     "ms": 34,
      "ok": true
     },
     "P11": {
@@ -1216,7 +1221,7 @@
        "ok": true
       }
      ],
-     "ms": 76,
+     "ms": 93,
      "ok": true
     },
     "P12": {
@@ -1258,7 +1263,7 @@
        "ok": true
       }
      ],
-     "ms": 497,
+     "ms": 606,
      "ok": true
     },
     "P13": {
@@ -1295,7 +1300,7 @@
        "ok": true
       }
      ],
-     "ms": 1171,
+     "ms": 1163,
      "ok": true
     },
     "P14": {
@@ -1332,7 +1337,7 @@
        "ok": true
       }
      ],
-     "ms": 37,
+     "ms": 53,
      "ok": true
     },
     "P15": {
@@ -1374,7 +1379,7 @@
        "ok": true
       }
      ],
-     "ms": 532,
+     "ms": 593,
      "ok": true
     },
     "P16": {
@@ -1416,7 +1421,7 @@
        "ok": true
       }
      ],
-     "ms": 483,
+     "ms": 406,
      "ok": true
     },
     "P17": {
@@ -1458,7 +1463,7 @@
        "ok": true
       }
      ],
-     "ms": 558,
+     "ms": 516,
      "ok": true
     },
     "P18": {
@@ -1490,7 +1495,7 @@
        "ok": true
       }
      ],
-     "ms": 394,
+     "ms": 332,
      "ok": true
     },
     "P19": {
@@ -1528,17 +1533,22 @@
       },
       {
        "detail": "",
+       "name": "a failed port call names its process, whose record is failed",
+       "ok": true
+      },
+      {
+       "detail": "",
        "name": "an unknown process is IAM.NOT_FOUND",
        "ok": true
       }
      ],
-     "ms": 188,
+     "ms": 280,
      "ok": true
     }
    },
    "failed": [],
    "missing": [],
-   "seconds": 23.3
+   "seconds": 24.4
   },
   "typescript/http": {
    "cases": {
@@ -1561,7 +1571,7 @@
        "ok": true
       }
      ],
-     "ms": 203,
+     "ms": 192,
      "ok": true
     },
     "N02": {
@@ -1578,7 +1588,7 @@
        "ok": true
       }
      ],
-     "ms": 759,
+     "ms": 820,
      "ok": true
     },
     "N03": {
@@ -1600,7 +1610,7 @@
        "ok": true
       }
      ],
-     "ms": 1337,
+     "ms": 1314,
      "ok": true
     },
     "N04": {
@@ -1612,7 +1622,7 @@
        "ok": true
       }
      ],
-     "ms": 3229,
+     "ms": 3129,
      "ok": true
     },
     "N05": {
@@ -1634,7 +1644,7 @@
        "ok": true
       }
      ],
-     "ms": 4919,
+     "ms": 5052,
      "ok": true
     },
     "N06": {
@@ -1646,7 +1656,7 @@
        "ok": true
       }
      ],
-     "ms": 2523,
+     "ms": 2748,
      "ok": true
     },
     "N07": {
@@ -1668,7 +1678,7 @@
        "ok": true
       }
      ],
-     "ms": 3645,
+     "ms": 1579,
      "ok": true
     },
     "N08": {
@@ -1685,7 +1695,7 @@
        "ok": true
       }
      ],
-     "ms": 873,
+     "ms": 726,
      "ok": true
     },
     "P01": {
@@ -1702,7 +1712,7 @@
        "ok": true
       }
      ],
-     "ms": 4,
+     "ms": 2,
      "ok": true
     },
     "P02": {
@@ -1729,7 +1739,7 @@
        "ok": true
       }
      ],
-     "ms": 741,
+     "ms": 576,
      "ok": true
     },
     "P03": {
@@ -1783,7 +1793,7 @@
        "ok": true
       }
      ],
-     "ms": 1472,
+     "ms": 1452,
      "ok": true
     },
     "P05": {
@@ -1810,7 +1820,7 @@
        "ok": true
       }
      ],
-     "ms": 1673,
+     "ms": 1602,
      "ok": true
     },
     "P06": {
@@ -1837,7 +1847,7 @@
        "ok": true
       }
      ],
-     "ms": 300,
+     "ms": 346,
      "ok": true
     },
     "P07": {
@@ -1854,7 +1864,7 @@
        "ok": true
       }
      ],
-     "ms": 159,
+     "ms": 164,
      "ok": true
     },
     "P08": {
@@ -1886,7 +1896,7 @@
        "ok": true
       }
      ],
-     "ms": 435,
+     "ms": 444,
      "ok": true
     },
     "P09": {
@@ -1913,7 +1923,7 @@
        "ok": true
       }
      ],
-     "ms": 867,
+     "ms": 859,
      "ok": true
     },
     "P10": {
@@ -1935,7 +1945,7 @@
        "ok": true
       }
      ],
-     "ms": 29,
+     "ms": 28,
      "ok": true
     },
     "P11": {
@@ -1972,7 +1982,7 @@
        "ok": true
       }
      ],
-     "ms": 226,
+     "ms": 271,
      "ok": true
     },
     "P12": {
@@ -2024,7 +2034,7 @@
        "ok": true
       }
      ],
-     "ms": 515,
+     "ms": 498,
      "ok": true
     },
     "P13": {
@@ -2061,7 +2071,7 @@
        "ok": true
       }
      ],
-     "ms": 1058,
+     "ms": 1137,
      "ok": true
     },
     "P14": {
@@ -2098,7 +2108,7 @@
        "ok": true
       }
      ],
-     "ms": 82,
+     "ms": 67,
      "ok": true
     },
     "P15": {
@@ -2135,7 +2145,7 @@
        "ok": true
       }
      ],
-     "ms": 835,
+     "ms": 814,
      "ok": true
     },
     "P16": {
@@ -2177,7 +2187,7 @@
        "ok": true
       }
      ],
-     "ms": 779,
+     "ms": 642,
      "ok": true
     },
     "P17": {
@@ -2219,7 +2229,7 @@
        "ok": true
       }
      ],
-     "ms": 814,
+     "ms": 834,
      "ok": true
     },
     "P18": {
@@ -2251,7 +2261,7 @@
        "ok": true
       }
      ],
-     "ms": 632,
+     "ms": 649,
      "ok": true
     },
     "P19": {
@@ -2289,17 +2299,22 @@
       },
       {
        "detail": "",
+       "name": "a failed port call names its process, whose record is failed",
+       "ok": true
+      },
+      {
+       "detail": "",
        "name": "an unknown process is IAM.NOT_FOUND",
        "ok": true
       }
      ],
-     "ms": 202,
+     "ms": 313,
      "ok": true
     }
    },
    "failed": [],
    "missing": [],
-   "seconds": 29.1
+   "seconds": 26.9
   },
   "typescript/ws": {
    "cases": {
@@ -2322,7 +2337,7 @@
        "ok": true
       }
      ],
-     "ms": 207,
+     "ms": 230,
      "ok": true
     },
     "N02": {
@@ -2339,7 +2354,7 @@
        "ok": true
       }
      ],
-     "ms": 814,
+     "ms": 869,
      "ok": true
     },
     "N03": {
@@ -2361,7 +2376,7 @@
        "ok": true
       }
      ],
-     "ms": 1309,
+     "ms": 1279,
      "ok": true
     },
     "N04": {
@@ -2373,7 +2388,7 @@
        "ok": true
       }
      ],
-     "ms": 3232,
+     "ms": 3116,
      "ok": true
     },
     "N05": {
@@ -2395,7 +2410,7 @@
        "ok": true
       }
      ],
-     "ms": 5061,
+     "ms": 5076,
      "ok": true
     },
     "N06": {
@@ -2407,7 +2422,7 @@
        "ok": true
       }
      ],
-     "ms": 2278,
+     "ms": 2714,
      "ok": true
     },
     "N07": {
@@ -2429,7 +2444,7 @@
        "ok": true
       }
      ],
-     "ms": 1374,
+     "ms": 1389,
      "ok": true
     },
     "N08": {
@@ -2446,7 +2461,7 @@
        "ok": true
       }
      ],
-     "ms": 812,
+     "ms": 752,
      "ok": true
     },
     "P01": {
@@ -2490,7 +2505,7 @@
        "ok": true
       }
      ],
-     "ms": 698,
+     "ms": 555,
      "ok": true
     },
     "P03": {
@@ -2502,7 +2517,7 @@
        "ok": true
       }
      ],
-     "ms": 67,
+     "ms": 51,
      "ok": true
     },
     "P04": {
@@ -2544,7 +2559,7 @@
        "ok": true
       }
      ],
-     "ms": 1413,
+     "ms": 1359,
      "ok": true
     },
     "P05": {
@@ -2571,7 +2586,7 @@
        "ok": true
       }
      ],
-     "ms": 2432,
+     "ms": 1457,
      "ok": true
     },
     "P06": {
@@ -2598,7 +2613,7 @@
        "ok": true
       }
      ],
-     "ms": 290,
+     "ms": 266,
      "ok": true
     },
     "P07": {
@@ -2615,7 +2630,7 @@
        "ok": true
       }
      ],
-     "ms": 121,
+     "ms": 134,
      "ok": true
     },
     "P08": {
@@ -2647,7 +2662,7 @@
        "ok": true
       }
      ],
-     "ms": 442,
+     "ms": 387,
      "ok": true
     },
     "P09": {
@@ -2674,7 +2689,7 @@
        "ok": true
       }
      ],
-     "ms": 835,
+     "ms": 685,
      "ok": true
     },
     "P10": {
@@ -2696,7 +2711,7 @@
        "ok": true
       }
      ],
-     "ms": 30,
+     "ms": 27,
      "ok": true
     },
     "P11": {
@@ -2733,7 +2748,7 @@
        "ok": true
       }
      ],
-     "ms": 190,
+     "ms": 165,
      "ok": true
     },
     "P12": {
@@ -2785,7 +2800,7 @@
        "ok": true
       }
      ],
-     "ms": 839,
+     "ms": 647,
      "ok": true
     },
     "P13": {
@@ -2822,7 +2837,7 @@
        "ok": true
       }
      ],
-     "ms": 1173,
+     "ms": 1061,
      "ok": true
     },
     "P14": {
@@ -2859,7 +2874,7 @@
        "ok": true
       }
      ],
-     "ms": 81,
+     "ms": 58,
      "ok": true
     },
     "P15": {
@@ -2896,7 +2911,7 @@
        "ok": true
       }
      ],
-     "ms": 1103,
+     "ms": 631,
      "ok": true
     },
     "P16": {
@@ -2938,7 +2953,7 @@
        "ok": true
       }
      ],
-     "ms": 655,
+     "ms": 530,
      "ok": true
     },
     "P17": {
@@ -2980,7 +2995,7 @@
        "ok": true
       }
      ],
-     "ms": 987,
+     "ms": 713,
      "ok": true
     },
     "P18": {
@@ -3012,7 +3027,7 @@
        "ok": true
       }
      ],
-     "ms": 638,
+     "ms": 502,
      "ok": true
     },
     "P19": {
@@ -3050,21 +3065,26 @@
       },
       {
        "detail": "",
+       "name": "a failed port call names its process, whose record is failed",
+       "ok": true
+      },
+      {
+       "detail": "",
        "name": "an unknown process is IAM.NOT_FOUND",
        "ok": true
       }
      ],
-     "ms": 233,
+     "ms": 260,
      "ok": true
     }
    },
    "failed": [],
    "missing": [],
-   "seconds": 27.9
+   "seconds": 25.5
   }
  },
- "seconds": 107.6,
- "step": "PH-1 17d, 18c (DEC-078, DEC-079)",
+ "seconds": 105.2,
+ "step": "PH-1 17d, 18c, 18d-1 (DEC-078, DEC-079, DEC-082)",
  "suite": "SUITE-SDK-PROTO, SUITE-SDK-NET, SUITE-SDK-TYPES",
  "summary": {
   "rust/http": {
@@ -3103,7 +3123,7 @@
     "ok": true
    },
    {
-    "detail": "../../../tmp/sdk-suite-0ak_v9k3/removed-field/use.ts(7,49): error TS2339: Property 'email' does not exist on type 'Customer'.\n../../../tmp/sdk-suite-0ak_v9k3/removed-field/use.ts(12,21): error TS2339: Property 'email' does not exist on type 'Customer'.\n../../../tmp/sdk-suite-0ak_v9k3/removed-field/use.ts(13,32): error TS2345: Argument of type '\"email\"' is not assignable to parameter of type '\"name\" | \"country\" | \"credit_limit\" | \"rating\"'.\n",
+    "detail": "../../../tmp/sdk-suite-odv1yay0/removed-field/use.ts(7,49): error TS2339: Property 'email' does not exist on type 'Customer'.\n../../../tmp/sdk-suite-odv1yay0/removed-field/use.ts(12,21): error TS2339: Property 'email' does not exist on type 'Customer'.\n../../../tmp/sdk-suite-odv1yay0/removed-field/use.ts(13,32): error TS2345: Argument of type '\"email\"' is not assignable to parameter of type '\"name\" | \"country\" | \"credit_limit\" | \"rating\"'.\n",
     "name": "the same program fails to compile once the model removes a field it uses (DSN-FRG-102)",
     "ok": true
    }
