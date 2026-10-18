@@ -380,3 +380,4 @@ depends_on: [UBS-REQ-06]
   1. Given a new class, when inspected, then the defaults are as stated.
 - **Verification:** INSP
 - **Origin:** NEW
+- **Phase note:** PH-1 step 19b (DEC-086): PH-1 meets the default classification `internal` and the class default; masking personal fields for agents and exports by default follows DSN-DVM-821 and read logging of personal data by default follows DSN-DVM-823 in PH-2.

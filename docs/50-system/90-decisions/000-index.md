@@ -39,6 +39,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-083 | BPA 1.0-rc6 closes the two Protocol gaps 18d-2 found: `revert` takes `resolutions` as a merge does (STD-VER-070, -071, STD-PROTO-014), and an events subscription delivers the effects released without a commit such as `BecameEffective`, after the commits of its branch, with the cursor `<branch>:<cseq>.<n>` (STD-PROTO-012, STD-TIME-050); the node refuses a project genesis that redeclares a class of the platform genesis Buks | Accepted |
 | DEC-084 | BPA 1.0-rc7 closes the two findings of part 18d-3b: the static sheet checks of STD-LGS-022 also run on the sheets a merge or a revert brings into the target (F4), and the rule binding lists the governance sheets the commit enforcement evaluated (STD-TIME-040, F5); SCN-009 A1 is verified at the merge and its binding postcondition observed | Accepted |
 | DEC-085 | PH-1 close-out and PH-2 start: step 19 in parts 19a–19d; after step 19 the frozen line `release/ph1` (tag `ph1-rc1`) carries the gate-1b acceptance and the reference runs, fixes reaching it from `main`; `main` becomes the development line of PH-2; the PH-2 step plan (steps 0–20, gates 2a and 2b) in UBS-PH-2 §11 | Accepted |
+| DEC-086 | PH-1 step 19b: the PH-1 part of privacy by default (classification by declaration, the class default, `internal` otherwise; raise-only; rectification as a new version with the reason `rectification`); masking and read logging by default move with DSN-DVM-821/-823 to PH-2, subject-key encryption of rectified versions with DSN-DVM-830; `forge check` reports classification coverage | Accepted |
 
 ---
 
@@ -519,3 +520,21 @@ the records from DEC-060 on follow.
   - Freezing PH-1 before step 19 was rejected: the acceptance needs the evidence of step 19 on the frozen line.
   - Starting PH-2 with the clients (Workspace) was rejected: the clients need the kernel capabilities and the Buk to show; the standard comes first (AR-033).
 - **Affects:** UBS-PH-1, UBS-PH-2, EXIT-1-09, EXIT-1-16, EXIT-1-17, EXIT-1-18, EXIT-1-19, EXIT-1-20, EXIT-2-15, DEC-063, DEC-081
+
+### DEC-086 — Privacy by default in the PH-1 scope (PH-1 step 19b)
+- **Date:** 2026-10-18 · **Status:** Accepted
+- **Context:** Step 19b (DEC-085) verifies privacy and classification in the PH-1 scope. NR-PRIV-006 (PH-1) asks for three defaults: classification `internal`, personal fields masked for agents and exports, read logging of personal data. FR-MODEL-047's acceptance includes masking for an agent without clearance. The masking (DSN-DVM-821) and read logging (DSN-DVM-823, NR-PRIV-005) are designed for PH-2, as are agents and the subject export (DSN-DVM-837). DSN-DVM-824 (PH-1) also asks that "personal-data field types (name, email, tax ID)" default to `personal`, but BPA has no such field types: a field's classification is declared (STD-FND-027) or inherited from the class `classification_default`. DSN-DVM-836 (PH-1) keeps rectified versions "encrypted with the subject key", which needs the per-subject encryption of DSN-DVM-830 (PH-2).
+- **Decision:**
+  1. **PH-1 scope of privacy by default.** A field's effective classification is its declaration, else its class's `classification_default`, else `internal`; a refinement may raise a classification and never lower it (STD-CLS-013). There are no personal-data field types in PH-1. Classifying the ontology `Person` name and email as `personal` comes with the PH-2 genesis upgrade.
+  2. **Moved to PH-2:** the NR-PRIV-006 defaults "personal fields masked for agents and exports" and "read logging on for personal data", and the masking part of FR-MODEL-047's acceptance, with DSN-DVM-821 and DSN-DVM-823; the encryption of a rectified personal field's earlier versions with the subject key, with DSN-DVM-830.
+  3. **Rectification in PH-1** (CR-GDPR-003, DSN-DVM-836): a new version on the same valid period, committed with the reason `rectification`; reads use the rectified value, a read as of an earlier transaction time and the audit trail (FR-AUD-011) keep the earlier value.
+  4. **Classification coverage** (NR-PRIV-003): `forge check` reports, for the fields a project declares, the effective level and its source (declared, class default, default `internal`), counted by level, with the personal fields named; text and `--json`. Every field has an effective classification by rule 1, so coverage is 100% by construction; the counts show how much of it is declared.
+  5. **Verification:** the privacy tests PRIV-1…PRIV-4 in the scenario project (`verify/scenarios/tests/privacy.yaml`), run in memory, on PostgreSQL and over UBTP (PRIV-4 in process only: the audit trail is a kernel query outside the Protocol); the coverage inspection of the scenario project and the SDK fixture; report `verify/reports/privacy-ph1/`.
+- **Consequences:**
+  - Phase notes on NR-PRIV-006, FR-MODEL-047, DSN-DVM-824 and DSN-DVM-836.
+  - The scenario model gains `Contact` (personal `name` and `email`, `classification_default: confidential`) and `VipContact` (raises `email` to `sensitive_personal`).
+  - The model export of `forge types` carries declared classifications; the effective level including the class default is reported by `forge check`.
+- **Alternatives considered:**
+  - Building masking and read logging in PH-1 was rejected: they need the agent and export channels of PH-2 and would be untested in PH-1.
+  - Field types that imply `personal` were rejected: STD-FND-027 classifies by declaration; inferring personal data from a type or name is unreliable and not in the standard.
+- **Affects:** NR-PRIV-003, NR-PRIV-005, NR-PRIV-006, FR-MODEL-047, DSN-DVM-821, DSN-DVM-823, DSN-DVM-824, DSN-DVM-830, DSN-DVM-836, CR-GDPR-003, DEC-085

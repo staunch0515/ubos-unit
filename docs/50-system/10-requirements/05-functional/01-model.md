@@ -298,6 +298,7 @@ depends_on: [UBS-REQ-05, UBS-REQ-03]
   1. Given `Person.email` classified `personal`, when the model is exported, then the classification appears. When an agent without `personal` clearance reads it, then the value is masked.
 - **Verification:** CONF, SEC
 - **Origin:** NEW — required by CR-GDPR and CR-HIPAA items.
+- **Phase note:** PH-1 step 19b (DEC-086): PH-1 carries the classification, its class default and its export with the model; the masking part of the acceptance follows DSN-DVM-821 in PH-2.
 
 ## CAP-MODEL-05 — State kinds
 

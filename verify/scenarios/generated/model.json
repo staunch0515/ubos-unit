@@ -1,7 +1,7 @@
 {
   "project": "gate-1a-scenarios",
   "branch": "main",
-  "model_hash": "sha256:ff000e513efe3e210a9b96cf16fcfe67c7616a0140bffae2008bad63146e3eb3",
+  "model_hash": "sha256:84b5e999844fc32d381cf0b51d87fe2789a7f0c3fd5ca6f13841680fbdbbb9ed",
   "vae": "acme",
   "classes": [
     {
@@ -175,6 +175,60 @@
           "default": null,
           "classification": null,
           "declared_by": "CashMovement"
+        }
+      ],
+      "ports": []
+    },
+    {
+      "name": "Contact",
+      "label": "Contact",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Contact",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "email",
+          "type": "text",
+          "required": false,
+          "label": "email",
+          "constraints": null,
+          "default": null,
+          "classification": "personal",
+          "declared_by": "Contact"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": "personal",
+          "declared_by": "Contact"
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "required": false,
+          "label": "phone",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Contact"
+        },
+        {
+          "name": "segment",
+          "type": "text",
+          "required": false,
+          "label": "segment",
+          "constraints": null,
+          "default": null,
+          "classification": "internal",
+          "declared_by": "Contact"
         }
       ],
       "ports": []
@@ -626,6 +680,71 @@
           "declared_by": "ServiceAgreement"
         }
       ]
+    },
+    {
+      "name": "VipContact",
+      "label": "VipContact",
+      "parent": "Contact",
+      "kind": "definition",
+      "linearization": [
+        "VipContact",
+        "Contact",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "email",
+          "type": "text",
+          "required": false,
+          "label": "email",
+          "constraints": null,
+          "default": null,
+          "classification": "sensitive_personal",
+          "declared_by": "Contact"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": "personal",
+          "declared_by": "Contact"
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "required": false,
+          "label": "phone",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Contact"
+        },
+        {
+          "name": "segment",
+          "type": "text",
+          "required": false,
+          "label": "segment",
+          "constraints": null,
+          "default": null,
+          "classification": "internal",
+          "declared_by": "Contact"
+        },
+        {
+          "name": "tier",
+          "type": "text",
+          "required": false,
+          "label": "tier",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "VipContact"
+        }
+      ],
+      "ports": []
     }
   ]
 }

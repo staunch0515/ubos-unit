@@ -247,6 +247,21 @@ fn check(args: &[String]) -> Result<bool, String> {
             f.message
         ));
     }
+    let cls = ubos_forge::check::classification(&project);
+    let levels: Vec<String> = cls["by_level"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(l, n)| format!("{l} {n}"))
+        .collect();
+    text.push_str(&format!(
+        "classification: {} fields; {} declared, {} by class default, {} default internal; {}\n",
+        cls["fields"],
+        cls["declared"],
+        cls["class_default"],
+        cls["default_internal"],
+        levels.join(", ")
+    ));
     text.push_str(&format!(
         "forge check: {} classes, {} assets, {} seed changes, {} tests; {} findings, {errors} errors",
         project.classes.len(), project.logic.len(), project.seed.len(), project.tests.len(), findings.len()
@@ -254,6 +269,7 @@ fn check(args: &[String]) -> Result<bool, String> {
     emit(
         json_out,
         &json!({"command": "check", "project": project.manifest.name, "findings": list, "errors": errors,
+            "classification": cls,
             "counts": {"classes": project.classes.len(), "assets": project.logic.len(), "seed": project.seed.len(), "tests": project.tests.len()}}),
         &text,
     );
