@@ -52,13 +52,15 @@ def port(name, impl, params=None):
 
 
 # ---- model ----
-PARTY = cls('Party', [field('name', 'text', True)])
+# Counterparty and BatchJob: the platform genesis Buks hold Party (ontology) and Job (system)
+# on every Server (DEC-077), so the scenario model uses other names (DEC-082)
+PARTY = cls('Counterparty', [field('name', 'text', True)])
 AGREEMENT = cls('Agreement', [
     field('title', 'text', True),
     field('effective_from', 'date'),
-    field('parties', 'list', constraints={'item_type': {'type': 'reference', 'constraints': {'target_class': 'Party'}},
+    field('parties', 'list', constraints={'item_type': {'type': 'reference', 'constraints': {'target_class': 'Counterparty'}},
                                             'min_items': 2},
-          relationship={'cardinality': 'many_to_many', 'target': 'Party'}),
+          relationship={'cardinality': 'many_to_many', 'target': 'Counterparty'}),
     field('state', 'enum', constraints={'allowed_values': ['active', 'terminated']}, default='active'),
 ], ports=[port('terminate', 'acme.agreements#terminate')])
 SERVICE = cls('ServiceAgreement', [
@@ -72,9 +74,10 @@ PRICELIST = cls('PriceList', [field('price', 'decimal', True)], emit_became_effe
 RATE = cls('Rate', [field('value', 'decimal', True)])
 CASH = cls('CashMovement', [field('account', 'text', True), field('amount', 'money', True), field('memo', 'text')],
            kind='ledger', ledger={'key': ['account'], 'amounts': ['amount'], 'double_entry': False})
-JOB = cls('Job', [field('name', 'text', True), field('note', 'text'), field('counter', 'integer')],
+JOB = cls('BatchJob', [field('name', 'text', True), field('note', 'text'), field('counter', 'integer')],
           ports=[port('run', 'acme.runaway#run'), port('probe', 'acme.runaway#probe')])
-FEE = cls('FeeCase', [field('name', 'text', True), field('fee', 'decimal')])
+# SCN-011 starts its process through the port, so that it runs over UBTP too (DEC-082)
+FEE = cls('FeeCase', [field('name', 'text', True), field('fee', 'decimal')], ports=[port('calculate', 'acme.fee#calculate')])
 
 w('forge.toml', '[project]\nname = "gate-1a-scenarios"\nversion = "0.1.0"\nvae = "acme"\nabi = "1.0"\nbranch = "main"\n')
 w('model/classes.yaml', 'classes:\n' + ''.join('  - %s\n' % y(c) for c in
@@ -117,14 +120,14 @@ def create(oid, klass, slug, body, valid=None):
 
 
 P1, P2, P3 = uid(1, 1), uid(2, 1), uid(3, 1)
-PU1, PU2, PU3 = 'ubos://acme/Party/p-1', 'ubos://acme/Party/p-2', 'ubos://acme/Party/p-3'
-seed = [create(P1, 'Party', 'p-1', {'name': 'Acme'}), create(P2, 'Party', 'p-2', {'name': 'Beta'}),
-        create(P3, 'Party', 'p-3', {'name': 'Gamma'})]
+PU1, PU2, PU3 = 'ubos://acme/Counterparty/p-1', 'ubos://acme/Counterparty/p-2', 'ubos://acme/Counterparty/p-3'
+seed = [create(P1, 'Counterparty', 'p-1', {'name': 'Acme'}), create(P2, 'Counterparty', 'p-2', {'name': 'Beta'}),
+        create(P3, 'Counterparty', 'p-3', {'name': 'Gamma'})]
 seed += [create(uid(i, 2), 'Product', 'prod-%d' % i, {'name': 'Product %d' % i, 'price': '%d' % (10 + i), 'category': 'a'})
          for i in range(1, 51)]
 seed += [create(uid(1, 3), 'Customer', 'acme', {'name': 'Acme Ltd', 'email': 'v1@acme.example', 'country': 'US'})]
 seed += [create(uid(1, 4), 'PriceList', 'standard', {'price': '100'}, valid={'from': '2026-01-01'})]
-seed += [create(uid(1, 6), 'Job', 'job-1', {'name': 'runaway', 'counter': 0})]
+seed += [create(uid(1, 6), 'BatchJob', 'job-1', {'name': 'runaway', 'counter': 0})]
 seed += [create(uid(1, 7), 'FeeCase', 'fee-1', {'name': 'fee', 'fee': '0'})]
 seed += [create(uid(i, 8), 'Product', 'bulk-%d' % i, {'name': 'Bulk %d' % i, 'price': '1', 'category': 'bulk'}) for i in range(1, 41)]
 w('seed/objects.yaml', 'changes:\n' + ''.join('  - %s\n' % y(c) for c in seed))
@@ -407,14 +410,14 @@ tests_file('tests/scn-010.yaml', [
 PID = uid(1, 13)
 tests_file('tests/scn-011.yaml', [
     test('SCN-011 main: a process with the clock, entropy and a connector replays identically', [
-        step('execute', {'branch': 'feature/forge', 'asset': 'acme.fee', 'function': 'calculate', 'args': [], 'process': {'process_id': PID}},
+        step('execute', {'branch': 'feature/forge', 'target': uid(1, 7), 'port': 'calculate', 'params': {}, 'process': {'process_id': PID}},
              subset({'metering': {'connector_calls': 1, 'outcome': 'ok'}}), label='p'),
-        step('journal', {'process_id': PID}, subset({'records': [{'instruction': 'call.connector', 'seq': 1}]})),
+        step('journal', {'process_id': PID}, subset({'records': [{'instruction': 'decision', 'seq': 1}, {'instruction': 'call.connector', 'seq': 2}]})),
         step('replay', {'process_id': PID}, subset({'outcome': 'identical'})),
         step('export_state', {'branch': 'feature/forge'}, subset({}), label='after'),
     ], clock='2026-03-15T10:00:00.000000Z', connectors={'rate': {'get': {'usd': '1.10'}}}),
     test('SCN-011 A1: a missing journal record stops the replay without calling the connector', [
-        step('execute', {'branch': 'feature/forge', 'asset': 'acme.fee', 'function': 'calculate', 'args': [], 'process': {'process_id': PID}}, subset({})),
+        step('execute', {'branch': 'feature/forge', 'target': uid(1, 7), 'port': 'calculate', 'params': {}, 'process': {'process_id': PID}}, subset({})),
         step('replay', {'process_id': PID, 'drop': 1}, err('LOGIC.REPLAY_INPUT_MISSING')),
     ], clock='2026-03-15T10:00:00.000000Z', connectors={'rate': {'get': {'usd': '1.10'}}}),
 ], 'SCN-011 — Deterministic replay of a past process (STD-CTX-011, -012)')

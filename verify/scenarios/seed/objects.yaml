@@ -1,7 +1,7 @@
 changes:
-  - {"op": "create", "class": "Party", "object_id": "01890a5d-ac96-7001-8000-000000000001", "slug": "p-1", "body": {"name": "Acme"}}
-  - {"op": "create", "class": "Party", "object_id": "01890a5d-ac96-7001-8000-000000000002", "slug": "p-2", "body": {"name": "Beta"}}
-  - {"op": "create", "class": "Party", "object_id": "01890a5d-ac96-7001-8000-000000000003", "slug": "p-3", "body": {"name": "Gamma"}}
+  - {"op": "create", "class": "Counterparty", "object_id": "01890a5d-ac96-7001-8000-000000000001", "slug": "p-1", "body": {"name": "Acme"}}
+  - {"op": "create", "class": "Counterparty", "object_id": "01890a5d-ac96-7001-8000-000000000002", "slug": "p-2", "body": {"name": "Beta"}}
+  - {"op": "create", "class": "Counterparty", "object_id": "01890a5d-ac96-7001-8000-000000000003", "slug": "p-3", "body": {"name": "Gamma"}}
   - {"op": "create", "class": "Product", "object_id": "01890a5d-ac96-7002-8000-000000000001", "slug": "prod-1", "body": {"name": "Product 1", "price": "11", "category": "a"}}
   - {"op": "create", "class": "Product", "object_id": "01890a5d-ac96-7002-8000-000000000002", "slug": "prod-2", "body": {"name": "Product 2", "price": "12", "category": "a"}}
   - {"op": "create", "class": "Product", "object_id": "01890a5d-ac96-7002-8000-000000000003", "slug": "prod-3", "body": {"name": "Product 3", "price": "13", "category": "a"}}
@@ -54,7 +54,7 @@ changes:
   - {"op": "create", "class": "Product", "object_id": "01890a5d-ac96-7002-8000-000000000032", "slug": "prod-50", "body": {"name": "Product 50", "price": "60", "category": "a"}}
   - {"op": "create", "class": "Customer", "object_id": "01890a5d-ac96-7003-8000-000000000001", "slug": "acme", "body": {"name": "Acme Ltd", "email": "v1@acme.example", "country": "US"}}
   - {"op": "create", "class": "PriceList", "object_id": "01890a5d-ac96-7004-8000-000000000001", "slug": "standard", "body": {"price": "100"}, "valid": {"from": "2026-01-01"}}
-  - {"op": "create", "class": "Job", "object_id": "01890a5d-ac96-7006-8000-000000000001", "slug": "job-1", "body": {"name": "runaway", "counter": 0}}
+  - {"op": "create", "class": "BatchJob", "object_id": "01890a5d-ac96-7006-8000-000000000001", "slug": "job-1", "body": {"name": "runaway", "counter": 0}}
   - {"op": "create", "class": "FeeCase", "object_id": "01890a5d-ac96-7007-8000-000000000001", "slug": "fee-1", "body": {"name": "fee", "fee": "0"}}
   - {"op": "create", "class": "Product", "object_id": "01890a5d-ac96-7008-8000-000000000001", "slug": "bulk-1", "body": {"name": "Bulk 1", "price": "1", "category": "bulk"}}
   - {"op": "create", "class": "Product", "object_id": "01890a5d-ac96-7008-8000-000000000002", "slug": "bulk-2", "body": {"name": "Bulk 2", "price": "1", "category": "bulk"}}

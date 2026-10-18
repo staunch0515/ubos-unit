@@ -664,6 +664,37 @@ fn upgrade_cmd(opt: &dyn Fn(&str) -> Option<String>, flag: &dyn Fn(&str) -> bool
     finish(steps, ok)
 }
 
+/// The fixtures of the `dev` preset for scenarios over UBTP (PH-1 step 18d, DEC-082): the
+/// node clock starts at `dev.test_clock`, and `dev.connectors` registers connectors with
+/// fixed responses. The configuration refuses both in the `server` preset.
+fn dev_fixtures(cfg: &Config, node: Option<&ubos_node::Node>) {
+    if let Some(t) = cfg.text("dev.test_clock") {
+        ubos_node::clock::set(Some(t)).unwrap_or_else(|e| fail(e));
+    }
+    if let (Some(n), Some(spec)) = (node, cfg.text("dev.connectors")) {
+        let v: Value = serde_json::from_str(spec).unwrap_or_else(|e| fail(e));
+        for (name, ops) in v.as_object().into_iter().flatten() {
+            let (ops, conn) = (ops.clone(), name.clone());
+            n.services().connectors.register(
+                name,
+                Arc::new(
+                    move |op: &str, _req: &Value, _s: &dyn ubos_dvm::host::Secrets| {
+                        ops.get(op)
+                            .or_else(|| ops.get("*"))
+                            .cloned()
+                            .ok_or_else(|| {
+                                BpaError::new(
+                                    "LOGIC.CONNECTOR_ERROR",
+                                    format!("{conn} has no fixed response for {op}"),
+                                )
+                            })
+                    },
+                ),
+            );
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let opt = |k: &str| {
@@ -797,6 +828,7 @@ fn main() {
         Some("upgrade") => std::process::exit(upgrade_cmd(&opt, &flag)),
         Some("bootstrap") => {
             let (cfg, _) = load(&opt, &flag);
+            dev_fixtures(&cfg, None);
             std::process::exit(bootstrap(&cfg, classes(&opt), flag("--new-invitation")));
         }
         _ => {}
@@ -847,6 +879,7 @@ fn main() {
         }
         Some((url, root)) => {
             let node = ubos_node::Node::connect_with_root(&url, root).unwrap_or_else(|e| fail(e));
+            dev_fixtures(&cfg, Some(&node));
             match ensure_tenant(&node, &tenant, &authority, classes.as_ref(), None) {
                 Ok(r) => {
                     let created = r["steps"].as_array().is_some_and(|a| {

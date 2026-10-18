@@ -1,0 +1,266 @@
+{
+  "project": "gate-1a-scenarios",
+  "tests": 22,
+  "passed": 20,
+  "failed": 2,
+  "roots": {},
+  "coverage": {
+    "acme.agreements": {
+      "functions": 2,
+      "invoked": 0,
+      "fraction": 0.0
+    },
+    "acme.runaway": {
+      "functions": 2,
+      "invoked": 0,
+      "fraction": 0.0
+    },
+    "acme.fee": {
+      "functions": 1,
+      "invoked": 0,
+      "fraction": 0.0
+    }
+  },
+  "results": [
+    {
+      "name": "SCN-002 main: the subclass narrows title and a 150-character title is rejected",
+      "kind": "scenario",
+      "file": "tests/scn-002.yaml",
+      "result": "pass",
+      "ms": 2152,
+      "steps": 6,
+      "failure": null
+    },
+    {
+      "name": "SCN-002 A1: widening title in the subclass is a narrowing violation",
+      "kind": "scenario",
+      "file": "tests/scn-002.yaml",
+      "result": "pass",
+      "ms": 2116,
+      "steps": 1,
+      "failure": null
+    },
+    {
+      "name": "SCN-002 post: querying Agreement includes the ServiceAgreement instance",
+      "kind": "scenario",
+      "file": "tests/scn-002.yaml",
+      "result": "pass",
+      "ms": 2414,
+      "steps": 4,
+      "failure": null
+    },
+    {
+      "name": "SCN-003 main: the override guard fails inside the notice period; the base logic terminates a plain agreement",
+      "kind": "scenario",
+      "file": "tests/scn-003.yaml",
+      "result": "pass",
+      "ms": 2569,
+      "steps": 7,
+      "failure": null
+    },
+    {
+      "name": "SCN-003 A1: an override narrowing a parameter type is rejected",
+      "kind": "scenario",
+      "file": "tests/scn-003.yaml",
+      "result": "pass",
+      "ms": 1970,
+      "steps": 1,
+      "failure": null
+    },
+    {
+      "name": "SCN-004 main: a draft branch, 15 changes, the diff, the approved change set merged in one commit",
+      "kind": "scenario",
+      "file": "tests/scn-004.yaml",
+      "result": "pass",
+      "ms": 6555,
+      "steps": 29,
+      "failure": null
+    },
+    {
+      "name": "SCN-004 A1: the same field changed on main and the draft is a conflict; nothing merges",
+      "kind": "scenario",
+      "file": "tests/scn-004.yaml",
+      "result": "pass",
+      "ms": 1954,
+      "steps": 6,
+      "failure": null
+    },
+    {
+      "name": "SCN-004 A2: a different field of the same product merges automatically",
+      "kind": "scenario",
+      "file": "tests/scn-004.yaml",
+      "result": "pass",
+      "ms": 2045,
+      "steps": 6,
+      "failure": null
+    },
+    {
+      "name": "SCN-005 main: a stale base is rejected with TXN.HEAD_MOVED and the chain stays linear",
+      "kind": "scenario",
+      "file": "tests/scn-005.yaml",
+      "result": "pass",
+      "ms": 3282,
+      "steps": 7,
+      "failure": null
+    },
+    {
+      "name": "SCN-005 A1: 100 concurrent writers on one base version, exactly one succeeds",
+      "kind": "scenario",
+      "file": "tests/scn-005.yaml",
+      "result": "pass",
+      "ms": 5807,
+      "steps": 3,
+      "failure": null
+    },
+    {
+      "name": "SCN-006 main: a future-dated price is read by asof and becomes effective on its day without a job",
+      "kind": "scenario",
+      "file": "tests/scn-006.yaml",
+      "result": "fail",
+      "ms": 6234,
+      "steps": 8,
+      "failure": {
+        "step": 8,
+        "expected": {
+          "effects": [
+            {
+              "type": "BecameEffective",
+              "object_id": "01890a5d-ac96-7004-8000-000000000001",
+              "payload": {
+                "valid_from": "2026-10-01"
+              }
+            }
+          ]
+        },
+        "actual": {
+          "effects": []
+        }
+      }
+    },
+    {
+      "name": "SCN-006 A1: a second future version; every date resolves to one version",
+      "kind": "scenario",
+      "file": "tests/scn-006.yaml",
+      "result": "pass",
+      "ms": 2370,
+      "steps": 7,
+      "failure": null
+    },
+    {
+      "name": "SCN-007 main: what did we believe on March 1 and March 11 about February 15",
+      "kind": "scenario",
+      "file": "tests/scn-007.yaml",
+      "result": "pass",
+      "ms": 4472,
+      "steps": 9,
+      "failure": null
+    },
+    {
+      "name": "SCN-007 A1: a time before the creation is not found at that time",
+      "kind": "scenario",
+      "file": "tests/scn-007.yaml",
+      "result": "pass",
+      "ms": 1487,
+      "steps": 2,
+      "failure": null
+    },
+    {
+      "name": "SCN-008 main: a wrong posting is reversed and re-posted; history stays",
+      "kind": "scenario",
+      "file": "tests/scn-008.yaml",
+      "result": "pass",
+      "ms": 1664,
+      "steps": 4,
+      "failure": null
+    },
+    {
+      "name": "SCN-008 A1: a ledger entry cannot be updated",
+      "kind": "scenario",
+      "file": "tests/scn-008.yaml",
+      "result": "pass",
+      "ms": 1756,
+      "steps": 2,
+      "failure": null
+    },
+    {
+      "name": "SCN-008 A2: a branch with ledger entries merges by appending in branch order",
+      "kind": "scenario",
+      "file": "tests/scn-008.yaml",
+      "result": "pass",
+      "ms": 1948,
+      "steps": 6,
+      "failure": null
+    },
+    {
+      "name": "SCN-010 main: runaway L2 logic is stopped, nothing is committed or released, the run is metered",
+      "kind": "scenario",
+      "file": "tests/scn-010.yaml",
+      "result": "pass",
+      "ms": 4442,
+      "steps": 4,
+      "failure": null
+    },
+    {
+      "name": "SCN-010 A1: a script that opens a network connection is refused",
+      "kind": "scenario",
+      "file": "tests/scn-010.yaml",
+      "result": "pass",
+      "ms": 1508,
+      "steps": 1,
+      "failure": null
+    },
+    {
+      "name": "SCN-011 main: a process with the clock, entropy and a connector replays identically",
+      "kind": "scenario",
+      "file": "tests/scn-011.yaml",
+      "result": "pass",
+      "ms": 1604,
+      "steps": 4,
+      "failure": null
+    },
+    {
+      "name": "SCN-011 A1: a missing journal record stops the replay without calling the connector",
+      "kind": "scenario",
+      "file": "tests/scn-011.yaml",
+      "result": "pass",
+      "ms": 0,
+      "steps": 0,
+      "failure": null
+    },
+    {
+      "name": "SCN-018 main: a bulk process is reverted; the 5 objects changed since are conflicts, resolved to keep the later change",
+      "kind": "scenario",
+      "file": "tests/scn-018.yaml",
+      "result": "fail",
+      "ms": 2924,
+      "steps": 54,
+      "failure": {
+        "step": 54,
+        "expected": {
+          "match": "subset",
+          "result": {
+            "reverted": [
+              {
+                "branch": "main"
+              }
+            ],
+            "dependents": []
+          }
+        },
+        "actual": {
+          "error": "VER.MERGE_CONFLICT",
+          "message": "VER.MERGE_CONFLICT"
+        }
+      }
+    }
+  ],
+  "fixture_findings": [],
+  "backend": "ubtp",
+  "binding": "ws",
+  "in_process_only": [
+    {
+      "test": "SCN-011 A1: a missing journal record stops the replay without calling the connector",
+      "reason": "step \"replay\" uses the replay test hook {\"process_id\":\"01890a5d-ac96-700d-8000-000000000001\",\"drop\":1}, outside the Protocol (STD-PROTO-015)"
+    }
+  ]
+}

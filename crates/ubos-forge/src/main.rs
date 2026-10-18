@@ -19,7 +19,8 @@ const USAGE: &str = "usage:
   forge check [<project dir>] [--json]
   forge types [<project dir>] [--out <dir>] [--sdk <module>] [--json]
   forge test [<project dir>] [--report <json file>] [--junit <xml file>] [--records <dir>] \
-[--key <file with 64 hex chars>] [--backend memory|postgres] [--database <connection string>] [--json]
+[--key <file with 64 hex chars>] [--backend memory|postgres|ubtp] [--database <connection string>] \
+[--server <ubos-server>] [--binding ws|http] [--json]
   forge dev [<project dir>] [--database <connection string>] [--listen <host:port>] \
 [--server <ubos-server>] [--cors <origin>]... [--test] [--types] [--once] [--json]
   forge conform --vectors <dir> [--tag <tag>] [--profiles <p1,p2>] [--report <file>] \
@@ -343,8 +344,82 @@ fn dev(args: &[String]) -> Result<bool, String> {
     ubos_forge::dev::run(o).map(|()| true)
 }
 
+/// `forge test --backend ubtp` (PH-1 step 18d-2, DEC-082): the scenario tests over UBTP
+/// against a `dev`-preset Server on PostgreSQL.
+fn test_ubtp(dir: &Path, opts: &BTreeMap<String, String>, json_out: bool) -> Result<bool, String> {
+    let project = load(dir)?;
+    let binding = match opts.get("binding").map(String::as_str) {
+        Some("http") => ubos_sdk::Binding::Http,
+        Some("ws") | None => ubos_sdk::Binding::WebSocket,
+        Some(other) => return Err(format!("unknown binding {other}")),
+    };
+    let o = ubos_forge::ubtp_test::Options {
+        server: opts
+            .get("server")
+            .map(PathBuf::from)
+            .unwrap_or_else(ubos_forge::dev::default_server),
+        database: opts
+            .get("database")
+            .cloned()
+            .ok_or("--database is required with --backend ubtp")?,
+        binding,
+    };
+    let outcome = ubos_forge::ubtp_test::run(&project, &o).map_err(|e| e.to_string())?;
+    let report = &outcome.report;
+    let mut out = report.to_json(&project);
+    let name = if binding == ubos_sdk::Binding::Http {
+        "http"
+    } else {
+        "ws"
+    };
+    out["backend"] = json!("ubtp");
+    out["binding"] = json!(name);
+    out["in_process_only"] = json!(
+        outcome
+            .in_process_only
+            .iter()
+            .map(|(t, r)| json!({"test": t, "reason": r}))
+            .collect::<Vec<_>>()
+    );
+    if let Some(p) = opts.get("report") {
+        std::fs::write(p, serde_json::to_string_pretty(&out).unwrap_or_default())
+            .map_err(|e| e.to_string())?;
+    }
+    let mut text = String::new();
+    for r in &report.results {
+        let only = outcome.in_process_only.iter().any(|(t, _)| *t == r.name);
+        text.push_str(&format!(
+            "{} {} ({} ms){}\n",
+            if only {
+                "proc"
+            } else if r.pass {
+                "ok  "
+            } else {
+                "FAIL"
+            },
+            r.name,
+            r.ms,
+            r.failure
+                .as_ref()
+                .map(|f| format!(": {f}"))
+                .unwrap_or_default()
+        ));
+    }
+    text.push_str(&format!(
+        "forge test: {} of {} tests passed over UBTP ({name}); {} verified in process only",
+        out["passed"],
+        out["tests"],
+        outcome.in_process_only.len()
+    ));
+    emit(json_out, &out, &text);
+    Ok(out["failed"] == json!(0))
+}
+
 fn test(args: &[String]) -> Result<bool, String> {
     let (dir, opts, json_out) = options(args);
+    if opts.get("backend").map(String::as_str) == Some("ubtp") {
+        return test_ubtp(&dir, &opts, json_out);
+    }
     let project = load(&dir)?;
     let backend = ubos_forge::check::Backend {
         database: match opts.get("backend").map(String::as_str) {

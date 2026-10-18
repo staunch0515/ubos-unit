@@ -447,6 +447,9 @@ the records from DEC-060 on follow.
 - **Consequences:**
   - BPA 1.0-rc4 stays frozen as tagged; `spec/` and `vectors/` hold 1.0-rc5 (201 clauses, 1,692 vectors, 3 added, none changed).
   - The `dev`-preset fixtures (test clock at genesis, fixed-response connectors) are refused by the `server` preset.
+  - 18d-2: `forge test --backend ubtp` (`ubos-forge/src/ubtp_test.rs`) runs a project's scenario tests over UBTP, one `dev`-preset Server and one fresh tenant per test (a tenant's database connections are released with its Server); the configuration keys `dev.test_clock` and `dev.connectors`; commit sequences are reported relative to the fixture, since the Server's genesis Buks add commits on `main`. The ten gate-1a scenarios pass over WebSocket and HTTP except SCN-006 main and SCN-018 main (below), SCN-011 A1 in process only (`verify/reports/exit-1-19/`).
+  - 18d-2 found that the Server's engines ran with the L2 host off (DEC-058 keeps it off only in the conformance adapter); the node now runs L2 scripts. The platform genesis Buks hold `Party` and `Job` on every Server, so the scenario model names its classes `Counterparty` and `BatchJob`; EXIT-1-13 re-run 22 of 22 in memory and on PostgreSQL.
+  - 18d-2 found two gaps of the Protocol, proposed to the owner for a correction: the `revert` request of STD-PROTO-014 has no `resolutions` (SCN-018), and an events subscription of STD-PROTO-012 cannot deliver an effect released without a commit such as `BecameEffective` (STD-TIME-050, SCN-006).
 - **Alternatives considered:**
   - Reading the metering of a failed process through an operator endpoint was rejected: the client that ran the process should read it with the same Protocol (STD-PROTO-015).
   - A client-chosen process identifier in `mutate` was rejected: process identifiers are assigned by the implementation (STD-PROTO-010).

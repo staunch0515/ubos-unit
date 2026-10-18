@@ -61,3 +61,11 @@ python3 verify/scenarios/tools/gen_scenarios.py
 ```
 
 CI runs both on every push (`.github/workflows/ci.yml`).
+
+## Since PH-1 step 18d-2 (DEC-082)
+
+The project runs over UBTP as well (`verify/reports/exit-1-19/`), which changed its model: the
+classes `Party` and `Job` are named `Counterparty` and `BatchJob`, because the platform genesis
+Buks of every Server hold `Party` and `Job`, and `FeeCase` has the port `calculate` through
+which SCN-011 starts its process (its journal now begins with the port's decision record). The
+in-process run after the change: 22 of 22 in memory and 22 of 22 on PostgreSQL (2026-10-18).

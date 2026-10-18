@@ -1,7 +1,7 @@
 {
   "project": "gate-1a-scenarios",
   "branch": "main",
-  "model_hash": "sha256:d04dd495ca847dd4b0881eacd74969b0090e369a3ec0006cba57fff631d59c82",
+  "model_hash": "sha256:83446286b87e96a1a67b0651673b8bf6765a54704159ccbe1302cd3b03ea3e3f",
   "vae": "acme",
   "classes": [
     {
@@ -34,7 +34,7 @@
             "item_type": {
               "type": "reference",
               "constraints": {
-                "target_class": "Party"
+                "target_class": "Counterparty"
               }
             },
             "min_items": 2
@@ -79,6 +79,63 @@
       ]
     },
     {
+      "name": "BatchJob",
+      "label": "BatchJob",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "BatchJob",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "counter",
+          "type": "integer",
+          "required": false,
+          "label": "counter",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "BatchJob"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "BatchJob"
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "required": false,
+          "label": "note",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "BatchJob"
+        }
+      ],
+      "ports": [
+        {
+          "name": "probe",
+          "kind": "command",
+          "params": [],
+          "declared_by": "BatchJob"
+        },
+        {
+          "name": "run",
+          "kind": "command",
+          "params": [],
+          "declared_by": "BatchJob"
+        }
+      ]
+    },
+    {
       "name": "CashMovement",
       "label": "CashMovement",
       "parent": "DataObject",
@@ -118,6 +175,30 @@
           "default": null,
           "classification": null,
           "declared_by": "CashMovement"
+        }
+      ],
+      "ports": []
+    },
+    {
+      "name": "Counterparty",
+      "label": "Counterparty",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Counterparty",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Counterparty"
         }
       ],
       "ports": []
@@ -198,88 +279,14 @@
           "declared_by": "FeeCase"
         }
       ],
-      "ports": []
-    },
-    {
-      "name": "Job",
-      "label": "Job",
-      "parent": "DataObject",
-      "kind": "definition",
-      "linearization": [
-        "Job",
-        "DataObject",
-        "Object"
-      ],
-      "fields": [
-        {
-          "name": "counter",
-          "type": "integer",
-          "required": false,
-          "label": "counter",
-          "constraints": null,
-          "default": null,
-          "classification": null,
-          "declared_by": "Job"
-        },
-        {
-          "name": "name",
-          "type": "text",
-          "required": true,
-          "label": "name",
-          "constraints": null,
-          "default": null,
-          "classification": null,
-          "declared_by": "Job"
-        },
-        {
-          "name": "note",
-          "type": "text",
-          "required": false,
-          "label": "note",
-          "constraints": null,
-          "default": null,
-          "classification": null,
-          "declared_by": "Job"
-        }
-      ],
       "ports": [
         {
-          "name": "probe",
+          "name": "calculate",
           "kind": "command",
           "params": [],
-          "declared_by": "Job"
-        },
-        {
-          "name": "run",
-          "kind": "command",
-          "params": [],
-          "declared_by": "Job"
+          "declared_by": "FeeCase"
         }
       ]
-    },
-    {
-      "name": "Party",
-      "label": "Party",
-      "parent": "DataObject",
-      "kind": "definition",
-      "linearization": [
-        "Party",
-        "DataObject",
-        "Object"
-      ],
-      "fields": [
-        {
-          "name": "name",
-          "type": "text",
-          "required": true,
-          "label": "name",
-          "constraints": null,
-          "default": null,
-          "classification": null,
-          "declared_by": "Party"
-        }
-      ],
-      "ports": []
     },
     {
       "name": "PriceList",
@@ -414,7 +421,7 @@
             "item_type": {
               "type": "reference",
               "constraints": {
-                "target_class": "Party"
+                "target_class": "Counterparty"
               }
             },
             "min_items": 2
