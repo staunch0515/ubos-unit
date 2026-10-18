@@ -123,6 +123,21 @@ impl Session {
         p
     }
 
+    /// The session's principal on a host input: `principal`, `principal_kind`, `role` and
+    /// `auth_level`, which the kernel authorizes against the branch's policies (DSN-DVM-804,
+    /// -807; PH-1 step 19a).
+    fn who(&self, mut input: Value) -> Value {
+        input["principal"] = json!(self.principal);
+        input["principal_kind"] = json!(self.kind);
+        if let Some(r) = &self.role {
+            input["role"] = json!(r);
+        }
+        if let Some(a) = &self.auth_level {
+            input["auth_level"] = json!(a);
+        }
+        input
+    }
+
     /// The decision context of a session's requests.
     fn ctx(&self) -> Value {
         let mut c =
@@ -444,12 +459,12 @@ impl Engine {
                 ));
             }
             if b.get("validate_only") == Some(&json!(true)) {
-                let r = self.validate(&json!({"branch": branch, "changes": changes, "process": session.process(extra)}))?;
+                let r = self.validate(&session.who(json!({"branch": branch, "changes": changes, "process": session.process(extra)})))?;
                 json!({"validated": true, "violations": r["violations"], "warnings": r["warnings"]})
             } else {
                 let pid = self.next_pid();
                 extra.insert("process_id".into(), json!(pid));
-                let r = self.commit(&json!({"branch": branch, "changes": changes, "process": session.process(extra)}))?;
+                let r = self.commit(&session.who(json!({"branch": branch, "changes": changes, "process": session.process(extra)})))?;
                 json!({"process_id": pid, "commits": [r["commit_id"]], "versions": r["versions"],
                     "warnings": r.get("warnings").cloned().unwrap_or_else(|| json!([])),
                     "result": {"cseq": r["cseq"], "entries": r["entries"], "retroactive": r["retroactive"]}})
@@ -559,7 +574,7 @@ impl Engine {
                 let name = v.get("name").cloned().unwrap_or(Value::Null);
                 let mut i = pick(&v, &["name", "time"]);
                 i["from"] = v.get("from").cloned().unwrap_or_else(|| json!(branch));
-                let r = self.other("create_branch", &i)?;
+                let r = self.other("create_branch", &session.who(i))?;
                 json!({"branch": name, "head": r["head"]})
             }
             "change_set" => {
@@ -582,13 +597,13 @@ impl Engine {
                 if action == "approve" || action == "reject" {
                     i["approver"] = json!(session.principal);
                 }
-                self.change_set(&i)?
+                self.change_set(&session.who(i))?
             }
             "merge" => {
                 let mut i = pick(&v, &["source", "resolutions"]);
                 i["target"] = json!(branch);
                 i["process"] = process(&mut pid, self);
-                self.merge(&i)?
+                self.merge(&session.who(i))?
             }
             "revert" => {
                 let mut i = pick(
@@ -607,7 +622,7 @@ impl Engine {
                 if v.get("dry_run") != Some(&json!(true)) {
                     i["process"] = process(&mut pid, self);
                 }
-                self.revert(&i)?
+                self.revert(&session.who(i))?
             }
             _ => {
                 let mut i = pick(&v, &["changes", "max_changes", "mode", "staging"]);
@@ -624,7 +639,7 @@ impl Engine {
                 i["branch"] = json!(branch);
                 i["process"] = session.process(extra.clone());
                 pid = Some(id);
-                self.bulk(&i)?
+                self.bulk(&session.who(i))?
             }
         };
         // the commits the request made: on each branch whose head moved, back along the
@@ -782,11 +797,12 @@ impl Engine {
     /// `class`.
     fn item(
         &mut self,
+        session: &Session,
         branch: &str,
         oid: &str,
         sel: &Map<String, Value>,
     ) -> Result<Value, BpaError> {
-        let mut i = json!({"branch": branch, "object_id": oid});
+        let mut i = session.who(json!({"branch": branch, "object_id": oid}));
         for (k, v) in sel {
             i[k] = v.clone();
         }
@@ -878,6 +894,24 @@ impl Engine {
                     }
                 }
                 let mut item = self.resolve(&json!(uri))?;
+                // the read is authorized on the object it resolved to, at the same commit
+                // (DSN-DVM-804: not readable is not found)
+                {
+                    let b = s(&item, "branch").unwrap_or(&branch).to_string();
+                    let oid = s(&item, "object_id").unwrap_or_default().to_string();
+                    let mut i = session.who(json!({"branch": b, "object_id": oid}));
+                    if let Some(c) = item["evaluated_at"].get(&b).filter(|c| !c.is_null()) {
+                        i["commit"] = c.clone();
+                    }
+                    if let Some(a) = sel.get("asof") {
+                        i["asof"] = a.clone();
+                    }
+                    if let Err(e) = self.read(&i)
+                        && e.code.starts_with("IAM.")
+                    {
+                        return Err(e);
+                    }
+                }
                 let class = {
                     let vh = s(&item, "version_hash").unwrap_or_default().to_string();
                     Repo::new(self.store.as_mut(), &self.registry).version(&vh)?["class"].clone()
@@ -902,7 +936,7 @@ impl Engine {
                 for (k, v) in &sel {
                     q.insert(k.clone(), v.clone());
                 }
-                let r = self.query(&Value::Object(q))?;
+                let r = self.query(&session.who(Value::Object(q)))?;
                 let mut isel = without_asof(&sel);
                 if let Some(a) = sel.get("asof") {
                     isel.insert("asof".into(), a.clone());
@@ -911,7 +945,7 @@ impl Engine {
                 let mut items = Vec::new();
                 for oid in r["objects"].as_array().into_iter().flatten() {
                     let oid = oid.as_str().unwrap_or_default();
-                    items.push(self.item(&branch, oid, &isel)?);
+                    items.push(self.item(session, &branch, oid, &isel)?);
                 }
                 let mut out = json!({"items": items, "evaluated_at": r["evaluated_at"]});
                 if let Some(c) = r.get("cursor").filter(|v| !v.is_null()) {
@@ -970,7 +1004,7 @@ impl Engine {
                         i[k] = v.clone();
                     }
                 }
-                let r = self.history(&i)?;
+                let r = self.history(&session.who(i))?;
                 Ok(json!({"items": r["commits"], "evaluated_at": r["evaluated_at"]}))
             }
             "timeline" => {
@@ -984,7 +1018,7 @@ impl Engine {
                 for (k, v) in &sel {
                     i[k] = v.clone();
                 }
-                let r = self.read_range(&i)?;
+                let r = self.read_range(&session.who(i))?;
                 Ok(json!({"items": r["segments"], "evaluated_at": r["evaluated_at"]}))
             }
             _ => {

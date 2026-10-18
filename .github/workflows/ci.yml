@@ -107,7 +107,7 @@ jobs:
       - name: toolchain from rust-toolchain.toml
         run: rustup toolchain install || rustup show
       - name: build the node and forge
-        run: cargo build --locked -p ubos-node -p ubos-forge --bin ubos-server --bin forge
+        run: cargo build --locked -p ubos-node -p ubos-forge --bin ubos-server --bin forge --bin ubos-iso-suite
       - name: the scenario tests over UBTP on a dev-preset Server, WebSocket and HTTP (EXIT-1-19)
         run: |
           for b in ws http; do
@@ -123,6 +123,10 @@ jobs:
         with:
           name: exit-1-19-reports
           path: scenarios-*.json
+      - name: SUITE-NOD-ISO, the tenant isolation suite (EXIT-1-16, VER-SEC-2000)
+        run: target/debug/ubos-iso-suite --database "host=127.0.0.1 user=postgres dbname=bpa" --report suite-nod-iso.json
+      - name: secret hygiene and security-event coverage on an installed Server (EXIT-1-16, VER-SEC-2001)
+        run: python3 crates/ubos-node/ops/hygiene_suite.py --binary target/debug/ubos-server --pg-bin /usr/lib/postgresql/16/bin --report secret-hygiene.json
 
   rust:
     name: rust workspace

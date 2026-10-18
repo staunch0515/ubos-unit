@@ -839,7 +839,6 @@ pub struct Server {
     default_authority: String,
     vaes: Mutex<HashMap<String, VaeHandle>>,
     sessions: Mutex<HashMap<String, SessionEntry>>,
-    next_session: Mutex<u64>,
     /// The identities by tenant (opened once).
     identities: Mutex<HashMap<String, Arc<Identity>>>,
     /// The identity of a single-VAE Server, serving every tenant name.
@@ -907,7 +906,6 @@ impl Server {
             default_authority: authority.to_string(),
             vaes: Mutex::new(HashMap::new()),
             sessions: Mutex::new(HashMap::new()),
-            next_session: Mutex::new(0),
             identities: Mutex::new(HashMap::new()),
             fallback_identity: None,
             facade_sessions: Mutex::new(HashMap::new()),
@@ -970,7 +968,6 @@ impl Server {
             default_authority: authority.to_string(),
             vaes: Mutex::new(HashMap::new()),
             sessions: Mutex::new(HashMap::new()),
-            next_session: Mutex::new(0),
             identities: Mutex::new(HashMap::new()),
             fallback_identity: Some(identity),
             facade_sessions: Mutex::new(HashMap::new()),
@@ -2017,11 +2014,15 @@ impl Server {
             let (me, t, a) = (self.clone(), tenant.to_string(), authority.to_string());
             blocking(move || me.vae(&t, &a)).await?
         };
-        let key = {
-            let mut n = self.next_session.lock().expect("sessions");
-            *n += 1;
-            format!("sess-{}", *n)
-        };
+        // a session key is a capability: unguessable, so that no caller reaches another
+        // tenant's session by counting (SUITE-NOD-ISO, PH-1 step 19a)
+        let key = format!(
+            "sess-{}",
+            ubos_dvm::crypto::random_bytes::<16>()?
+                .iter()
+                .map(|x| format!("{x:02x}"))
+                .collect::<String>()
+        );
         self.sessions.lock().expect("sessions").insert(
             key.clone(),
             SessionEntry {
@@ -2070,6 +2071,17 @@ impl Server {
             .expect("sessions")
             .get(key)
             .map(|s| (s.vae.clone(), s.handle.clone()))
+    }
+
+    /// A session presented by a caller that names a tenant (the `Ubtp-Tenant` header or the
+    /// tenant of its bearer token): unknown unless it is a session of that tenant.
+    fn session_of(&self, key: &str, tenant: Option<&str>) -> Option<(String, VaeHandle)> {
+        let sessions = self.sessions.lock().expect("sessions");
+        let s = sessions.get(key)?;
+        if tenant.is_some_and(|t| t != s.tenant) {
+            return None;
+        }
+        Some((s.vae.clone(), s.handle.clone()))
     }
 
     fn close_session(&self, key: &str) {
@@ -2128,7 +2140,7 @@ impl Server {
             (t, false) => t,
         };
         let (key, handle) = match session {
-            Some(k) => match self.session(&k) {
+            Some(k) => match self.session_of(&k, tenant.as_deref()) {
                 Some((_, h)) => (k, h),
                 None => {
                     let e = BpaError::new("IAM.NOT_FOUND", "unknown session");
@@ -2644,7 +2656,11 @@ async fn http_messages(
     headers: HeaderMap,
     body: Bytes,
 ) -> Response {
-    let tenant = header(&headers, "ubtp-tenant");
+    // the tenant a caller names: `Ubtp-Tenant`, else the tenant of its bearer token; a
+    // presented session must be one of that tenant (SUITE-NOD-ISO, PH-1 step 19a)
+    let tenant = header(&headers, "ubtp-tenant").or_else(|| {
+        bearer_token(&headers).map(|t| t.split('.').next().unwrap_or_default().to_string())
+    });
     let source = peer.ip().to_string();
     let mut session = header(&headers, "ubtp-session");
     let messages: Vec<Value> = match serde_json::from_slice::<Value>(&body) {
@@ -2729,7 +2745,10 @@ async fn facade_session(
     source: &str,
 ) -> Result<String, BpaError> {
     if let Some(k) = header(headers, "ubtp-session") {
-        return match s.session(&k) {
+        let named = header(headers, "ubtp-tenant").or_else(|| {
+            bearer_token(headers).map(|t| t.split('.').next().unwrap_or_default().to_string())
+        });
+        return match s.session_of(&k, named.as_deref()) {
             Some(_) => Ok(k),
             None => Err(BpaError::new("IAM.NOT_FOUND", "unknown session")),
         };
@@ -3221,6 +3240,18 @@ async fn admin_api(
             Ok(v) => Json(v).into_response(),
             Err(e) => problem_response(&e),
         };
+    }
+    // node-wide operations (diagnostics, health, telemetry, configuration) belong to the
+    // operator's tenant, the node's default tenant (SUITE-NOD-ISO, PH-1 step 19a)
+    if matches!(
+        p.first(),
+        Some(&"diagnostics" | &"health" | &"telemetry" | &"config")
+    ) && tenant != s.default_tenant
+    {
+        return problem_response(&BpaError::with_details(
+            "IAM.DENIED",
+            json!({"reason": "node_scope", "message": "node-wide operations belong to the operator's tenant"}),
+        ));
     }
     if (method.as_str(), p.as_slice()) == ("POST", &["diagnostics"][..]) {
         return match s.diagnostics(&me.did).await {
