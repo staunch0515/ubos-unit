@@ -570,10 +570,8 @@ impl Engine {
         }) {
             return Ok(true);
         }
-        Ok(Repo::new(self.store.as_mut(), &self.registry)
-            .branch_meta(branch)?
-            .parent_line
-            .is_some())
+        // the cached metadata, as the query path (DEC-051; PH-1 step 19c)
+        Ok(self.branch_meta(branch)?.parent_line.is_some())
     }
 
     /// An object of a bitemporal read with its provenance, the evaluation evidence
@@ -632,6 +630,57 @@ impl Engine {
 
     /// `read` (STD-TIME-012, -013, -015, STD-VER-080, -081, -090).
     pub fn read(&mut self, input: &Value) -> Result<Value, BpaError> {
+        self.read_classed(input).map(|(r, _)| r)
+    }
+
+    /// The rows of a query result read at commit sequence `cseq` of `branch` and valid time
+    /// `asof` (else each class's default), in order, as `read` gives them with `object_id`
+    /// and `class`: one bulk read of the object states and one of the versions (PH-1 step
+    /// 19c). `None` when a row needs the view path (a branch with a parent line).
+    pub(crate) fn read_rows(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        commit_id: &Value,
+        asof: Option<&str>,
+        ids: &[String],
+    ) -> Result<Option<Vec<Value>>, BpaError> {
+        if self.needs_view(branch, &json!({}))? {
+            return Ok(None);
+        }
+        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+        let states = repo.objects_in_ids(branch, cseq, ids)?;
+        let mut segs = Vec::new();
+        for id in ids {
+            let o = states
+                .get(id)
+                .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown object"))?;
+            let a = asof
+                .map(str::to_string)
+                .unwrap_or_else(|| self.default_valid(&o.class));
+            let seg = at(&o.timeline, &a)
+                .ok_or_else(|| BpaError::new("QRY.NOT_FOUND_AT_TIME", "no segment at asof"))?;
+            segs.push((id, o.class.clone(), seg.clone()));
+        }
+        let hashes: Vec<String> = segs.iter().map(|(_, _, g)| g.version.clone()).collect();
+        let versions = Repo::new(self.store.as_mut(), &self.registry).versions(&hashes)?;
+        let mut out = Vec::new();
+        for (id, class, g) in segs {
+            let v = versions
+                .get(&g.version)
+                .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown version"))?;
+            let mut r = crate::transactions::segment_of(v, &g.from, g.to.as_deref(), &g.version);
+            r["evaluated_at"] = json!({branch: commit_id});
+            r["object_id"] = json!(id);
+            r["class"] = json!(class);
+            out.push(r);
+        }
+        Ok(Some(out))
+    }
+
+    /// A read with the class of the object read (one object view; the rows of a UBTP
+    /// query, PH-1 step 19c).
+    pub(crate) fn read_classed(&mut self, input: &Value) -> Result<(Value, String), BpaError> {
         let branch = s(input, "branch").unwrap_or("main");
         let oid = s(input, "object_id").unwrap_or_default();
         let (o, prov, ev, st) = self.object_view(branch, input, oid)?;
@@ -664,7 +713,7 @@ impl Engine {
             let body = out["body"].clone();
             out["targets"] = json!(self.follow(st, &o, &body, field, &a)?);
         }
-        Ok(out)
+        Ok((out, o.class))
     }
 
     /// `read_ledger` (STD-TIME-020).

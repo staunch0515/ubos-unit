@@ -52,14 +52,19 @@ pub fn segment(
     version: &str,
 ) -> Result<Value, BpaError> {
     let v = repo.version(version)?;
+    Ok(segment_of(&v, from, to, version))
+}
+
+/// A read's segment from a loaded version record.
+pub fn segment_of(v: &Value, from: &str, to: Option<&str>, version: &str) -> Value {
     let mut out = json!({"version_hash": version, "body": v["body"], "slug": v["slug"], "valid": {"from": from, "to": to}});
-    if let Some(p) = s(&v, "provenance_ref") {
+    if let Some(p) = s(v, "provenance_ref") {
         out["provenance_ref"] = json!(p);
     }
-    if let Some(st) = s(&v, "state") {
+    if let Some(st) = s(v, "state") {
         out["state"] = json!(st);
     }
-    Ok(out)
+    out
 }
 
 // ---- derivation records (STD-TXN-030) ----

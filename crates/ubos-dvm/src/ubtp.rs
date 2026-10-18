@@ -795,22 +795,27 @@ impl Engine {
 
     /// A read item of a query result: the read at the selectors with `object_id` and
     /// `class`.
+    /// The sequence number of a commit of `branch`, from its metadata.
+    fn cseq_of(&mut self, branch: &str, commit: &Value) -> Result<Value, BpaError> {
+        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+        let snap = repo.select(branch, &json!({"commit": commit}))?;
+        Ok(json!(repo.meta(snap.commit)?.cseq))
+    }
+
+    /// A row of a query result. The query's row filter has authorized it for the session's
+    /// principal at the same commit (DSN-DVM-820), so the row is read without a second
+    /// policy evaluation (PH-1 step 19c).
     fn item(
         &mut self,
-        session: &Session,
         branch: &str,
         oid: &str,
         sel: &Map<String, Value>,
     ) -> Result<Value, BpaError> {
-        let mut i = session.who(json!({"branch": branch, "object_id": oid}));
+        let mut i = json!({"branch": branch, "object_id": oid});
         for (k, v) in sel {
             i[k] = v.clone();
         }
-        let mut r = self.read(&i)?;
-        let class = {
-            let (o, _, _, _) = self.object_view(branch, &i, oid)?;
-            o.class
-        };
+        let (mut r, class) = self.read_classed(&i)?;
         r["object_id"] = json!(oid);
         r["class"] = json!(class);
         Ok(r)
@@ -900,8 +905,10 @@ impl Engine {
                     let b = s(&item, "branch").unwrap_or(&branch).to_string();
                     let oid = s(&item, "object_id").unwrap_or_default().to_string();
                     let mut i = session.who(json!({"branch": b, "object_id": oid}));
+                    // the commit named by its sequence: a `commit` selector takes the view
+                    // path, which materialises the branch state (PH-1 step 19c)
                     if let Some(c) = item["evaluated_at"].get(&b).filter(|c| !c.is_null()) {
-                        i["commit"] = c.clone();
+                        i["time"] = self.cseq_of(&b, c)?;
                     }
                     if let Some(a) = sel.get("asof") {
                         i["asof"] = a.clone();
@@ -941,12 +948,39 @@ impl Engine {
                 if let Some(a) = sel.get("asof") {
                     isel.insert("asof".into(), a.clone());
                 }
-                isel.insert("commit".into(), r["evaluated_at"][&branch].clone());
-                let mut items = Vec::new();
-                for oid in r["objects"].as_array().into_iter().flatten() {
-                    let oid = oid.as_str().unwrap_or_default();
-                    items.push(self.item(session, &branch, oid, &isel)?);
-                }
+                let ids: Vec<String> = r["objects"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|x| x.as_str().map(str::to_string))
+                    .collect();
+                let at = r["evaluated_at"][&branch].clone();
+                let pinned = ["time", "commit", "tag", "tx_time"]
+                    .iter()
+                    .any(|k| sel.contains_key(*k));
+                // without commit coordinates in the message, the rows are read at the commit
+                // the query evaluated in one bulk read, or named by its sequence: a `commit`
+                // selector takes the view path, which materialises the branch state for every
+                // row (PH-1 step 19c, SUITE-NOD-BENCH)
+                let bulk = if pinned {
+                    isel.insert("commit".into(), at.clone());
+                    None
+                } else {
+                    let cseq = self.cseq_of(&branch, &at)?;
+                    isel.insert("time".into(), cseq.clone());
+                    let asof = sel.get("asof").and_then(Value::as_str);
+                    self.read_rows(&branch, cseq.as_u64().unwrap_or(0), &at, asof, &ids)?
+                };
+                let items = match bulk {
+                    Some(rows) => rows,
+                    None => {
+                        let mut items = Vec::new();
+                        for oid in &ids {
+                            items.push(self.item(&branch, oid, &isel)?);
+                        }
+                        items
+                    }
+                };
                 let mut out = json!({"items": items, "evaluated_at": r["evaluated_at"]});
                 if let Some(c) = r.get("cursor").filter(|v| !v.is_null()) {
                     out["cursor"] = c.clone();
