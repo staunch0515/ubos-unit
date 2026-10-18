@@ -49,6 +49,7 @@ The public API is shown in TypeScript form; other SDKs mirror it idiomatically.
 - **Idempotency:** keys per call.
 - **Authorization:** server-side.
 - **Satisfies:** FR-VER-021, FR-VER-031, FR-VER-057
+- **Phase note:** PH-1 step 18c (DEC-079): the SDKs offer branch creation, change sets (open, submit, approve, reject, merge, abandon, get), merge preview, merge, revert and bulk processes over the versioning messages of BPA 1.0-rc4 (STD-PROTO-014), and the introspection queries of STD-PROTO-015. `branches.list` and `branches.freeze` follow when the Protocol carries branch listing and administration (IF-DVM-021); BPA 1.0-rc4 has no message for them.
 
 ### IF-SDK-005 — Subscriptions
 - **Kind:** library API

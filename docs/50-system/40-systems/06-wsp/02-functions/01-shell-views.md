@@ -365,3 +365,47 @@ depends_on: [UBS-SYS-WSP-01]
   1. Given local mode, when browsing synced objects, then reads meet NR-PERF-024.
 - **Verification:** BENCH
 - **Origin:** FR-SYNC-081, NR-PERF-024
+
+### DSN-WSP-211 — Design tokens and themes
+- **Statement:** Every client surface MUST take its colours, type, density, spacing, radii and state colours from the versioned token set of the UBOS design system (`design/tokens.json`, version 1.0), with a light and a dark theme from the first release. The palette is a neutral grey biased toward one blue accent; positive, negative and attention colours are semantic only and never the only carrier of meaning. Both themes MUST meet WCAG 2.2 AA contrast for text, figures and focus indicators in dense tables. Tenant branding (DSN-WSP-206) may override only the brand tokens and is checked against the same contrast rules.
+- **Rationale:** One visual system fixed before the workspace is built avoids per-screen styling and rework before the usability and accessibility tests (NR-USE-001, NR-ACC-001); the owner chose the direction from the reference mockups (DEC-081).
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** WSP
+- **Personas:** PER-Accountant, PER-BusinessUser
+- **Acceptance:**
+  1. Given the release candidate, when its styles are inspected, then no colour, font size or row height is used that is not a token of the design system.
+  2. Given each screen of the reference mockups in the light and the dark theme, when checked with axe, then no contrast failure is reported.
+- **Verification:** INSP
+- **Origin:** FR-UX-014, NR-ACC-001, NR-USE-001, DEC-025
+
+### DSN-WSP-212 — Workbench layout and context bar
+- **Statement:** The workspace MUST use one layout frame: a left navigation by area (general ledger, reporting, period, review, receivables, payables), a context bar that always shows the company, the branch, the as-of date and the as-known-on date with global search, a working area of tabs, and a right drawer for drill-down, explanations, history and approvals. Whenever the screen shows anything other than the current state of `main` (a transaction time, a commit, another branch or an earlier as-known-on date), an attention-coloured banner MUST say so in words and offer the way back to the current state. Below 760 px the navigation becomes a horizontal strip and the drawer stacks under the content, without horizontal page scrolling.
+- **Rationale:** Accountants must always know which books and which point in time they are looking at (FR-TIME-031); the drawer keeps drill-down and explanations next to the figures they explain.
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** WSP
+- **Personas:** PER-Accountant, PER-Controller, PER-ExternalAuditor
+- **Acceptance:**
+  1. Given a report run as known on an earlier date, when it is shown, then the banner names that date and a single action returns to the current view.
+  2. Given a 400 px wide viewport, when each reference screen is opened, then the page does not scroll horizontally.
+- **Verification:** INSP, USE
+- **Origin:** FR-TIME-031, FR-UX-011, NR-USE-001, DEC-025
+
+### DSN-WSP-213 — Type and figures
+- **Statement:** The interface face MUST be Inter with tabular figures, and account codes, document numbers, identifiers and rule names MUST be set in JetBrains Mono; both are served by the Server (SIL Open Font License) and never loaded from a third-party host. Amount columns MUST use tabular figures and right alignment so that decimal points line up, follow DSN-WSP-120 for separators, negatives (parentheses by default, minus by user preference) and dates, and keep totals visually distinct (a rule above, a double rule below). Tables MUST offer a compact density (30 px rows, the default) and a comfortable one (38 px rows), chosen per user.
+- **Rationale:** Dense, aligned figures are what professional finance users scan all day (DEC-025); self-hosted fonts keep rendering deterministic and private (NR-DET-004).
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** WSP
+- **Personas:** PER-Accountant, PER-PayablesClerk, PER-ReceivablesClerk
+- **Acceptance:**
+  1. Given the register of the reference mockups with 100,000 lines, when scrolled in either density, then the decimal points of every amount column stay aligned.
+  2. Given the workspace loaded with network access only to the Server, when rendered, then both faces are present.
+- **Verification:** INSP
+- **Origin:** FR-LOC-051, NR-DET-004, NR-ACC-001, DEC-025
+
+### DSN-WSP-214 — State and status presentation
+- **Statement:** Document and process states MUST be shown as text badges with a fixed vocabulary (Draft, Waiting for approval, Posted, Reconciled, Blocking, Reversed, Voided), each with its token colour and a shape mark that does not depend on colour (hollow for drafts, struck through for reversed and voided). A blocked action MUST stay visible, disabled, with the reason in words and a link to what unblocks it; a rule that requires an approval or blocks an action MUST be named with its sheet and version, and its explanation (DSN-WSP-113) MUST be one action away.
+- **Rationale:** States must be distinguishable without colour (DSN-WSP-120, NR-ACC-001), and users act faster when the reason and the remedy are on the screen (NR-USE-001).
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** WSP
+- **Personas:** PER-Accountant, PER-Controller
+- **Acceptance:**
+  1. Given the reference screens in greyscale, when inspected, then every state is still identifiable.
+  2. Given a period whose close is blocked, when the cockpit is opened, then the close action is disabled and states the blocking check with a link to it.
+- **Verification:** INSP, USE
+- **Origin:** NR-ACC-001, NR-USE-001, FR-UX-031, DEC-025

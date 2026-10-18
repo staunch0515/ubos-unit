@@ -78,9 +78,9 @@ cargo build --locked -p ubos-node --bin ubos-proto-suite
 cargo test --locked -p ubos-node    # the same suite as a test body
 ```
 
-# EXIT-1-15 (SDK part) — SUITE-SDK-PROTO, SUITE-SDK-NET and SUITE-SDK-TYPES (PH-1 step 17d)
+# EXIT-1-15 (SDK part) — SUITE-SDK-PROTO, SUITE-SDK-NET and SUITE-SDK-TYPES (PH-1 steps 17d, 18c)
 
-The SDK suites (DEC-078, part 17d) run by `verify/sdk/sdk_suite.py` on the development
+The SDK suites (DEC-078, part 17d; the versioning and introspection cases P16–P19 since part 18c, DEC-079) run by `verify/sdk/sdk_suite.py` on the development
 workstation (same machine as above; debug builds, PostgreSQL 16). Report: `sdk-suite.json`.
 
 | Item | Value |
@@ -88,9 +88,9 @@ workstation (same machine as above; debug builds, PostgreSQL 16). Report: `sdk-s
 | SDKs | the Rust SDK `ubos-sdk` 0.2 and the TypeScript SDK `@ubos/sdk` 0.2 (Node.js 22), each through its runner (`crates/ubos-sdk/examples/suite.rs`, `packages/sdk-ts/suite/suite.ts`) |
 | Bindings | HTTP with server-sent events and WebSocket (the PH-1 bindings of the SDKs, DEC-078 item 5) |
 | Node | `ubos-server` in the `server` preset on a fresh PostgreSQL database, with the classes of `verify/sdk/fixture` and the branch `feature/sdk` holding its logic, behind the suite's TCP fault proxy |
-| Result | **23 of 23 cases for each SDK on each binding** (15 SUITE-SDK-PROTO, 8 SUITE-SDK-NET; 92 runs) |
+| Result | **27 of 27 cases for each SDK on each binding** (19 SUITE-SDK-PROTO, 8 SUITE-SDK-NET; 108 runs) |
 | SUITE-SDK-TYPES | **4 of 4** |
-| Time | 21.5 s, 21.9 s, 22.5 s and 22.9 s per SDK and binding; 92.4 s in all |
+| Time | 23.3 s (Rust, WebSocket), 23.9 s (Rust, HTTP), 27.9 s (TypeScript, WebSocket) and 29.1 s (TypeScript, HTTP); 107.6 s in all (run of 2026-10-17, part 18c) |
 
 ## Method
 
@@ -128,6 +128,10 @@ control endpoint:
 | P13 | files: an upload in chunks with progress, resumed from its location after an interruption; whole and ranged downloads verified | DSN-SDK-011, IF-SDK-006 | pass / pass / pass / pass |
 | P14 | exact decimals and money: a 30-digit decimal round-trips exactly; floats are refused at the API boundary | DSN-SDK-013 | pass / pass / pass / pass |
 | P15 | typed API: a polymorphic read and query narrow by class; the builder's DAT-Query matches the text query; a typed port call | DSN-SDK-012, DSN-FRG-102 | pass / pass / pass / pass |
+| P16 | branches and merges: a branch from main and from a branch, a merge preview with the change and no conflict, a merge as one process with its commit and versions; a conflicting merge is a typed VER.MERGE_CONFLICT, not retried | IF-SDK-004, STD-PROTO-014, STD-PROTO-015 | pass / pass / pass / pass |
+| P17 | change sets: open, submit with its preview, approve by the session's principal, merge with its commit; an action out of state is FLOW.TRANSITION_NOT_ALLOWED | IF-SDK-004, STD-PROTO-014 | pass / pass / pass / pass |
+| P18 | revert and bulk: a dry run commits nothing, a revert of a process makes one commit and the object no longer reads; a bulk process commits its chunks as children | IF-SDK-004, STD-PROTO-014 | pass / pass / pass / pass |
+| P19 | introspection: the effective class, port dispatch, the head commit with its root, an empty ledger key, a process record with journal and metering, an identical replay; an unknown process is IAM.NOT_FOUND | STD-PROTO-015 | pass / pass / pass / pass |
 | N01 | connections dropped between requests: the next request reconnects | DSN-SDK-004 | pass / pass / pass / pass |
 | N02 | a connection dropped during a read: the read is retried | DSN-SDK-003 | pass / pass / pass / pass |
 | N03 | 300 ms latency each way: operations complete | DSN-SDK-004 | pass / pass / pass / pass |

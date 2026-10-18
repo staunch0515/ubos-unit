@@ -46,8 +46,9 @@ PER-InternalAuditor, PER-RegulatorExaminer, PER-PersonalUser, PER-FieldWorker.
 
 ## 5. Technology
 
-TypeScript, React 19, a headless component library with the UBOS design system, TanStack
-Query-like caching through the SDK, ProseMirror for rich text, a canvas grid engine for Smart
+TypeScript, React 19, React Aria as the headless component library with the UBOS design system
+1.0 (DSN-WSP-211…214, `design/tokens.json`, reference screens `design/mockups.html`; DEC-081),
+TanStack Table for lists and registers, TanStack Query-like caching through the SDK, ProseMirror for rich text, a canvas grid engine for Smart
 Grid, Tauri 2 shells for desktop and mobile.
 
 ## 6. Files
@@ -62,3 +63,5 @@ Grid, Tauri 2 shells for desktop and mobile.
 | `06-configuration.md` | tenant UI configuration and feature flags |
 | `07-operations.md` | delivery, versions, telemetry |
 | `08-verification.md` | WSP verification plan |
+| `design/tokens.json` | design tokens of the UBOS design system 1.0 (DSN-WSP-211…214, DEC-081) |
+| `design/mockups.html` | reference screens of the design system with the Northwind sample company (journal entry, register, balance sheet with drill-down, close cockpit, back-dated change review) |
