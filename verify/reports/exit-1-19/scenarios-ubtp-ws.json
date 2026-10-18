@@ -1,8 +1,8 @@
 {
   "project": "gate-1a-scenarios",
   "tests": 22,
-  "passed": 20,
-  "failed": 2,
+  "passed": 22,
+  "failed": 0,
   "roots": {},
   "coverage": {
     "acme.agreements": {
@@ -27,7 +27,7 @@
       "kind": "scenario",
       "file": "tests/scn-002.yaml",
       "result": "pass",
-      "ms": 2152,
+      "ms": 1954,
       "steps": 6,
       "failure": null
     },
@@ -36,7 +36,7 @@
       "kind": "scenario",
       "file": "tests/scn-002.yaml",
       "result": "pass",
-      "ms": 2116,
+      "ms": 1951,
       "steps": 1,
       "failure": null
     },
@@ -45,7 +45,7 @@
       "kind": "scenario",
       "file": "tests/scn-002.yaml",
       "result": "pass",
-      "ms": 2414,
+      "ms": 1813,
       "steps": 4,
       "failure": null
     },
@@ -54,7 +54,7 @@
       "kind": "scenario",
       "file": "tests/scn-003.yaml",
       "result": "pass",
-      "ms": 2569,
+      "ms": 2555,
       "steps": 7,
       "failure": null
     },
@@ -63,7 +63,7 @@
       "kind": "scenario",
       "file": "tests/scn-003.yaml",
       "result": "pass",
-      "ms": 1970,
+      "ms": 1779,
       "steps": 1,
       "failure": null
     },
@@ -72,7 +72,7 @@
       "kind": "scenario",
       "file": "tests/scn-004.yaml",
       "result": "pass",
-      "ms": 6555,
+      "ms": 6099,
       "steps": 29,
       "failure": null
     },
@@ -81,7 +81,7 @@
       "kind": "scenario",
       "file": "tests/scn-004.yaml",
       "result": "pass",
-      "ms": 1954,
+      "ms": 1741,
       "steps": 6,
       "failure": null
     },
@@ -90,7 +90,7 @@
       "kind": "scenario",
       "file": "tests/scn-004.yaml",
       "result": "pass",
-      "ms": 2045,
+      "ms": 1837,
       "steps": 6,
       "failure": null
     },
@@ -99,7 +99,7 @@
       "kind": "scenario",
       "file": "tests/scn-005.yaml",
       "result": "pass",
-      "ms": 3282,
+      "ms": 1738,
       "steps": 7,
       "failure": null
     },
@@ -108,7 +108,7 @@
       "kind": "scenario",
       "file": "tests/scn-005.yaml",
       "result": "pass",
-      "ms": 5807,
+      "ms": 3770,
       "steps": 3,
       "failure": null
     },
@@ -116,33 +116,17 @@
       "name": "SCN-006 main: a future-dated price is read by asof and becomes effective on its day without a job",
       "kind": "scenario",
       "file": "tests/scn-006.yaml",
-      "result": "fail",
-      "ms": 6234,
+      "result": "pass",
+      "ms": 5538,
       "steps": 8,
-      "failure": {
-        "step": 8,
-        "expected": {
-          "effects": [
-            {
-              "type": "BecameEffective",
-              "object_id": "01890a5d-ac96-7004-8000-000000000001",
-              "payload": {
-                "valid_from": "2026-10-01"
-              }
-            }
-          ]
-        },
-        "actual": {
-          "effects": []
-        }
-      }
+      "failure": null
     },
     {
       "name": "SCN-006 A1: a second future version; every date resolves to one version",
       "kind": "scenario",
       "file": "tests/scn-006.yaml",
       "result": "pass",
-      "ms": 2370,
+      "ms": 1891,
       "steps": 7,
       "failure": null
     },
@@ -151,7 +135,7 @@
       "kind": "scenario",
       "file": "tests/scn-007.yaml",
       "result": "pass",
-      "ms": 4472,
+      "ms": 4981,
       "steps": 9,
       "failure": null
     },
@@ -160,7 +144,7 @@
       "kind": "scenario",
       "file": "tests/scn-007.yaml",
       "result": "pass",
-      "ms": 1487,
+      "ms": 1876,
       "steps": 2,
       "failure": null
     },
@@ -169,7 +153,7 @@
       "kind": "scenario",
       "file": "tests/scn-008.yaml",
       "result": "pass",
-      "ms": 1664,
+      "ms": 1715,
       "steps": 4,
       "failure": null
     },
@@ -178,7 +162,7 @@
       "kind": "scenario",
       "file": "tests/scn-008.yaml",
       "result": "pass",
-      "ms": 1756,
+      "ms": 1777,
       "steps": 2,
       "failure": null
     },
@@ -187,7 +171,7 @@
       "kind": "scenario",
       "file": "tests/scn-008.yaml",
       "result": "pass",
-      "ms": 1948,
+      "ms": 2147,
       "steps": 6,
       "failure": null
     },
@@ -196,7 +180,7 @@
       "kind": "scenario",
       "file": "tests/scn-010.yaml",
       "result": "pass",
-      "ms": 4442,
+      "ms": 4896,
       "steps": 4,
       "failure": null
     },
@@ -205,7 +189,7 @@
       "kind": "scenario",
       "file": "tests/scn-010.yaml",
       "result": "pass",
-      "ms": 1508,
+      "ms": 1517,
       "steps": 1,
       "failure": null
     },
@@ -214,7 +198,7 @@
       "kind": "scenario",
       "file": "tests/scn-011.yaml",
       "result": "pass",
-      "ms": 1604,
+      "ms": 1718,
       "steps": 4,
       "failure": null
     },
@@ -231,27 +215,10 @@
       "name": "SCN-018 main: a bulk process is reverted; the 5 objects changed since are conflicts, resolved to keep the later change",
       "kind": "scenario",
       "file": "tests/scn-018.yaml",
-      "result": "fail",
-      "ms": 2924,
-      "steps": 54,
-      "failure": {
-        "step": 54,
-        "expected": {
-          "match": "subset",
-          "result": {
-            "reverted": [
-              {
-                "branch": "main"
-              }
-            ],
-            "dependents": []
-          }
-        },
-        "actual": {
-          "error": "VER.MERGE_CONFLICT",
-          "message": "VER.MERGE_CONFLICT"
-        }
-      }
+      "result": "pass",
+      "ms": 3263,
+      "steps": 59,
+      "failure": null
     }
   ],
   "fixture_findings": [],

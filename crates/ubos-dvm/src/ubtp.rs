@@ -45,12 +45,15 @@ struct Subscription {
     branch: String,
     /// The last commit delivered or queued.
     cseq: u64,
+    /// The effects released on the branch without a commit, delivered or queued (events
+    /// subscriptions, 1.0-rc6).
+    n: u64,
     /// The object of a `target` subscription.
     object_id: Option<String>,
-    /// Emits delivered and not yet acknowledged: `(cseq, body)`.
-    unacked: Vec<(u64, Value)>,
+    /// Emits delivered and not yet acknowledged: `((cseq, n), body)`.
+    unacked: Vec<((u64, u64), Value)>,
     /// Emits computed and not yet delivered (the window is full).
-    queued: Vec<(u64, Value)>,
+    queued: Vec<((u64, u64), Value)>,
 }
 
 /// A UBTP session of the in-process binding.
@@ -596,6 +599,7 @@ impl Engine {
                         "time",
                         "commit",
                         "reversal_ids",
+                        "resolutions",
                         "dry_run",
                     ],
                 );
@@ -1011,24 +1015,30 @@ impl Engine {
             .to_string();
         let head = self.head_cseq(&branch)?;
         let retention = Limits::default().retention;
-        let cseq = match b.get("from_cursor").filter(|v| !v.is_null()) {
+        let events = kind == "events";
+        let released = if events {
+            self.timer_effects(&branch)?.len() as u64
+        } else {
+            0
+        };
+        let (cseq, n) = match b.get("from_cursor").filter(|v| !v.is_null()) {
             Some(c) => {
-                let (cb, cseq) = ubos_proto::parse_cursor(c)?;
+                let (cb, cseq, n) = ubos_proto::parse_cursor(c)?;
                 if cb != branch {
                     return Err(invalid("the cursor names another branch"));
                 }
-                if cseq > head {
+                if cseq > head || (events && n > released) {
                     return Err(invalid("the cursor is ahead of the branch"));
                 }
                 if head - cseq > retention {
                     return Err(BpaError::with_details(
                         "INT.CURSOR_EXPIRED",
-                        json!({"retention": retention, "head": ubos_proto::cursor(&branch, head)}),
+                        json!({"retention": retention, "head": ubos_proto::cursor(&branch, head, 0)}),
                     ));
                 }
-                cseq
+                (cseq, if events { n } else { 0 })
             }
-            None => head,
+            None => (head, released),
         };
         let spec = b[kind].clone();
         let mut sub = Subscription {
@@ -1036,6 +1046,7 @@ impl Engine {
             spec: spec.clone(),
             branch: branch.clone(),
             cseq,
+            n,
             object_id: None,
             unacked: Vec::new(),
             queued: Vec::new(),
@@ -1073,7 +1084,7 @@ impl Engine {
         let n = session.next_sub;
         session.subs.insert(n, sub);
         Ok(
-            json!({"subscription_id": format!("sub-{n}"), "cursor": ubos_proto::cursor(&branch, cseq)}),
+            json!({"subscription_id": format!("sub-{n}"), "cursor": ubos_proto::cursor(&branch, cseq, n)}),
         )
     }
 
@@ -1097,11 +1108,23 @@ impl Engine {
     fn ack_emits(session: &mut Session, b: &Map<String, Value>) -> Result<Value, BpaError> {
         let n = Self::sub_number(session, b)?;
         let cursor = b.get("cursor").cloned().unwrap_or(Value::Null);
-        let (_, cseq) = ubos_proto::parse_cursor(&cursor)?;
+        let (_, cseq, k) = ubos_proto::parse_cursor(&cursor)?;
         if let Some(sub) = session.subs.get_mut(&n) {
-            sub.unacked.retain(|(c, _)| *c > cseq);
+            sub.unacked.retain(|(pos, _)| *pos > (cseq, k));
         }
         Ok(json!({"subscription_id": format!("sub-{n}"), "cursor": cursor}))
+    }
+
+    /// The effects released on a branch without a commit, in outbox order (STD-TIME-050);
+    /// the store keeps them under commit sequence 0.
+    fn timer_effects(&mut self, branch: &str) -> Result<Vec<Value>, BpaError> {
+        self.store.outbox_released(branch, 0)
+    }
+
+    /// An event of an emit body.
+    fn event(e: &Value) -> Value {
+        json!({"event_id": e["effect_id"], "type": e["type"], "object_id": e.get("object_id").cloned().unwrap_or(Value::Null),
+            "payload": e.get("payload").cloned().unwrap_or_else(|| json!({}))})
     }
 
     /// The changes (or events) of a commit for a subscription; `None` when it has none.
@@ -1127,11 +1150,10 @@ impl Engine {
                 .store
                 .outbox_released(&branch, cseq)?
                 .into_iter()
-                .filter(|e| types.is_empty() || s(e, "type").is_some_and(|t| types.iter().any(|x| x == t)))
-                .map(|e| {
-                    json!({"event_id": e["effect_id"], "type": e["type"], "object_id": e.get("object_id").cloned().unwrap_or(Value::Null),
-                        "payload": e.get("payload").cloned().unwrap_or_else(|| json!({}))})
+                .filter(|e| {
+                    types.is_empty() || s(e, "type").is_some_and(|t| types.iter().any(|x| x == t))
                 })
+                .map(|e| Self::event(&e))
                 .collect();
             return Ok(if evs.is_empty() { None } else { Some(evs) });
         }
@@ -1200,13 +1222,37 @@ impl Engine {
                 let Some(items) = self.changes_of(&sub, sub.cseq)? else {
                     continue;
                 };
-                let mut body = json!({"subscription_id": format!("sub-{n}"), "cursor": ubos_proto::cursor(&sub.branch, sub.cseq)});
+                let mut body = json!({"subscription_id": format!("sub-{n}"), "cursor": ubos_proto::cursor(&sub.branch, sub.cseq, sub.n)});
                 body[if sub.kind == "events" {
                     "events"
                 } else {
                     "changes"
                 }] = json!(items);
-                sub.queued.push((sub.cseq, body));
+                sub.queued.push(((sub.cseq, sub.n), body));
+            }
+            if sub.kind == "events" {
+                // effects released without a commit follow the commits, one frame each (1.0-rc6)
+                let types: Vec<String> = sub
+                    .spec
+                    .get("types")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Value::as_str)
+                    .map(str::to_string)
+                    .collect();
+                let timers = self.timer_effects(&sub.branch)?;
+                for e in timers.iter().skip(sub.n as usize) {
+                    sub.n += 1;
+                    if !types.is_empty()
+                        && !s(e, "type").is_some_and(|t| types.iter().any(|x| x == t))
+                    {
+                        continue;
+                    }
+                    let body = json!({"subscription_id": format!("sub-{n}"),
+                        "cursor": ubos_proto::cursor(&sub.branch, sub.cseq, sub.n), "events": [Self::event(e)]});
+                    sub.queued.push(((sub.cseq, sub.n), body));
+                }
             }
             while !sub.queued.is_empty() && (sub.unacked.len() as u64) < session.window {
                 let e = sub.queued.remove(0);

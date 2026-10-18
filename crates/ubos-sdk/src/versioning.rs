@@ -99,7 +99,8 @@ impl Client {
 
     /// Revert the commits of a process (`{process_id}`), a merged change set
     /// (`{change_set}`) or one commit (`{time}` or `{commit}`) on the branch of the call
-    /// options, with `reversal_ids` for ledger entries and `dry_run` (`revert`).
+    /// options, with `reversal_ids` for ledger entries, `resolutions` for the conflicts with
+    /// later changes (BPA 1.0-rc6) and `dry_run` (`revert`).
     pub async fn revert(&self, spec: Value, o: &CallOptions) -> Result<MutateResult> {
         self.mutate(json!({"revert": spec}), o).await
     }

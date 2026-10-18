@@ -168,7 +168,8 @@ fn genesis_branches(
 
 /// Provision the default tenant and VAE (DSN-NOD-402: resumable steps, genesis Buks,
 /// projection, creation event), then declare the `--genesis` classes in a VAE that lacks
-/// them; returns the provisioning report.
+/// them, refusing one that a platform genesis Buk holds (DEC-083); returns the provisioning
+/// report.
 fn ensure_tenant(
     node: &ubos_node::Node,
     tenant: &str,
@@ -176,6 +177,9 @@ fn ensure_tenant(
     classes: Option<&Value>,
     admin: Option<&str>,
 ) -> Result<Value, BpaError> {
+    if let Some(c) = classes {
+        ubos_node::genesis::check_project_classes(c)?;
+    }
     let report = node.provision(tenant, authority, admin)?;
     if let Some(c) = classes {
         let t = node
@@ -855,6 +859,7 @@ fn main() {
                 let mut v = memory_vae_with(None, Some(ev), Some(jb))?;
                 ubos_node::genesis::install_all(&mut v)?;
                 if let Some(c) = classes {
+                    ubos_node::genesis::check_project_classes(&c)?;
                     let mut g = json!({"classes": c["classes"]});
                     if let Some(vt) = c.get("value_types").filter(|v| !v.is_null()) {
                         g["value_types"] = vt.clone();

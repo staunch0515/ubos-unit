@@ -139,4 +139,4 @@ DAT-RuleBinding:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1900…1909
 - **Satisfies:** FR-TIME-052
-- **Notes:** —
+- **Notes:** Since 1.0-rc6 (DEC-083): the event is released without a commit, so its outbox entry carries no `cseq`; an events subscription of UBTP delivers it after the commits of its branch (STD-PROTO-012).

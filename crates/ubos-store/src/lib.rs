@@ -366,7 +366,8 @@ pub trait Store {
     }
     /// The effects a commit released, acknowledged or not, in release order (the events
     /// subscriptions of UBTP, STD-PROTO-012: a host acknowledges the outbox after every
-    /// operation, so the pending list alone loses them).
+    /// operation, so the pending list alone loses them). Commit sequence 0 gives the effects
+    /// released without a commit (STD-TIME-050).
     fn outbox_released(&mut self, branch: &str, cseq: u64) -> Result<Vec<Value>, BpaError> {
         Ok(self
             .meta("outbox")?
@@ -374,8 +375,10 @@ pub trait Store {
             .unwrap_or_default()
             .into_iter()
             .filter(|e| {
+                // an effect released without a commit (STD-TIME-050) has no `cseq`: it is
+                // read under 0, as PostgreSQL stores it
                 e.get("branch").and_then(Value::as_str) == Some(branch)
-                    && e.get("cseq").and_then(Value::as_u64) == Some(cseq)
+                    && e.get("cseq").and_then(Value::as_u64).unwrap_or(0) == cseq
             })
             .collect())
     }
