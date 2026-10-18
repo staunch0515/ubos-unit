@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Write the Forge project of the gate-1a scenarios (VER-SCN-1000, EXIT-1-13; PH-1 step 7c,
 DEC-060): forge.toml, model/, logic/, seed/ and tests/ with one test file per scenario
-SCN-002…008, -010, -011, -018. Run from the repository root; `forge test verify/scenarios`
+SCN-002…008, -010, -011, -018, and SCN-009 of gate 1b (PH-1 step 18d-3b). Run from the repository root; `forge test verify/scenarios`
 runs them (`--backend postgres --database …` on PostgreSQL).
 
 The large fixtures (products of SCN-004, the objects of SCN-018) are generated here so that
@@ -78,10 +78,16 @@ JOB = cls('BatchJob', [field('name', 'text', True), field('note', 'text'), field
           ports=[port('run', 'acme.runaway#run'), port('probe', 'acme.runaway#probe')])
 # SCN-011 starts its process through the port, so that it runs over UBTP too (DEC-082)
 FEE = cls('FeeCase', [field('name', 'text', True), field('fee', 'decimal')], ports=[port('calculate', 'acme.fee#calculate')])
+# SCN-009 (gate 1b, PH-1 step 18d-3b): a control injected through a governance sheet
+MONEY = cls('MoneyMovement', [field('amount', 'decimal', True), field('memo', 'text')],
+            ports=[port('issue', 'acme.money#issue')])
+PAYMENT = cls('Payment', [field('payee', 'text')], parent='MoneyMovement')
+REFUND = cls('Refund', [field('customer', 'text')], parent='MoneyMovement')
 
 w('forge.toml', '[project]\nname = "gate-1a-scenarios"\nversion = "0.1.0"\nvae = "acme"\nabi = "1.0"\nbranch = "main"\n')
 w('model/classes.yaml', 'classes:\n' + ''.join('  - %s\n' % y(c) for c in
-                                          [PARTY, AGREEMENT, SERVICE, PRODUCT, CUSTOMER, PRICELIST, RATE, CASH, JOB, FEE]))
+                                          [PARTY, AGREEMENT, SERVICE, PRODUCT, CUSTOMER, PRICELIST, RATE, CASH, JOB, FEE,
+                                           MONEY, PAYMENT, REFUND]))
 
 # ---- logic ----
 def asset(name, exports, functions=None, tier='host', source=None, capabilities=None, profile='standard'):
@@ -109,7 +115,8 @@ FEECALC = asset('acme.fee', ['calculate'], capabilities=['call'], functions={
         {'do': 'sys.uuid', 'as': 'u'},
         {'return': '[ctx.now, u, r.usd]'},
     ]}})
-w('logic/assets.yaml', 'assets:\n' + ''.join('  - %s\n' % y(a) for a in [AGREEMENTS, RUNAWAY, FEECALC]))
+MONEYLOGIC = asset('acme.money', ['issue'], functions={'issue': {'params': [], 'body': [{'return': '"issued"'}]}})
+w('logic/assets.yaml', 'assets:\n' + ''.join('  - %s\n' % y(a) for a in [AGREEMENTS, RUNAWAY, FEECALC, MONEYLOGIC]))
 
 # ---- seed ----
 def create(oid, klass, slug, body, valid=None):
@@ -451,4 +458,53 @@ tests_file('tests/scn-018.yaml', [
         step('process_info', {'process_id': P_BULK}, subset({'state': 'committed', 'process_id': P_BULK})),
     ], clock='2026-03-15T10:00:00.000000Z'),
 ], 'SCN-018 — Revert a whole process (STD-VER-070, -071; A1, dependent processes, needs the event triggers of gate 1b)')
+# SCN-009 (gate 1b): the control is a governance sheet merged into the logic branch, where the
+# ports run; the rejected commit names the declaration (`audit_level: strict` needs a message
+# and a reason), the cascade explanation names the sheet, selector and specificity, and the
+# signature is a step required of the command port (`require_signature`, STD-LGS-031)
+SHEET_SRC = 'MoneyMovement[this.amount > 10000] { audit_level: "strict"; require_signature: true; }'
+SHEET_URI = 'ubos://acme/GovernanceSheet/control'
+RF, PM = uid(1, 17), uid(2, 17)
+
+
+def sheet(oid, slug, source):
+    return create(oid, 'GovernanceSheet', slug, {'name': 'acme.' + slug.replace('-', '_'), 'layer': 'tenant',
+                                                 'source': source, 'description': slug})
+
+
+CONTROL = sheet(uid(1, 18), 'control', SHEET_SRC)
+FF = 'feature/forge'
+tests_file('tests/scn-009.yaml', [
+    test('SCN-009 main: a control merged as a sheet rejects a large refund without audit data and requires a signature', [
+        step('create_branch', {'name': 'draft/control', 'from': FF}, subset({})),
+        step('commit', {'branch': 'draft/control', 'changes': [CONTROL]}, subset({})),
+        step('merge', {'source': 'draft/control', 'target': FF}, subset({'merged': True}), label='m'),
+        step('commit', {'branch': FF, 'changes': [create(RF, 'Refund', 'rf-1', {'amount': '12000', 'customer': 'Acme'})]},
+             err('RULE.DECLARATION_UNSATISFIED', {'property': 'audit_level', 'object_id': RF})),
+        step('commit', {'branch': FF, 'changes': [create(RF, 'Refund', 'rf-1', {'amount': '12000', 'customer': 'Acme'})],
+                        'process': {'message': 'refund of order 1001', 'reason': 'customer-return'}}, subset({}), label='r'),
+        step('commit_info', {'branch': FF}, subset({'rule_binding': {}})),
+        step('execute', {'branch': FF, 'target': RF, 'port': 'issue', 'params': {}}, err('RULE.DECISION_REQUIRES')),
+        step('commit', {'branch': FF, 'changes': [create(PM, 'Payment', 'pm-1', {'amount': '9000', 'payee': 'Beta'})]},
+             subset({}), label='p'),
+        step('execute', {'branch': FF, 'target': PM, 'port': 'issue', 'params': {}}, subset({'result': 'issued'})),
+        step('explain_cascade', {'branch': FF, 'object_id': RF, 'property': 'audit_level'},
+             subset({'effective': 'strict', 'property': 'audit_level', 'object': 'ubos://acme/Refund/rf-1',
+                     'candidates': [{'selector': 'MoneyMovement[this.amount > 10000]', 'sheet': SHEET_URI,
+                                     'value': 'strict', 'won': True, 'reason': 'won'}]})),
+        step('explain_cascade', {'branch': FF, 'object_id': RF, 'property': 'require_signature'},
+             subset({'effective': True, 'candidates': [{'selector': 'MoneyMovement[this.amount > 10000]', 'sheet': SHEET_URI,
+                                                        'won': True}]})),
+        step('explain_cascade', {'branch': FF, 'object_id': PM, 'property': 'audit_level'},
+             subset({'candidates': []})),
+    ], clock='2026-03-15T10:00:00.000000Z'),
+    test('SCN-009 A1: a second sheet setting audit_level with equal specificity and priority is rejected when authored', [
+        step('create_branch', {'name': 'draft/control', 'from': FF}, subset({})),
+        step('commit', {'branch': 'draft/control', 'changes': [CONTROL]}, subset({})),
+        step('commit', {'branch': 'draft/control', 'changes': [sheet(uid(2, 18), 'control-b',
+             'MoneyMovement[this.amount > 10000] { audit_level: "standard"; }')]},
+             err('RULE.AMBIGUOUS_CASCADE', {'property': 'audit_level'})),
+        step('merge', {'source': 'draft/control', 'target': FF}, subset({'merged': True})),
+    ], clock='2026-03-15T10:00:00.000000Z'),
+], 'SCN-009 — Compliance officer injects a control through a governance sheet (gate 1b; FR-RULE-011, -021, -051, FR-TIME-061)')
 print('scenarios written')

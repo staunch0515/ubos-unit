@@ -90,6 +90,40 @@ jobs:
           python3 verify/tools/dev_loop.py --forge target/debug/forge --server target/debug/ubos-server \
             --database "host=127.0.0.1 user=postgres dbname=bpa" --edits 2 --target-ms 60000
 
+  scenarios-ubtp:
+    name: scenarios over UBTP
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: bpa
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: toolchain from rust-toolchain.toml
+        run: rustup toolchain install || rustup show
+      - name: build the node and forge
+        run: cargo build --locked -p ubos-node -p ubos-forge --bin ubos-server --bin forge
+      - name: the scenario tests over UBTP on a dev-preset Server, WebSocket and HTTP (EXIT-1-19)
+        run: |
+          for b in ws http; do
+            target/debug/forge test verify/scenarios --backend ubtp --server target/debug/ubos-server \
+              --database "host=127.0.0.1 user=postgres dbname=bpa" --binding $b --report scenarios-ubtp-$b.json
+          done
+      - name: SCN-001 and SCN-017, the operator scenarios on an installed Server (EXIT-1-19)
+        run: |
+          python3 verify/scenarios/server/scn_server.py --binary target/debug/ubos-server \
+            --pg-bin /usr/lib/postgresql/16/bin --report scenarios-server.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exit-1-19-reports
+          path: scenarios-*.json
+
   rust:
     name: rust workspace
     runs-on: ubuntu-latest

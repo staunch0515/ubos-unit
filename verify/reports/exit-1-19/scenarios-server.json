@@ -1,0 +1,176 @@
+{
+  "exit": "EXIT-1-19",
+  "part": "PH-1 step 18d-3b",
+  "scenarios": [
+    "SCN-001",
+    "SCN-017"
+  ],
+  "binding": "http",
+  "pass": true,
+  "version": "ubos-server 0.0.0",
+  "host": {
+    "system": "Linux-6.18.44-fc-v139-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "cpus": 4
+  },
+  "seconds": 48.9,
+  "steps": {
+    "scn001_root": "sha256:c6ef035a6deaf94f21940c7147b0b423ea3abb18598abd038285c8daed170715",
+    "scn017_restore_seconds": 13.65,
+    "scn017_report": {
+      "heads": [
+        {
+          "tenant": "acme",
+          "vae": "acme",
+          "branch": "main",
+          "cseq": 8,
+          "head": "682f933e62995bd964fadc1000950ff7d4aa3852d1d149769d5d91034b040db5",
+          "root": "9daaa82d26552b26ebc593c2d8d8a5b7abdeefde4c33de84e37465a261493d9d"
+        }
+      ],
+      "checks": [
+        {
+          "tenant": "acme",
+          "vae": "acme",
+          "ok": true,
+          "detail": {
+            "commits": 8,
+            "root_findings": 0,
+            "index_findings": 0,
+            "from": 1,
+            "to": 8
+          }
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "check": "SCN-001 A2: an invalid genesis Buk signature stops bootstrap with PKG.SIGNATURE_INVALID",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-001 A2: nothing written: no tenant, no setup step, no VAE",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-001 A1: bootstrap interrupted after the genesis step",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-001 A1: the rerun completes the missing steps and leaves the done ones",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-001 step 3: the administrator principal with its DID, role and key pair",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-001 step 1: the tenant, the default VAE and its branch main answer over UBTP",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-001 step 2: the genesis Buks system and ontology recorded once each (no duplicates)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-001 postcondition 1: the history of main shows exactly two genesis installations, one commit each",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-001 postcondition 2: every genesis installation records a Buk that verifies against the publisher key",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-001 step 4: the class Party with its inheritance chain and fields over UBTP",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-001 postcondition 3: the Merkle root of main is reported",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-017 precondition: continuous backup (a base backup, WAL archived)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-017: commits before and after the chosen time",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-017 step 1: restored to the chosen time in a separate cluster",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-017 step 2: the heads and DVM roots of the restored branches equal those recorded at the chosen time",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-017 step 3: the projections rebuilt from the restored commits equal the restored ones",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-017 postcondition: the restore report lists the heads, roots and verification results",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-017: a Server on the restored database answers the root of main recorded at the chosen time over UBTP",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "SCN-017 A1: a broken backup chain: the restore reports the last consistent point and does not restore past it",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "setup": [
+    {
+      "check": "install: the binary runs",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "install: the configuration from the example is valid",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "postgres: initdb",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "postgres: started with WAL archiving",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "postgres: the ubos role and database (not a superuser)",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "check": "bootstrap: the administrator signs in through the invitation",
+      "ok": true,
+      "detail": null
+    }
+  ]
+}

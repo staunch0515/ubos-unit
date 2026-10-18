@@ -162,10 +162,23 @@ pub fn sign(manifest: &str, seed: &[u8; 32]) -> Result<String, BpaError> {
 
 /// The embedded genesis Buks, in installation order (`system`, then `ontology`).
 pub fn embedded() -> Result<Vec<Buk>, BpaError> {
-    Ok(vec![
+    let mut buks = vec![
         Buk::parse(SYSTEM, SYSTEM_SIG)?,
         Buk::parse(ONTOLOGY, ONTOLOGY_SIG)?,
-    ])
+    ];
+    // a fault injected into the signature of one Buk (SCN-001 A2 over the Server binary)
+    if let Ok(name) = std::env::var("UBOS_FAULT_BUK_SIGNATURE") {
+        for b in buks.iter_mut().filter(|b| b.name() == name) {
+            b.signature["sig"] = json!("00".repeat(64));
+        }
+    }
+    Ok(buks)
+}
+
+/// Verify every embedded genesis Buk before anything is written (SCN-001 A2:
+/// `PKG.SIGNATURE_INVALID` leaves the store as it was).
+pub fn verify_embedded() -> Result<(), BpaError> {
+    embedded()?.iter().try_for_each(Buk::verify)
 }
 
 /// Refuse a project genesis that declares a class named like a class of the platform genesis

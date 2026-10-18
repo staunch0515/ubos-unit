@@ -466,6 +466,8 @@ impl Node {
         authority: &str,
         admin: Option<&str>,
     ) -> Result<Value, BpaError> {
+        // the genesis Buks verify before the first step writes anything (SCN-001 A2)
+        genesis::verify_embedded()?;
         let done = self.setup_done(slug)?;
         let mut steps = Vec::new();
         let mut step = |name: &str, ran: bool| {
