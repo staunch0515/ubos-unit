@@ -188,6 +188,11 @@ jobs:
             --rate 2 --database "$DB" > /dev/null
           ./target/release/ubos-bench run --what read --objects 300 --months 4 --seconds 3 \
             --rate 50 --workers 2 --background 10 --database "$DB" > /dev/null
+      - name: edge benchmark, small dataset (SUITE-NOD-BENCH driver, VER-BENCH-2000, PH-1 step 19c)
+        run: |
+          cargo build --release --locked -p ubos-node --bin ubos-edge-bench
+          psql -h 127.0.0.1 -U postgres -c "CREATE DATABASE edgebench"
+          ./target/release/ubos-edge-bench --database "host=127.0.0.1 user=postgres dbname=edgebench" --quick > /dev/null
       - name: L2 escape suite, all cases blocked (VER-SEC-0100, EXIT-1-10, DEC-058)
         run: |
           cargo build --release --locked -p ubos-dvm --bin ubos-l2-suite

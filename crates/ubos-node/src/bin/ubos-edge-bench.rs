@@ -3,7 +3,8 @@
 //! PostgreSQL, over UBTP on WebSocket and HTTP.
 //!
 //! ```text
-//! ubos-edge-bench --database URL [--objects N] [--rounds R] [--seconds S] [--quick] [--report <file>]
+//! ubos-edge-bench --database URL [--objects N] [--rounds R] [--seconds S] [--parts query,mixed,fairness,ports]
+//!                 [--quick] [--report <file>]
 //! ```
 //!
 //! One Server in this process serves three fresh tenants of the node's registry, each with
@@ -761,12 +762,16 @@ async fn mix_worker(
     reads_only: bool,
 ) -> Result<(BTreeMap<&'static str, Vec<f64>>, u64), BpaError> {
     let Gate { ready, go, stop } = gate;
+    // the items' owner: sessions beyond the seeded owners share their items (and race for
+    // their heads, retried below)
+    let owners = m.ids.keys().filter(|k| k.starts_with("it-")).count() / ITEMS_PER_WORKER;
+    let o = w % owners.max(1);
     let mut s = Ws::open(&m.addr, &m.tenant, &m.token).await?;
     // the versions of the worker's items: an update names its base (STD-TXN-020)
     let mut base: BTreeMap<String, String> = BTreeMap::new();
     let r = s
         .request("query", json!({"vae": "acme", "branch": OLTP, "query": {"text":
-            format!("from Item where this.owner == \"w{w}\" order by this.owner limit 100"), "profile": "standard"}}))
+            format!("from Item where this.owner == \"w{o}\" order by this.owner limit 100"), "profile": "standard"}}))
         .await?;
     for it in r["items"].as_array().into_iter().flatten() {
         base.insert(
@@ -786,7 +791,7 @@ async fn mix_worker(
     while !stop.load(Ordering::Relaxed) {
         k += 1;
         let x = rng.next() % 100;
-        let item = |r: u64| format!("it-{w}-{}", r % ITEMS_PER_WORKER as u64);
+        let item = |r: u64| format!("it-{o}-{}", r % ITEMS_PER_WORKER as u64);
         let (kind, ty, body) = if x < 70 || (reads_only && x < 85) {
             (
                 "read",
@@ -800,7 +805,7 @@ async fn mix_worker(
                 .map(|j| {
                     let slug = item(start + j);
                     let oid = &m.ids[&slug];
-                    json!({"op": "update", "object_id": oid, "base": base[oid], "body": {"name": slug, "owner": format!("w{w}"), "qty": k as i64, "tag": format!("t{k}")}})
+                    json!({"op": "update", "object_id": oid, "base": base[oid], "body": {"name": slug, "owner": format!("w{o}"), "qty": k as i64, "tag": format!("t{k}")}})
                 })
                 .collect();
             (
@@ -812,7 +817,7 @@ async fn mix_worker(
             (
                 "query",
                 "query",
-                json!({"vae": "acme", "branch": OLTP, "query": {"text": format!("from Item where this.owner == \"w{w}\" order by this.owner limit 20"), "profile": "standard"}}),
+                json!({"vae": "acme", "branch": OLTP, "query": {"text": format!("from Item where this.owner == \"w{o}\" order by this.owner limit 20"), "profile": "standard"}}),
             )
         } else {
             (
@@ -1184,6 +1189,8 @@ fn bench_fairness(e: &Env, secs: f64, flood: usize) -> Result<Value, BpaError> {
         ids: Arc::new(t.ids.clone()),
     };
     let (a, b) = (mix(&e.fa), mix(&e.fb));
+    // a warm-up probe, discarded
+    fairness_phase(e, &a, &b, 0, 0.0, 5.0)?;
     let base = fairness_phase(e, &a, &b, 0, 0.0, secs)?;
     let tenfold = fairness_phase(e, &a, &b, 10, 10.0, secs)?;
     let flooded = fairness_phase(e, &a, &b, flood, 0.0, secs)?;
@@ -1207,6 +1214,7 @@ fn bench_fairness(e: &Env, secs: f64, flood: usize) -> Result<Value, BpaError> {
     } else {
         json!({"skipped": format!("config {st}: {r}")})
     };
+    let base_after = fairness_phase(e, &a, &b, 0, 0.0, secs)?;
     let p95 = |x: &Value| x["b_latency_ms"]["all"]["p95"].as_f64();
     let incr = |x: &Value| match (p95(&base), p95(x)) {
         (Some(b0), Some(b1)) if b0 > 0.0 => json!(((b1 / b0 - 1.0) * 1000.0).round() / 10.0),
@@ -1214,7 +1222,7 @@ fn bench_fairness(e: &Env, secs: f64, flood: usize) -> Result<Value, BpaError> {
     };
     Ok(
         json!({"probe": "tenant B: one session, 10 operations per second, 85% reads and 15% commits",
-        "baseline": base, "a_tenfold": tenfold, "a_flood": flooded, "a_flood_limited": limited,
+        "baseline": base, "a_tenfold": tenfold, "a_flood": flooded, "a_flood_limited": limited, "baseline_after": base_after,
         "b_p95_increase_percent": {"a_tenfold": incr(&tenfold), "a_flood": incr(&flooded), "a_flood_limited": incr(&limited)},
         "reference": "NR-PERF-022 (PH-4, ENV-REF-CELL): small-tenant p95 increase <= 30%"}),
     )
@@ -1299,6 +1307,7 @@ fn main() {
     let secs = num("--seconds", if quick { 4 } else { 60 }) as f64;
     let workers = num("--workers", 8) as usize;
     let t0 = Instant::now();
+    let parts = arg("--parts").unwrap_or_else(|| "query,mixed,fairness,ports".into());
     let path = arg("--report");
     let save = |report: &Value| {
         if let Some(p) = &path {
@@ -1316,19 +1325,28 @@ fn main() {
         let mut report = json!({"suite": "SUITE-NOD-BENCH", "item": "VER-BENCH-2000", "quick": quick,
             "environment": {"host": "workstation", "cpus": std::thread::available_parallelism().map_or(0, |n| n.get()),
                 "database": "PostgreSQL", "build": if cfg!(debug_assertions) { "debug" } else { "release" }},
-            "params": {"objects": objects, "rounds": rounds, "seconds": secs, "workers": workers},
+            "params": {"objects": objects, "rounds": rounds, "seconds": secs, "workers": workers, "parts": parts},
             "load_seconds": (e.load_s * 10.0).round() / 10.0});
-        eprintln!("queries ({rounds} rounds)");
-        report["query"] = bench_query(&e, objects, rounds)?;
-        save(&report);
-        eprintln!("mixed workload");
-        report["mixed"] = bench_mix(&e, workers, secs, if quick { 8 } else { 200 })?;
-        save(&report);
-        eprintln!("fairness");
-        report["fairness"] = bench_fairness(&e, (secs / 3.0).max(3.0), if quick { 4 } else { 16 })?;
-        save(&report);
-        eprintln!("ports");
-        report["ports"] = bench_ports(&e, if quick { 2 } else { 5 })?;
+        if parts.contains("query") {
+            eprintln!("queries ({rounds} rounds)");
+            report["query"] = bench_query(&e, objects, rounds)?;
+            save(&report);
+        }
+        if parts.contains("mixed") {
+            eprintln!("mixed workload");
+            report["mixed"] = bench_mix(&e, workers, secs, if quick { 8 } else { 200 })?;
+            save(&report);
+        }
+        if parts.contains("fairness") {
+            eprintln!("fairness");
+            report["fairness"] =
+                bench_fairness(&e, (secs / 3.0).max(3.0), if quick { 4 } else { 16 })?;
+            save(&report);
+        }
+        if parts.contains("ports") {
+            eprintln!("ports");
+            report["ports"] = bench_ports(&e, if quick { 2 } else { 5 })?;
+        }
         report["met"] = json!(
             report["query"]["met_ordinary_pages"] == json!(true)
                 && report["mixed"]["commit_to_handler_ms"]["met"] == json!(true)

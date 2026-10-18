@@ -1,0 +1,480 @@
+{
+  "suite": "SUITE-NOD-BENCH",
+  "item": "VER-BENCH-2000",
+  "quick": false,
+  "environment": {
+    "host": "workstation",
+    "cpus": 4,
+    "database": "PostgreSQL",
+    "build": "release"
+  },
+  "params": {
+    "objects": 300000,
+    "rounds": 50,
+    "seconds": 60.0,
+    "workers": 8
+  },
+  "load_seconds": 1213.8,
+  "query": {
+    "objects": 300000,
+    "rounds": 50,
+    "denied_rounds": 10,
+    "latency_ms": {
+      "http/eq": {
+        "n": 50,
+        "p50": 48.78,
+        "p95": 60.91,
+        "p99": 79.65,
+        "max": 79.65,
+        "mean": 49.13,
+        "rows": 5000
+      },
+      "http/eq_denied": {
+        "n": 10,
+        "p50": 1470.3,
+        "p95": 2005.4,
+        "p99": 2005.4,
+        "max": 2005.4,
+        "mean": 1534.95,
+        "rows": 0
+      },
+      "http/eq_filter": {
+        "n": 50,
+        "p50": 125.65,
+        "p95": 182.31,
+        "p99": 187.16,
+        "max": 187.16,
+        "mean": 133.78,
+        "rows": 5000
+      },
+      "http/key": {
+        "n": 50,
+        "p50": 11.79,
+        "p95": 17.99,
+        "p99": 18.56,
+        "max": 18.56,
+        "mean": 12.1,
+        "rows": 50
+      },
+      "http/page2": {
+        "n": 50,
+        "p50": 66.55,
+        "p95": 85.32,
+        "p99": 95.62,
+        "max": 95.62,
+        "mean": 65.99,
+        "rows": 5000
+      },
+      "http/range": {
+        "n": 50,
+        "p50": 47.59,
+        "p95": 64.68,
+        "p99": 69.13,
+        "max": 69.13,
+        "mean": 50.04,
+        "rows": 5000
+      },
+      "kernel/eq": {
+        "n": 50,
+        "p50": 54.65,
+        "p95": 73.82,
+        "p99": 142.68,
+        "max": 142.68,
+        "mean": 56.67,
+        "rows": 5000
+      },
+      "kernel/eq_denied": {
+        "n": 10,
+        "p50": 1563.58,
+        "p95": 1845.71,
+        "p99": 1845.71,
+        "max": 1845.71,
+        "mean": 1561.79,
+        "rows": 0
+      },
+      "kernel/eq_filter": {
+        "n": 50,
+        "p50": 122.11,
+        "p95": 192.39,
+        "p99": 504.62,
+        "max": 504.62,
+        "mean": 138.37,
+        "rows": 5000
+      },
+      "kernel/key": {
+        "n": 50,
+        "p50": 10.76,
+        "p95": 14.13,
+        "p99": 19.67,
+        "max": 19.67,
+        "mean": 10.78,
+        "rows": 50
+      },
+      "kernel/page2": {
+        "n": 50,
+        "p50": 61.7,
+        "p95": 89.35,
+        "p99": 8858.42,
+        "max": 8858.42,
+        "mean": 239.17,
+        "rows": 5000
+      },
+      "kernel/range": {
+        "n": 50,
+        "p50": 57.29,
+        "p95": 76.64,
+        "p99": 81.1,
+        "max": 81.1,
+        "mean": 57.99,
+        "rows": 5000
+      },
+      "ws/eq": {
+        "n": 50,
+        "p50": 60.7,
+        "p95": 87.55,
+        "p99": 7506.54,
+        "max": 7506.54,
+        "mean": 209.4,
+        "rows": 5000
+      },
+      "ws/eq_denied": {
+        "n": 10,
+        "p50": 1734.36,
+        "p95": 2159.8,
+        "p99": 2159.8,
+        "max": 2159.8,
+        "mean": 1773.17,
+        "rows": 0
+      },
+      "ws/eq_filter": {
+        "n": 50,
+        "p50": 141.2,
+        "p95": 207.75,
+        "p99": 490.07,
+        "max": 490.07,
+        "mean": 152.39,
+        "rows": 5000
+      },
+      "ws/key": {
+        "n": 50,
+        "p50": 13.65,
+        "p95": 16.56,
+        "p99": 21.77,
+        "max": 21.77,
+        "mean": 13.72,
+        "rows": 50
+      },
+      "ws/page2": {
+        "n": 50,
+        "p50": 76.59,
+        "p95": 98.38,
+        "p99": 120.22,
+        "max": 120.22,
+        "mean": 77.05,
+        "rows": 5000
+      },
+      "ws/range": {
+        "n": 50,
+        "p50": 62.89,
+        "p95": 76.2,
+        "p99": 80.01,
+        "max": 80.01,
+        "mean": 62.96,
+        "rows": 5000
+      }
+    },
+    "edge_p95_ms": {
+      "ws/eq": 13.73,
+      "http/eq": -12.91,
+      "ws/page2": 9.03,
+      "http/page2": -4.03,
+      "ws/range": -0.44,
+      "http/range": -11.96,
+      "ws/key": 2.43,
+      "http/key": 3.86,
+      "ws/eq_filter": 15.36,
+      "http/eq_filter": -10.08,
+      "ws/eq_denied": 314.09,
+      "http/eq_denied": 159.69
+    },
+    "errors": {},
+    "target": "first 100 rows p95 <= 100 ms (NR-PERF-008)",
+    "met_ordinary_pages": false
+  },
+  "mixed": {
+    "workers": 8,
+    "mix": "70% reads, 20% commits of 1-10 objects, 5% queries, 5% ledger appends",
+    "capacity_ops_per_s": 37.8,
+    "capacity_errors": 0,
+    "target_ops_per_s": 26.5,
+    "achieved_ops_per_s": 24.6,
+    "seconds": 60.0,
+    "errors": 0,
+    "latency_ms": {
+      "append": {
+        "n": 85,
+        "p50": 309.05,
+        "p95": 434.45,
+        "p99": 446.12,
+        "max": 727.54,
+        "mean": 307.24
+      },
+      "commit": {
+        "n": 267,
+        "p50": 312.99,
+        "p95": 425.63,
+        "p99": 450.89,
+        "max": 541.57,
+        "mean": 311.84
+      },
+      "query": {
+        "n": 64,
+        "p50": 304.2,
+        "p95": 416.44,
+        "p99": 423.79,
+        "max": 482.12,
+        "mean": 296.14
+      },
+      "read": {
+        "n": 1062,
+        "p50": 304.33,
+        "p95": 417.61,
+        "p99": 521.24,
+        "max": 730.75,
+        "mean": 299.19
+      },
+      "commit_retries": 0,
+      "all": {
+        "n": 1478,
+        "p50": 307.08,
+        "p95": 422.81,
+        "p99": 482.93,
+        "max": 730.75,
+        "mean": 301.81
+      }
+    },
+    "commit_to_handler_ms": {
+      "idle": {
+        "n": 50,
+        "p50": 121.44,
+        "p95": 152.24,
+        "p99": 467.2,
+        "max": 467.2,
+        "mean": 127.6,
+        "missing": 0
+      },
+      "loaded": {
+        "n": 63,
+        "p50": 456.31,
+        "p95": 577.66,
+        "p99": 659.24,
+        "max": 842.05,
+        "mean": 460.24,
+        "missing": 0
+      },
+      "target": "p95 <= 500 ms, p99 <= 2 s (NR-PERF-011)",
+      "met": false,
+      "measure": "commit time of the ping to commit time of its handler (kernel tx_time)"
+    },
+    "subscription_ms": {
+      "from_request": {
+        "n": 63,
+        "p50": 389.1,
+        "p95": 626.75,
+        "p99": 671.79,
+        "max": 677.86,
+        "mean": 395.01
+      },
+      "from_result": {
+        "n": 63,
+        "p50": 65.8,
+        "p95": 330.72,
+        "p99": 378.43,
+        "max": 398.37,
+        "mean": 103.94
+      },
+      "lost": 0,
+      "measure": "a target subscription on another session: commit request (or its result) to the emit; NR-PERF-015 (PH-2) recorded"
+    }
+  },
+  "fairness": {
+    "probe": "tenant B: one session, 10 operations per second, 85% reads and 15% commits",
+    "baseline": {
+      "a_sessions": 0,
+      "a_paced_ops_per_s": 0.0,
+      "a_ops": 0,
+      "a_errors": 0,
+      "b_ops_per_s": 10.0,
+      "b_errors": 0,
+      "b_latency_ms": {
+        "commit": {
+          "n": 27,
+          "p50": 40.61,
+          "p95": 52.89,
+          "p99": 68.03,
+          "max": 68.03,
+          "mean": 42.31
+        },
+        "read": {
+          "n": 173,
+          "p50": 24.74,
+          "p95": 30.82,
+          "p99": 35.43,
+          "max": 65.52,
+          "mean": 25.48
+        },
+        "commit_retries": 0,
+        "all": {
+          "n": 200,
+          "p50": 25.62,
+          "p95": 45.18,
+          "p99": 52.89,
+          "max": 68.03,
+          "mean": 27.75
+        }
+      }
+    },
+    "a_tenfold": {
+      "a_sessions": 10,
+      "a_paced_ops_per_s": 10.0,
+      "a_ops": 1411,
+      "a_errors": 2,
+      "b_ops_per_s": 10.0,
+      "b_errors": 0,
+      "b_latency_ms": {
+        "commit": {
+          "n": 27,
+          "p50": 105.98,
+          "p95": 148.56,
+          "p99": 167.68,
+          "max": 167.68,
+          "mean": 103.27
+        },
+        "read": {
+          "n": 173,
+          "p50": 60.12,
+          "p95": 96.11,
+          "p99": 113.32,
+          "max": 119.0,
+          "mean": 61.19
+        },
+        "commit_retries": 0,
+        "all": {
+          "n": 200,
+          "p50": 63.65,
+          "p95": 113.89,
+          "p99": 144.21,
+          "max": 167.68,
+          "mean": 66.87
+        }
+      }
+    },
+    "a_flood": {
+      "a_sessions": 16,
+      "a_paced_ops_per_s": 0.0,
+      "a_ops": 288,
+      "a_errors": 0,
+      "b_ops_per_s": 10.0,
+      "b_errors": 0,
+      "b_latency_ms": {
+        "commit": {
+          "n": 27,
+          "p50": 40.05,
+          "p95": 54.5,
+          "p99": 60.28,
+          "max": 60.28,
+          "mean": 41.66
+        },
+        "read": {
+          "n": 173,
+          "p50": 26.11,
+          "p95": 31.38,
+          "p99": 32.5,
+          "max": 36.15,
+          "mean": 26.08
+        },
+        "commit_retries": 0,
+        "all": {
+          "n": 200,
+          "p50": 27.12,
+          "p95": 43.96,
+          "p99": 52.37,
+          "max": 60.28,
+          "mean": 28.18
+        }
+      }
+    },
+    "a_flood_limited": {
+      "a_sessions": 16,
+      "a_paced_ops_per_s": 0.0,
+      "a_ops": 289,
+      "a_errors": 161914,
+      "b_ops_per_s": 10.0,
+      "b_errors": 0,
+      "b_latency_ms": {
+        "commit": {
+          "n": 27,
+          "p50": 46.59,
+          "p95": 69.87,
+          "p99": 79.75,
+          "max": 79.75,
+          "mean": 47.2
+        },
+        "read": {
+          "n": 173,
+          "p50": 28.6,
+          "p95": 51.57,
+          "p99": 59.46,
+          "max": 71.76,
+          "mean": 31.34
+        },
+        "commit_retries": 0,
+        "all": {
+          "n": 200,
+          "p50": 29.87,
+          "p95": 56.08,
+          "p99": 69.87,
+          "max": 79.75,
+          "mean": 33.48
+        }
+      }
+    },
+    "b_p95_increase_percent": {
+      "a_tenfold": 152.1,
+      "a_flood": -2.7,
+      "a_flood_limited": 24.1
+    },
+    "reference": "NR-PERF-022 (PH-4, ENV-REF-CELL): small-tenant p95 increase <= 30%"
+  },
+  "ports": {
+    "small_branch": {
+      "n": 5,
+      "p50": 174.72,
+      "p95": 189.79,
+      "p99": 189.79,
+      "max": 189.79,
+      "mean": 168.8,
+      "errors": []
+    },
+    "dataset_branch": {
+      "n": 5,
+      "p50": 287031.62,
+      "p95": 292754.14,
+      "p99": 292754.14,
+      "max": 292754.14,
+      "mean": 287025.73,
+      "errors": []
+    },
+    "next_read_ms": {
+      "ms": 396.4,
+      "ok": true
+    }
+  },
+  "met": false,
+  "seconds": 2966,
+  "signature": {
+    "alg": "ed25519",
+    "key": "556e41f9860a0fdd557e1d2d42b64cc47630bee124c50d7974ce1ded794aeb33",
+    "sig": "ec840ecf879ee66c1ffa7802f14b4d6657406c730d80f7d0e714394c7b691159bd41258c6bf1c5550d039179b0b81170c4fd548acc3ef97b7c3b054c7f68f40d"
+  }
+}
