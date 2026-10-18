@@ -472,6 +472,7 @@ the records from DEC-060 on follow.
   - `spec/` and `vectors/` hold 1.0-rc6 (201 clauses); the added vectors cover a revert resolving a conflict, an unused resolution, `revert` with `resolutions` over UBTP, an events subscription delivering `BecameEffective`, resuming with a `.n` cursor and a cursor ahead of the released effects; no existing vector changes.
   - Kernel: the unused-resolution check of `revert`; the UBTP binding passes `resolutions` and delivers the effects released without a commit (the memory store reads an outbox entry without `cseq` as such an effect, as PostgreSQL stores it with `cseq` 0); `ubos_proto` cursors carry the release count.
   - SCN-006 main and SCN-018 main run over UBTP; EXIT-1-19 is re-run (`verify/reports/exit-1-19/`).
+  - The SDK suites' fixture declared its own `Party`, which the node had silently skipped (its `Customer` and `Supplier` then extended the ontology `Party`); it is renamed `Counterparty`, with the generated types regenerated (SUITE-SDK-PROTO, -TYPES).
   - The owner signs `bpa-v1.0.0-rc6` after the merge.
 - **Alternatives considered:**
   - Giving each timer release its own commit was rejected: a release changes no object, and a commit per release would grow every branch's history with the clock.

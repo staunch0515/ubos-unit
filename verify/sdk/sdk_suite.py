@@ -325,11 +325,11 @@ def serve(proxy, node, ports, ready):
 # ---- SUITE-SDK-TYPES ----
 
 NARROWING = '''import { connect } from "%(sdk)s";
-import { Customer, Party } from "%(types)s";
+import { Customer, Counterparty } from "%(types)s";
 export async function use(url: string): Promise<string[]> {
   const c = await connect({ url, vae: "acme", auth: { kind: "dev" } });
   const out: string[] = [];
-  for await (const p of Party.query().filter("country", "==", "x").run(c)) {
+  for await (const p of Counterparty.query().filter("country", "==", "x").run(c)) {
     if (p.class === "Customer") out.push(p.body.email ?? "", p.body.credit_limit?.amount ?? "");
     else if (p.class === "Supplier") out.push(p.body.iban ?? "");
     else out.push(p.body.name);
