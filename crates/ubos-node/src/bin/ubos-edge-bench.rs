@@ -211,6 +211,15 @@ impl Ws {
     /// Send one request and wait for its result (`Err` for an error frame); emits that
     /// arrive meanwhile are kept.
     async fn request(&mut self, ty: &str, body: Value) -> Result<Value, BpaError> {
+        self.request_within(ty, body, 120.0).await
+    }
+
+    async fn request_within(
+        &mut self,
+        ty: &str,
+        body: Value,
+        secs: f64,
+    ) -> Result<Value, BpaError> {
         use tokio_tungstenite::tungstenite::Message;
         self.n += 1;
         let id = format!("r{}", self.n);
@@ -220,7 +229,8 @@ impl Ws {
             .await
             .map_err(err)?;
         loop {
-            let f = match tokio::time::timeout(Duration::from_secs(120), self.ws.next()).await {
+            let f = match tokio::time::timeout(Duration::from_secs_f64(secs), self.ws.next()).await
+            {
                 Ok(Some(Ok(f))) => f,
                 _ => return Err(err(format!("{ty}: no answer"))),
             };
@@ -689,20 +699,6 @@ fn bench_query(e: &Env, objects: u64, rounds: u64) -> Result<Value, BpaError> {
                     note(format!("{b}/page2"), ms(t), r2, &mut lat);
                 }
             }
-        }
-    }
-    // a command port on a small branch and on the dataset's branch (the process runs
-    // against a view of its branch)
-    for (name, branch, slug) in [
-        ("port_small_branch", OLTP, "it-0-0"),
-        ("port_dataset_branch", BENCH, "big-probe"),
-    ] {
-        for r in 0..rounds.min(10) {
-            let t = Instant::now();
-            let x = e.rt.block_on(ws.request("mutate", json!({"vae": "acme", "branch": branch,
-                "port": {"target": format!("ubos://acme/Item/{slug}"), "name": "mark", "params": {"tag": format!("p{r}")}}})));
-            ws.emits.clear();
-            note(format!("ws/{name}"), ms(t), x, &mut lat);
         }
     }
     let mut out = serde_json::Map::new();
@@ -1224,6 +1220,53 @@ fn bench_fairness(e: &Env, secs: f64, flood: usize) -> Result<Value, BpaError> {
     )
 }
 
+// ---- 4. port calls and the size of the branch ----
+
+/// A command port on a small branch and on the dataset's branch: a process runs against a
+/// view of its branch, so its latency grows with the branch. After the calls on the dataset's
+/// branch, the time until a read on the small branch is answered again (the VAE's work
+/// behind them).
+fn bench_ports(e: &Env, calls: u64) -> Result<Value, BpaError> {
+    let mut ws =
+        e.rt.block_on(Ws::open(&e.addr, &e.edge.slug, &e.edge.token))?;
+    let mut out = serde_json::Map::new();
+    for (name, branch, slug) in [
+        ("small_branch", OLTP, "it-0-0"),
+        ("dataset_branch", BENCH, "big-probe"),
+    ] {
+        let mut lat = Vec::new();
+        let mut errors = Vec::new();
+        for r in 0..calls {
+            let t = Instant::now();
+            let x = e.rt.block_on(ws.request_within(
+                "mutate",
+                json!({"vae": "acme", "branch": branch,
+                    "port": {"target": format!("ubos://acme/Item/{slug}"), "name": "mark", "params": {"tag": format!("p{r}")}}}),
+                1800.0,
+            ));
+            ws.emits.clear();
+            match x {
+                Ok(_) => lat.push(ms(t)),
+                Err(x) => errors.push(x.to_string()),
+            }
+        }
+        let mut st = stats(lat);
+        st["errors"] = json!(errors);
+        out.insert(name.into(), st);
+    }
+    let t = Instant::now();
+    let r = e.rt.block_on(ws.request_within(
+        "query",
+        json!({"vae": "acme", "branch": OLTP, "read": "ubos://acme/Item/it-0-1"}),
+        1800.0,
+    ));
+    out.insert(
+        "next_read_ms".into(),
+        json!({"ms": (ms(t) * 10.0).round() / 10.0, "ok": r.is_ok()}),
+    );
+    Ok(Value::Object(out))
+}
+
 // ---- the run ----
 
 fn signed(mut report: Value) -> Value {
@@ -1256,22 +1299,41 @@ fn main() {
     let secs = num("--seconds", if quick { 4 } else { 60 }) as f64;
     let workers = num("--workers", 8) as usize;
     let t0 = Instant::now();
+    let path = arg("--report");
+    let save = |report: &Value| {
+        if let Some(p) = &path {
+            if let Some(d) = std::path::Path::new(p).parent() {
+                let _ = std::fs::create_dir_all(d);
+            }
+            let _ = std::fs::write(
+                p,
+                serde_json::to_string_pretty(&signed(report.clone())).unwrap_or_default() + "\n",
+            );
+        }
+    };
     let run = || -> Result<Value, BpaError> {
         let e = setup(&url, objects, workers)?;
-        eprintln!("queries ({rounds} rounds)");
-        let q = bench_query(&e, objects, rounds)?;
-        eprintln!("mixed workload");
-        let m = bench_mix(&e, workers, secs, if quick { 8 } else { 200 })?;
-        eprintln!("fairness");
-        let f = bench_fairness(&e, (secs / 3.0).max(3.0), if quick { 4 } else { 16 })?;
-        let met = q["met_ordinary_pages"] == json!(true)
-            && m["commit_to_handler_ms"]["met"] == json!(true);
-        let report = json!({"suite": "SUITE-NOD-BENCH", "item": "VER-BENCH-2000", "quick": quick,
+        let mut report = json!({"suite": "SUITE-NOD-BENCH", "item": "VER-BENCH-2000", "quick": quick,
             "environment": {"host": "workstation", "cpus": std::thread::available_parallelism().map_or(0, |n| n.get()),
                 "database": "PostgreSQL", "build": if cfg!(debug_assertions) { "debug" } else { "release" }},
-            "load_seconds": (e.load_s * 10.0).round() / 10.0,
-            "query": q, "mixed": m, "fairness": f, "met": met,
-            "seconds": t0.elapsed().as_secs()});
+            "params": {"objects": objects, "rounds": rounds, "seconds": secs, "workers": workers},
+            "load_seconds": (e.load_s * 10.0).round() / 10.0});
+        eprintln!("queries ({rounds} rounds)");
+        report["query"] = bench_query(&e, objects, rounds)?;
+        save(&report);
+        eprintln!("mixed workload");
+        report["mixed"] = bench_mix(&e, workers, secs, if quick { 8 } else { 200 })?;
+        save(&report);
+        eprintln!("fairness");
+        report["fairness"] = bench_fairness(&e, (secs / 3.0).max(3.0), if quick { 4 } else { 16 })?;
+        save(&report);
+        eprintln!("ports");
+        report["ports"] = bench_ports(&e, if quick { 2 } else { 5 })?;
+        report["met"] = json!(
+            report["query"]["met_ordinary_pages"] == json!(true)
+                && report["mixed"]["commit_to_handler_ms"]["met"] == json!(true)
+        );
+        report["seconds"] = json!(t0.elapsed().as_secs());
         std::mem::forget(e);
         Ok(report)
     };
@@ -1286,13 +1348,5 @@ fn main() {
         "{}",
         serde_json::to_string_pretty(&report).unwrap_or_default()
     );
-    if let Some(p) = arg("--report") {
-        if let Some(d) = std::path::Path::new(&p).parent() {
-            let _ = std::fs::create_dir_all(d);
-        }
-        let _ = std::fs::write(
-            &p,
-            serde_json::to_string_pretty(&report).unwrap_or_default() + "\n",
-        );
-    }
+    save(&report);
 }
