@@ -424,5 +424,5 @@ Numbers follow UBS-VER-00 §3.
   1. Generate the traceability report (`gen_traceability.py`) and the verification results index.
   2. List Must requirements without a passing mapped item.
 - **Pass criterion:** the list is empty.
-- **Evidence:** traceability report.
+- **Evidence:** traceability report `verify/reports/exit-1-20/` (PH-1 step 19d, DEC-085): the results index `30-results-ph1.md` (UBS-VER-30) and the results by requirement `31-results-trace-ph1.md` (UBS-VER-31, `docs/tools/gen_results.py`); 323 Must requirements, 291 verified, 8 on the workstation only, 24 gaps (12 benchmarks pending ENV-REF-SERVER, NR-PERF-011 not met on the workstation, 8 not built in PH-1, 2 acceptance tests missing, FR-STD-042 needs a later version).
 - **Supports:** EXIT-1-20
