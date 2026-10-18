@@ -141,6 +141,7 @@ naming the requirement directly.
 | Hybrid search | FR-QRY-032 | Should | CONF | DSN-AGT-302, DSN-DVM-910, STD-ISA-084 | SUITE-AGT-GOV, SUITE-AGT-INJECT, SUITE-AGT-KILL, SUITE-DVM-CONF … | — |
 | Classification-aware embedding | FR-QRY-033 | Must | CONF, SEC | DSN-DVM-910, DSN-NOD-342 | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-SEC, SUITE-DVM-STORE … | — |
 | DMN interchange | FR-RULE-044 | Could | CONF | DSN-DVM-724, DSN-STU-005 | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL … | — |
+| Storage format compatibility | FR-STD-042 | Must | CONF | DSN-BPA-006 | SUITE-BPA-CERT, SUITE-BPA-COMPAT, SUITE-BPA-MODELS | — |
 | External identities with narrow scopes | FR-UX-091 | Must | SEC, SCN | DSN-WSP-205 | SUITE-WSP-SEC | — |
 | Branded portal | FR-UX-092 | Should | SCN | DSN-WSP-205 | SUITE-WSP-SEC | — |
 | Internal-only content separation | FR-UX-093 | Must | SEC | DSN-WSP-205 | SUITE-WSP-SEC | — |

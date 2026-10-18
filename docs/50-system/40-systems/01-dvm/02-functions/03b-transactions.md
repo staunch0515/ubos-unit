@@ -224,12 +224,13 @@ This file designs the crate `ubos-txn`. Reading order:
 ### DSN-DVM-531 — Idempotency retention
 - **Statement:** Idempotency records MUST be kept for the configured retention (default 7 days, FR-TXN-032) and then removed by a sweep. Requests after expiry MUST be treated as new.
 - **Rationale:** Bounded storage.
-- **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** DVM
 - **Personas:** PER-PlatformOperator
 - **Acceptance:**
   1. Given a record older than retention, when swept, then it is removed.
 - **Verification:** CONF
 - **Origin:** FR-TXN-032
+- **Phase note:** PH-2 step 0b (DEC-087): moved from PH-1 with FR-TXN-032.
 
 ### DSN-DVM-532 — Trigger lineage
 - **Statement:** Every process MUST record its trigger (user request, event, job, flow step, agent task, parent process) and its causality chain ID (STD-TXN-031). The DVM MUST answer "why did this change happen" by walking triggers and derivations (FR-TXN-043).

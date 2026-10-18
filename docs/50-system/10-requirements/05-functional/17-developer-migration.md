@@ -24,6 +24,7 @@ depends_on: [UBS-REQ-05, UBS-REQ-05-05]
   1. Given a new project, when `forge new`, `check`, `test` and `pack` run, then a valid archive results.
 - **Verification:** SCN
 - **Origin:** L40:SPEC-28
+- **Phase note:** PH-1 step 19d (DEC-087): PH-1 has `forge init`, `check`, `types`, `test`, `conform` and `dev`; `forge new` and `forge pack` follow with the Buk format in PH-2 step 7.
 
 ### FR-DEV-012 — Machine-readable output
 - **Statement:** Every CLI command MUST support JSON output and stable exit codes.

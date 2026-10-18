@@ -14,15 +14,15 @@ depends_on: [UBS-PH-1]
 
 | Kind | Count |
 |---|---|
-| Functional requirements (FR) | 301 |
-| Non-functional requirements (NR) | 32 |
-| Compliance requirements (CR) | 5 |
+| Functional requirements (FR) | 294 |
+| Non-functional requirements (NR) | 30 |
+| Compliance requirements (CR) | 4 |
 | Scenarios (SCN) | 13 |
 
 | Gate | Requirements |
 |---|---|
-| 1a (engine core) | 237 |
-| 1b (governance and services) | 101 |
+| 1a (engine core) | 230 |
+| 1b (governance and services) | 98 |
 
 ## Functional requirements by capability
 
@@ -39,7 +39,6 @@ depends_on: [UBS-PH-1]
 
 | Title | Requirement | Priority | Gate |
 |---|---|---|---|
-| Rebuild from authoritative state | FR-ANL-021 | Must | 1a |
 | Verification by checksum | FR-ANL-022 | Must | 1a |
 
 ### Capability AUD-01 — Audit trail
@@ -133,7 +132,6 @@ depends_on: [UBS-PH-1]
 
 | Title | Requirement | Priority | Gate |
 |---|---|---|---|
-| Content-addressed files | FR-FILE-011 | Must | 1a |
 | Size limits and streaming | FR-FILE-012 | Must | 1a |
 | Encryption and classification | FR-FILE-013 | Must | 1a |
 
@@ -229,9 +227,7 @@ depends_on: [UBS-PH-1]
 
 | Title | Requirement | Priority | Gate |
 |---|---|---|---|
-| Declared balance projections | FR-LEDG-031 | Must | 1a |
 | Bitemporal balances | FR-LEDG-032 | Must | 1a |
-| Projection freshness | FR-LEDG-033 | Must | 1a |
 | Invariants over balances | FR-LEDG-034 | Must | 1a |
 
 ### Capability LEDG-04 — Sequencing
@@ -551,12 +547,6 @@ depends_on: [UBS-PH-1]
 |---|---|---|---|
 | Model–vector alignment | FR-STD-032 | Should | 1a |
 
-### Capability STD-04 — Compatibility policy
-
-| Title | Requirement | Priority | Gate |
-|---|---|---|---|
-| Storage format compatibility | FR-STD-042 | Must | 1a |
-
 ### Capability TEN-01 — Tenants and VAEs
 
 | Title | Requirement | Priority | Gate |
@@ -578,7 +568,6 @@ depends_on: [UBS-PH-1]
 
 | Title | Requirement | Priority | Gate |
 |---|---|---|---|
-| Overlay branches for customisation | FR-TEN-031 | Must | 1b |
 | Overlay policies | FR-TEN-033 | Must | 1b |
 
 ### Capability TIME-01 — Transaction time
@@ -647,7 +636,6 @@ depends_on: [UBS-PH-1]
 | Title | Requirement | Priority | Gate |
 |---|---|---|---|
 | Idempotency keys | FR-TXN-031 | Must | 1a |
-| Idempotency retention | FR-TXN-032 | Must | 1a |
 | Idempotent handlers | FR-TXN-033 | Must | 1a |
 
 ### Capability TXN-04 — Provenance and causality
@@ -766,7 +754,6 @@ depends_on: [UBS-PH-1]
 | Test depth | NR-MAINT-002 | Must | 1a |
 | Enforced module boundaries | NR-MAINT-003 | Must | 1a |
 | Trace coverage | NR-OBS-001 | Must | 1b |
-| Metrics catalogue | NR-OBS-002 | Must | 1b |
 | Configuration validation coverage | NR-OPER-003 | Must | 1b |
 | Diagnostic bundle speed | NR-OPER-005 | Should | 1b |
 | Point read latency | NR-PERF-001 | Must | 1a |
@@ -785,7 +772,6 @@ depends_on: [UBS-PH-1]
 | Privacy by default | NR-PRIV-006 | Must | 1b |
 | Sandbox containment | NR-SEC-002 | Must | 1a |
 | Tenant isolation | NR-SEC-003 | Must | 1b |
-| Cryptography baseline | NR-SEC-004 | Must | 1a |
 | No secrets in logs | NR-SEC-009 | Must | 1b |
 | Security event coverage | NR-SEC-010 | Must | 1b |
 
@@ -797,7 +783,6 @@ depends_on: [UBS-PH-1]
 | Right to rectification | CR-GDPR-003 | Must | 1b |
 | Protection of audit information | CR-NIST-004 | Must | 1b |
 | Verification of recording and time-dating | CR-SEC-002 | Must | 1b |
-| Encryption in transit and at rest | CR-SOC2-003 | Must | 1b |
 
 ## Scenarios
 

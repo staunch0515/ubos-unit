@@ -130,12 +130,13 @@ depends_on: [UBS-REQ-05, UBS-REQ-05-02]
 ### FR-TXN-032 — Idempotency retention
 - **Statement:** Idempotency records MUST be retained for at least 7 days, configurable per VAE, and MUST survive node restarts and failover.
 - **Rationale:** Late retries from queues and mobile devices.
-- **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM, NOD
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** DVM, NOD
 - **Personas:** PER-PlatformOperator
 - **Acceptance:**
   1. Given a retry 6 days later after a failover, when received, then it is deduplicated.
 - **Verification:** FAULT
 - **Origin:** NEW
+- **Phase note:** PH-2 step 0b (DEC-087): moved from PH-1 with the retention sweep of DSN-DVM-531 and its tests (retention, failover); PH-1 keeps idempotency records in the store without a sweep.
 
 ### FR-TXN-033 — Idempotent handlers
 - **Statement:** Event handlers and jobs MUST receive a stable delivery ID and MUST use it as the idempotency key of the process they start.

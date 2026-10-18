@@ -197,6 +197,10 @@ reports and the coverage report. Gate 1b is accepted by the same board plus the 
 lead, adding the scenario run report and the security report. Both acceptances are recorded
 as DEC entries.
 
+Gate 1b is an acceptance with carry-overs (DEC-087): the PH-1 Must requirements not built in PH-1
+move to PH-2 steps 0b, 3, 7 and 11 and FR-STD-042 to PH-3, each with a **Phase note**; the
+benchmark gaps stay in PH-1 and are closed by the reference runs on the frozen line `release/ph1`.
+
 ### 7.6 Regression policy
 
 From gate 1a, every kernel pull request runs the fast conformance subset (≤ 10 minutes),

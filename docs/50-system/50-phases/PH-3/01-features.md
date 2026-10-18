@@ -14,7 +14,7 @@ depends_on: [UBS-PH-3]
 
 | Kind | Count |
 |---|---|
-| Functional requirements (FR) | 115 |
+| Functional requirements (FR) | 116 |
 | Non-functional requirements (NR) | 8 |
 | Compliance requirements (CR) | 16 |
 | Scenarios (SCN) | 9 |
@@ -304,6 +304,12 @@ depends_on: [UBS-PH-3]
 | Title | Requirement | Priority |
 |---|---|---|
 | DMN interchange | FR-RULE-044 | Could |
+
+### Capability STD-04 — Compatibility policy
+
+| Title | Requirement | Priority |
+|---|---|---|
+| Storage format compatibility | FR-STD-042 | Must |
 
 ### Capability UX-09 — External portal
 

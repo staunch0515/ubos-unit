@@ -4,7 +4,7 @@
 |---|---|
 | Criterion | EXIT-1-20: the traceability report shows every PH-1 Must requirement covered by at least one passing verification item (UBS-PH-1 §9) |
 | Verification item | VER-INSP-9500: generate the traceability report and the verification results index; list the Must requirements without a passing mapped item; pass when the list is empty |
-| Result | **Not met: 24 of 323 PH-1 Must requirements have no passing result.** 291 are verified, and 8 more are verified on the workstation with the reference-environment run pending. The 24 gaps are 12 benchmarks waiting for ENV-REF-SERVER, 1 benchmark not met on the workstation, 8 requirements not built in PH-1, 2 acceptance tests not written, and 1 requirement that needs a later version |
+| Result | At 19d: **24 of 323 PH-1 Must requirements without a passing result** (291 verified, 8 on the workstation only). After DEC-087 (carry-overs moved to PH-2 and PH-3): **13 of 313**, all of them reference runs — 12 benchmarks waiting for ENV-REF-SERVER and NR-PERF-011, not met on the workstation (292 verified, 8 on the workstation only) |
 | Decision | DEC-085 (part 19d) |
 | Sources | `docs/50-system/60-verification/30-results-ph1.md` (results index, UBS-VER-30) and the traceability (UBS-VER-22) |
 | Generated | `docs/50-system/60-verification/31-results-trace-ph1.md` (UBS-VER-31) by `docs/tools/gen_results.py`, run by `regen_all.sh` |
@@ -119,7 +119,21 @@ the requirement level from the PH-1 evidence:
 Their design mapping can be completed with the PH-1 design items that realise them. This is a
 specification edit for the owner to schedule (not done here).
 
-## 5. Reproduce
+## 5. After DEC-087
+
+The owner moved the requirements of §3.3, §3.4 and §3.5 out of PH-1 (DEC-087, each with a
+**Phase note**), as follows:
+- the process reading its branch on demand, FR-FILE-011 and FR-TXN-032 to the new PH-2 step 0b;
+- FR-LEDG-031, FR-LEDG-033 and FR-ANL-021 to step 3;
+- `forge new` and `forge pack` of FR-DEV-011 to step 7 (the PH-1 part of FR-DEV-011 is `met`);
+- CR-SOC2-003, NR-SEC-004, FR-TEN-031 and NR-OBS-002 to step 11;
+- FR-STD-042 to PH-3.
+
+The regenerated results (UBS-VER-31) leave 13 gaps of 313 PH-1 Must requirements: the 12
+benchmarks of §3.1 and NR-PERF-011. They close with the reference runs on the frozen line
+`release/ph1`. EXIT-1-20 is then met.
+
+## 6. Reproduce
 
 ```
 bash docs/tools/regen_all.sh          # runs gen_results.py; prints the PH-1 results line

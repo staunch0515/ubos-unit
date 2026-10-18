@@ -48,12 +48,13 @@ DEC-003: US first, GDPR designed in.
 - **Statement:** All data in transit MUST be encrypted, and all data at rest MUST be encrypted with managed keys.
 - **Control reference:** TSC CC6.1, CC6.7
 - **Rationale:** Confidentiality.
-- **Priority:** Must · **Phase:** PH-1 · **Systems:** NOD
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** NOD
 - **Personas:** PER-SecurityOfficer
 - **Acceptance:**
   1. Given NR-SEC-004, when verified, then the control is met.
 - **Verification:** AUDIT, SEC
 - **Origin:** DEC-003
+- **Phase note:** PH-2 step 11 (DEC-087): moved from PH-1; PH-1 encrypts at rest (DSN-DVM-002, DEC-048) and seals backups; TLS for data in transit comes with the HA Server and is required before any deployment beyond the development workstation.
 
 ### CR-SOC2-004 — Malware and vulnerability management
 - **Statement:** Uploaded content MUST be scanned for malware, and vulnerabilities MUST be managed within SLAs.

@@ -14,9 +14,9 @@ depends_on: [UBS-PH-2]
 
 | Kind | Count |
 |---|---|
-| Functional requirements (FR) | 265 |
-| Non-functional requirements (NR) | 52 |
-| Compliance requirements (CR) | 15 |
+| Functional requirements (FR) | 271 |
+| Non-functional requirements (NR) | 54 |
+| Compliance requirements (CR) | 16 |
 | Scenarios (SCN) | 17 |
 
 ## Functional requirements by capability
@@ -25,6 +25,7 @@ depends_on: [UBS-PH-2]
 
 | Title | Requirement | Priority |
 |---|---|---|
+| Rebuild from authoritative state | FR-ANL-021 | Must |
 | Online rebuild | FR-ANL-023 | Must |
 
 ### Capability ANL-03 — Reports
@@ -118,6 +119,12 @@ depends_on: [UBS-PH-2]
 | Event replay to a subscription | FR-EVT-071 | Must |
 | Projection backfill | FR-EVT-072 | Must |
 | Replay safety for external effects | FR-EVT-073 | Must |
+
+### Capability FILE-01 — Blob storage
+
+| Title | Requirement | Priority |
+|---|---|---|
+| Content-addressed files | FR-FILE-011 | Must |
 
 ### Capability FILE-02 — Content safety
 
@@ -286,6 +293,13 @@ depends_on: [UBS-PH-2]
 | OAuth client credentials | FR-INT-081 | Must |
 | Scopes | FR-INT-082 | Must |
 | Rotation without downtime | FR-INT-083 | Must |
+
+### Capability LEDG-03 — Balances as projections
+
+| Title | Requirement | Priority |
+|---|---|---|
+| Declared balance projections | FR-LEDG-031 | Must |
+| Projection freshness | FR-LEDG-033 | Must |
 
 ### Capability LEDG-05 — Double entry
 
@@ -662,6 +676,7 @@ depends_on: [UBS-PH-2]
 
 | Title | Requirement | Priority |
 |---|---|---|
+| Overlay branches for customisation | FR-TEN-031 | Must |
 | Upgrades merge into overlays | FR-TEN-032 | Must |
 
 ### Capability TEN-04 — VAE hierarchy on one node
@@ -711,6 +726,12 @@ depends_on: [UBS-PH-2]
 |---|---|---|
 | Re-evaluation modes | FR-TIME-063 | Must |
 | Old data follows old logic by default | FR-TIME-064 | Must |
+
+### Capability TXN-03 — Idempotency
+
+| Title | Requirement | Priority |
+|---|---|---|
+| Idempotency retention | FR-TXN-032 | Must |
 
 ### Capability TXN-05 — Post-commit effects
 
@@ -840,6 +861,7 @@ depends_on: [UBS-PH-2]
 | Small kernel | NR-MAINT-001 | Should |
 | Reproducible builds | NR-MAINT-004 | Should |
 | API documentation completeness | NR-MAINT-005 | Must |
+| Metrics catalogue | NR-OBS-002 | Must |
 | SIEM delivery latency | NR-OBS-003 | Should |
 | SLO burn alerts | NR-OBS-004 | Should |
 | Installation effort | NR-OPER-001 | Must |
@@ -862,6 +884,7 @@ depends_on: [UBS-PH-2]
 | Horizontal scaling | NR-SCAL-004 | Should |
 | Model size | NR-SCAL-005 | Must |
 | Penetration test outcome | NR-SEC-001 | Must |
+| Cryptography baseline | NR-SEC-004 | Must |
 | Revocation propagation | NR-SEC-005 | Must |
 | Key custody | NR-SEC-006 | Must |
 | Supply-chain integrity | NR-SEC-007 | Must |
@@ -884,6 +907,7 @@ depends_on: [UBS-PH-2]
 | Security of processing | CR-GDPR-006 | Must |
 | Non-repudiation | CR-NIST-002 | Must |
 | Software and information integrity | CR-NIST-003 | Must |
+| Encryption in transit and at rest | CR-SOC2-003 | Must |
 | Malware and vulnerability management | CR-SOC2-004 | Must |
 | Change management | CR-SOC2-006 | Must |
 | Segregation of duties | CR-SOX-002 | Must |

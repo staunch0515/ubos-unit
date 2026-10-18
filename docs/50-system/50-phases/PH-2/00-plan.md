@@ -258,6 +258,7 @@ BPA 1.0 release candidate. The figures above remain a reference only. Steps:
 | Step | Content | Exits |
 |---|---|---|
 | 0 | alignment: DEC-085, this section, status tracking (`docs/reports/ph2-plan-zh.md`) | — |
+| 0b | PH-1 carry-overs (DEC-087): processes read their branch on demand at their snapshot pins instead of a view of the full branch (the finding of PH-1 step 19c); FR-FILE-011 acceptance test; FR-TXN-032 with the idempotency retention sweep of DSN-DVM-531 | — |
 
 Gate 2a — the standard, the kernel and the finance core on a single node:
 
@@ -265,11 +266,11 @@ Gate 2a — the standard, the kernel and the finance core on a single node:
 |---|---|---|
 | 1 | BPA 1.0 release candidates for the PH-2 kernel: schema evolution and lenses, decision tables (STD-LGS-040), approvals and deferred commits, workflows and sagas, relationship authorization, masking and crypto-shredding, simulation, periods and close, matching, the REST facade (STD-PROTO-021); standard before code, split by clause area | EXIT-2-01 (candidates) |
 | 2 | extended formal models: approvals, sagas | EXIT-2-02 |
-| 3 | money and periods: currencies and rates, business calendars, double entry, period close, retroactive correction and restatement, reconciliation and matching (CAP-LOC-02, -04, CAP-LEDG-05, -06, -07, CAP-TIME-04, -06) | — |
+| 3 | money and periods: currencies and rates, business calendars, double entry, period close, retroactive correction and restatement, reconciliation and matching (CAP-LOC-02, -04, CAP-LEDG-05, -06, -07, CAP-TIME-04, -06); declared balance projections and their rebuild (FR-LEDG-031, FR-LEDG-033, FR-ANL-021, DEC-087) | — |
 | 4 | approvals and work: deferred commits for `require` decisions, approvals and segregation of duties, tasks and work queues, SLAs and escalation, delegation (CAP-FLOW-04, -05, -08, -09) | — |
 | 5 | decision tables and rule operations: decision tables, attach and detach with effective periods, simulation and impact analysis, rule testing, the simulator (CAP-RULE-04, -06, -07, -08, CAP-DEV-04) | — |
 | 6 | durable work: workflows and sagas, long-running processes, post-commit effects, replay and backfill (CAP-FLOW-06, -07, CAP-TXN-05, -06, CAP-EVT-07) | — |
-| 7 | models and packages: schema evolution and lenses, base ontology, model export; the Buk format, dependencies, installation, upgrade, removal, verification and signing (CAP-MODEL-08, -09, -10, CAP-PKG-01…07) | — |
+| 7 | models and packages: schema evolution and lenses, base ontology, model export; the Buk format, dependencies, installation, upgrade, removal, verification and signing (CAP-MODEL-08, -09, -10, CAP-PKG-01…07); `forge new` and `forge pack` (FR-DEV-011, DEC-087) | — |
 | 8 | protection: relationship authorization, masking and filtering, encrypted fields and crypto-shredding, access logging (CAP-IAM-05, -06, CAP-PROOF-07, CAP-AUD-05) | — |
 | 9 | `finance` Buk, part 1: chart of accounts, journals, periods and close, the general ledger and the financial statements of the sample company, tied out to the expected results in process | EXIT-2-04 (inspection) |
 | 10 | `finance` Buk, part 2: receivables, payables with 1099, bank reconciliation, fixed assets, multi-currency (ASC 830), basic state sales tax; SCN-501…510 in process; review by the accounting reviewer | EXIT-2-16 (in process) |
@@ -278,7 +279,7 @@ Gate 2b — the production edge, the clients and acceptance:
 
 | Step | Content | Exits |
 |---|---|---|
-| 11 | HA Server and disaster recovery: replication and failover, split-brain protection, rolling upgrades, the VAE hierarchy and tenant lifecycle and portability (CAP-OPS-03, -06, CAP-TEN-04, -05, -06) | EXIT-2-07, EXIT-2-14 |
+| 11 | HA Server and disaster recovery: replication and failover, split-brain protection, rolling upgrades, the VAE hierarchy and tenant lifecycle and portability (CAP-OPS-03, -06, CAP-TEN-04, -05, -06); TLS 1.3 for external and node-to-node traffic, tenant customisation lines on overlays, the metrics catalogue (CR-SOC2-003, NR-SEC-004, FR-TEN-031, NR-OBS-002, DEC-087) | EXIT-2-07, EXIT-2-14 |
 | 12 | integration and identity edge: REST facade, webhooks, connector framework, API credentials, bank file formats, mail; OIDC, SAML, SCIM, step-up, sessions and devices, KMS adapters (CAP-INT-02, -03, -04, -06, -08, CAP-LOGIC-10, CAP-IAM-02, -07, -09, -10) | — |
 | 13 | notifications, files and search: notification rules, channels and digests; content safety, previews and extraction, VFS paths; full-text search, saved queries, aggregation, reports (CAP-NTF-01…03, CAP-FILE-02…04, CAP-QRY-02, -04, -06, CAP-ANL-03) | — |
 | 14 | Web workspace, part 1 (DEC-081): renderer and catalogue, shell, forms, lists and details, progressive disclosure, history and as-of, change review, explanations (CAP-UX-01…06); an early usability check with accountants (RSK-021) | — |

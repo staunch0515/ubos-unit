@@ -25,12 +25,13 @@ depends_on: [UBS-REQ-06]
 - **Statement:** Nodes MUST expose a documented metrics catalogue.
 - **Target:** The catalogue covers the RED metrics (rate, errors, duration) for every API, and saturation metrics for storage, runtime store, queues, projections, sync and gateway. Each metric has name, unit, labels and meaning.
 - **Rationale:** Operability.
-- **Priority:** Must · **Phase:** PH-1 · **Systems:** NOD
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** NOD
 - **Personas:** PER-PlatformOperator
 - **Acceptance:**
   1. Given the catalogue, when compared to exported metrics, then they match.
 - **Verification:** INSP
 - **Origin:** NEW
+- **Phase note:** PH-2 step 11 (DEC-087): moved from PH-1; its design items DSN-NOD-612 and DSN-DVM-514 are PH-2. The PH-1 Server exports OTLP metrics without a documented catalogue.
 
 ### NR-OBS-003 — SIEM delivery latency
 - **Statement:** Security events MUST reach external SIEM promptly.
