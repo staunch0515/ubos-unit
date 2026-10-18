@@ -501,6 +501,11 @@ async function run(c: Client, direct: Client, id: string): Promise<Case> {
       k.check("the process record with its journal and metering", !(rec instanceof Error) && rec.state === "committed" && typeof (rec.journal as Json).context === "object" && typeof (rec.metering as Json).units === "number", rec);
       const rp = await attempt(c.inspect.replay(r.processId));
       k.check("the replay is identical", !(rp instanceof Error) && rp.outcome === "identical", rp);
+      // BPA 1.0-rc5: a failed port call names its process
+      const bad = await attempt(c.invoke(uri("Account", aslug), "rename", {}, { branch: BR }));
+      const failedPid = bad instanceof UbosError ? bad.processId : undefined;
+      const failed = failedPid ? await attempt(c.inspect.process(failedPid, { metering: true })) : undefined;
+      k.check("a failed port call names its process, whose record is failed", failed !== undefined && !(failed instanceof Error) && failed.state === "failed" && typeof failed.metering === "object", [bad, failed]);
       const none = await attempt(c.inspect.process(uuid7()));
       k.check("an unknown process is IAM.NOT_FOUND", none instanceof IamNotFound, none);
       break;

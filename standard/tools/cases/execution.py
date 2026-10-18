@@ -241,6 +241,11 @@ def cases(g):
          extra=[{'op': 'branch_info', 'input': {'branch': APP}, 'label': 'c'},
                 {'op': 'replay', 'input': {'process_id': uid(501)}},
                 {'op': 'branch_info', 'input': {'branch': APP}, 'same_as': 'c'}])
+    # since 1.0-rc5 (DEC-082): a replay reads the snapshots the journal recorded
+    run1('STD-CTX-012', 'a process that updates what it read replays identically from its snapshot', [
+        {'do': 'read.get', 'args': {'target': '"ubos://acme/Account/a-1"'}},
+        {'do': 'commit.update', 'args': {'target': '"ubos://acme/Account/a-1"', 'set': {'name': '"Beta"'}}},
+        {'return': '1'}], data=[acct], extra=[{'op': 'replay', 'input': {'process_id': uid(501)}}])
 
     # ---- STD-CTX-020 L2 scripting profile ----
     def l2(n, src, caps=('read',)):

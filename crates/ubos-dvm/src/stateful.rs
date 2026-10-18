@@ -59,6 +59,9 @@ pub struct Engine {
     pub index_since: BTreeMap<String, BTreeMap<String, u64>>,
     /// The sessions of the in-process UBTP binding (step 14a).
     pub ubtp_sessions: BTreeMap<String, crate::ubtp::Session>,
+    /// The process of the `mutate` being handled by the binding, named by its error
+    /// (STD-PROTO-010, since BPA 1.0-rc5).
+    pub ubtp_pid: Option<String>,
 }
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
@@ -91,6 +94,7 @@ impl Engine {
             decision_log: Vec::new(),
             index_since: BTreeMap::new(),
             ubtp_sessions: BTreeMap::new(),
+            ubtp_pid: None,
         };
         e.reset()?;
         Ok(e)
@@ -118,6 +122,7 @@ impl Engine {
             decision_log: Vec::new(),
             index_since: BTreeMap::new(),
             ubtp_sessions: BTreeMap::new(),
+            ubtp_pid: None,
         };
         e.load_genesis(classes, None)?;
         Ok(e)
@@ -257,6 +262,7 @@ impl Engine {
             decision_log: Vec::new(),
             index_since: BTreeMap::new(),
             ubtp_sessions: BTreeMap::new(),
+            ubtp_pid: None,
         };
         if e.store.branch("main")?.is_none() {
             Repo::new(e.store.as_mut(), &e.registry).init()?;

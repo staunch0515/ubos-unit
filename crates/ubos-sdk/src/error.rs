@@ -19,6 +19,9 @@ pub struct Error {
     pub details: Box<Value>,
     /// The HTTP status of the code, when it has one.
     pub status: Option<u16>,
+    /// The process of a failed mutation, when it was recorded (STD-PROTO-010, BPA 1.0-rc5):
+    /// read it with [`Client::process`](crate::Client::process).
+    pub process_id: Option<String>,
 }
 
 /// The kind of a transport failure, not an error of the node.
@@ -34,6 +37,7 @@ impl Error {
             message: message.into(),
             details: Box::new(details),
             status: entry.map(|r| r.5),
+            process_id: None,
         }
     }
 
@@ -50,7 +54,9 @@ impl Error {
         } else {
             b["details"].clone()
         };
-        Error::new(code, message, details)
+        let mut e = Error::new(code, message, details);
+        e.process_id = b["process_id"].as_str().map(str::to_string);
+        e
     }
 
     /// A failure of the transport (connection refused, reset, timed out).
@@ -61,6 +67,7 @@ impl Error {
             message: e.to_string(),
             details: Box::new(Value::Null),
             status: None,
+            process_id: None,
         }
     }
 

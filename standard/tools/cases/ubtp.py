@@ -187,6 +187,14 @@ def mutate_(S):
         U([hs(), mutate(1, [cr(1, 'acme')]), mutate(2, [cr(1, 'acme')], message='new customer', reason='onboarding')])])
     S('STD-PROTO-010', 'the principal of the session initiates the process', [
         U([hs(principal=DID), mutate(1, [cr(1, 'acme')])]), {'op': 'commit_info', 'input': {'branch': BR}}])
+    # since 1.0-rc5 (DEC-082): the error of a mutate whose process was recorded names it
+    PIDE = 'u/responses/1/body/process_id'
+    S('STD-PROTO-010', 'the error of a failed raw commit names its process, whose record is failed', [
+        U([hs(), mutate(1, [cr(1, 'acme', {'rating': 9})])], label='u'),
+        U([query(2, process={'process_id': {'$ref': PIDE}})])])
+    S('STD-PROTO-010', 'the error of a failed port call names its process, with its metering', [
+        commit([ACCT, acct]), U([hs(), mutate(1, port={'target': T, 'name': 'rename', 'params': {}})], label='u'),
+        U([query(2, process={'process_id': {'$ref': PIDE}, 'metering': True})])])
 
 
 def query_(S):

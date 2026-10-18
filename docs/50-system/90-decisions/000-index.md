@@ -35,6 +35,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-079 | PH-1 step 18 (the thirteen PH-1 scenarios over UBTP) in parts 18a–18d: 18a BPA 1.0-rc4 adds the versioning messages (`create_branch`, `change_set`, `merge`, `revert`, `bulk`) and introspection queries (`class`, `dispatch`, `commit_info`, `merge_preview`, `ledger`, `process`, `replay`) to UBTP with reference model and vectors; 18b the kernel and the Server implement them, with a test clock of the dev preset advanced through an operator endpoint; 18c the SDKs offer them; 18d a scenario runner over WebSocket and HTTP on PostgreSQL and the EXIT-1-19 report in CI | Accepted |
 | DEC-080 | The content-addressed build cache of DSN-FRG-003 follows after PH-1: a full `forge check` of a 500-class project takes 0.3 s on PostgreSQL (17e), well within NR-PERF-016, so the PH-1 acceptance of DSN-FRG-003 is met without it | Accepted |
 | DEC-081 | The visual design of the PH-2 Web workspace is fixed before it is built: the UBOS design system 1.0 (DSN-WSP-211…214) — a calm, dense accounting workbench with neutral greys biased toward one blue accent, light and dark themes, Inter with tabular figures and JetBrains Mono served by the Server, compact and comfortable densities, text state badges, a context bar naming company, branch, as-of and as-known-on dates with an attention banner for any non-current view; React Aria and TanStack Table; tokens in `design/tokens.json`, reference screens in `design/mockups.html` | Accepted |
+| DEC-082 | PH-1 step 18d in parts 18d-1…18d-3: BPA 1.0-rc5 (an `error` answering a `mutate` whose process was recorded carries `process_id`; the replay vector of STD-CTX-012), the scenario runner as a UBTP backend of `forge test` with dev-preset fixtures (test clock at genesis, fixed-response connectors), and SCN-001, -009, -017 with the EXIT-1-19 report; SCN-002 A1 and SCN-003 A1 run as a rejected genesis, SCN-011 through a port, SCN-011 A1 (the replay test hook) stays in process | Accepted |
 
 ---
 
@@ -426,3 +427,28 @@ the records from DEC-060 on follow.
   - A spacious consumer-style look (large cards, wide spacing) was rejected: accountants work in dense registers and statements (DEC-025).
   - Loading fonts from a public font service was rejected: rendering must be deterministic and the Server may run without internet access.
 - **Affects:** UBS-SYS-WSP, DSN-WSP-120, DSN-WSP-206, DSN-WSP-208, DSN-WSP-401, NR-USE-001, NR-ACC-001, DEC-025
+
+### DEC-082 — PH-1 step 18d: the scenarios over UBTP, parts 18d-1…18d-3, BPA 1.0-rc5
+- **Date:** 2026-10-18 · **Status:** Accepted
+- **Context:** Mapping the ten gate-1a scenarios (`verify/scenarios`, run through the host API by `forge test`) onto UBTP for EXIT-1-19 found steps that the Protocol of BPA 1.0-rc4 and the Server cannot express:
+  - a `mutate` that fails gives the client no process identifier, so the record, journal and metering of the failed process cannot be read (SCN-010 asserts that a runaway process is metered);
+  - SCN-002 A1 and SCN-003 A1 check a faulty model with the pure operations `effective_class` and `dispatch` over inline declarations, while a Server only holds the model of its genesis (class evolution is PH-2);
+  - SCN-011 executes a logic function directly with a mocked connector, while UBTP calls ports and the Server registers connectors in code;
+  - SCN-011 A1 uses the replay test hook `drop`, which STD-PROTO-015 keeps out of the Protocol;
+  - tests name their own process identifiers, and transaction times are monotonic (STD-TIME-001), so a scenario that asserts transaction times needs its clock set before genesis.
+- **Decision:**
+  1. **Parts.** One pull request per part.
+     - 18d-1: BPA 1.0-rc5, opened by the scope rule of gate 1b on 1.0-rc4 with no new clause: an `error` answering a `mutate` whose process was recorded carries `process_id` in its body (STD-PROTO-010, -001 notes), and the replay vector of a process that updates what it read (STD-CTX-012, promised by DEC-079); reference model, kernel, both SDKs (`Error.process_id`, `UbosError.processId`), SUITE-SDK-PROTO P19; the owner's signed tag `bpa-v1.0.0-rc5`.
+     - 18d-2: the scenario runner — a UBTP backend of `forge test` on the Rust SDK that runs the same scenario project on a `dev`-preset Server on PostgreSQL over WebSocket and HTTP: a fresh tenant per test with the node clock set to the test's clock before its genesis (a `dev`-preset configuration key), the seed on `main` and the logic on `feature/forge` by raw commits, each step mapped to a UBTP message, the test's process identifiers mapped to the Server's; `dev`-preset connectors with fixed responses declared in the configuration; the ten gate-1a scenarios.
+     - 18d-3: SCN-001 (a VAE bootstrapped from genesis), SCN-009 (a control injected through a governance sheet) and SCN-017 (backup and point-in-time restore) with their operator commands; the EXIT-1-19 report in `verify/reports/exit-1-19/`; the run in CI.
+  2. **Model rejections.** Over the Server, SCN-002 A1 and SCN-003 A1 run as a `bootstrap --genesis` with the faulty model, which the node rejects with the same error code.
+  3. **SCN-011.** The scenario model gains a port of `FeeCase` that calls `acme.fee#calculate`, so the process is started through UBTP; its connector is a `dev`-preset fixed-response connector.
+  4. **SCN-011 A1.** The replay test hook stays outside the Protocol; this alternate flow is verified in process (EXIT-1-13) and reported as such in EXIT-1-19.
+- **Consequences:**
+  - BPA 1.0-rc4 stays frozen as tagged; `spec/` and `vectors/` hold 1.0-rc5 (201 clauses, 1,692 vectors, 3 added, none changed).
+  - The `dev`-preset fixtures (test clock at genesis, fixed-response connectors) are refused by the `server` preset.
+- **Alternatives considered:**
+  - Reading the metering of a failed process through an operator endpoint was rejected: the client that ran the process should read it with the same Protocol (STD-PROTO-015).
+  - A client-chosen process identifier in `mutate` was rejected: process identifiers are assigned by the implementation (STD-PROTO-010).
+  - Adding the replay hook to the Protocol was rejected: it would let any client feed a process altered inputs.
+- **Affects:** STD-PROTO-001, STD-PROTO-010, STD-CTX-012, SCN-002, SCN-003, SCN-010, SCN-011, EXIT-1-19, DEC-079

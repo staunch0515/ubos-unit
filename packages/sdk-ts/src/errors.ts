@@ -16,5 +16,7 @@ export function fromBody(b: unknown): UbosError {
   const code = typeof o.code === "string" ? o.code : "INT.PROTOCOL_ERROR";
   const message = typeof o.message === "string" ? o.message : typeof o.detail === "string" ? o.detail : "";
   const details = o.details ?? o.explanation ?? null;
-  return errorOf(code, message, details);
+  const e = errorOf(code, message, details);
+  if (typeof o.process_id === "string") e.processId = o.process_id;
+  return e;
 }

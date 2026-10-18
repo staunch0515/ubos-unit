@@ -90,7 +90,7 @@ workstation (same machine as above; debug builds, PostgreSQL 16). Report: `sdk-s
 | Node | `ubos-server` in the `server` preset on a fresh PostgreSQL database, with the classes of `verify/sdk/fixture` and the branch `feature/sdk` holding its logic, behind the suite's TCP fault proxy |
 | Result | **27 of 27 cases for each SDK on each binding** (19 SUITE-SDK-PROTO, 8 SUITE-SDK-NET; 108 runs) |
 | SUITE-SDK-TYPES | **4 of 4** |
-| Time | 23.3 s (Rust, WebSocket), 23.9 s (Rust, HTTP), 27.9 s (TypeScript, WebSocket) and 29.1 s (TypeScript, HTTP); 107.6 s in all (run of 2026-10-17, part 18c) |
+| Time | 24.4 s (Rust, WebSocket), 25.0 s (Rust, HTTP), 25.5 s (TypeScript, WebSocket) and 26.9 s (TypeScript, HTTP); 105.2 s in all (run of 2026-10-18, part 18d-1: P19 also checks the process named by a failed port call) |
 
 ## Method
 
@@ -131,7 +131,7 @@ control endpoint:
 | P16 | branches and merges: a branch from main and from a branch, a merge preview with the change and no conflict, a merge as one process with its commit and versions; a conflicting merge is a typed VER.MERGE_CONFLICT, not retried | IF-SDK-004, STD-PROTO-014, STD-PROTO-015 | pass / pass / pass / pass |
 | P17 | change sets: open, submit with its preview, approve by the session's principal, merge with its commit; an action out of state is FLOW.TRANSITION_NOT_ALLOWED | IF-SDK-004, STD-PROTO-014 | pass / pass / pass / pass |
 | P18 | revert and bulk: a dry run commits nothing, a revert of a process makes one commit and the object no longer reads; a bulk process commits its chunks as children | IF-SDK-004, STD-PROTO-014 | pass / pass / pass / pass |
-| P19 | introspection: the effective class, port dispatch, the head commit with its root, an empty ledger key, a process record with journal and metering, an identical replay; an unknown process is IAM.NOT_FOUND | STD-PROTO-015 | pass / pass / pass / pass |
+| P19 | introspection: the effective class, port dispatch, the head commit with its root, an empty ledger key, a process record with journal and metering, an identical replay; a failed port call names its failed process (BPA 1.0-rc5); an unknown process is IAM.NOT_FOUND | STD-PROTO-010, STD-PROTO-015 | pass / pass / pass / pass |
 | N01 | connections dropped between requests: the next request reconnects | DSN-SDK-004 | pass / pass / pass / pass |
 | N02 | a connection dropped during a read: the read is retried | DSN-SDK-003 | pass / pass / pass / pass |
 | N03 | 300 ms latency each way: operations complete | DSN-SDK-004 | pass / pass / pass / pass |

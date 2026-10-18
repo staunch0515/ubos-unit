@@ -1312,6 +1312,22 @@ async fn run(e: &Env, id: &str) -> Case {
                 rp.as_ref().is_ok_and(|v| v["outcome"] == "identical"),
                 &rp,
             );
+            // BPA 1.0-rc5: a failed port call names its process
+            let bad = c
+                .invoke(&e.uri("Account", &aslug), "rename", json!({}), &sdk)
+                .await;
+            let failed_pid = bad.as_ref().err().and_then(|x| x.process_id.clone());
+            let failed = match &failed_pid {
+                Some(p) => c.process(p, false, true).await.ok(),
+                None => None,
+            };
+            k.check(
+                "a failed port call names its process, whose record is failed",
+                failed
+                    .as_ref()
+                    .is_some_and(|v| v["state"] == "failed" && v["metering"].is_object()),
+                (&bad.as_ref().err(), &failed),
+            );
             let none_pid = c.process(&ubos_sdk::util::uuid7(), false, false).await;
             k.check(
                 "an unknown process is IAM.NOT_FOUND",

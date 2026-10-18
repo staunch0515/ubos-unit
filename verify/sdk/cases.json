@@ -94,8 +94,8 @@
       },
       {
         "id": "P19",
-        "title": "introspection: the effective class, port dispatch, the head commit with its root, an empty ledger key, a process record with journal and metering, an identical replay; an unknown process is IAM.NOT_FOUND",
-        "requirements": "STD-PROTO-015"
+        "title": "introspection: the effective class, port dispatch, the head commit with its root, an empty ledger key, a process record with journal and metering, an identical replay; a failed port call names its failed process (BPA 1.0-rc5); an unknown process is IAM.NOT_FOUND",
+        "requirements": "STD-PROTO-010, STD-PROTO-015"
       }
     ],
     "SUITE-SDK-NET": [
