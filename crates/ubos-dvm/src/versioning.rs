@@ -1156,7 +1156,8 @@ impl Engine {
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
-        let mut resolutions_used: Vec<Value> = Vec::new();
+        // the resolutions applied, by object and path, over all reverted commits (1.0-rc6)
+        let mut applied: BTreeMap<(String, Option<String>), Value> = BTreeMap::new();
         let rev_ids = i
             .get("reversal_ids")
             .and_then(Value::as_object)
@@ -1229,7 +1230,7 @@ impl Engine {
                     ));
                 }
                 if let Some(r) = res {
-                    resolutions_used.extend(r.used.values().cloned());
+                    applied.extend(r.used.into_iter());
                 }
                 // objects created by C are ended from the start of their timeline
                 let missing: Vec<String> = current
@@ -1312,6 +1313,20 @@ impl Engine {
             plans.push((tx, result, reverts, classes));
             let _ = t;
         }
+        let unused = revert_resolutions.iter().any(|r| {
+            let key = (
+                r["object_id"].as_str().unwrap_or_default().to_string(),
+                r.get("path").and_then(Value::as_str).map(str::to_string),
+            );
+            !applied.contains_key(&key)
+        });
+        if unused {
+            return Err(BpaError::new(
+                "MODEL.INVALID_VALUE",
+                "a resolution matches no conflict",
+            ));
+        }
+        let resolutions_used: Vec<Value> = applied.into_values().collect();
         let mut out = Vec::new();
         let mut touched = Vec::new();
         for (mut tx, result, reverts, classes) in plans {

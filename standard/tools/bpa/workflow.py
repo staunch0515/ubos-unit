@@ -480,8 +480,31 @@ class Workflow:
         if i.get('dry_run'):
             return {'reverted': reverted, 'dependents': dependents}
         rev_ids = i.get('reversal_ids') or {}
+        res = self._resolutions(i.get('resolutions'))
         p = self._process(i.get('process'))
         plan = []
+        self._res, self._used = res, {}
+        try:
+            self._revert_plan(targets, rev_ids, p, plan)
+            if set(self._res) - set(self._used):
+                raise BpaError('MODEL.INVALID_VALUE', 'a resolution matches no conflict')
+            used = [self._used[k] for k in sorted(self._used, key=lambda k: (k[0], k[1] or ''))]
+        finally:
+            self._res, self._used = {}, {}
+        out = []
+        for branch, head, st, cseq, result, ops, binding, entries, reverts in plan:
+            cid = self._new_commit(branch, [head], st, cseq, ops=ops, rule_binding=binding, reverts=reverts,
+                                   resolutions=used, process_id=p['process_id'] if p['explicit'] else None,
+                                   appended=[e['entry_id'] for e in entries])
+            self._advance(branch, cid)
+            self._record(p, 'committed', (branch, cid))
+            out.append({'branch': branch, 'cseq': cseq, 'versions': result['versions'], 'entries': result['entries']})
+        res = {'reverted': reverted, 'dependents': dependents, 'commits': out}
+        if used:
+            res['resolutions'] = used
+        return res
+
+    def _revert_plan(self, targets, rev_ids, p, plan):
         for branch in sorted({b for b, _ in targets}):
             self._check_active(branch)
             head = self.branches[branch]['head']
@@ -506,15 +529,6 @@ class Workflow:
             ops = {oid: [{'kind': 'revert'}] for oid in objs}
             plan.append((branch, head, st, cseq, result, ops, binding, entries,
                          [self.commits[c]['commit_id'] for b, c in targets if b == branch]))
-        out = []
-        for branch, head, st, cseq, result, ops, binding, entries, reverts in plan:
-            cid = self._new_commit(branch, [head], st, cseq, ops=ops, rule_binding=binding, reverts=reverts,
-                                   process_id=p['process_id'] if p['explicit'] else None,
-                                   appended=[e['entry_id'] for e in entries])
-            self._advance(branch, cid)
-            self._record(p, 'committed', (branch, cid))
-            out.append({'branch': branch, 'cseq': cseq, 'versions': result['versions'], 'entries': result['entries']})
-        return {'reverted': reverted, 'dependents': dependents, 'commits': out}
 
     # ---- bulk processes (STD-TXN-070) ----
 

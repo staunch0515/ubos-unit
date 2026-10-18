@@ -3963,6 +3963,7 @@ pub fn memory_vae_with(
 ) -> Result<Vae, BpaError> {
     use ubos_dvm::host::{NoConnectors, NoModels, OsEntropy, OutboxSink, Recorder, Services};
     let mut engine = ubos_dvm::Engine::new(Box::new(ubos_dvm::store::MemStore::default()))?;
+    engine.l2 = true;
     if let Some(c) = classes {
         engine.load_genesis(c, None)?;
     }

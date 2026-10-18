@@ -168,6 +168,28 @@ pub fn embedded() -> Result<Vec<Buk>, BpaError> {
     ])
 }
 
+/// Refuse a project genesis that declares a class named like a class of the platform genesis
+/// Buks in another namespace (DEC-083): loading it would replace the platform class. The
+/// platform class itself (same namespace, as in an exported model) is accepted.
+pub fn check_project_classes(genesis: &Value) -> Result<(), BpaError> {
+    let buks = embedded()?;
+    for c in genesis["classes"].as_array().into_iter().flatten() {
+        let name = c["name"].as_str().unwrap_or_default();
+        for buk in &buks {
+            if let Some(d) = buk.class(name)
+                && d["namespace"] != c["namespace"]
+            {
+                return Err(BpaError::with_details(
+                    "PKG.NAMESPACE_VIOLATION",
+                    json!({"buk": buk.name(), "class": name, "namespace": d["namespace"],
+                        "reason": "the class name is held by a platform genesis Buk"}),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// The embedded `system` Buk (the platform classes).
 pub fn system() -> Buk {
     Buk::parse(SYSTEM, SYSTEM_SIG).expect("the embedded system Buk parses")

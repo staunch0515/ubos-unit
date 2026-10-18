@@ -19,7 +19,7 @@ use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use types::{Party, PartyAny};
+use types::{Counterparty, CounterpartyAny};
 use ubos_sdk::registry::REGISTRY;
 use ubos_sdk::typed::Cmp;
 use ubos_sdk::{
@@ -940,16 +940,18 @@ async fn run(e: &Env, id: &str) -> Case {
             k.check("a supplier", r.is_ok(), r.err());
             let got = types::Customer::get(c, &cslug, &Selectors::default()).await;
             k.check("a typed read: the generated struct with its money", matches!(&got, Ok(types::CustomerAny::Customer(t)) if t.body.credit_limit.as_ref().is_some_and(|m| Decimal::new(&m.amount).ok() == Decimal::new("10").ok())), &got);
-            let q = Party::query()
+            let q = Counterparty::query()
                 .filter("country", Cmp::Eq, e.tag.as_str())
                 .order_by("name", false);
             k.check("the builder compiles to DAT-Query",
-                q.to_query() == json!({"from": "Party", "where": format!("this.country == \"{}\"", e.tag), "order_by": [{"path": "this.name", "dir": "asc"}]}), q.to_query());
-            let all = q.all(c, Selectors::default(), PartyAny::from_item).await;
+                q.to_query() == json!({"from": "Counterparty", "where": format!("this.country == \"{}\"", e.tag), "order_by": [{"path": "this.name", "dir": "asc"}]}), q.to_query());
+            let all = q
+                .all(c, Selectors::default(), CounterpartyAny::from_item)
+                .await;
             let text: Vec<_> = c
                 .query(
                     json!(format!(
-                        "from Party where this.country == \"{}\" order by this.name",
+                        "from Counterparty where this.country == \"{}\" order by this.name",
                         e.tag
                     )),
                     Selectors::default(),
@@ -977,9 +979,9 @@ async fn run(e: &Env, id: &str) -> Case {
                 .map(|v| {
                     v.iter()
                         .map(|x| match x {
-                            PartyAny::Customer(_) => "Customer",
-                            PartyAny::Supplier(_) => "Supplier",
-                            PartyAny::Party(_) => "Party",
+                            CounterpartyAny::Customer(_) => "Customer",
+                            CounterpartyAny::Supplier(_) => "Supplier",
+                            CounterpartyAny::Counterparty(_) => "Counterparty",
                         })
                         .collect()
                 })
@@ -991,7 +993,7 @@ async fn run(e: &Env, id: &str) -> Case {
             );
             let iban = all.as_ref().ok().and_then(|v| {
                 v.iter().find_map(|x| match x {
-                    PartyAny::Supplier(t) => t.body.iban.clone(),
+                    CounterpartyAny::Supplier(t) => t.body.iban.clone(),
                     _ => None,
                 })
             });

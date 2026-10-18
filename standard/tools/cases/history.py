@@ -433,6 +433,19 @@ def ver(S, c1, c2, t1):
         op('revert', branch='main', time=2), read(uid(1), asof='2026-07-01')])
     S('STD-VER-070', 'revert names a commit on the history of the branch', [
         commit([c1]), op('revert', error='IAM.NOT_FOUND', branch='main', time=5)])
+    # since BPA 1.0-rc6 (DEC-083): resolutions of a revert
+    rv = lambda choice: [{'object_id': uid(1), 'path': '/email', 'choice': choice, 'resolver': 'u-1'}]  # noqa: E731
+    S('STD-VER-070', 'a resolution choosing target keeps the later change of a conflicting field', [
+        commit([c1], label='m'), commit([upd(uid(1), 'm', {'email': 'a@x.com'})], label='u'),
+        commit([upd(uid(1), 'u', {'email': 'b@x.com'})]),
+        op('revert', branch='main', time=2, resolutions=rv('target')), read(uid(1)), op('commit_info', branch='main')])
+    S('STD-VER-070', 'a resolution choosing source restores the value before the reverted commit', [
+        commit([c1], label='m'), commit([upd(uid(1), 'm', {'email': 'a@x.com'})], label='u'),
+        commit([upd(uid(1), 'u', {'email': 'b@x.com'})]),
+        op('revert', branch='main', time=2, resolutions=rv('source')), read(uid(1))])
+    S('STD-VER-070', 'a resolution that matches no conflict fails the revert', [
+        commit([c1], label='m'), commit([upd(uid(1), 'm', {'email': 'a@x.com'})]),
+        op('revert', error='MODEL.INVALID_VALUE', branch='main', time=2, resolutions=rv('target')), read(uid(1))])
 
     # ---- STD-VER-071 revert of a process or change set ----
     S('STD-VER-071', 'reverting a process reverts all its commits in reverse order as one commit', [

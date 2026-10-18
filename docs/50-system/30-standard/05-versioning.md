@@ -369,14 +369,14 @@ DAT-Resolution:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1580…1604
 - **Satisfies:** FR-VER-071, FR-VER-074
-- **Notes:** —
+- **Notes:** Since 1.0-rc6 (DEC-083): a revert MAY carry `resolutions` as a merge does (STD-VER-058), each naming a conflict of the three-way merge above: `source` keeps the value before C (the revert), `target` the later change at the head of X, `base` the value after C, `custom` its value. A resolution that matches no conflict fails the revert with `MODEL.INVALID_VALUE`. The resolutions applied are recorded in the compensating commit and returned as `resolutions` in the result, in object and path order.
 
 ### STD-VER-071 — Revert of a process or change set
 - **Clause:** Reverting a process MUST revert all its commits on each branch, as one process, in reverse commit order. Reverting a merged change set MUST revert its merge commit relative to the first parent. The implementation MUST report dependent processes (those triggered by the reverted ones) before execution. Dependents are the descendants of the reverted processes by STD-TXN-031. The commits of all branches are validated before any is written (DEC-041).
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1605…1614
 - **Satisfies:** FR-VER-072, FR-VER-073, FR-VER-075
-- **Notes:** —
+- **Notes:** Since 1.0-rc6 (DEC-083): the `resolutions` of STD-VER-070 apply to the conflicts of every commit reverted; a resolution is unused only when it matches a conflict of none of them, and each compensating commit records the resolutions applied.
 
 ## 8. Branch inheritance
 

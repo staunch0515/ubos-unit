@@ -23,8 +23,9 @@ const CLAIMED_RELEASE: &str = "1.0-rc1";
 /// the Core clauses of step 11c; DEC-071: the lifecycles of step 12b; DEC-073: the queries
 /// of step 13a; DEC-075: the in-process UBTP binding of step 14a; DEC-079: the versioning
 /// messages and introspection queries of step 18b; DEC-082: the process of a failed mutate
-/// and the replay from the journal's snapshots of step 18d).
-const NEXT_RELEASE: &str = "1.0-rc5";
+/// and the replay from the journal's snapshots of step 18d; DEC-083: the revert resolutions
+/// and the timer effects of events subscriptions of step 18d-3a).
+const NEXT_RELEASE: &str = "1.0-rc6";
 const RC2_CLAUSES: &[&str] = &[
     "STD-LGS-001",
     "STD-LGS-002",
@@ -64,6 +65,9 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-PROTO-015",
     // BPA 1.0-rc5 (step 18d): replay from the journal's snapshots (implemented in step 18b)
     "STD-CTX-012",
+    // BPA 1.0-rc6 (step 18d-3a): revert resolutions, timer effects of events subscriptions
+    "STD-VER-070",
+    "STD-TIME-050",
 ];
 
 /// The clauses a vector verifies.

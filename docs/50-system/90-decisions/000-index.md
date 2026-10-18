@@ -36,6 +36,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-080 | The content-addressed build cache of DSN-FRG-003 follows after PH-1: a full `forge check` of a 500-class project takes 0.3 s on PostgreSQL (17e), well within NR-PERF-016, so the PH-1 acceptance of DSN-FRG-003 is met without it | Accepted |
 | DEC-081 | The visual design of the PH-2 Web workspace is fixed before it is built: the UBOS design system 1.0 (DSN-WSP-211…214) — a calm, dense accounting workbench with neutral greys biased toward one blue accent, light and dark themes, Inter with tabular figures and JetBrains Mono served by the Server, compact and comfortable densities, text state badges, a context bar naming company, branch, as-of and as-known-on dates with an attention banner for any non-current view; React Aria and TanStack Table; tokens in `design/tokens.json`, reference screens in `design/mockups.html` | Accepted |
 | DEC-082 | PH-1 step 18d in parts 18d-1…18d-3: BPA 1.0-rc5 (an `error` answering a `mutate` whose process was recorded carries `process_id`; the replay vector of STD-CTX-012), the scenario runner as a UBTP backend of `forge test` with dev-preset fixtures (test clock at genesis, fixed-response connectors), and SCN-001, -009, -017 with the EXIT-1-19 report; SCN-002 A1 and SCN-003 A1 run as a rejected genesis, SCN-011 through a port, SCN-011 A1 (the replay test hook) stays in process | Accepted |
+| DEC-083 | BPA 1.0-rc6 closes the two Protocol gaps 18d-2 found: `revert` takes `resolutions` as a merge does (STD-VER-070, -071, STD-PROTO-014), and an events subscription delivers the effects released without a commit such as `BecameEffective`, after the commits of its branch, with the cursor `<branch>:<cseq>.<n>` (STD-PROTO-012, STD-TIME-050); the node refuses a project genesis that redeclares a class of the platform genesis Buks | Accepted |
 
 ---
 
@@ -447,8 +448,34 @@ the records from DEC-060 on follow.
 - **Consequences:**
   - BPA 1.0-rc4 stays frozen as tagged; `spec/` and `vectors/` hold 1.0-rc5 (201 clauses, 1,692 vectors, 3 added, none changed).
   - The `dev`-preset fixtures (test clock at genesis, fixed-response connectors) are refused by the `server` preset.
+  - 18d-2: `forge test --backend ubtp` (`ubos-forge/src/ubtp_test.rs`) runs a project's scenario tests over UBTP, one `dev`-preset Server and one fresh tenant per test (a tenant's database connections are released with its Server); the configuration keys `dev.test_clock` and `dev.connectors`; commit sequences are reported relative to the fixture, since the Server's genesis Buks add commits on `main`. The ten gate-1a scenarios pass over WebSocket and HTTP except SCN-006 main and SCN-018 main (below), SCN-011 A1 in process only (`verify/reports/exit-1-19/`).
+  - 18d-2 found that the Server's engines ran with the L2 host off (DEC-058 keeps it off only in the conformance adapter); the node now runs L2 scripts. The platform genesis Buks hold `Party` and `Job` on every Server, so the scenario model names its classes `Counterparty` and `BatchJob`; EXIT-1-13 re-run 22 of 22 in memory and on PostgreSQL.
+  - 18d-2 found two gaps of the Protocol, proposed to the owner for a correction: the `revert` request of STD-PROTO-014 has no `resolutions` (SCN-018), and an events subscription of STD-PROTO-012 cannot deliver an effect released without a commit such as `BecameEffective` (STD-TIME-050, SCN-006).
 - **Alternatives considered:**
   - Reading the metering of a failed process through an operator endpoint was rejected: the client that ran the process should read it with the same Protocol (STD-PROTO-015).
   - A client-chosen process identifier in `mutate` was rejected: process identifiers are assigned by the implementation (STD-PROTO-010).
   - Adding the replay hook to the Protocol was rejected: it would let any client feed a process altered inputs.
 - **Affects:** STD-PROTO-001, STD-PROTO-010, STD-CTX-012, SCN-002, SCN-003, SCN-010, SCN-011, EXIT-1-19, DEC-079
+
+### DEC-083 — BPA 1.0-rc6: revert resolutions and timer effects of events subscriptions
+- **Date:** 2026-10-18 · **Status:** Accepted
+- **Context:** Running the gate-1a scenarios over UBTP (18d-2, DEC-082) left two scenarios that the Protocol of BPA 1.0-rc5 cannot express, and one fault of the node:
+  - SCN-018 reverts a commit whose field changed since and keeps the later change; the kernel already accepted `resolutions` on `revert` outside the standard, without the unused-resolution check of a merge, and the `revert` request of STD-PROTO-014 had no `resolutions`;
+  - SCN-006 subscribes to `BecameEffective` (STD-TIME-050), which is released by the clock without a commit, while an events subscription emitted only the effects of commits (STD-PROTO-012);
+  - a project genesis that declares a class named like a class of the platform genesis Buks (`Party`, `Job`, …) replaced the platform class silently on the node.
+- **Decision:**
+  1. **BPA 1.0-rc6**, opened by the scope rule of gate 1b on 1.0-rc5 with no new clause; 1.0-rc5 stays frozen as tagged.
+  2. **Revert resolutions.** A revert MAY carry `resolutions` (STD-VER-058) naming conflicts of its three-way merge: `source` keeps the value before the reverted commit, `target` the later change, `base` the value after the reverted commit, `custom` its value. A resolution matching no conflict of any reverted commit fails the revert with `MODEL.INVALID_VALUE`; the resolutions applied are recorded in each compensating commit and returned as `resolutions` (STD-VER-070, -071 notes). The `revert` request of STD-PROTO-014 carries `resolutions`.
+  3. **Timer effects.** An events subscription delivers the effects released without a commit, one frame each, after the frames of the commits of its branch, in outbox order. The position of an emit is (commit, n), n the count of such effects released on the branch; the cursor is `<branch>:<cseq>.<n>`, written `<branch>:<cseq>` while n is 0, so the cursors of 1.0-rc5 are unchanged. `from_cursor` and `ack` accept both forms (STD-PROTO-012, STD-TIME-050 notes).
+  4. **Genesis names.** `ubos-server bootstrap` and the genesis given to a serving node refuse a project class whose name is held by a class of the platform genesis Buks in another namespace (`PKG.NAMESPACE_VIOLATION`, as for a Buk, DSN-NOD-402), before the tenant is provisioned; the platform class itself, as in an exported model, is accepted.
+- **Consequences:**
+  - `spec/` and `vectors/` hold 1.0-rc6 (201 clauses); the added vectors cover a revert resolving a conflict, an unused resolution, `revert` with `resolutions` over UBTP, an events subscription delivering `BecameEffective`, resuming with a `.n` cursor and a cursor ahead of the released effects; no existing vector changes.
+  - Kernel: the unused-resolution check of `revert`; the UBTP binding passes `resolutions` and delivers the effects released without a commit (the memory store reads an outbox entry without `cseq` as such an effect, as PostgreSQL stores it with `cseq` 0); `ubos_proto` cursors carry the release count.
+  - SCN-006 main and SCN-018 main run over UBTP; EXIT-1-19 is re-run (`verify/reports/exit-1-19/`).
+  - The SDK suites' fixture declared its own `Party`, which the node had silently skipped (its `Customer` and `Supplier` then extended the ontology `Party`); it is renamed `Counterparty`, with the generated types regenerated (SUITE-SDK-PROTO, -TYPES).
+  - The owner signs `bpa-v1.0.0-rc6` after the merge.
+- **Alternatives considered:**
+  - Giving each timer release its own commit was rejected: a release changes no object, and a commit per release would grow every branch's history with the clock.
+  - A separate cursor space for timer effects (a second cursor per subscription) was rejected: one cursor per subscription keeps resumption and `ack` as they are.
+  - Merging the platform class with a project class of the same name was rejected: class evolution is PH-2.
+- **Affects:** STD-VER-070, STD-VER-071, STD-PROTO-012, STD-PROTO-014, STD-TIME-050, SCN-006, SCN-018, EXIT-1-19, DEC-082

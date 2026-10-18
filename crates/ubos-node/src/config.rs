@@ -85,7 +85,7 @@ const fn key(
 /// The log levels.
 pub const LEVELS: &[&str] = &["error", "warn", "info", "debug", "trace"];
 
-/// The schema of `ubos.toml` (schema version 1; 23 keys).
+/// The schema of `ubos.toml` (schema version 1; 25 keys).
 pub const SCHEMA: &[Key] = &[
     key(
         "server.listen",
@@ -247,6 +247,21 @@ pub const SCHEMA: &[Key] = &[
         Some("\"admin\""),
         false,
         "the first administrator's username",
+    ),
+    // dev preset fixtures for scenarios over UBTP (PH-1 step 18d, DEC-082)
+    key(
+        "dev.test_clock",
+        Kind::Text,
+        None,
+        false,
+        "dev preset only: the instant the node clock starts at (bootstrap and serve)",
+    ),
+    key(
+        "dev.connectors",
+        Kind::Text,
+        None,
+        false,
+        "dev preset only: connectors with fixed responses, JSON {name: {operation | *: response}}",
     ),
 ];
 
@@ -493,6 +508,23 @@ impl Config {
             errors.push(
                 json!({"key": "backup.key", "message": "backup.dir and backup.key go together"}),
             );
+        }
+        if get("server.preset") != Some("dev") {
+            for k in ["dev.test_clock", "dev.connectors"] {
+                if values.contains_key(k) {
+                    errors.push(json!({"key": k, "message": "a dev preset fixture; refused by the server preset"}));
+                }
+            }
+        }
+        if let Some(t) = get("dev.test_clock")
+            && ubos_dvm::types::time::parse_instant(t).is_err()
+        {
+            errors.push(json!({"key": "dev.test_clock", "message": "a canonical instant"}));
+        }
+        if let Some(t) = get("dev.connectors")
+            && !serde_json::from_str::<Value>(t).is_ok_and(|v| v.is_object())
+        {
+            errors.push(json!({"key": "dev.connectors", "message": "a JSON object {name: {operation: response}}"}));
         }
         if get("server.preset") != Some("dev")
             && values.contains_key("database.url")

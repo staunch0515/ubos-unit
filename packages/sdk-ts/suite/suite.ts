@@ -37,7 +37,7 @@ import {
   uuid7,
   withRetry,
 } from "../src/index.js";
-import { Account, Customer, Party, type PartyItem } from "./generated/types.js";
+import { Account, Customer, Counterparty, type CounterpartyItem } from "./generated/types.js";
 
 type Json = Record<string, unknown>;
 
@@ -395,11 +395,11 @@ async function run(c: Client, direct: Client, id: string): Promise<Case> {
       await c.commit([{ op: "create", class: "Supplier", object_id: sid, slug: sslug, body: { name: "p15 supplier", country: tag, iban: "DE00" } }]);
       const got = await attempt(Customer.get(c, cslug));
       k.check("a typed read with its money", !(got instanceof Error) && got.class === "Customer" && new Decimal(got.body.credit_limit?.amount ?? "0").equals("10"), got);
-      const q = Party.query().filter("country", "==", tag).orderBy("name");
-      k.check("the builder compiles to DAT-Query", JSON.stringify(q.toQuery()) === JSON.stringify({ from: "Party", where: `this.country == "${tag}"`, order_by: [{ path: "this.name", dir: "asc" }] }), q.toQuery());
-      const all: PartyItem[] = await q.all(c);
+      const q = Counterparty.query().filter("country", "==", tag).orderBy("name");
+      k.check("the builder compiles to DAT-Query", JSON.stringify(q.toQuery()) === JSON.stringify({ from: "Counterparty", where: `this.country == "${tag}"`, order_by: [{ path: "this.name", dir: "asc" }] }), q.toQuery());
+      const all: CounterpartyItem[] = await q.all(c);
       const text: string[] = [];
-      for await (const x of c.query(`from Party where this.country == "${tag}" order by this.name`)) text.push(x.objectId);
+      for await (const x of c.query(`from Counterparty where this.country == "${tag}" order by this.name`)) text.push(x.objectId);
       k.check("the same results as the text query", all.length > 0 && JSON.stringify(all.map((x) => x.objectId)) === JSON.stringify(text), [all.map((x) => x.objectId), text]);
       const classes = all.map((x) => x.class);
       k.check("polymorphic results narrowed by class", classes.includes("Customer") && classes.includes("Supplier"), classes);

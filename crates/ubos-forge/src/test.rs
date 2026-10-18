@@ -248,7 +248,7 @@ fn note_invocation(invoked: &mut BTreeMap<String, Vec<String>>, input: &Value) {
 }
 
 /// Compare a step's outcome with its vector-style expectation; `Some(detail)` on a failure.
-fn expectation(
+pub(crate) fn expectation(
     exp: Option<&Value>,
     out: &Result<Value, BpaError>,
     labels: &HashMap<String, Value>,

@@ -275,13 +275,19 @@ pub fn handshake_result(
         "limits": limits, "features": []})
 }
 
-/// The subscription cursor of the reference binding: `<branch>:<cseq>` (STD-PROTO-012).
-pub fn cursor(branch: &str, cseq: u64) -> String {
-    format!("{branch}:{cseq}")
+/// The subscription cursor of the reference binding: `<branch>:<cseq>`, or
+/// `<branch>:<cseq>.<n>` once `n` effects were released on the branch without a commit
+/// (STD-PROTO-012, 1.0-rc6).
+pub fn cursor(branch: &str, cseq: u64, n: u64) -> String {
+    if n == 0 {
+        format!("{branch}:{cseq}")
+    } else {
+        format!("{branch}:{cseq}.{n}")
+    }
 }
 
-/// Parse a cursor; `MODEL.INVALID_VALUE` when it is not one.
-pub fn parse_cursor(c: &Value) -> Result<(String, u64), BpaError> {
+/// Parse a cursor into `(branch, cseq, n)`; `MODEL.INVALID_VALUE` when it is not one.
+pub fn parse_cursor(c: &Value) -> Result<(String, u64, u64), BpaError> {
     let bad = || {
         let mut e =
             BpaError::with_details("MODEL.INVALID_VALUE", json!("a cursor is <branch>:<cseq>"));
@@ -291,11 +297,20 @@ pub fn parse_cursor(c: &Value) -> Result<(String, u64), BpaError> {
     let Some(t) = c.as_str() else {
         return Err(bad());
     };
-    let Some((b, n)) = t.rsplit_once(':') else {
+    let Some((b, pos)) = t.rsplit_once(':') else {
         return Err(bad());
     };
-    if n.is_empty() || !n.bytes().all(|x| x.is_ascii_digit()) {
+    let (cseq, n) = match pos.split_once('.') {
+        Some((c, n)) => (c, Some(n)),
+        None => (pos, None),
+    };
+    let digits = |x: &str| !x.is_empty() && x.bytes().all(|d| d.is_ascii_digit());
+    if !digits(cseq) || n.is_some_and(|n| !digits(n)) {
         return Err(bad());
     }
-    Ok((b.to_string(), n.parse().map_err(|_| bad())?))
+    let n = match n {
+        Some(n) => n.parse().map_err(|_| bad())?,
+        None => 0,
+    };
+    Ok((b.to_string(), cseq.parse().map_err(|_| bad())?, n))
 }

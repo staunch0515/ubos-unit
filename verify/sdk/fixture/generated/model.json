@@ -1,7 +1,7 @@
 {
   "project": "sdk-suite",
   "branch": "main",
-  "model_hash": "sha256:496d8ae820fa06903d16225c018b3e0b3e7555148d9af2bd49bf502d33cdcd0f",
+  "model_hash": "sha256:77b646db2d63d822c79d926ff6c7eea62fe1589fd89cbf1e8e9b9355546c31d6",
   "vae": "acme",
   "classes": [
     {
@@ -94,13 +94,12 @@
       ]
     },
     {
-      "name": "Customer",
-      "label": "Customer",
-      "parent": "Party",
+      "name": "Counterparty",
+      "label": "Counterparty",
+      "parent": "DataObject",
       "kind": "definition",
       "linearization": [
-        "Customer",
-        "Party",
+        "Counterparty",
         "DataObject",
         "Object"
       ],
@@ -113,7 +112,42 @@
           "constraints": null,
           "default": null,
           "classification": null,
-          "declared_by": "Party"
+          "declared_by": "Counterparty"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Counterparty"
+        }
+      ],
+      "ports": []
+    },
+    {
+      "name": "Customer",
+      "label": "Customer",
+      "parent": "Counterparty",
+      "kind": "definition",
+      "linearization": [
+        "Customer",
+        "Counterparty",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "country",
+          "type": "text",
+          "required": false,
+          "label": "country",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Counterparty"
         },
         {
           "name": "credit_limit",
@@ -143,7 +177,7 @@
           "constraints": null,
           "default": null,
           "classification": null,
-          "declared_by": "Party"
+          "declared_by": "Counterparty"
         },
         {
           "name": "rating",
@@ -193,47 +227,13 @@
       "ports": []
     },
     {
-      "name": "Party",
-      "label": "Party",
-      "parent": "DataObject",
-      "kind": "definition",
-      "linearization": [
-        "Party",
-        "DataObject",
-        "Object"
-      ],
-      "fields": [
-        {
-          "name": "country",
-          "type": "text",
-          "required": false,
-          "label": "country",
-          "constraints": null,
-          "default": null,
-          "classification": null,
-          "declared_by": "Party"
-        },
-        {
-          "name": "name",
-          "type": "text",
-          "required": true,
-          "label": "name",
-          "constraints": null,
-          "default": null,
-          "classification": null,
-          "declared_by": "Party"
-        }
-      ],
-      "ports": []
-    },
-    {
       "name": "Supplier",
       "label": "Supplier",
-      "parent": "Party",
+      "parent": "Counterparty",
       "kind": "definition",
       "linearization": [
         "Supplier",
-        "Party",
+        "Counterparty",
         "DataObject",
         "Object"
       ],
@@ -246,7 +246,7 @@
           "constraints": null,
           "default": null,
           "classification": null,
-          "declared_by": "Party"
+          "declared_by": "Counterparty"
         },
         {
           "name": "iban",
@@ -266,7 +266,7 @@
           "constraints": null,
           "default": null,
           "classification": null,
-          "declared_by": "Party"
+          "declared_by": "Counterparty"
         }
       ],
       "ports": []

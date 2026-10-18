@@ -758,7 +758,10 @@ impl Node {
             authority: authority.to_string(),
         };
         let store = PgStore::connect_with(&self.url, scope, hierarchy, blobs)?.with_signer(signer);
-        let engine = Engine::open_existing(Box::new(store))?;
+        let mut engine = Engine::open_existing(Box::new(store))?;
+        // the node runs L2 scripts (STD-CTX-020, DEC-058); only the conformance adapter
+        // keeps them off (DEC-082: found by the scenarios over UBTP)
+        engine.l2 = true;
         let services = self.vae_services(tenant, &vae_id)?;
         Ok(Vae::open(engine, services))
     }

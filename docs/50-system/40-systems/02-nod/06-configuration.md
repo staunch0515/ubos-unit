@@ -66,6 +66,8 @@ Secrets are references (`env:`, `file:`, `kms:`), never inline (DSN-NOD-605). Th
 | `ctl.endpoint` | — | URL (optional) | no | DSN-NOD-643 |
 | `ctl.heartbeat_seconds` | 30 | 10–300 | yes | DSN-NOD-642 |
 | `residency.region` | — | region code | no | DSN-NOD-410 |
+| `dev.test_clock` | — | canonical instant; `dev` preset only | no | DSN-NOD-004 (DEC-082) |
+| `dev.connectors` | — | JSON `{name: {operation \| *: response}}`; `dev` preset only | no | DSN-NOD-302 (DEC-082) |
 
 ## Presets
 

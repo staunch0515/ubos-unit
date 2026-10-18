@@ -8,6 +8,7 @@ from .common import uid, create, base, NOW
 from .common import commit as _commit
 from .sheets import sheet
 from .rules import CLASSES as RULE_CLASSES, ACCT, CUSTOMER, ACCOUNT, MOVE
+from .history import PRICE
 
 BR = 'feature/api'
 FB = {'op': 'create_branch', 'input': {'name': BR, 'from': 'main'}}
@@ -280,6 +281,23 @@ def subscribe(S):
     S('STD-PROTO-012', 'unsubscribing an unknown subscription fails', [U([hs(), env(1, 'unsubscribe', {'subscription_id': 'sub-9'})])])
     S('STD-PROTO-012', 'subscribe carries exactly one of target, query and events', [
         commit([c1]), U([hs(), sub(1, target='ubos://acme/Customer/acme', query={'from': 'Customer'})])])
+    # since BPA 1.0-rc6 (DEC-083): effects released without a commit
+    pl = {'op': 'create', 'object_id': uid(30), 'class': 'PriceList', 'slug': 'pl-1', 'body': {'price': '10'},
+          'valid': {'from': '2026-01-01'}}
+    fut = commit([{'op': 'update', 'object_id': uid(30), 'base': base('p', uid(30)), 'body': {'price': '12'},
+                   'valid': {'kind': 'supersede_from', 'from': '2026-04-01'}}])
+    tick = [{'op': 'set_now', 'input': {'now': '2026-04-01T00:00:00.000000Z'}}, {'op': 'outbox', 'input': {}}]
+    S('STD-PROTO-012', 'an events subscription delivers BecameEffective released without a commit', [
+        commit([pl], label='p'), fut, U([hs(), sub(1, events={'types': ['BecameEffective']})])] + tick + [
+        U([env(2, 'ping')])], classes=CLASSES + [PRICE], also=('STD-TIME-050',))
+    S('STD-PROTO-012', 'from_cursor with a release count resumes after the effects released before it', [
+        commit([pl], label='p'), fut] + tick + [
+        U([hs(), sub(1, events={}, from_cursor='%s:2' % BR)]), U([env(2, 'ping')]),
+        U([hs('h2'), sub(3, events={}, from_cursor='%s:2.1' % BR)], session='later'),
+        U([env(4, 'ping')], session='later')], classes=CLASSES + [PRICE])
+    S('STD-PROTO-012', 'a release count above the effects released is ahead of the branch', [
+        commit([pl], label='p'), fut] + tick + [
+        U([hs(), sub(1, events={}, from_cursor='%s:2.2' % BR)])], classes=CLASSES + [PRICE])
 
 
 def flow(S):
@@ -435,6 +453,12 @@ def versioning(S):
     S('STD-PROTO-014', 'validate_only applies to port and commit only', [
         U([hs(), vmut(1, 'create_branch', {'name': FX}, validate_only=True)])])
     S('STD-PROTO-014', 'a versioning request is a map', [U([hs(), vmut(1, 'merge', FX)])])
+    # since BPA 1.0-rc6 (DEC-083)
+    S('STD-PROTO-014', 'revert carries resolutions that keep a later change', [
+        commit([c1], label='a'), commit([upd('a', 1, {'rating': 4})], label='b'), commit([upd('b', 1, {'rating': 5})]),
+        U([hs(), vmut(1, 'revert', {'time': 2, 'resolutions': [
+            {'object_id': uid(1), 'path': '/rating', 'choice': 'target', 'resolver': DID}]})]),
+        {'op': 'read', 'input': {'branch': BR, 'object_id': uid(1)}}])
 
 
 def introspection(S):

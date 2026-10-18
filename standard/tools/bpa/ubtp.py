@@ -305,7 +305,7 @@ class Ubtp:
             r = self.merge(v.get('source'), branch, v.get('resolutions'),
                            self._ubtp_process(s, dict(extra, process_id=pid)))
         elif kind == 'revert':
-            i = {k: v[k] for k in ('process_id', 'change_set', 'time', 'commit', 'reversal_ids', 'dry_run') if k in v}
+            i = {k: v[k] for k in ('process_id', 'change_set', 'time', 'commit', 'reversal_ids', 'resolutions', 'dry_run') if k in v}
             i['branch'] = branch
             if not v.get('dry_run'):
                 pid = self._ubtp_pid(s)
@@ -452,16 +452,22 @@ class Ubtp:
 
     # -- subscriptions (STD-PROTO-012, -013) --
 
-    def _cursor(self, branch, cseq):
-        return '%s:%d' % (branch, cseq)
+    def _cursor(self, branch, cseq, n=0):
+        return '%s:%d.%d' % (branch, cseq, n) if n else '%s:%d' % (branch, cseq)
 
     def _parse_cursor(self, c):
+        """`(branch, cseq, n)` of a cursor `<branch>:<cseq>` or `<branch>:<cseq>.<n>` (DEC-083)."""
         if not isinstance(c, str) or ':' not in c:
             _err('MODEL.INVALID_VALUE', 'a cursor is <branch>:<cseq>')
-        branch, _, n = c.rpartition(':')
-        if not n.isdigit():
+        branch, _, pos = c.rpartition(':')
+        cseq, dot, n = pos.partition('.')
+        if not cseq.isdigit() or (dot and not n.isdigit()):
             _err('MODEL.INVALID_VALUE', 'a cursor is <branch>:<cseq>')
-        return branch, int(n)
+        return branch, int(cseq), int(n) if dot else 0
+
+    def _timer_effects(self, branch):
+        """The effects released on a branch without a commit, in outbox order (STD-TIME-050)."""
+        return [e for e in self.outbox if e['branch'] == branch and 'cseq' not in e]
 
     def _head_cseq(self, branch):
         return self.commits[self._branch(branch)['head']]['cseq']
@@ -472,17 +478,20 @@ class Ubtp:
             _err('MODEL.INVALID_VALUE', 'subscribe carries exactly one of target, query, events')
         branch = b.get('branch', 'main')
         head = self._head_cseq(branch)
+        released = len(self._timer_effects(branch)) if kinds[0] == 'events' else 0
         if b.get('from_cursor') is not None:
-            cb, cseq = self._parse_cursor(b['from_cursor'])
+            cb, cseq, n = self._parse_cursor(b['from_cursor'])
             if cb != branch:
                 _err('MODEL.INVALID_VALUE', 'the cursor names another branch')
-            if cseq > head:
+            if cseq > head or n > released and kinds[0] == 'events':
                 _err('MODEL.INVALID_VALUE', 'the cursor is ahead of the branch')
             if head - cseq > LIMITS['retention']:
                 _err('INT.CURSOR_EXPIRED', {'retention': LIMITS['retention'], 'head': self._cursor(branch, head)})
+            n = n if kinds[0] == 'events' else 0
         else:
-            cseq = head
-        sub = {'kind': kinds[0], 'spec': b[kinds[0]], 'branch': branch, 'cseq': cseq, 'unacked': [], 'queued': []}
+            cseq, n = head, released
+        sub = {'kind': kinds[0], 'spec': b[kinds[0]], 'branch': branch, 'cseq': cseq, 'n': n, 'unacked': [],
+               'queued': []}
         if kinds[0] == 'target':
             st = self._state(branch, {})[0]
             oid = self._resolve(st, sub['spec']) if isinstance(sub['spec'], str) else None
@@ -497,7 +506,7 @@ class Ubtp:
         s.next_sub += 1
         sid = 'sub-%d' % s.next_sub
         s.subs[sid] = sub
-        return {'subscription_id': sid, 'cursor': self._cursor(branch, cseq)}
+        return {'subscription_id': sid, 'cursor': self._cursor(branch, cseq, n)}
 
     def _unsubscribe(self, s, b):
         sid = b.get('subscription_id')
@@ -510,9 +519,9 @@ class Ubtp:
         sid = b.get('subscription_id')
         if sid not in s.subs:
             _err('IAM.NOT_FOUND', 'unknown subscription')
-        _, cseq = self._parse_cursor(b.get('cursor'))
+        _, cseq, n = self._parse_cursor(b.get('cursor'))
         sub = s.subs[sid]
-        sub['unacked'] = [e for e in sub['unacked'] if e['_cseq'] > cseq]
+        sub['unacked'] = [e for e in sub['unacked'] if e['_pos'] > (cseq, n)]
         return {'subscription_id': sid, 'cursor': b['cursor']}
 
     def _changes_of(self, sub, cid):
@@ -555,9 +564,20 @@ class Ubtp:
                 items = self._changes_of(sub, cid)
                 if items is None:
                     continue
-                body = {'subscription_id': sid, 'cursor': self._cursor(sub['branch'], sub['cseq'])}
+                body = {'subscription_id': sid, 'cursor': self._cursor(sub['branch'], sub['cseq'], sub['n'])}
                 body['events' if sub['kind'] == 'events' else 'changes'] = items
-                sub['queued'].append({'_cseq': sub['cseq'], 'body': body})
+                sub['queued'].append({'_pos': (sub['cseq'], sub['n']), 'body': body})
+            if sub['kind'] == 'events':
+                # effects released without a commit follow the commits, one frame each (DEC-083)
+                types = (sub['spec'] or {}).get('types')
+                for e in self._timer_effects(sub['branch'])[sub['n']:]:
+                    sub['n'] += 1
+                    if types and e['type'] not in types:
+                        continue
+                    body = {'subscription_id': sid, 'cursor': self._cursor(sub['branch'], sub['cseq'], sub['n']),
+                            'events': [{'event_id': e['effect_id'], 'type': e['type'], 'object_id': e.get('object_id'),
+                                        'payload': e.get('payload', {})}]}
+                    sub['queued'].append({'_pos': (sub['cseq'], sub['n']), 'body': body})
             while sub['queued'] and len(sub['unacked']) < s.window:
                 e = sub['queued'].pop(0)
                 sub['unacked'].append(e)
