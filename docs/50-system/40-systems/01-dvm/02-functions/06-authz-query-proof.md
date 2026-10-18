@@ -198,6 +198,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a new email field without classification, when committed, then it is `personal`.
 - **Verification:** CONF
 - **Origin:** NR-PRIV-006, NR-PRIV-003, STD-FND-027
+- **Phase note:** PH-1 step 19b (DEC-086): in PH-1 a field is classified by its declaration, else by the class `classification_default`, else `internal`; there are no personal-data field types in PH-1. Classifying the ontology `Person` name and email as `personal` comes with the PH-2 genesis upgrade.
 
 ## Field encryption and crypto-shredding
 
@@ -271,6 +272,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a rectified address, when exported for the subject, then only the rectified value appears; an auditor with the audit right sees both versions.
 - **Verification:** CONF, SEC
 - **Origin:** CR-GDPR-003, FR-PROOF-071
+- **Phase note:** PH-1 step 19b (DEC-086): in PH-1 a rectification is a new version whose commit carries the reason `rectification`; reads use the rectified value and the audit trail keeps both values. Encrypting the earlier versions with the subject key follows DSN-DVM-830 in PH-2.
 
 ### DSN-DVM-837 — Subject access export
 - **Statement:** The DVM MUST produce a subject export: all objects, versions and ledger entries linked to a subject through declared subject relations, in JSON with a manifest, within NR-PRIV-002 after approval (CR-CCPA-001, CR-GDPR-002). The export MUST exclude other subjects' personal data by masking.

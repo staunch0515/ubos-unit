@@ -1,0 +1,310 @@
+{
+  "project": "gate-1a-scenarios",
+  "tests": 28,
+  "passed": 28,
+  "failed": 0,
+  "roots": {
+    "genesis": "sha256:c6ef035a6deaf94f21940c7147b0b423ea3abb18598abd038285c8daed170715",
+    "seed": "sha256:4608254b9a1ff23b925fbd232c75cfe421f6d05c8ad18fbb9c739360bc03afca"
+  },
+  "coverage": {
+    "acme.agreements": {
+      "functions": 2,
+      "invoked": 0,
+      "fraction": 0.0
+    },
+    "acme.runaway": {
+      "functions": 2,
+      "invoked": 0,
+      "fraction": 0.0
+    },
+    "acme.fee": {
+      "functions": 1,
+      "invoked": 0,
+      "fraction": 0.0
+    },
+    "acme.money": {
+      "functions": 1,
+      "invoked": 0,
+      "fraction": 0.0
+    }
+  },
+  "results": [
+    {
+      "name": "PRIV-1: declared classifications and the class default are part of the effective class",
+      "kind": "scenario",
+      "file": "tests/privacy.yaml",
+      "result": "pass",
+      "ms": 17,
+      "steps": 2,
+      "failure": null
+    },
+    {
+      "name": "PRIV-2: a subclass may raise a classification but not lower it",
+      "kind": "scenario",
+      "file": "tests/privacy.yaml",
+      "result": "pass",
+      "ms": 254,
+      "steps": 1,
+      "failure": null
+    },
+    {
+      "name": "PRIV-3: rectification corrects the current value; history keeps the earlier value (CR-GDPR-003)",
+      "kind": "scenario",
+      "file": "tests/privacy.yaml",
+      "result": "pass",
+      "ms": 265,
+      "steps": 8,
+      "failure": null
+    },
+    {
+      "name": "PRIV-4: the audit trail names the rectification and keeps both values (CR-GDPR-003, FR-AUD-011)",
+      "kind": "scenario",
+      "file": "tests/privacy.yaml",
+      "result": "pass",
+      "ms": 386,
+      "steps": 4,
+      "failure": null
+    },
+    {
+      "name": "SCN-002 main: the subclass narrows title and a 150-character title is rejected",
+      "kind": "scenario",
+      "file": "tests/scn-002.yaml",
+      "result": "pass",
+      "ms": 264,
+      "steps": 6,
+      "failure": null
+    },
+    {
+      "name": "SCN-002 A1: widening title in the subclass is a narrowing violation",
+      "kind": "scenario",
+      "file": "tests/scn-002.yaml",
+      "result": "pass",
+      "ms": 308,
+      "steps": 1,
+      "failure": null
+    },
+    {
+      "name": "SCN-002 post: querying Agreement includes the ServiceAgreement instance",
+      "kind": "scenario",
+      "file": "tests/scn-002.yaml",
+      "result": "pass",
+      "ms": 402,
+      "steps": 4,
+      "failure": null
+    },
+    {
+      "name": "SCN-003 main: the override guard fails inside the notice period; the base logic terminates a plain agreement",
+      "kind": "scenario",
+      "file": "tests/scn-003.yaml",
+      "result": "pass",
+      "ms": 272,
+      "steps": 7,
+      "failure": null
+    },
+    {
+      "name": "SCN-003 A1: an override narrowing a parameter type is rejected",
+      "kind": "scenario",
+      "file": "tests/scn-003.yaml",
+      "result": "pass",
+      "ms": 236,
+      "steps": 1,
+      "failure": null
+    },
+    {
+      "name": "SCN-004 main: a draft branch, 15 changes, the diff, the approved change set merged in one commit",
+      "kind": "scenario",
+      "file": "tests/scn-004.yaml",
+      "result": "pass",
+      "ms": 520,
+      "steps": 29,
+      "failure": null
+    },
+    {
+      "name": "SCN-004 A1: the same field changed on main and the draft is a conflict; nothing merges",
+      "kind": "scenario",
+      "file": "tests/scn-004.yaml",
+      "result": "pass",
+      "ms": 264,
+      "steps": 6,
+      "failure": null
+    },
+    {
+      "name": "SCN-004 A2: a different field of the same product merges automatically",
+      "kind": "scenario",
+      "file": "tests/scn-004.yaml",
+      "result": "pass",
+      "ms": 286,
+      "steps": 6,
+      "failure": null
+    },
+    {
+      "name": "SCN-005 main: a stale base is rejected with TXN.HEAD_MOVED and the chain stays linear",
+      "kind": "scenario",
+      "file": "tests/scn-005.yaml",
+      "result": "pass",
+      "ms": 319,
+      "steps": 7,
+      "failure": null
+    },
+    {
+      "name": "SCN-005 A1: 100 concurrent writers on one base version, exactly one succeeds",
+      "kind": "scenario",
+      "file": "tests/scn-005.yaml",
+      "result": "pass",
+      "ms": 374,
+      "steps": 3,
+      "failure": null
+    },
+    {
+      "name": "SCN-006 main: a future-dated price is read by asof and becomes effective on its day without a job",
+      "kind": "scenario",
+      "file": "tests/scn-006.yaml",
+      "result": "pass",
+      "ms": 248,
+      "steps": 8,
+      "failure": null
+    },
+    {
+      "name": "SCN-006 A1: a second future version; every date resolves to one version",
+      "kind": "scenario",
+      "file": "tests/scn-006.yaml",
+      "result": "pass",
+      "ms": 289,
+      "steps": 7,
+      "failure": null
+    },
+    {
+      "name": "SCN-007 main: what did we believe on March 1 and March 11 about February 15",
+      "kind": "scenario",
+      "file": "tests/scn-007.yaml",
+      "result": "pass",
+      "ms": 354,
+      "steps": 9,
+      "failure": null
+    },
+    {
+      "name": "SCN-007 A1: a time before the creation is not found at that time",
+      "kind": "scenario",
+      "file": "tests/scn-007.yaml",
+      "result": "pass",
+      "ms": 346,
+      "steps": 2,
+      "failure": null
+    },
+    {
+      "name": "SCN-008 main: a wrong posting is reversed and re-posted; history stays",
+      "kind": "scenario",
+      "file": "tests/scn-008.yaml",
+      "result": "pass",
+      "ms": 257,
+      "steps": 4,
+      "failure": null
+    },
+    {
+      "name": "SCN-008 A1: a ledger entry cannot be updated",
+      "kind": "scenario",
+      "file": "tests/scn-008.yaml",
+      "result": "pass",
+      "ms": 237,
+      "steps": 2,
+      "failure": null
+    },
+    {
+      "name": "SCN-008 A2: a branch with ledger entries merges by appending in branch order",
+      "kind": "scenario",
+      "file": "tests/scn-008.yaml",
+      "result": "pass",
+      "ms": 330,
+      "steps": 6,
+      "failure": null
+    },
+    {
+      "name": "SCN-009 main: a control merged as a sheet rejects a large refund without audit data and requires a signature",
+      "kind": "scenario",
+      "file": "tests/scn-009.yaml",
+      "result": "pass",
+      "ms": 473,
+      "steps": 12,
+      "failure": null
+    },
+    {
+      "name": "SCN-009 A1: a second sheet setting audit_level with equal specificity and priority is rejected at its merge",
+      "kind": "scenario",
+      "file": "tests/scn-009.yaml",
+      "result": "pass",
+      "ms": 381,
+      "steps": 7,
+      "failure": null
+    },
+    {
+      "name": "SCN-010 main: runaway L2 logic is stopped, nothing is committed or released, the run is metered",
+      "kind": "scenario",
+      "file": "tests/scn-010.yaml",
+      "result": "pass",
+      "ms": 2681,
+      "steps": 4,
+      "failure": null
+    },
+    {
+      "name": "SCN-010 A1: a script that opens a network connection is refused",
+      "kind": "scenario",
+      "file": "tests/scn-010.yaml",
+      "result": "pass",
+      "ms": 211,
+      "steps": 1,
+      "failure": null
+    },
+    {
+      "name": "SCN-011 main: a process with the clock, entropy and a connector replays identically",
+      "kind": "scenario",
+      "file": "tests/scn-011.yaml",
+      "result": "pass",
+      "ms": 248,
+      "steps": 4,
+      "failure": null
+    },
+    {
+      "name": "SCN-011 A1: a missing journal record stops the replay without calling the connector",
+      "kind": "scenario",
+      "file": "tests/scn-011.yaml",
+      "result": "pass",
+      "ms": 272,
+      "steps": 2,
+      "failure": null
+    },
+    {
+      "name": "SCN-018 main: a bulk process is reverted; the 5 objects changed since are conflicts, resolved to keep the later change",
+      "kind": "scenario",
+      "file": "tests/scn-018.yaml",
+      "result": "pass",
+      "ms": 413,
+      "steps": 59,
+      "failure": null
+    }
+  ],
+  "fixture_findings": [],
+  "verifier": "did:ubos:k:z6Mkob6WEmQY3fAXPhkxec6SVm4J3yWUmT1GyKSJxfTddLuQ",
+  "records": [
+    {
+      "asset": "acme.agreements",
+      "record_id": "sha256:1e65c3040e2ad7e8c4fde605e2a0b5bdff5d7e7da4c7094559efc1b0ff477505",
+      "result": "pass"
+    },
+    {
+      "asset": "acme.runaway",
+      "record_id": "sha256:038dbe8e2aa7c617e1dd65be56156fd93fbc50889ea52cc5d002b665b66c7761",
+      "result": "pass"
+    },
+    {
+      "asset": "acme.fee",
+      "record_id": "sha256:74980692840c2cd8fff6c6bc2cdb2065e5038087d20ff779f3860b3e7fd33109",
+      "result": "pass"
+    },
+    {
+      "asset": "acme.money",
+      "record_id": "sha256:cee389eee448e97354111f3ecb2265d3bc34cde7a1f883210df268e5432c4168",
+      "result": "pass"
+    }
+  ]
+}

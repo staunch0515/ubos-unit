@@ -200,9 +200,10 @@ jobs:
           ./target/release/forge check /tmp/forge-skeleton --json > /dev/null
           ./target/release/forge types /tmp/forge-skeleton --json > /dev/null
           ./target/release/forge test /tmp/forge-skeleton --junit /tmp/forge-skeleton/junit.xml --report /tmp/forge-skeleton/report.json
-      - name: gate-1a scenarios in memory and on PostgreSQL (VER-SCN-1000, EXIT-1-13, DEC-060)
+      - name: gate-1a scenarios and the privacy tests in memory and on PostgreSQL (VER-SCN-1000, EXIT-1-13, DEC-060, DEC-086)
         run: |
           ./target/release/forge check verify/scenarios
+          ./target/release/forge check verify/sdk/fixture
           ./target/release/forge test verify/scenarios
           ./target/release/forge test verify/scenarios --backend postgres --database "host=127.0.0.1 user=postgres dbname=bpa"
       - name: concurrency and crash simulation, 2,000 seeds (SUITE-DVM-SIM, VER-SIM-0001, DEC-061)

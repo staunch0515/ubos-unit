@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Write the Forge project of the gate-1a scenarios (VER-SCN-1000, EXIT-1-13; PH-1 step 7c,
 DEC-060): forge.toml, model/, logic/, seed/ and tests/ with one test file per scenario
-SCN-002…008, -010, -011, -018, and SCN-009 of gate 1b (PH-1 step 18d-3b). Run from the repository root; `forge test verify/scenarios`
+SCN-002…008, -010, -011, -018, SCN-009 of gate 1b (PH-1 step 18d-3b) and the privacy tests
+PRIV-1…4 (PH-1 step 19b, DEC-086). Run from the repository root; `forge test verify/scenarios`
 runs them (`--backend postgres --database …` on PostgreSQL).
 
 The large fixtures (products of SCN-004, the objects of SCN-018) are generated here so that
@@ -83,11 +84,19 @@ MONEY = cls('MoneyMovement', [field('amount', 'decimal', True), field('memo', 't
             ports=[port('issue', 'acme.money#issue')])
 PAYMENT = cls('Payment', [field('payee', 'text')], parent='MoneyMovement')
 REFUND = cls('Refund', [field('customer', 'text')], parent='MoneyMovement')
+# privacy by default in PH-1 (step 19b, DSN-DVM-824, DEC-086): declared classifications, a class
+# default, and a subclass that raises a classification (STD-FND-027, STD-CLS-013)
+CONTACT = cls('Contact', [field('name', 'text', True, classification='personal'),
+                          field('email', 'text', classification='personal'), field('phone', 'text'),
+                          field('segment', 'text', classification='internal')],
+              classification_default='confidential')
+VIP = cls('VipContact', [field('email', 'text', classification='sensitive_personal'), field('tier', 'text')],
+          parent='Contact')
 
 w('forge.toml', '[project]\nname = "gate-1a-scenarios"\nversion = "0.1.0"\nvae = "acme"\nabi = "1.0"\nbranch = "main"\n')
 w('model/classes.yaml', 'classes:\n' + ''.join('  - %s\n' % y(c) for c in
                                           [PARTY, AGREEMENT, SERVICE, PRODUCT, CUSTOMER, PRICELIST, RATE, CASH, JOB, FEE,
-                                           MONEY, PAYMENT, REFUND]))
+                                           MONEY, PAYMENT, REFUND, CONTACT, VIP]))
 
 # ---- logic ----
 def asset(name, exports, functions=None, tier='host', source=None, capabilities=None, profile='standard'):
@@ -510,4 +519,52 @@ tests_file('tests/scn-009.yaml', [
         step('merge', {'source': 'draft/b', 'target': FF}, err('RULE.AMBIGUOUS_CASCADE')),
     ], clock='2026-03-15T10:00:00.000000Z'),
 ], 'SCN-009 — Compliance officer injects a control through a governance sheet (gate 1b; FR-RULE-011, -021, -051, FR-TIME-061)')
+
+# privacy (PH-1 step 19b, DEC-086): classification by declaration and raise-only, rectification
+CT = uid(1, 19)
+vip_lowered = dict(VIP, fields=[field('email', 'text', classification='internal'), field('tier', 'text')])
+tests_file('tests/privacy.yaml', [
+    test('PRIV-1: declared classifications and the class default are part of the effective class', [
+        step('effective_class', {'class': 'Contact', 'classes': [CONTACT, VIP]},
+             subset({'fields': {'name': {'classification': 'personal'}, 'email': {'classification': 'personal'},
+                                'segment': {'classification': 'internal'}}})),
+        step('effective_class', {'class': 'VipContact', 'classes': [CONTACT, VIP]},
+             subset({'linearization': ['VipContact', 'Contact', 'DataObject', 'Object'],
+                     'fields': {'name': {'classification': 'personal'}, 'email': {'classification': 'sensitive_personal'}}})),
+    ]),
+    test('PRIV-2: a subclass may raise a classification but not lower it', [
+        step('effective_class', {'class': 'VipContact', 'classes': [CONTACT, vip_lowered]},
+             err('MODEL.NARROWING_VIOLATION')),
+    ]),
+    test('PRIV-3: rectification corrects the current value; history keeps the earlier value (CR-GDPR-003)', [
+        step('commit', {'branch': 'main', 'changes': [create(CT, 'Contact', 'c-1',
+             {'name': 'Jane Roe', 'email': 'jane@old.example', 'phone': '555-0100'}, valid={'from': '2026-01-01'})]},
+             subset({}), label='c1'),
+        step('read', {'branch': 'main', 'object_id': CT}, subset({}), label='v1'),
+        {'advance': '9d'},
+        step('commit', {'branch': 'main', 'changes': [{'op': 'update', 'object_id': CT, 'base': {'$ref': 'v1/version_hash'},
+             'body': {'email': 'jane@new.example'}, 'valid': {'from': '2026-01-01', 'kind': 'supersede_from'}}],
+             'process': {'message': 'subject request 42', 'reason': 'rectification'}}, subset({}), label='c2'),
+        step('read', {'branch': 'main', 'object_id': CT},
+             subset({'body': {'name': 'Jane Roe', 'email': 'jane@new.example', 'phone': '555-0100'}, 'valid': {'from': '2026-01-01', 'to': None}})),
+        step('read', {'branch': 'main', 'object_id': CT, 'asof': '2026-02-15'}, subset({'body': {'email': 'jane@new.example'}})),
+        step('read', {'branch': 'main', 'object_id': CT, 'asof': '2026-02-15', 'tx_time': '2026-03-01T12:00:00.000000Z'},
+             subset({'body': {'email': 'jane@old.example'}})),
+        step('history', {'branch': 'main', 'object_id': CT},
+             subset({'commits': [{'ops': [{'from': '2026-01-01', 'kind': 'create'}]}, {'ops': [{'from': '2026-01-01', 'kind': 'supersede_from'}]}]})),
+    ], clock='2026-03-01T10:00:00.000000Z'),
+    test('PRIV-4: the audit trail names the rectification and keeps both values (CR-GDPR-003, FR-AUD-011)', [
+        step('commit', {'branch': 'main', 'changes': [create(CT, 'Contact', 'c-1',
+             {'name': 'Jane Roe', 'email': 'jane@old.example'}, valid={'from': '2026-01-01'})]}, subset({})),
+        step('read', {'branch': 'main', 'object_id': CT}, subset({}), label='v1'),
+        step('commit', {'branch': 'main', 'changes': [{'op': 'update', 'object_id': CT, 'base': {'$ref': 'v1/version_hash'},
+             'body': {'email': 'jane@new.example'}, 'valid': {'from': '2026-01-01', 'kind': 'supersede_from'}}],
+             'process': {'message': 'subject request 42', 'reason': 'rectification'}}, subset({})),
+        step('audit', {'branch': 'main', 'object_id': CT},
+             subset({'items': [{'what': {'op': 'added'}},
+                               {'what': {'op': 'changed', 'fields': [{'path': '/email', 'old': 'jane@old.example', 'new': 'jane@new.example'}]},
+                                'when': {'valid': {'from': '2026-01-01', 'to': None}},
+                                'why': {'message': 'subject request 42', 'reason': 'rectification'}}]})),
+    ], clock='2026-03-01T10:00:00.000000Z'),
+], 'Privacy by default in PH-1 — classification by declaration, raise-only, rectification (DSN-DVM-824, DSN-DVM-836, NR-PRIV-003; DEC-086)')
 print('scenarios written')

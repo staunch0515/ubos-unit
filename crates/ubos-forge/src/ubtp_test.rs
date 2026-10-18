@@ -25,7 +25,8 @@
 //! Process identifiers a test names are mapped to the ones the Server assigns (from the
 //! result, or from the error of a failed `mutate`, STD-PROTO-010 since BPA 1.0-rc5) and
 //! mapped back in the results. A step that uses a replay test hook (`drop`, `tamper`) is
-//! outside the Protocol (STD-PROTO-015): its test is reported as verified in process only.
+//! outside the Protocol (STD-PROTO-015), as is the `audit` trail query (FR-AUD-011): its test
+//! is reported as verified in process only.
 
 use crate::check::{CLOCK, asset_object_id};
 use crate::project::Project;
@@ -775,6 +776,11 @@ pub fn run(project: &Project, o: &Options) -> Result<Outcome, BpaError> {
             t["steps"].as_array().into_iter().flatten().find(|st| {
                 st["input"].get("drop").is_some() || st["input"].get("tamper").is_some()
             });
+        let audit = t["steps"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|st| st["op"] == "audit");
         let failure: Option<Value> = if kind != "scenario" {
             Some(json!({"actual": "only scenario tests run over UBTP"}))
         } else if let Some(h) = hook {
@@ -784,6 +790,12 @@ pub fn run(project: &Project, o: &Options) -> Result<Outcome, BpaError> {
                     "step {} uses the replay test hook {}, outside the Protocol (STD-PROTO-015)",
                     h["op"], h["input"]
                 ),
+            ));
+            None
+        } else if audit {
+            in_process_only.push((
+                name.clone(),
+                "the audit trail query (FR-AUD-011) is a kernel query outside the Protocol".into(),
             ));
             None
         } else {

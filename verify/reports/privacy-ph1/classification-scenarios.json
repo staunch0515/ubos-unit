@@ -1,0 +1,23 @@
+{
+ "project": "gate-1a-scenarios",
+ "command": "forge check",
+ "errors": 0,
+ "classification": {
+  "fields": 34,
+  "declared": 4,
+  "class_default": 1,
+  "default_internal": 29,
+  "by_level": {
+   "public": 0,
+   "internal": 30,
+   "confidential": 1,
+   "personal": 2,
+   "sensitive_personal": 1
+  },
+  "personal": [
+   "Contact.name (personal)",
+   "Contact.email (personal)",
+   "VipContact.email (sensitive_personal)"
+  ]
+ }
+}

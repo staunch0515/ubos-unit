@@ -1,0 +1,21 @@
+{
+ "project": "sdk-suite",
+ "command": "forge check",
+ "errors": 0,
+ "classification": {
+  "fields": 12,
+  "declared": 1,
+  "class_default": 0,
+  "default_internal": 11,
+  "by_level": {
+   "public": 0,
+   "internal": 11,
+   "confidential": 0,
+   "personal": 1,
+   "sensitive_personal": 0
+  },
+  "personal": [
+   "Document.passport (personal)"
+  ]
+ }
+}

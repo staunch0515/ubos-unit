@@ -291,3 +291,69 @@ pub fn asset_object_id(name: &str) -> String {
         &x[20..32]
     )
 }
+
+/// Classification coverage of the project's own fields (NR-PRIV-003, DSN-DVM-824): every
+/// field's effective level (declared, else the class `classification_default`, else
+/// `internal`), counted by level and by source, with the fields above `confidential` named.
+pub fn classification(project: &Project) -> Value {
+    let base = ubos_dvm::expressions::registry();
+    let decls = project.declarations();
+    let vts = project.value_type_decls();
+    let vts_opt = if vts.is_empty() {
+        None
+    } else {
+        Some(vts.as_slice())
+    };
+    let reg = base.load(&decls, vts_opt).ok();
+    let mut by_level: serde_json::Map<String, Value> = ubos_dvm::types::values::LEVELS
+        .iter()
+        .map(|l| (l.to_string(), json!(0)))
+        .collect();
+    let (mut total, mut declared, mut class_default, mut defaulted) = (0u64, 0u64, 0u64, 0u64);
+    let mut personal = Vec::new();
+    for d in &decls {
+        let Some(class) = d.get("name").and_then(Value::as_str) else {
+            continue;
+        };
+        let default = d.get("classification_default").and_then(Value::as_str);
+        let effective = reg.as_ref().and_then(|r| r.class(class).ok());
+        for f in d
+            .get("fields")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            let Some(name) = f.get("name").and_then(Value::as_str) else {
+                continue;
+            };
+            let own = effective
+                .and_then(|c| c.fields.get(name))
+                .unwrap_or(f)
+                .get("classification")
+                .and_then(Value::as_str);
+            let level = match (own, default) {
+                (Some(l), _) => {
+                    declared += 1;
+                    l
+                }
+                (None, Some(l)) => {
+                    class_default += 1;
+                    l
+                }
+                (None, None) => {
+                    defaulted += 1;
+                    "internal"
+                }
+            };
+            total += 1;
+            if let Some(n) = by_level.get_mut(level) {
+                *n = json!(n.as_u64().unwrap_or(0) + 1);
+            }
+            if matches!(level, "personal" | "sensitive_personal") {
+                personal.push(json!(format!("{class}.{name} ({level})")));
+            }
+        }
+    }
+    json!({"fields": total, "declared": declared, "class_default": class_default,
+        "default_internal": defaulted, "by_level": by_level, "personal": personal})
+}
