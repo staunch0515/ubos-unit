@@ -229,12 +229,13 @@ depends_on: [UBS-REQ-06]
 - **Statement:** Transport and storage MUST use strong, standard cryptography.
 - **Target:** TLS 1.3 only for external and node-to-node traffic; AES-256-GCM or ChaCha20-Poly1305 at rest; Ed25519 signatures; SHA-256 hashing; FIPS 140-3 validated modules available as a Cell and Server option.
 - **Rationale:** Baseline assurance.
-- **Priority:** Must · **Phase:** PH-1 · **Systems:** NOD, DVM
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** NOD, DVM
 - **Personas:** PER-SecurityOfficer
 - **Acceptance:**
   1. Given a configuration scan, when run, then no weaker protocol or cipher is enabled.
 - **Verification:** SEC, INSP
 - **Origin:** EXT-RFC
+- **Phase note:** PH-2 step 11 (DEC-087): moved from PH-1; PH-1 provides ChaCha20-Poly1305 at rest, Ed25519 signatures and SHA-256 content identifiers; TLS 1.3 for external and node-to-node traffic comes with the HA Server and is required before any deployment beyond the development workstation.
 
 ### NR-SEC-005 — Revocation propagation
 - **Statement:** Access revocations MUST take effect quickly everywhere.

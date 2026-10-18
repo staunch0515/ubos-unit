@@ -365,12 +365,13 @@ Terminology used in this file:
 ### FR-LEDG-031 — Declared balance projections
 - **Statement:** A ledger class MUST be able to declare balance projections: group-by keys, aggregated fields and maintenance mode (`sync`, updated in the same commit, or `async`, updated after commit with a watermark).
 - **Rationale:** Balances are derived, not stored facts (IMP-01).
-- **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** DVM
 - **Personas:** PER-FundAccountant, PER-LogicDeveloper
 - **Acceptance:**
   1. Given `UnitBalance` grouped by `(investor_account, share_class)` in `sync` mode, when a movement is committed, then the balance read in the same commit's snapshot includes it.
 - **Verification:** CONF
 - **Origin:** IMP-01, IMP-09
+- **Phase note:** PH-2 step 3 (DEC-087): moved from PH-1; declared balance projections are built with double entry and periods. PH-1 computes balances from the entries at read (STD-TIME-020).
 
 ### FR-LEDG-032 — Bitemporal balances
 - **Statement:** Balance projections MUST answer at any `asof` and `time`, consistent with the bitemporal semantics of the entries.
@@ -385,12 +386,13 @@ Terminology used in this file:
 ### FR-LEDG-033 — Projection freshness
 - **Statement:** Every projection read MUST return the watermark (the last commit included). A reader MUST be able to request "at least commit C" and wait up to a timeout.
 - **Rationale:** Asynchronous projections must never be mistaken for current.
-- **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** DVM
 - **Personas:** PER-LogicDeveloper
 - **Acceptance:**
   1. Given an async projection lagging by 2 commits, when read with `min_commit` equal to the head, then the read waits or fails with `ANL.PROJECTION_STALE` after the timeout.
 - **Verification:** CONF
 - **Origin:** IMP-09
+- **Phase note:** PH-2 step 3 (DEC-087): moved from PH-1 with the balance projections (FR-LEDG-031).
 
 ### FR-LEDG-034 — Invariants over balances
 - **Statement:** Invariants over synchronous projections (for example "units ≥ 0" or "cash ≥ −overdraft limit") MUST be evaluated in the commit, and violating commits MUST be rejected.

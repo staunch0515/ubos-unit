@@ -40,6 +40,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-084 | BPA 1.0-rc7 closes the two findings of part 18d-3b: the static sheet checks of STD-LGS-022 also run on the sheets a merge or a revert brings into the target (F4), and the rule binding lists the governance sheets the commit enforcement evaluated (STD-TIME-040, F5); SCN-009 A1 is verified at the merge and its binding postcondition observed | Accepted |
 | DEC-085 | PH-1 close-out and PH-2 start: step 19 in parts 19a–19d; after step 19 the frozen line `release/ph1` (tag `ph1-rc1`) carries the gate-1b acceptance and the reference runs, fixes reaching it from `main`; `main` becomes the development line of PH-2; the PH-2 step plan (steps 0–20, gates 2a and 2b) in UBS-PH-2 §11 | Accepted |
 | DEC-086 | PH-1 step 19b: the PH-1 part of privacy by default (classification by declaration, the class default, `internal` otherwise; raise-only; rectification as a new version with the reason `rectification`); masking and read logging by default move with DSN-DVM-821/-823 to PH-2, subject-key encryption of rectified versions with DSN-DVM-830; `forge check` reports classification coverage | Accepted |
+| DEC-087 | PH-1 close-out with carry-overs: the PH-1 Must requirements not built in PH-1 move to PH-2 (balance projections and their rebuild to step 3, `forge new`/`pack` to step 7, TLS, tenant customisation lines and the metrics catalogue to step 11, the process reading its branch on demand, the file-replacement test and the idempotency retention to a new step 0b) and FR-STD-042 to PH-3; the benchmark gaps stay in PH-1 for the reference runs; `release/ph1` is cut (`ph1-rc1`) and PH-2 starts | Accepted |
 
 ---
 
@@ -538,3 +539,25 @@ the records from DEC-060 on follow.
   - Building masking and read logging in PH-1 was rejected: they need the agent and export channels of PH-2 and would be untested in PH-1.
   - Field types that imply `personal` were rejected: STD-FND-027 classifies by declaration; inferring personal data from a type or name is unreliable and not in the standard.
 - **Affects:** NR-PRIV-003, NR-PRIV-005, NR-PRIV-006, FR-MODEL-047, DSN-DVM-821, DSN-DVM-823, DSN-DVM-824, DSN-DVM-830, DSN-DVM-836, CR-GDPR-003, DEC-085
+
+### DEC-087 — PH-1 close-out with carry-overs and the start of PH-2
+- **Date:** 2026-10-18 · **Status:** Accepted
+- **Context:** Step 19 is complete (19a–19d). The traceability results of 19d (VER-INSP-9500, `verify/reports/exit-1-20/`) leave 24 of 323 PH-1 Must requirements without a passing result. 12 are benchmarks that wait for ENV-REF-SERVER, and NR-PERF-011 is not met on the workstation. 8 are not built in PH-1: TLS, balance projections, `forge new` and `pack`, and three requirements whose only design items are PH-2. 2 acceptance tests are missing, and FR-STD-042 needs a later version of the standard. Step 19c found that a process (port call, handler, job) runs against the full state of its branch: 287 s per command port on a 300,000-object branch. The owner chose to start PH-2 rather than close these in PH-1, with the carry-overs moved by decision (UBS-PH-00 §3.7).
+- **Decision:**
+  1. **Moved to PH-2** (Phase field changed, **Phase note** on each):
+     - to step 3 (money and periods): FR-LEDG-031, FR-LEDG-033 and DSN-DVM-420 (declared balance projections), and FR-ANL-021 (projection rebuild);
+     - to step 7 (Buk format): the `forge new` and `forge pack` part of FR-DEV-011, which stays in PH-1 for `init`, `check`, `types`, `test`, `conform` and `dev`;
+     - to step 11 (HA Server): CR-SOC2-003 and NR-SEC-004 (TLS 1.3), FR-TEN-031 (tenant customisation lines on overlays) and NR-OBS-002 (metrics catalogue). TLS is required before any deployment beyond the development workstation;
+     - to a new **step 0b**, before step 1: the process reading its branch on demand (the 19c finding, called 19c-2 so far), FR-FILE-011 (its acceptance test) and FR-TXN-032 with DSN-DVM-531 (the idempotency retention sweep and its tests).
+  2. **Moved to PH-3:** FR-STD-042, verified when the first minor version after BPA 1.0 final exists.
+  3. **Kept in PH-1:** the benchmark gaps (NR-PERF-001, -002, -004, -005, -006, -007, -010, FR-LEDG-014, FR-VER-043, FR-VER-045, FR-PROOF-013, FR-EVT-034) and NR-PERF-011. They are closed by the reference runs on the frozen line. NR-PERF-011 is measured again on the workstation after step 0b.
+  4. **The frozen line.** After this decision is merged, `release/ph1` is cut from `main` and tagged `ph1-rc1` (DEC-085 item 2). The gate-1b acceptance (step 20) is an acceptance with carry-overs: the list of item 1 and item 2, and the reference runs of item 3.
+  5. **PH-2 starts** with step 0b, then step 1 (UBS-PH-2 §11).
+- **Consequences:**
+  - The PH-1 results (UBS-VER-31): 313 Must requirements, 292 verified, 8 on the workstation only, 13 gaps, all of them reference runs (12 benchmarks and NR-PERF-011).
+  - The security report (`docs/reports/ph1-security-report-zh.md`) keeps TLS as an open item with the deployment constraint.
+  - UBS-PH-2 §11 gains step 0b and names the moved requirements in steps 3, 7 and 11.
+- **Alternatives considered:**
+  - Closing the gaps in PH-1 before the cut was rejected by the owner. TLS, the projections and the process change belong to work that PH-2 does anyway, and they would delay PH-2.
+  - Moving the process change later in PH-2 was rejected. Every port call, handler and job of the finance Buk runs on large branches, so it comes first.
+- **Affects:** UBS-PH-1, UBS-PH-2, EXIT-1-17, EXIT-1-20, VER-INSP-9500, FR-LEDG-031, FR-LEDG-033, FR-ANL-021, FR-DEV-011, CR-SOC2-003, NR-SEC-004, FR-TEN-031, NR-OBS-002, FR-FILE-011, FR-TXN-032, FR-STD-042, DSN-DVM-420, DSN-DVM-531, NR-PERF-011, DEC-085

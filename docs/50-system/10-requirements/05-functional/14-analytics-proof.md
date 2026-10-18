@@ -55,12 +55,13 @@ depends_on: [UBS-REQ-05, UBS-REQ-05-02]
 ### FR-ANL-021 — Rebuild from authoritative state
 - **Statement:** Any projection MUST be rebuildable from authoritative state for any branch and point in time.
 - **Rationale:** Projections can always be discarded (DEC-011).
-- **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** DVM
 - **Personas:** PER-PlatformOperator
 - **Acceptance:**
   1. Given a dropped projection, when rebuilt, then it equals the previous contents at the same watermark.
 - **Verification:** CONF, PROP
 - **Origin:** DEC-011
+- **Phase note:** PH-2 step 3 (DEC-087): moved from PH-1; its design item DSN-NOD-344 is PH-2. PH-1 rebuilds field indexes only.
 
 ### FR-ANL-022 — Verification by checksum
 - **Statement:** The platform MUST verify a live projection against a rebuild using order-independent checksums, and MUST report differences.

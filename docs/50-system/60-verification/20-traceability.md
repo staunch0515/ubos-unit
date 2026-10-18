@@ -13,9 +13,9 @@ depends_on: [UBS-VER-00, UBS-VER-04]
 | Phase | Requirements | Must | Realised by design | Covered by suites or items | Must gaps |
 |---|---|---|---|---|---|
 | PH-0 | 8 | 8 | 8 | 8 | 0 |
-| PH-1 | 338 | 323 | 335 | 338 | 0 |
-| PH-2 | 332 | 257 | 317 | 326 | 0 |
-| PH-3 | 139 | 99 | 127 | 132 | 0 |
+| PH-1 | 328 | 313 | 326 | 328 | 0 |
+| PH-2 | 341 | 266 | 325 | 335 | 0 |
+| PH-3 | 140 | 100 | 128 | 133 | 0 |
 | PH-4 | 92 | 66 | 77 | 85 | 0 |
 | PH-5 | 51 | 39 | 46 | 49 | 0 |
 

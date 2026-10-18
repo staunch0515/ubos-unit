@@ -19,7 +19,7 @@ run pending). A suite counts when it runs one of the verification methods the re
 
 | Must requirements | Verified | Verified on the workstation only | Gaps |
 |---|---|---|---|
-| 323 | 291 | 8 | 24 |
+| 313 | 292 | 8 | 13 |
 
 | Title | Requirement | Result | By |
 |---|---|---|---|
@@ -27,17 +27,15 @@ run pending). A suite counts when it runs one of the verification methods the re
 | Right to rectification | CR-GDPR-003 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
 | Protection of audit information | CR-NIST-004 | verified | SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES, SUITE-NOD-HOST … |
 | Verification of recording and time-dating | CR-SEC-002 | verified | met (requirement result) |
-| Encryption in transit and at rest | CR-SOC2-003 | gap | not-met (requirement result) |
 | Typed projection tables | FR-ANL-011 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
 | Maintenance modes | FR-ANL-012 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
 | Projections are non-authoritative | FR-ANL-013 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
 | Index declarations | FR-ANL-014 | verified on the workstation | met-workstation (requirement result) |
-| Rebuild from authoritative state | FR-ANL-021 | gap | not-met (requirement result) |
 | Verification by checksum | FR-ANL-022 | verified | SUITE-DVM-FAULT |
 | Business audit trail from commits | FR-AUD-011 | verified | met (requirement result) |
 | Security audit log | FR-AUD-012 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-SEC, SUITE-DVM-STORE … |
 | Audit data immutability | FR-AUD-014 | verified | SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES, SUITE-NOD-HOST … |
-| The `forge` command line | FR-DEV-011 | gap | not-met (requirement result) |
+| The `forge` command line | FR-DEV-011 | verified | met (requirement result) |
 | Machine-readable output | FR-DEV-012 | verified | SUITE-FRG-CHECK, SUITE-FRG-CLI, SUITE-FRG-CONFORM |
 | Reproducible test VAEs | FR-DEV-022 | verified | SUITE-FRG-CHECK, SUITE-FRG-CLI, SUITE-FRG-CONFORM |
 | Generated types | FR-DEV-031 | verified | SUITE-FRG-CHECK, SUITE-FRG-CLI, SUITE-FRG-CONFORM, SUITE-SDK-PROTO … |
@@ -64,7 +62,6 @@ run pending). A suite counts when it runs one of the verification methods the re
 | Pause and resume | FR-EVT-044 | verified | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST, SUITE-NOD-PROTO |
 | Retry policies | FR-EVT-051 | verified | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST, SUITE-NOD-PROTO |
 | Dead letters and operator actions | FR-EVT-052 | verified | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST, SUITE-NOD-PROTO |
-| Content-addressed files | FR-FILE-011 | gap | pending (requirement result) |
 | Size limits and streaming | FR-FILE-012 | verified | SUITE-DVM-CONF, SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES … |
 | Encryption and classification | FR-FILE-013 | verified | SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES, SUITE-NOD-HOST … |
 | Lifecycle declaration | FR-FLOW-011 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
@@ -105,9 +102,7 @@ run pending). A suite counts when it runs one of the verification methods the re
 | Adjustment | FR-LEDG-022 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
 | At most one reversal per entry | FR-LEDG-023 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
 | Correction chains | FR-LEDG-024 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
-| Declared balance projections | FR-LEDG-031 | gap | not-met (requirement result) |
 | Bitemporal balances | FR-LEDG-032 | verified | SUITE-DVM-CONF, SUITE-DVM-PROP |
-| Projection freshness | FR-LEDG-033 | gap | not-met (requirement result) |
 | Invariants over balances | FR-LEDG-034 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
 | Gap-free sequences | FR-LEDG-041 | verified | SUITE-DVM-FAULT, SUITE-DVM-PROP |
 | Total order per ledger key | FR-LEDG-042 | verified | SUITE-DVM-PROP, SUITE-DVM-SIM |
@@ -233,7 +228,6 @@ run pending). A suite counts when it runs one of the verification methods the re
 | Decisions apply to every principal kind | FR-RULE-053 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
 | Coverage of Must clauses | FR-STD-022 | verified | SUITE-BPA-COVERAGE, VER-INSP-9001, VER-INSP-9004, VER-INSP-9005 |
 | Signed runner reports | FR-STD-023 | verified | SUITE-DVM-CONF |
-| Storage format compatibility | FR-STD-042 | gap | pending (requirement result) |
 | Tenant objects | FR-TEN-011 | verified | SUITE-DVM-CONF, SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST … |
 | VAEs as complete logical worlds | FR-TEN-012 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
 | VAE addressing authority | FR-TEN-013 | verified | SUITE-DVM-CONF, SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST … |
@@ -241,7 +235,6 @@ run pending). A suite counts when it runs one of the verification methods the re
 | Isolation of derived stores | FR-TEN-022 | verified | SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES, SUITE-NOD-HOST … |
 | Isolation test suite | FR-TEN-023 | verified | SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES, SUITE-NOD-HOST … |
 | Resource fairness | FR-TEN-024 | verified on the workstation | met-workstation (requirement result) |
-| Overlay branches for customisation | FR-TEN-031 | gap | not-met (requirement result) |
 | Overlay policies | FR-TEN-033 | verified | SUITE-DVM-CONF |
 | Kernel-assigned transaction time | FR-TIME-011 | verified | SUITE-DVM-CONF |
 | Monotonic transaction time per branch | FR-TIME-012 | verified | SUITE-DVM-FAULT, SUITE-DVM-SIM |
@@ -268,7 +261,6 @@ run pending). A suite counts when it runs one of the verification methods the re
 | Serializable read-set validation | FR-TXN-023 | verified | SUITE-DVM-PROP, SUITE-DVM-SIM, VER-SIM-0001 |
 | All conflicts reported at once | FR-TXN-024 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
 | Idempotency keys | FR-TXN-031 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL … |
-| Idempotency retention | FR-TXN-032 | gap | pending (requirement result) |
 | Idempotent handlers | FR-TXN-033 | verified | SUITE-DVM-CONF, SUITE-DVM-SIM, SUITE-NOD-EVENTS, SUITE-NOD-JOBS |
 | Trigger lineage | FR-TXN-041 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
 | Input dependencies of derived writes | FR-TXN-042 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
@@ -326,7 +318,6 @@ run pending). A suite counts when it runs one of the verification methods the re
 | Test depth | NR-MAINT-002 | verified | VER-INSP-0001 |
 | Enforced module boundaries | NR-MAINT-003 | verified | VER-INSP-0001 |
 | Trace coverage | NR-OBS-001 | verified | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST, SUITE-NOD-PROTO … |
-| Metrics catalogue | NR-OBS-002 | gap | not-met (requirement result) |
 | Configuration validation coverage | NR-OPER-003 | verified | SUITE-NOD-AUTH, SUITE-NOD-FILES, SUITE-NOD-HOST, SUITE-NOD-PROTO … |
 | Point read latency | NR-PERF-001 | gap | pending (requirement result) |
 | Simple commit latency | NR-PERF-002 | gap | pending (requirement result) |
@@ -343,7 +334,6 @@ run pending). A suite counts when it runs one of the verification methods the re
 | Privacy by default | NR-PRIV-006 | verified | met (requirement result) |
 | Sandbox containment | NR-SEC-002 | verified | SUITE-DVM-SEC, VER-SEC-0001, VER-SEC-0100 |
 | Tenant isolation | NR-SEC-003 | verified | SUITE-DVM-SEC, SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES … |
-| Cryptography baseline | NR-SEC-004 | gap | not-met (requirement result) |
 | No secrets in logs | NR-SEC-009 | verified | SUITE-DVM-SEC, SUITE-NOD-AUTH, SUITE-NOD-EVENTS, SUITE-NOD-FILES … |
 | Security event coverage | NR-SEC-010 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-SEC, SUITE-DVM-STORE … |
 
@@ -353,21 +343,11 @@ Must requirements without a passing result, with the results of their suites and
 
 | Title | Requirement | Requirement result | Suites and items (result) |
 |---|---|---|---|
-| Encryption in transit and at rest | CR-SOC2-003 | not-met | VER-INSP-9503 (later) |
-| Rebuild from authoritative state | FR-ANL-021 | not-met | — |
-| The `forge` command line | FR-DEV-011 | not-met | — |
 | Fairness and limits | FR-EVT-034 | pending | SUITE-NOD-BENCH (partial), SUITE-NOD-SYNC (later) |
-| Content-addressed files | FR-FILE-011 | pending | — |
 | Append cost independent of history | FR-LEDG-014 | pending | SUITE-DVM-BENCH (pending) |
-| Declared balance projections | FR-LEDG-031 | not-met | VER-SCN-2000 (later) |
-| Projection freshness | FR-LEDG-033 | not-met | — |
 | Chunking of large content | FR-PROOF-013 | pending | — |
-| Storage format compatibility | FR-STD-042 | pending | SUITE-BPA-CERT (later), SUITE-BPA-COMPAT (later), SUITE-BPA-MODELS (later) |
-| Overlay branches for customisation | FR-TEN-031 | not-met | — |
-| Idempotency retention | FR-TXN-032 | pending | — |
 | Large diffs | FR-VER-043 | pending | — |
 | Diff cost proportional to change | FR-VER-045 | pending | SUITE-DVM-BENCH (pending) |
-| Metrics catalogue | NR-OBS-002 | not-met | — |
 | Point read latency | NR-PERF-001 | pending | SUITE-DVM-BENCH (pending), VER-BENCH-0001 (pending), VER-BENCH-0100 (pending) |
 | Simple commit latency | NR-PERF-002 | pending | SUITE-DVM-BENCH (pending), VER-BENCH-0001 (pending), VER-BENCH-0100 (pending) |
 | Branch creation time | NR-PERF-004 | pending | SUITE-DVM-BENCH (pending), VER-BENCH-0100 (pending) |
@@ -376,4 +356,3 @@ Must requirements without a passing result, with the results of their suites and
 | Bitemporal read overhead | NR-PERF-007 | pending | SUITE-DVM-BENCH (pending), VER-BENCH-0100 (pending) |
 | Logic execution overhead | NR-PERF-010 | pending | SUITE-DVM-BENCH (pending), VER-BENCH-0100 (pending) |
 | Event delivery latency | NR-PERF-011 | not-met | VER-BENCH-2000 (partial) |
-| Cryptography baseline | NR-SEC-004 | not-met | SUITE-CTL-BLIND (later), SUITE-CTL-USAGE (later), SUITE-FED-TRUST (later), SUITE-NOD-AUTH (passed), SUITE-NOD-EVENTS (passed), SUITE-NOD-FILES (passed), SUITE-NOD-HOST (passed), SUITE-NOD-ISO (passed), SUITE-NOD-PEN (later) |

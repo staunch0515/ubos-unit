@@ -89,12 +89,13 @@ depends_on: [UBS-REQ-05]
 ### FR-FILE-011 — Content-addressed files
 - **Statement:** Files MUST be stored as content-addressed, chunked blobs (FR-PROOF-013), linked to object versions. A file change creates a new version of the linking object.
 - **Rationale:** Files participate in history and proofs.
-- **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM, NOD
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** DVM, NOD
 - **Personas:** PER-BusinessUser
 - **Acceptance:**
   1. Given a replaced attachment, when history is viewed, then both files are accessible by version.
 - **Verification:** CONF
 - **Origin:** L40:SPEC-11
+- **Phase note:** PH-2 step 0b (DEC-087): moved from PH-1 for its acceptance test (replacing an attachment and reading both files by version); the content-addressed file service exists since PH-1 step 17a.
 
 ### FR-FILE-012 — Size limits and streaming
 - **Statement:** File upload and download MUST stream, support resumable uploads, and enforce per-class and per-tenant size limits.

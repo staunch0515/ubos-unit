@@ -493,12 +493,13 @@ depends_on: [UBS-REQ-05, UBS-REQ-05-01]
 ### FR-TEN-031 — Overlay branches for customisation
 - **Statement:** A tenant's customisation of a vendor or platform line MUST live on an overlay branch that inherits from the vendor line (CAP-VER-08), holding only the tenant's changes.
 - **Rationale:** Solving the multi-tenant customisation dilemma (EXT-TRI).
-- **Priority:** Must · **Phase:** PH-1 · **Systems:** DVM
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** DVM
 - **Personas:** PER-ImplementationConsultant
 - **Acceptance:**
   1. Given an overlay with 3 changes, when its storage is measured, then only 3 object versions are held locally.
 - **Verification:** CONF
 - **Origin:** EXT-TRI
+- **Phase note:** PH-2 step 11 (DEC-087): moved from PH-1; its design item DSN-NOD-407 is PH-2. The kernel's overlay branches exist since PH-1 step 13.
 
 ### FR-TEN-032 — Upgrades merge into overlays
 - **Statement:** Vendor releases MUST be applied to overlays by merge or by pin update, with conflicts reported per overlay (SCN-013).

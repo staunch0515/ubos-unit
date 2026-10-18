@@ -138,12 +138,13 @@ architecture of business logic" positioning (EXT-BPU, UBS-META-06 §4).
 ### FR-STD-042 — Storage format compatibility
 - **Statement:** Export formats (FR-TEN-061) MUST remain importable by all later minor versions of the same major version.
 - **Rationale:** Portability over time.
-- **Priority:** Must · **Phase:** PH-1 · **Systems:** BPA
+- **Priority:** Must · **Phase:** PH-3 · **Systems:** BPA
 - **Personas:** PER-TenantAdministrator
 - **Acceptance:**
   1. Given an export from 1.0, when imported into 1.5, then the head roots match.
 - **Verification:** CONF
 - **Origin:** NEW
+- **Phase note:** DEC-087: moved from PH-1; importing a 1.0 export into a later minor version is verified when the first minor version after BPA 1.0 final exists. 1.0 archives round-trip since PH-1 (VER-CONF-8403).
 
 ### FR-STD-043 — Extension rules
 - **Statement:** The standard MUST define how vendors extend instructions, value types, declaration properties and widgets without conflicting with future standard versions (for example vendor-prefixed names).
