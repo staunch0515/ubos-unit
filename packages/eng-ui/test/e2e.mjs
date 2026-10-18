@@ -107,7 +107,7 @@ try {
   await page.click('[data-test="save"]');
   await page.waitForSelector('[data-test="fields"] >> text=Acme', T);
   const fields = await page.textContent('[data-test="fields"]');
-  check("created through the generated form; money and inherited fields shown", fields.includes("USD") && fields.includes("(Party)"), fields);
+  check("created through the generated form; money and inherited fields shown", fields.includes("USD") && fields.includes("(Counterparty)"), fields);
 
   // an edit and the history
   await page.click('[data-test="edit"]');
@@ -132,9 +132,9 @@ try {
   check("the history: two commits, each showing the object at that commit", rows.length === 2 && names.has("Acme") && names.has("Acme Inc."), [...names].join(" | "));
 
   // a polymorphic list
-  await page.click("nav >> text=Party");
+  await page.click("nav >> text=Counterparty");
   await page.waitForSelector('[data-test="list"] >> text=cust-1', T);
-  check("the Party list shows the Customer", (await page.textContent('[data-test="list"]')).includes("Customer"));
+  check("the Counterparty list shows the Customer", (await page.textContent('[data-test="list"]')).includes("Customer"));
   await shot("3-polymorphic-list");
 
   // a port call
