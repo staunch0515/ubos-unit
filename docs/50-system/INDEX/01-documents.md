@@ -253,6 +253,8 @@ depends_on: [UBS-IDX-00]
 | UBS-VER-24 | Traceability — PH-3 (generated) | draft | PH-3 | `60-verification/24-trace-ph3.md` |
 | UBS-VER-25 | Traceability — PH-4 (generated) | draft | PH-4 | `60-verification/25-trace-ph4.md` |
 | UBS-VER-26 | Traceability — PH-5 (generated) | draft | PH-5 | `60-verification/26-trace-ph5.md` |
+| UBS-VER-30 | Verification results index — PH-1 | draft | PH-1 | `60-verification/30-results-ph1.md` |
+| UBS-VER-31 | Verification results by requirement — PH-1 (generated) | draft | PH-1 | `60-verification/31-results-trace-ph1.md` |
 | UBS-DEC-000 | Decision Log | complete | ALL | `90-decisions/000-index.md` |
 | UBS-DEC-01 | Decision Records DEC-001 … DEC-029 | complete | ALL | `90-decisions/01-records-dec-001-029.md` |
 | UBS-DEC-02 | Decision Records DEC-030 … DEC-059 | complete | ALL | `90-decisions/02-records-dec-030-059.md` |
