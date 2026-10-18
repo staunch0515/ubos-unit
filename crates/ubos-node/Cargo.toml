@@ -32,6 +32,10 @@ path = "src/bin/ubos-events-suite.rs"
 name = "ubos-iso-suite"
 path = "src/bin/ubos-iso-suite.rs"
 
+[[bin]]
+name = "ubos-edge-bench"
+path = "src/bin/ubos-edge-bench.rs"
+
 [dependencies]
 ubos-dvm.workspace = true
 ubos-proto.workspace = true
