@@ -25,8 +25,10 @@ names the process of a failed `mutate` (STD-PROTO-010) and adds the replay vecto
 it is released as `bpa-v1.0.0-rc5` and frozen as tagged. BPA 1.0-rc6 (PH-1 step 18d-3a,
 DEC-083) adds the resolutions of a revert (STD-VER-070, -071, STD-PROTO-014) and the effects
 released without a commit to events subscriptions (STD-PROTO-012, STD-TIME-050); it is
-released as `bpa-v1.0.0-rc6`, and `spec/` and `vectors/` hold it until a decision opens the
-next release. Its scope follows a rule stated in its `scope.json`: the scope of 1.0-rc1 plus the clauses of its six profiles that serve PH-1
+released as `bpa-v1.0.0-rc6` and frozen as tagged. BPA 1.0-rc7 (PH-1 step 18d-3b, DEC-084)
+runs the sheet checks on the sheets a merge brings in (STD-LGS-022) and lists the sheets in the
+rule binding (STD-TIME-040); it is released as `bpa-v1.0.0-rc7`, and `spec/` and `vectors/`
+hold it until a decision opens the next release. Its scope follows a rule stated in its `scope.json`: the scope of 1.0-rc1 plus the clauses of its six profiles that serve PH-1
 gate 1b; the builder rejects a scope that differs from the rule. Vectors are only added; the
 released vectors keep their identifiers and content, and a released vector that asserts a limit
 the next release lifts is superseded (`vectors/superseded.txt`, STD-CONF-030).
@@ -38,7 +40,7 @@ and `release/<version>/` except `scope.json` is generated — never edit it by h
 
 ```sh
 python3 standard/tools/genvectors.py      # vectors from the cases, expected results from the oracle
-python3 standard/tools/build_release.py   # release in development (1.0-rc6): clauses, schemas, checks, coverage, manifest
+python3 standard/tools/build_release.py   # release in development (1.0-rc7): clauses, schemas, checks, coverage, manifest
 ```
 
 Both run from `bash docs/tools/regen_all.sh`. Python 3.9 or later, standard library only.

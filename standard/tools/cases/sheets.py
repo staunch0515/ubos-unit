@@ -448,6 +448,19 @@ def cascade_(S):
         commit([c1]), commit([sheet(SHEET, 'a', 'Supplier { audit_level: "strict"; }')]), cascade(uid(1))])
     S('STD-LGS-022', 'the cascade of an unknown object fails', [
         commit([c1]), cascade(uid(7), error='IAM.NOT_FOUND')])
+    # since BPA 1.0-rc7 (DEC-084): the sheets a merge brings into the target are checked
+    two = [commit([c1]), op('create_branch', name='feature/other', **{'from': BR}),
+           commit([sheet(SHEET, 'a', 'Customer { audit_level: "basic"; }')]),
+           commit([sheet(uid(902), 'b', 'Customer { audit_level: "strict"; }')], branch='feature/other')]
+    S('STD-LGS-022', 'a merge bringing in a sheet ambiguous with a sheet of the target is rejected', two + [
+        op('merge', error='RULE.AMBIGUOUS_CASCADE', source='feature/other', target=BR), cascade(uid(1))])
+    S('STD-LGS-022', 'the merge preview reports the ambiguity of the sheets it would bring in', two + [
+        op('merge_preview', source='feature/other', target=BR)])
+    S('STD-LGS-022', 'a merge bringing in a sheet of the same value merges', [
+        commit([c1]), op('create_branch', name='feature/other', **{'from': BR}),
+        commit([sheet(SHEET, 'a', 'Customer { audit_level: "strict"; }')]),
+        commit([sheet(uid(902), 'b', 'Customer { audit_level: "strict"; }')], branch='feature/other'),
+        op('merge', source='feature/other', target=BR), cascade(uid(1))])
 
 
 def explanation(S):

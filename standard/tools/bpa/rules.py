@@ -84,7 +84,8 @@ class Rules:
         for oid in ended:
             if oid in dict(written):
                 continue
-            eff, _ = self._effective(st, branch, oid, ctx, self._default_valid(st['objects'][oid]['class']))
+            eff, bound = self._effective(st, branch, oid, ctx, self._default_valid(st['objects'][oid]['class']))
+            self._sheets_bound |= set(bound)
             if eff.get('read_only') is True:
                 raise BpaError('RULE.DECLARATION_UNSATISFIED', {'property': 'read_only', 'object_id': oid})
         for oid, vh in written:
@@ -93,7 +94,8 @@ class Rules:
             body = self.versions[vh]['body']
             existed = oid in view['objects']
             old = self.versions[view['objects'][oid]['head']]['body'] if existed else None
-            eff, _ = self._effective(st, branch, oid, ctx, self._default_valid(cls), body=body)
+            eff, bound = self._effective(st, branch, oid, ctx, self._default_valid(cls), body=body)
+            self._sheets_bound |= set(bound)
             if eff.get('read_only') is True and existed:
                 raise BpaError('RULE.DECLARATION_UNSATISFIED', {'property': 'read_only', 'object_id': oid})
             for f in eff.get('field_required') or []:

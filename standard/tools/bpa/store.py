@@ -654,6 +654,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         self._exts = self._extensions(st)
         self._eff_cache = {}
         self._written, self._ended, self._ops, self._derived = [], [], {}, []
+        self._sheets_bound = set()
         self._pid = p['process_id']
 
     def _op(self, oid, kind, a=None, b=None):
@@ -754,6 +755,10 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         guards = (getattr(self, '_flow', None) or {}).get('guards') or []
         if guards:
             out['guards'] = list(guards)
+        # STD-TIME-040 (1.0-rc7): the governance sheets evaluated by the commit enforcement
+        bound = getattr(self, '_sheets_bound', None) or set()
+        if bound:
+            out['sheets'] = [vh for _, (vh, _b) in sorted(self._sheet_objects(st).items()) if vh in bound]
         return out
     def _entry_owner(self, st, entry_id):
         for k, q in st['ledger'].items():
@@ -1564,6 +1569,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
             self._res, self._used = {}, {}
         T = self.commits[t]['state']
         objs, entries = self._changed(T, st)
+        self._check_merged_sheets(T, st)
         self._begin(st, p)
         result = {'versions': {oid: st['objects'][oid]['head'] for oid in objs},
                   'entries': {e['entry_id']: {} for e in entries}}

@@ -32,7 +32,7 @@
       "kind": "scenario",
       "file": "tests/scn-002.yaml",
       "result": "pass",
-      "ms": 3948,
+      "ms": 3665,
       "steps": 6,
       "failure": null
     },
@@ -41,7 +41,7 @@
       "kind": "scenario",
       "file": "tests/scn-002.yaml",
       "result": "pass",
-      "ms": 5426,
+      "ms": 3905,
       "steps": 1,
       "failure": null
     },
@@ -50,7 +50,7 @@
       "kind": "scenario",
       "file": "tests/scn-002.yaml",
       "result": "pass",
-      "ms": 4223,
+      "ms": 1971,
       "steps": 4,
       "failure": null
     },
@@ -59,7 +59,7 @@
       "kind": "scenario",
       "file": "tests/scn-003.yaml",
       "result": "pass",
-      "ms": 5495,
+      "ms": 2669,
       "steps": 7,
       "failure": null
     },
@@ -68,7 +68,7 @@
       "kind": "scenario",
       "file": "tests/scn-003.yaml",
       "result": "pass",
-      "ms": 2396,
+      "ms": 1897,
       "steps": 1,
       "failure": null
     },
@@ -77,7 +77,7 @@
       "kind": "scenario",
       "file": "tests/scn-004.yaml",
       "result": "pass",
-      "ms": 9512,
+      "ms": 6101,
       "steps": 29,
       "failure": null
     },
@@ -86,7 +86,7 @@
       "kind": "scenario",
       "file": "tests/scn-004.yaml",
       "result": "pass",
-      "ms": 7990,
+      "ms": 2271,
       "steps": 6,
       "failure": null
     },
@@ -95,7 +95,7 @@
       "kind": "scenario",
       "file": "tests/scn-004.yaml",
       "result": "pass",
-      "ms": 4051,
+      "ms": 3063,
       "steps": 6,
       "failure": null
     },
@@ -104,7 +104,7 @@
       "kind": "scenario",
       "file": "tests/scn-005.yaml",
       "result": "pass",
-      "ms": 2546,
+      "ms": 2227,
       "steps": 7,
       "failure": null
     },
@@ -113,7 +113,7 @@
       "kind": "scenario",
       "file": "tests/scn-005.yaml",
       "result": "pass",
-      "ms": 7242,
+      "ms": 4552,
       "steps": 3,
       "failure": null
     },
@@ -122,7 +122,7 @@
       "kind": "scenario",
       "file": "tests/scn-006.yaml",
       "result": "pass",
-      "ms": 7993,
+      "ms": 6530,
       "steps": 8,
       "failure": null
     },
@@ -131,7 +131,7 @@
       "kind": "scenario",
       "file": "tests/scn-006.yaml",
       "result": "pass",
-      "ms": 2391,
+      "ms": 2243,
       "steps": 7,
       "failure": null
     },
@@ -140,7 +140,7 @@
       "kind": "scenario",
       "file": "tests/scn-007.yaml",
       "result": "pass",
-      "ms": 6131,
+      "ms": 4749,
       "steps": 9,
       "failure": null
     },
@@ -149,7 +149,7 @@
       "kind": "scenario",
       "file": "tests/scn-007.yaml",
       "result": "pass",
-      "ms": 2435,
+      "ms": 2785,
       "steps": 2,
       "failure": null
     },
@@ -158,7 +158,7 @@
       "kind": "scenario",
       "file": "tests/scn-008.yaml",
       "result": "pass",
-      "ms": 2348,
+      "ms": 2816,
       "steps": 4,
       "failure": null
     },
@@ -167,7 +167,7 @@
       "kind": "scenario",
       "file": "tests/scn-008.yaml",
       "result": "pass",
-      "ms": 2282,
+      "ms": 3342,
       "steps": 2,
       "failure": null
     },
@@ -176,7 +176,7 @@
       "kind": "scenario",
       "file": "tests/scn-008.yaml",
       "result": "pass",
-      "ms": 3755,
+      "ms": 2707,
       "steps": 6,
       "failure": null
     },
@@ -185,17 +185,17 @@
       "kind": "scenario",
       "file": "tests/scn-009.yaml",
       "result": "pass",
-      "ms": 3624,
+      "ms": 2730,
       "steps": 12,
       "failure": null
     },
     {
-      "name": "SCN-009 A1: a second sheet setting audit_level with equal specificity and priority is rejected when authored",
+      "name": "SCN-009 A1: a second sheet setting audit_level with equal specificity and priority is rejected at its merge",
       "kind": "scenario",
       "file": "tests/scn-009.yaml",
       "result": "pass",
-      "ms": 3230,
-      "steps": 4,
+      "ms": 3025,
+      "steps": 7,
       "failure": null
     },
     {
@@ -203,7 +203,7 @@
       "kind": "scenario",
       "file": "tests/scn-010.yaml",
       "result": "pass",
-      "ms": 6502,
+      "ms": 5107,
       "steps": 4,
       "failure": null
     },
@@ -212,7 +212,7 @@
       "kind": "scenario",
       "file": "tests/scn-010.yaml",
       "result": "pass",
-      "ms": 2552,
+      "ms": 2823,
       "steps": 1,
       "failure": null
     },
@@ -221,7 +221,7 @@
       "kind": "scenario",
       "file": "tests/scn-011.yaml",
       "result": "pass",
-      "ms": 2732,
+      "ms": 2539,
       "steps": 4,
       "failure": null
     },
@@ -239,7 +239,7 @@
       "kind": "scenario",
       "file": "tests/scn-018.yaml",
       "result": "pass",
-      "ms": 5346,
+      "ms": 4332,
       "steps": 59,
       "failure": null
     }

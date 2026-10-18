@@ -191,15 +191,17 @@ pub(crate) struct Enforce<'a> {
 
 /// STD-LGS-011 commit properties, STD-LGS-030 validations and invariants (DSN-DVM-707,
 /// -725): `RULE.DECLARATION_UNSATISFIED`, `VER.CHANGE_SET_REQUIRED` or
-/// `RULE.VALIDATION_FAILED` with every error-level violation; returns the warnings.
+/// `RULE.VALIDATION_FAILED` with every error-level violation; returns the warnings and the
+/// versions of the sheets the cascades bound (the `sheets` of the rule binding, 1.0-rc7).
 pub(crate) fn enforce(
     repo: &mut Repo<'_>,
     tx: &Tx,
     reg_ext: &Registry,
     cache: &mut Cache,
     e: &Enforce<'_>,
-) -> Result<Vec<Value>, BpaError> {
+) -> Result<(Vec<Value>, BTreeSet<String>), BpaError> {
     let ctx = rule_ctx(e.process, e.branch_kind, &repo.store.authority());
+    let mut bound: BTreeSet<String> = BTreeSet::new();
     let mut written: Vec<(String, String, Value, Option<String>)> = Vec::new();
     for (oid, vh) in e.written {
         let Some(o) = tx.state.objects.get(oid) else {
@@ -229,7 +231,7 @@ pub(crate) fn enforce(
         let v = version_of(repo, Some(tx), &o.head)?;
         let body = v["body"].clone();
         let asof = (e.default_valid)(&o.class);
-        let (eff, _, _) = cascade_state(
+        let (eff, b, _) = cascade_state(
             repo,
             Some(tx),
             &tx.state,
@@ -241,6 +243,7 @@ pub(crate) fn enforce(
             &ctx,
             crate::flow::state_of(&v).as_deref(),
         )?;
+        bound.extend(b);
         if eff.get("read_only").map(|(v, _)| v) == Some(&json!(true)) {
             return Err(unsatisfied("read_only", oid, &[]));
         }
@@ -263,7 +266,7 @@ pub(crate) fn enforce(
             _ => json!({}),
         };
         let asof = (e.default_valid)(&class);
-        let (eff, _, _) = cascade_state(
+        let (eff, b, _) = cascade_state(
             repo,
             Some(tx),
             &tx.state,
@@ -275,6 +278,7 @@ pub(crate) fn enforce(
             &ctx,
             state.as_deref(),
         )?;
+        bound.extend(b);
         let value = |p: &str| eff.get(p).map(|(v, _)| v.clone()).unwrap_or(Value::Null);
         if value("read_only") == json!(true) && existed {
             return Err(unsatisfied("read_only", oid, &[]));
@@ -348,7 +352,7 @@ pub(crate) fn enforce(
             json!({"violations": violations}),
         ));
     }
-    Ok(warnings)
+    Ok((warnings, bound))
 }
 
 impl Engine {

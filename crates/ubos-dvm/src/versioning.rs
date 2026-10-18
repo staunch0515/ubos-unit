@@ -379,6 +379,19 @@ impl Engine {
         for c in classes {
             repo.check_period(tx, &c, &self.now[..10])?;
         }
+        // STD-LGS-022 (1.0-rc7): the sheets and property declarations the merge or revert
+        // brings into the target, over the live sheets of the result
+        let sheets: Vec<(String, String)> = written
+            .iter()
+            .filter(|(oid, _)| {
+                tx.state.objects.get(oid).is_some_and(|o| {
+                    crate::sheets::SHEET_CLASSES.contains(&o.class.as_str())
+                        && t.objects.get(oid).is_none_or(|x| x.head != o.head)
+                })
+            })
+            .cloned()
+            .collect();
+        crate::sheets::check_sheets(&mut repo, tx, &sheets, &mut self.rules)?;
         Ok(())
     }
 
@@ -610,8 +623,11 @@ impl Engine {
                 .collect::<Result<_, _>>()?;
             let base = base_id(&ids)?;
             tx.state = st.clone();
-            // The class extensions in force are read from the transaction (validation).
-            repo.load_class(&mut tx, "ClassExtension")?;
+            // The class extensions in force are read from the transaction (validation), and
+            // so are the sheets the sheet checks run over (STD-LGS-022, 1.0-rc7).
+            for c in ["ClassExtension", "GovernanceSheet", "PropertyDecl"] {
+                repo.load_class(&mut tx, c)?;
+            }
             (
                 base,
                 repo.commit(sh)?.commit_id,

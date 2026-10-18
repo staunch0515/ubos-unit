@@ -460,8 +460,9 @@ tests_file('tests/scn-018.yaml', [
 ], 'SCN-018 — Revert a whole process (STD-VER-070, -071; A1, dependent processes, needs the event triggers of gate 1b)')
 # SCN-009 (gate 1b): the control is a governance sheet merged into the logic branch, where the
 # ports run; the rejected commit names the declaration (`audit_level: strict` needs a message
-# and a reason), the cascade explanation names the sheet, selector and specificity, and the
-# signature is a step required of the command port (`require_signature`, STD-LGS-031)
+# and a reason), the cascade explanation names the sheet, selector and specificity, the
+# signature is a step required of the command port (`require_signature`, STD-LGS-031), and the
+# commit's rule binding lists the sheet (STD-TIME-040, BPA 1.0-rc7)
 SHEET_SRC = 'MoneyMovement[this.amount > 10000] { audit_level: "strict"; require_signature: true; }'
 SHEET_URI = 'ubos://acme/GovernanceSheet/control'
 RF, PM = uid(1, 17), uid(2, 17)
@@ -477,13 +478,13 @@ FF = 'feature/forge'
 tests_file('tests/scn-009.yaml', [
     test('SCN-009 main: a control merged as a sheet rejects a large refund without audit data and requires a signature', [
         step('create_branch', {'name': 'draft/control', 'from': FF}, subset({})),
-        step('commit', {'branch': 'draft/control', 'changes': [CONTROL]}, subset({})),
+        step('commit', {'branch': 'draft/control', 'changes': [CONTROL]}, subset({}), label='sc'),
         step('merge', {'source': 'draft/control', 'target': FF}, subset({'merged': True}), label='m'),
         step('commit', {'branch': FF, 'changes': [create(RF, 'Refund', 'rf-1', {'amount': '12000', 'customer': 'Acme'})]},
              err('RULE.DECLARATION_UNSATISFIED', {'property': 'audit_level', 'object_id': RF})),
         step('commit', {'branch': FF, 'changes': [create(RF, 'Refund', 'rf-1', {'amount': '12000', 'customer': 'Acme'})],
                         'process': {'message': 'refund of order 1001', 'reason': 'customer-return'}}, subset({}), label='r'),
-        step('commit_info', {'branch': FF}, subset({'rule_binding': {}})),
+        step('commit_info', {'branch': FF}, subset({'rule_binding': {'sheets': [{'$ref': 'sc/versions/%s' % uid(1, 18)}]}})),
         step('execute', {'branch': FF, 'target': RF, 'port': 'issue', 'params': {}}, err('RULE.DECISION_REQUIRES')),
         step('commit', {'branch': FF, 'changes': [create(PM, 'Payment', 'pm-1', {'amount': '9000', 'payee': 'Beta'})]},
              subset({}), label='p'),
@@ -498,13 +499,15 @@ tests_file('tests/scn-009.yaml', [
         step('explain_cascade', {'branch': FF, 'object_id': PM, 'property': 'audit_level'},
              subset({'candidates': []})),
     ], clock='2026-03-15T10:00:00.000000Z'),
-    test('SCN-009 A1: a second sheet setting audit_level with equal specificity and priority is rejected when authored', [
-        step('create_branch', {'name': 'draft/control', 'from': FF}, subset({})),
-        step('commit', {'branch': 'draft/control', 'changes': [CONTROL]}, subset({})),
-        step('commit', {'branch': 'draft/control', 'changes': [sheet(uid(2, 18), 'control-b',
-             'MoneyMovement[this.amount > 10000] { audit_level: "standard"; }')]},
-             err('RULE.AMBIGUOUS_CASCADE', {'property': 'audit_level'})),
-        step('merge', {'source': 'draft/control', 'target': FF}, subset({'merged': True})),
+    test('SCN-009 A1: a second sheet setting audit_level with equal specificity and priority is rejected at its merge', [
+        step('create_branch', {'name': 'draft/a', 'from': FF}, subset({})),
+        step('create_branch', {'name': 'draft/b', 'from': FF}, subset({})),
+        step('commit', {'branch': 'draft/a', 'changes': [CONTROL]}, subset({})),
+        step('commit', {'branch': 'draft/b', 'changes': [sheet(uid(2, 18), 'control-b',
+             'MoneyMovement[this.amount > 10000] { audit_level: "standard"; }')]}, subset({})),
+        step('merge', {'source': 'draft/a', 'target': FF}, subset({'merged': True})),
+        step('merge_preview', {'source': 'draft/b', 'target': FF}, subset({'validation': [{'code': 'RULE.AMBIGUOUS_CASCADE'}]})),
+        step('merge', {'source': 'draft/b', 'target': FF}, err('RULE.AMBIGUOUS_CASCADE')),
     ], clock='2026-03-15T10:00:00.000000Z'),
 ], 'SCN-009 — Compliance officer injects a control through a governance sheet (gate 1b; FR-RULE-011, -021, -051, FR-TIME-061)')
 print('scenarios written')

@@ -323,6 +323,7 @@ class Workflow:
                 conflicts = self._unique(conflicts)
                 _, entries = self._changed(T, st)
                 self._validate(T, st, entries)
+                self._check_merged_sheets(T, st)
             except BpaError as e:
                 validation.append({'code': e.code})
         changes = self._diff_states(T, st)
@@ -526,6 +527,7 @@ class Workflow:
                 self._exts = None
                 self._eff_cache = {}
             self._validate(T, st, entries)
+            self._check_merged_sheets(T, st)
             ops = {oid: [{'kind': 'revert'}] for oid in objs}
             plan.append((branch, head, st, cseq, result, ops, binding, entries,
                          [self.commits[c]['commit_id'] for b, c in targets if b == branch]))

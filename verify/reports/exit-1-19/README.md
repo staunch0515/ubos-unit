@@ -3,13 +3,13 @@
 | Item | Value |
 |---|---|
 | Criterion | EXIT-1-19: all 13 PH-1 scenarios pass over UBTP on the single-node Server (UBS-PH-1 §3); VER-SCN-1001 |
-| Parts | PH-1 step 18d (DEC-082, DEC-083): 18d-2 the runner and the ten gate-1a scenarios; 18d-3a BPA 1.0-rc6 closing the gaps G1 and G2; 18d-3b SCN-001, SCN-009 and SCN-017, this report and the CI job |
-| Result | **The 13 scenarios run over UBTP on the Server and pass, main and alternate flows, with three qualifications.** The scenario project: 23 of 24 tests pass over WebSocket and 23 of 24 over HTTP, and SCN-011 A1 is verified in process only (DEC-082 item 4). The operator scenarios SCN-001 and SCN-017: 19 of 19 checks over HTTP. SCN-009 A1 is verified when the second sheet is authored, not at its merge (F4), and SCN-009's binding postcondition cannot be observed (F5); both are proposed to the owner (section 3) |
+| Parts | PH-1 step 18d (DEC-082, DEC-083, DEC-084): 18d-2 the runner and the ten gate-1a scenarios; 18d-3a BPA 1.0-rc6 closing the gaps G1 and G2; 18d-3b SCN-001, SCN-009 and SCN-017, BPA 1.0-rc7 closing the findings F4 and F5, this report and the CI job |
+| Result | **The 13 scenarios pass over UBTP on the single-node Server, main and alternate flows; one alternate flow is verified in process.** The scenario project: 23 of 24 tests pass over WebSocket and 23 of 24 over HTTP, SCN-011 A1 in process only (DEC-082 item 4). The operator scenarios SCN-001 and SCN-017: 19 of 19 checks over HTTP. The two findings of part 18d-3b (F4, F5) are closed by BPA 1.0-rc7 (DEC-084) |
 | Runners | `forge test verify/scenarios --backend ubtp --server target/debug/ubos-server --database … --binding ws\|http` (`crates/ubos-forge/src/ubtp_test.rs`, the Rust SDK `ubos-sdk` 0.2); `verify/scenarios/server/scn_server.py --binary target/debug/ubos-server` (the node's operator commands on an installed Server, UBTP over HTTP) |
 | Node | `ubos-server` (debug build). The scenario project: `dev` preset on PostgreSQL 16, one Server and one fresh tenant per test, the genesis written at the fixture clock (`dev.test_clock`), the test's connectors as `dev.connectors`. The operator scenarios: the `server` preset installed by the steps of SUITE-NOD-OPS on a PostgreSQL 16 cluster of its own with WAL archiving |
-| Standard | BPA 1.0-rc6 |
+| Standard | BPA 1.0-rc7 |
 | Environment | development workstation (4 vCPU, linux x86_64), 2026-10-18; the ENV-REF-SMALL run is made with step 19 (UBS-PH-1 §11) |
-| Time | the scenario project 87.7 s over WebSocket and 104.2 s over HTTP (sum of the tests); the operator scenarios 48.9 s |
+| Time | the scenario project 107.6 s over WebSocket and 78.0 s over HTTP (sum of the tests); the operator scenarios 49.0 s |
 | Reports | `scenarios-ubtp-ws.json`, `scenarios-ubtp-http.json`, `scenarios-server.json` |
 | CI | the job `scenarios over UBTP` of `.github/workflows/ci.yml` runs both runners on every push |
 
@@ -19,30 +19,30 @@ SCN-002…008, -010, -011, -018 (gate 1a) and SCN-009 (gate 1b), from `verify/sc
 
 | Test | Steps | WebSocket | HTTP | ms (WS / HTTP) |
 |---|---|---|---|---|
-| SCN-002 main: the subclass narrows title and a 150-character title is rejected | 6 | pass | pass | 7086 / 3948 |
-| SCN-002 A1: widening title in the subclass is a narrowing violation | 1 | pass | pass | 3491 / 5426 |
-| SCN-002 post: querying Agreement includes the ServiceAgreement instance | 4 | pass | pass | 2079 / 4223 |
-| SCN-003 main: the override guard fails inside the notice period; the base logic terminates a plain agreement | 7 | pass | pass | 2847 / 5495 |
-| SCN-003 A1: an override narrowing a parameter type is rejected | 1 | pass | pass | 2382 / 2396 |
-| SCN-004 main: a draft branch, 15 changes, the diff, the approved change set merged in one commit | 29 | pass | pass | 7768 / 9512 |
-| SCN-004 A1: the same field changed on main and the draft is a conflict; nothing merges | 6 | pass | pass | 2731 / 7990 |
-| SCN-004 A2: a different field of the same product merges automatically | 6 | pass | pass | 3412 / 4051 |
-| SCN-005 main: a stale base is rejected with TXN.HEAD_MOVED and the chain stays linear | 7 | pass | pass | 2368 / 2546 |
-| SCN-005 A1: 100 concurrent writers on one base version, exactly one succeeds | 3 | pass | pass | 4984 / 7242 |
-| SCN-006 main: a future-dated price is read by asof and becomes effective on its day without a job | 8 | pass | pass | 6207 / 7993 |
-| SCN-006 A1: a second future version; every date resolves to one version | 7 | pass | pass | 2161 / 2391 |
-| SCN-007 main: what did we believe on March 1 and March 11 about February 15 | 9 | pass | pass | 4684 / 6131 |
-| SCN-007 A1: a time before the creation is not found at that time | 2 | pass | pass | 2246 / 2435 |
-| SCN-008 main: a wrong posting is reversed and re-posted; history stays | 4 | pass | pass | 2327 / 2348 |
-| SCN-008 A1: a ledger entry cannot be updated | 2 | pass | pass | 2236 / 2282 |
-| SCN-008 A2: a branch with ledger entries merges by appending in branch order | 6 | pass | pass | 2155 / 3755 |
-| SCN-009 main: a control merged as a sheet rejects a large refund without audit data and requires a signature | 12 | pass | pass | 3911 / 3624 |
-| SCN-009 A1: a second sheet setting audit_level with equal specificity and priority is rejected when authored | 4 | pass | pass | 2502 / 3230 |
-| SCN-010 main: runaway L2 logic is stopped, nothing is committed or released, the run is metered | 4 | pass | pass | 6912 / 6502 |
-| SCN-010 A1: a script that opens a network connection is refused | 1 | pass | pass | 4617 / 2552 |
-| SCN-011 main: a process with the clock, entropy and a connector replays identically | 4 | pass | pass | 4469 / 2732 |
+| SCN-002 main: the subclass narrows title and a 150-character title is rejected | 6 | pass | pass | 15950 / 3665 |
+| SCN-002 A1: widening title in the subclass is a narrowing violation | 1 | pass | pass | 7144 / 3905 |
+| SCN-002 post: querying Agreement includes the ServiceAgreement instance | 4 | pass | pass | 5966 / 1971 |
+| SCN-003 main: the override guard fails inside the notice period; the base logic terminates a plain agreement | 7 | pass | pass | 7378 / 2669 |
+| SCN-003 A1: an override narrowing a parameter type is rejected | 1 | pass | pass | 4244 / 1897 |
+| SCN-004 main: a draft branch, 15 changes, the diff, the approved change set merged in one commit | 29 | pass | pass | 6610 / 6101 |
+| SCN-004 A1: the same field changed on main and the draft is a conflict; nothing merges | 6 | pass | pass | 3631 / 2271 |
+| SCN-004 A2: a different field of the same product merges automatically | 6 | pass | pass | 2401 / 3063 |
+| SCN-005 main: a stale base is rejected with TXN.HEAD_MOVED and the chain stays linear | 7 | pass | pass | 2078 / 2227 |
+| SCN-005 A1: 100 concurrent writers on one base version, exactly one succeeds | 3 | pass | pass | 7270 / 4552 |
+| SCN-006 main: a future-dated price is read by asof and becomes effective on its day without a job | 8 | pass | pass | 6869 / 6530 |
+| SCN-006 A1: a second future version; every date resolves to one version | 7 | pass | pass | 3363 / 2243 |
+| SCN-007 main: what did we believe on March 1 and March 11 about February 15 | 9 | pass | pass | 5426 / 4749 |
+| SCN-007 A1: a time before the creation is not found at that time | 2 | pass | pass | 3254 / 2785 |
+| SCN-008 main: a wrong posting is reversed and re-posted; history stays | 4 | pass | pass | 2539 / 2816 |
+| SCN-008 A1: a ledger entry cannot be updated | 2 | pass | pass | 2443 / 3342 |
+| SCN-008 A2: a branch with ledger entries merges by appending in branch order | 6 | pass | pass | 2277 / 2707 |
+| SCN-009 main: a control merged as a sheet rejects a large refund without audit data and requires a signature | 12 | pass | pass | 2850 / 2730 |
+| SCN-009 A1: a second sheet setting audit_level with equal specificity and priority is rejected at its merge | 7 | pass | pass | 2105 / 3025 |
+| SCN-010 main: runaway L2 logic is stopped, nothing is committed or released, the run is metered | 4 | pass | pass | 5497 / 5107 |
+| SCN-010 A1: a script that opens a network connection is refused | 1 | pass | pass | 2101 / 2823 |
+| SCN-011 main: a process with the clock, entropy and a connector replays identically | 4 | pass | pass | 1937 / 2539 |
 | SCN-011 A1: a missing journal record stops the replay without calling the connector | 0 | in process only | in process only | 0 / 0 |
-| SCN-018 main: a bulk process is reverted; the 5 objects changed since are conflicts, resolved to keep the later change | 59 | pass | pass | 4113 / 5346 |
+| SCN-018 main: a bulk process is reverted; the 5 objects changed since are conflicts, resolved to keep the later change | 59 | pass | pass | 4286 / 4332 |
 
 ## 2. The operator scenarios
 
@@ -98,22 +98,22 @@ How the flows map:
   (`RULE.DECISION_REQUIRES`, a pending change over UBTP; `require_signature` is an action
   property, STD-LGS-011, -031). A payment of 9,000 needs neither. The cascade explanation
   (`query explain`, kind `cascade`) names the sheet, the selector, the specificity and the
-  winning value. A1 is rejected with `RULE.AMBIGUOUS_CASCADE` when the second sheet is
-  authored on the branch that holds the first.
+  winning value, and the rule binding of the refund's commit lists the sheet's version
+  (STD-TIME-040, BPA 1.0-rc7). A1 authors the two sheets on separate drafts: the merge preview
+  reports `RULE.AMBIGUOUS_CASCADE` and the second merge is rejected with it (STD-LGS-022,
+  BPA 1.0-rc7).
 
-## 3. Findings of part 18d-3b (proposed to the owner)
+## 3. Findings of part 18d-3b, closed by BPA 1.0-rc7 (DEC-084)
 
-- **F4 — a merge does not check the sheet set.** The static checks of STD-LGS-022
-  (ambiguity, locked overrides) run when a commit writes a sheet; neither the reference model
-  nor the kernel runs them on the sheets a merge brings into the target. Two sheets authored
-  on separate branches with equal specificity and priority both merge (SCN-009 A1 as the
-  scenario states it), and the cascade of a matching object then fails with
-  `RULE.AMBIGUOUS_CASCADE`. SCN-009 A1 is verified at authoring.
-- **F5 — the rule binding does not list sheets.** STD-TIME-040 binds the governance sheets of
-  a commit with the Governance profile, but the reference model and the kernel record only
-  classes, extensions, lifecycles, logic and guards. SCN-009's postcondition (the control is
-  recorded in the rule-version binding of each checked commit) is therefore not observable;
-  the check is limited to the binding being present.
+- **F4 — a merge did not check the sheet set.** The static checks of STD-LGS-022 ran only
+  when a commit wrote a sheet; two sheets authored on separate branches with equal specificity
+  and priority both merged, and the cascade of a matching object then failed with
+  `RULE.AMBIGUOUS_CASCADE` at evaluation. Since 1.0-rc7 a merge or a revert runs the checks on
+  the sheets it brings in, and `merge_preview` reports them (VER-CONF-5013…5015).
+- **F5 — the rule binding did not list sheets.** STD-TIME-040 binds the governance sheets of
+  a commit with the Governance profile, but the reference model and the kernel recorded only
+  classes, extensions, lifecycles, logic and guards. Since 1.0-rc7 `sheets` lists the versions
+  of the sheets the commit enforcement evaluated (VER-CONF-5063).
 
 ## 4. Part 18d-2: how the steps map onto UBTP
 

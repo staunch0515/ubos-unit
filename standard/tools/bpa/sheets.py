@@ -653,9 +653,12 @@ class Sheets:
                 out.append(self.versions[vh]['body'])
         return out
 
-    def _check_sheets(self, st):
-        """Checks of the sheets and property declarations written by a commit."""
-        written = {oid for oid, _ in self._written if st['objects'][oid]['class'] in ('GovernanceSheet', 'PropertyDecl')}
+    def _check_sheets(self, st, written=None):
+        """Checks of the sheets and property declarations written by a commit, or brought into
+        the target by a merge or a revert (`written` given, 1.0-rc7)."""
+        if written is None:
+            written = {oid for oid, _ in self._written
+                       if st['objects'][oid]['class'] in ('GovernanceSheet', 'PropertyDecl')}
         if not written:
             return
         reg = registry(self._property_decls(st))
@@ -668,6 +671,15 @@ class Sheets:
             if sid not in written:
                 check_sheet(body['ast'], classes, reg=reg)
         check_set(reg, classes, sheets, written)
+
+    def _check_merged_sheets(self, T, st):
+        """STD-LGS-022 on the sheets and property declarations a merge or a revert changes
+        relative to the target state `T` (STD-VER-055, 1.0-rc7)."""
+        changed = {oid for oid, o in st['objects'].items()
+                   if o['class'] in ('GovernanceSheet', 'PropertyDecl')
+                   and (T['objects'].get(oid) or {}).get('head') != o['head']}
+        live = {oid for oid in changed if not self.versions[st['objects'][oid]['head']]['tombstone']}
+        self._check_sheets(st, live)
 
     # -- matching (STD-LGS-020) --
 

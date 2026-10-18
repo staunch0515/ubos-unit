@@ -13,10 +13,10 @@
     "machine": "x86_64",
     "cpus": 4
   },
-  "seconds": 48.9,
+  "seconds": 49.0,
   "steps": {
     "scn001_root": "sha256:c6ef035a6deaf94f21940c7147b0b423ea3abb18598abd038285c8daed170715",
-    "scn017_restore_seconds": 13.65,
+    "scn017_restore_seconds": 13.31,
     "scn017_report": {
       "heads": [
         {
@@ -24,8 +24,8 @@
           "vae": "acme",
           "branch": "main",
           "cseq": 8,
-          "head": "682f933e62995bd964fadc1000950ff7d4aa3852d1d149769d5d91034b040db5",
-          "root": "9daaa82d26552b26ebc593c2d8d8a5b7abdeefde4c33de84e37465a261493d9d"
+          "head": "cb3edf65bc8c1bbde21f671a6f9af2b942b86564d1808cd6661714269cfc4f04",
+          "root": "8c06ffe4c4649b9da51db04ef0a226a938ee24acb1a0e99624d31cbb99f7a793"
         }
       ],
       "checks": [
