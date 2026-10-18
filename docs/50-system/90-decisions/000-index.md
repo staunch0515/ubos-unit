@@ -513,6 +513,7 @@ the records from DEC-060 on follow.
 - **Consequences:**
   - UBS-PH-2 §11 carries the step table; `docs/reports/ph2-plan-zh.md` tracks the PH-2 status for the owner, `docs/reports/ph1-plan-zh.md` the rest of PH-1.
   - The gate-1a acceptance (step 9) and the gate-1b acceptance (step 20) can share one rental of ENV-REF-SERVER and ENV-REF-SMALL.
+  - 19a: SUITE-NOD-ISO (`ubos-iso-suite`) 544 of 544 and the secret-hygiene and event-coverage run (`ops/hygiene_suite.py`, 0 canary matches, 28 of 28 PH-1 event types) meet EXIT-1-16 on the workstation (`verify/reports/exit-1-16/`). Fixed on the way: session keys are random and bound to the tenant a caller names (they were sequential and usable by any caller); the node-wide operator routes belong to the operator's tenant; the kernel's UBTP binding passes the session's principal to reads, queries, history, timelines, raw commits and the versioning requests, so a branch's policies apply to UBTP clients (they bound only host calls with a principal).
 - **Alternatives considered:**
   - A long-lived PH-2 branch beside `main` was rejected: two development lines need repeated merges, and PH-1 only needs a stable line, not a second development line.
   - Freezing PH-1 before step 19 was rejected: the acceptance needs the evidence of step 19 on the frozen line.

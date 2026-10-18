@@ -181,6 +181,8 @@ def scan(env, canaries, token):
     sources["diagnostic bundle"] = json.dumps(bundle)
     st, export = env.http("GET", "/api/v1/identity/security-log/export", token=token)
     sources["security-log export"] = json.dumps(export)
+    st, log = env.http("GET", "/api/v1/identity/security-log?limit=10000", token=token)
+    sources["security log"] = json.dumps(log)
     sources["client responses"] = "\n".join(CORPUS)
     found = []
     for name, value in canaries.items():
