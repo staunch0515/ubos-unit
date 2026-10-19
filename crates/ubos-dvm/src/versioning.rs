@@ -545,6 +545,28 @@ impl Engine {
             .chain(entries.iter().map(|e| e.class.clone()))
             .collect();
         self.write_policy(target, &classes, change_set.is_some())?;
+        // STD-VER-050, DSN-DVM-111: keys and slugs the merge brings into the target
+        {
+            let indexed = self.refs_indexed(target)?;
+            let written: Vec<(String, String)> = versions
+                .iter()
+                .map(|(k, v)| (k.clone(), v.as_str().unwrap_or_default().to_string()))
+                .collect();
+            let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+            let conflicts = crate::keys::merge_conflicts(
+                &mut repo,
+                &mut plan.tx,
+                &self.registry,
+                &written,
+                indexed,
+            )?;
+            if !conflicts.is_empty() {
+                return Err(BpaError::with_details(
+                    "VER.MERGE_CONFLICT",
+                    json!({"conflicts": conflicts}),
+                ));
+            }
+        }
         let binding = self.rule_binding(
             &plan.tx,
             &Value::Object(versions.clone()),
@@ -612,17 +634,33 @@ impl Engine {
 
     /// `merge_preview` (STD-VER-057).
     pub fn merge_preview(&mut self, source: &str, target: &str) -> Result<Value, BpaError> {
+        let indexed = self.refs_indexed(target)?;
         let (base, source_head, target_head, t_state, merged, conflicts, validation) = {
             let mut repo = Repo::new(self.store.as_mut(), &self.registry);
             let (sh, th) = (repo.head(source)?, repo.head(target)?);
             let mut tx = repo.begin(target)?;
-            let (best, t_state, st, conflicts) = repo.preview_states(source, target, &mut tx)?;
+            let (best, t_state, st, mut conflicts) =
+                repo.preview_states(source, target, &mut tx)?;
             let ids: Vec<String> = best
                 .iter()
                 .map(|c| repo.commit(*c).map(|x| x.commit_id))
                 .collect::<Result<_, _>>()?;
             let base = base_id(&ids)?;
             tx.state = st.clone();
+            // STD-VER-050, DSN-DVM-111: keys and slugs the merge would bring into the target
+            let written: Vec<(String, String)> = st
+                .objects
+                .iter()
+                .filter(|(id, o)| t_state.objects.get(*id).is_none_or(|x| x.head != o.head))
+                .map(|(id, o)| (id.clone(), o.head.clone()))
+                .collect();
+            conflicts.extend(crate::keys::merge_conflicts(
+                &mut repo,
+                &mut tx,
+                &self.registry,
+                &written,
+                indexed,
+            )?);
             // The class extensions in force are read from the transaction (validation), and
             // so are the sheets the sheet checks run over (STD-LGS-022, 1.0-rc7).
             for c in ["ClassExtension", "GovernanceSheet", "PropertyDecl"] {

@@ -31,4 +31,4 @@
 2. **The key conflict of a merge** (STD-VER-050: "created on both sides with different
    `object_id`s but the same natural key: key conflict"). The merge does not detect it.
 
-Both are proposed to the owner as part 0b-4.
+Both were proposed to the owner as part 0b-4 and are built there (`verify/reports/ph2-0b4/`).

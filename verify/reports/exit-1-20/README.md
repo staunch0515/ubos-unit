@@ -133,7 +133,7 @@ The regenerated results (UBS-VER-31) leave 13 gaps of 313 PH-1 Must requirements
 benchmarks of §3.1 and NR-PERF-011. They close with the reference runs on the frozen line
 `release/ph1`. EXIT-1-20 is then met.
 
-## 6. Correction in PH-2 step 0b-3
+## 6. Correction in PH-2 steps 0b-3 and 0b-4
 
 PH-2 step 0b-1b found that the PH-1 commit checked no unique keys. FR-MODEL-013 had counted
 as verified through the conformance suite, but only structurally (§1). It is now recorded
@@ -143,8 +143,11 @@ as verified through the conformance suite, but only structurally (§1). It is no
 - slugs unique per class and branch, and the key conflict of a merge (acceptance 2), are not
   built.
 
-The PH-1 results are 313 Must requirements, 291 verified, 8 on the workstation only and
-14 gaps. The 14th gap needs work, not a reference run. That work is proposed to the owner.
+Step 0b-3 left 14 gaps of 313. The owner confirmed the remaining work as step 0b-4, which
+builds slugs unique per class and branch and the key conflict of a merge
+(`verify/reports/ph2-0b4/`). FR-MODEL-013 is now `met`, and its row says that it was not met
+at the PH-1 close. The PH-1 results are again 313 Must requirements, 292 verified, 8 on the
+workstation only and 13 gaps.
 
 ## 7. Reproduce
 
