@@ -279,8 +279,9 @@ class Run:
             raise BpaError('LOGIC.LIMIT_EXCEEDED', 'changes per commit')
         f = self.frames[-1]
         if change['op'] in ('create', 'update', 'append'):
+            lm = getattr(self.s, '_logic_mode', None)
             change['derivation'] = {'logic': [f.vh], 'inputs': [dict(t) for t in self.triples],
-                                    'mode': 'as_effective'}
+                                    'mode': lm['mode'] if lm else 'as_effective'}
         self.uow.append(change)
 
     # ---- program execution ----
@@ -886,12 +887,29 @@ class Run:
         oid = cands[0]
         if 'LogicAsset' not in self.s._cls(st['objects'][oid]['class'])['linearization']:
             raise BpaError('MODEL.REFERENCE_INVALID', 'not a logic asset')
-        vh = self.pinned.setdefault(oid, st['objects'][oid]['head'])
+        vh = self.pinned.setdefault(oid, self._logic_version(st['objects'][oid]))
         body = self.s.versions[vh]['body']
         self.check_asset(body)
         if vh not in self.logic:
             self.logic.append(vh)
         return body, vh
+
+    def _logic_version(self, o):
+        """The version of a logic asset a process runs (STD-TIME-041, 1.0-rc8): the head, or
+        under a restatement the version of its mode — the version whose timeline covers the
+        recomputed date (`as_effective`), the version the original process ran
+        (`as_originally`) or the head (`current`)."""
+        lm = getattr(self.s, '_logic_mode', None)
+        if not lm or lm['mode'] == 'current':
+            return o['head']
+        if lm['mode'] == 'as_originally':
+            for vh in lm['original']:
+                if any(s[2] == vh for s in o['timeline']) or vh == o['head']:
+                    return vh
+            return o['head']
+        from .store import tl_at
+        seg = tl_at(o['timeline'], lm['date'])
+        return seg[2] if seg else o['head']
 
     def check_asset(self, body):
         major, minor = _abi(body.get('abi'))

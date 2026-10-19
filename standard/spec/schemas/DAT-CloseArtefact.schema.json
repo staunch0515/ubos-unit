@@ -1,0 +1,55 @@
+{
+  "$id": "DAT-CloseArtefact",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "as_of": {
+      "description": "{cseq, commit_id, root} of the commit the close extends",
+      "type": "object"
+    },
+    "balances": {
+      "description": "{class, ledger_key, entries, amounts} per ledger key",
+      "type": "array"
+    },
+    "end": {
+      "description": "end of the period (exclusive)",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "type": "string"
+    },
+    "period": {
+      "description": "object id of the period",
+      "type": "string"
+    },
+    "period_slug": {
+      "description": "slug of the period",
+      "type": "string"
+    },
+    "sequence": {
+      "description": "1 for the first close of the period, then 2, 3 \u2026",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "start": {
+      "description": "start of the period",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "type": "string"
+    },
+    "tag": {
+      "description": "close-<period slug>-<sequence>",
+      "type": "string"
+    }
+  },
+  "required": [
+    "period",
+    "period_slug",
+    "sequence",
+    "start",
+    "end",
+    "tag",
+    "as_of",
+    "balances"
+  ],
+  "title": "DAT-CloseArtefact",
+  "type": "object"
+}

@@ -89,6 +89,17 @@ GENESIS = {
     'Policy': {'name': 'Policy', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
                'fields': [_f('name', 'text', True), _f('source', 'text', True), _f('enabled', 'boolean'),
                           _f('description', 'text', True)]},
+    # STD-KIND-026 (BPA 1.0-rc8, DEC-090): close artefacts are System objects written by
+    # close_period; STD-KIND-028: match records are entries of a genesis ledger class.
+    'CloseArtefact': {'name': 'CloseArtefact', 'kind': 'system', 'parent': 'SystemObject', 'abstract': False,
+                      'fields': [_f('period', 'text', True), _f('period_slug', 'text', True),
+                                 _f('sequence', 'integer', True), _f('start', 'date', True), _f('end', 'date', True),
+                                 _f('tag', 'text', True), _f('as_of', 'json', True), _f('balances', 'json', True)]},
+    'MatchRecord': {'name': 'MatchRecord', 'kind': 'ledger', 'parent': 'Object', 'abstract': False,
+                    'fields': [_f('match_set', 'text', True), _f('left', 'json', True), _f('right', 'json', True),
+                               _f('rule', 'text'), _f('rule_ref', 'text'), _f('actor', 'text', True),
+                               _f('unmatches', 'text'), _f('reason', 'text')],
+                    'ledger': {'key': ['match_set'], 'amounts': [], 'double_entry': False}},
     'Release': {'name': 'Release', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
                 'fields': [_f('version', 'text', True), _f('tag', 'text', True), _f('notes', 'text'),
                            _f('change_sets', 'json'), _f('approvals', 'json')]},

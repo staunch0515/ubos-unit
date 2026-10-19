@@ -176,6 +176,12 @@ STATEFUL = {
     'ubtp': lambda s, i: s.ubtp(i['messages'], i.get('session', 's1')),
     # BPA 1.0-rc3, PH-1 step 12a (DEC-071)
     'actions': lambda s, i: s.actions(i.get('branch', 'main'), i['object_id'], i.get('ctx'), i),
+    # BPA 1.0-rc8, PH-2 step 1b (DEC-090): periods, matching and restatement
+    'close_period': lambda s, i: s.close_period(i),
+    'reopen_period': lambda s, i: s.reopen_period(i),
+    'match': lambda s, i: s.match(i),
+    'unmatch': lambda s, i: s.unmatch(i),
+    'restate': lambda s, i: s.restate(i),
 }
 
 # Members of `ubtp` frames an implementation assigns (process identifiers), stripped like the

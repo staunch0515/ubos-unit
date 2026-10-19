@@ -43,6 +43,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-087 | PH-1 close-out with carry-overs: the PH-1 Must requirements not built in PH-1 move to PH-2 (balance projections and their rebuild to step 3, `forge new`/`pack` to step 7, TLS, tenant customisation lines and the metrics catalogue to step 11, the process reading its branch on demand, the file-replacement test and the idempotency retention to a new step 0b) and FR-STD-042 to PH-3; the benchmark gaps stay in PH-1 for the reference runs; `release/ph1` is cut (`ph1-rc1`) and PH-2 starts | Accepted |
 | DEC-088 | PH-2 step 0b-1b: the commit-time checks of references and relationships (STD-CLS-040, -041; DSN-DVM-109) run on indexes instead of the full branch state — reference rows of relationship fields in the field index, built for existing data when a VAE opens, URI resolution from the slug index, the sources of an ended target from the reference rows, cardinality for the targets a commit can change; extensions and sheets are read by class; amends DEC-050 item 3 | Accepted |
 | DEC-089 | PH-2 step 1 opened: BPA 1.0-rc8 scoped by a phase rule (`{base: 1.0-rc7, phase: PH-2}`, six profiles): 224 clauses, 23 added, MUST coverage 168/186 at the opening; the step in parts 1a–1h by clause area, standard and reference model only, each part's clarifications in its own decision; the kernel keeps claiming 1.0-rc1 plus the clauses it implements | Accepted |
+| DEC-090 | PH-2 step 1b: money and periods in BPA 1.0-rc8 — period transitions (open ↔ closing by update, `close_period`/`reopen_period` for closed), close artefacts with a signed tag (STD-KIND-026), deterministic matching and match records (STD-KIND-027, -028), restatement on a correction branch with re-evaluation modes (STD-TIME-041, -042); VER-CONF-1528 superseded | Accepted |
 
 ---
 
@@ -614,3 +615,47 @@ the records from DEC-060 on follow.
   - Gates for PH-2 were rejected: UBS-PHF-2 carries none, and step 1 serves both gates.
   - One release candidate per part was rejected: each candidate needs a signed tag and notes, and the kernel takes up the clauses only from step 3.
 - **Affects:** DSN-BPA-001, EXIT-2-01, DEC-024, DEC-039, DEC-045, DEC-064, DEC-085
+
+### DEC-090 — Money and periods in BPA 1.0-rc8 (PH-2 step 1, part 1b)
+- **Date:** 2026-10-19 · **Status:** Accepted
+- **Context:** Part 1b of PH-2 step 1 (DEC-089) writes the clauses and vectors of money and periods for the PH-2 kernel. FR-LEDG-061, -062, -071, -073, FR-TIME-043, -064, DSN-DVM-322, -443 and -445 had either no clause (close artefacts, matching, match records, restatement) or a clause without the detail an implementation needs (STD-KIND-025, STD-TIME-041). The owner confirmed the semantic choices with the default suggestions on 2026-10-19.
+- **Decision:**
+  1. **Period transitions (STD-KIND-025).**
+     - A period object may be created in any state.
+     - An update moves its `state` only between `open` and `closing` (otherwise `MODEL.CONSTRAINT_VIOLATED`). `closing` is a soft close: appends commit, and governance sheets may restrict them.
+     - `closed` is entered only by `close_period` and left only by `reopen_period`, which requires a reason recorded with the process and returns the period to `open`.
+     - Corrections post in an open period with the valid time of the original.
+  2. **Close artefacts (STD-KIND-026, new).** `close_period` closes a period in `closing` in one commit:
+     - the period becomes `closed`;
+     - a System object of the genesis class `CloseArtefact` holds the period, the close sequence, the tag, `as_of` (`cseq`, `commit_id` and `root` of the commit the close extends) and the balances per ledger key of the scoped classes for the entries posted before the period's end;
+     - a signed tag `close-<period slug>-<n>` names the closing commit.
+
+     A reopened period closed again gets a new artefact, and earlier artefacts stay. The seal of STD-PROOF-055 follows with that clause (PH-5).
+  3. **Matching (STD-KIND-027, new).** Rules (`DAT-MatchingRule`) are applied in priority order to the candidates of each side in `(valid_at, entry_id)` order:
+     - `one_to_one` matches first fit;
+     - `one_to_many` and `many_to_one` group all candidates with equal `equal` fields within the date window and match when the sum is within the tolerance;
+     - amounts of different currencies never match, and `negate` compares with the opposite sign.
+
+     No subset-sum search is made. The result is the matches with `rule_ref` (the content ID of the rule) and the breaks; the same inputs give the same result.
+  4. **Match records (STD-KIND-028, new).**
+     - **Writing.** A committed run appends one entry of the genesis ledger class `MatchRecord` per match (key `{match_set}`, with the entries, the rule, `rule_ref` and the actor), with an `entry_id` derived from its content. Commits cannot append match records.
+     - **Undoing.** An unmatch appends a record that names the record it undoes (`unmatches`, with an optional reason); both records stay, and the lines become candidates again.
+  5. **Restatement (STD-TIME-042, new) and re-evaluation modes (STD-TIME-041).** A restatement takes a correcting commit:
+     - it computes its impact set and creates a `correction` branch;
+     - it re-runs the producing processes there with their recorded invocation and `asof`, under the chosen mode (default `as_effective`);
+     - it reports the processes, those it cannot re-run, and the old and new body of every changed object, flagged `material` by an optional L1 expression over `this` and `old`.
+
+     For logic assets, `as_effective` takes the version covering the original `asof`, `as_originally` the version the original process ran, and `current` the head. The mode is recorded in the derivation records.
+  6. **Adapter operations.** `close_period`, `reopen_period`, `match`, `unmatch` and `restate` (STD-CONF-005). The reference model is in `standard/tools/bpa/periods.py`, the cases in `standard/tools/cases/periods.py`.
+  7. **Superseded vector.** VER-CONF-1528 closed a period by an update; under item 1 that update fails. It is superseded (DEC-067) and replaced by a vector that closes the period with `close_period` before the merge.
+- **Consequences:**
+  - 1.0-rc8 has 228 clauses and 1,747 vectors. The new and clarified clauses are covered by 45 new vectors:
+    - Ledger: 37;
+    - Bitemporal: 8.
+  - MUST coverage is 173/190.
+  - `crates/` is unchanged. The kernel takes up these clauses in PH-2 step 3, and VER-CONF-1528 drops out of its conformance run as superseded.
+- **Alternatives considered:**
+  - Allowing an update to close a period was rejected: the close artefact and its tag would be optional, and FR-LEDG-062 requires them.
+  - A subset-sum search for many-to-one matches was rejected: its cost is exponential, and the result depends on search order.
+  - Seals of close artefacts in 1.0-rc8 were rejected: STD-PROOF-055 is a PH-5 clause.
+- **Affects:** STD-KIND-025, STD-KIND-026, STD-KIND-027, STD-KIND-028, STD-TIME-041, STD-TIME-042, STD-CONF-005, FR-LEDG-061, FR-LEDG-062, FR-LEDG-071, FR-LEDG-073, FR-TIME-043, FR-TIME-064, DSN-DVM-322, DSN-DVM-443, DSN-DVM-445, DEC-067, DEC-089

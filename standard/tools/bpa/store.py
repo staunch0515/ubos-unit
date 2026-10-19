@@ -26,6 +26,7 @@ from .sheets import Sheets
 from .rules import Rules, DryRun
 from .flow import Flow
 from .ubtp import Ubtp
+from .periods import Periods
 from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
@@ -122,7 +123,7 @@ def tl_at(tl, asof):
     return None
 
 
-class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
+class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods):
     def __init__(self):
         self.reset()
 
@@ -218,7 +219,8 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         for d in classes:
             decls[d['name']] = d
         eff = {}
-        for n in list(decls) + ['ChangeSet', 'Release', 'Logic', 'GovernanceSheet', 'PropertyDecl', 'Lifecycle', 'Policy']:
+        for n in list(decls) + ['ChangeSet', 'Release', 'Logic', 'GovernanceSheet', 'PropertyDecl', 'Lifecycle', 'Policy',
+                                'CloseArtefact', 'MatchRecord']:
             eff[n] = effective_class(list(decls.values()), n)
         for n, e in eff.items():
             old = self.classes.get(n)
@@ -774,7 +776,9 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
             raise BpaError('MODEL.INVALID_VALUE', 'object_id is a UUID')
         if self.decls.get(cls, {}).get('abstract'):
             raise BpaError('MODEL.ABSTRACT_INSTANTIATION')
-        if eff['kind'] == 'system' or eff['kind'] == 'ledger':
+        # STD-KIND-026 (1.0-rc8): close artefacts are written by close_period only
+        if (eff['kind'] == 'system' or eff['kind'] == 'ledger') and not (
+                cls == 'CloseArtefact' and getattr(self, '_period_op', None) == ('closing', 'closed')):
             raise BpaError('LOGIC.FORBIDDEN_TARGET')
         if oid in st['objects'] or self._entry_owner(st, oid)[1]:
             raise BpaError('TXN.ALREADY_EXISTS')
@@ -843,6 +847,8 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
                     body.pop('ast', None)
                 body = self._sheet_body(body)
             self._check_body(o['class'], body)
+            # STD-KIND-025 (1.0-rc8): period transitions
+            self._check_period_transition(o['class'], base['body'].get('state'), body.get('state'))
             slug = ch.get('slug', o['slug'])
             check_name('slug', slug)
             kind = valid.get('kind', 'supersede_from')
@@ -865,7 +871,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         result['versions'][oid] = vh
 
     def _amounts(self, cls):
-        return self.decls[cls].get('ledger', {}).get('amounts', [])
+        return self._decl(cls).get('ledger', {}).get('amounts', [])
 
     def _append(self, st, ch, result, op, cseq):
         if op == 'append':
@@ -873,7 +879,10 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
             eff = self._cls(cls)
             if eff['kind'] != 'ledger':
                 raise BpaError('LOGIC.FORBIDDEN_TARGET')
-            spec = self.decls[cls]['ledger']
+            # STD-KIND-028 (1.0-rc8): match records are appended by match and unmatch only
+            if cls == 'MatchRecord' and not getattr(self, '_match_op', False):
+                raise BpaError('LOGIC.FORBIDDEN_TARGET')
+            spec = self._decl(cls)['ledger']
             lk = ch['ledger_key']
             if sorted(lk) != sorted(spec['key']):
                 raise BpaError('MODEL.INVALID_VALUE', 'ledger key fields')
@@ -925,7 +934,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         rid = self._derivation(ch)
         if rid:
             entry['provenance_ref'] = rid
-        entry['class_version'] = content_id('ubos.chunk.v1', self.decls[entry['class']])
+        entry['class_version'] = content_id('ubos.chunk.v1', self._decl(entry['class']))
         entry['entry_hash'] = self.entry_hash(entry)
         if rid:
             self._derived.append(('entry', entry['entry_id'], entry['entry_hash'], rid))
@@ -943,12 +952,12 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
     def entry_hash(self, e):
         rec = {k: e[k] for k in ('entry_id', 'class', 'ledger_key', 'valid_at', 'corrects', 'correction_type',
                                  'posting_group', 'provenance_ref', 'source_refs') if k in e}
-        rec['class_version'] = e.get('class_version') or content_id('ubos.chunk.v1', self.decls[e['class']])
+        rec['class_version'] = e.get('class_version') or content_id('ubos.chunk.v1', self._decl(e['class']))
         rec['body_ref'] = content_id('ubos.chunk.v1', e['body'])
         return content_id('ubos.entry.v1', rec)
 
     def _check_period(self, st, cls):
-        scope = self.decls[cls].get('ledger', {}).get('period_scope')
+        scope = self._decl(cls).get('ledger', {}).get('period_scope')
         if not scope:
             return
         day = self._today()
@@ -963,7 +972,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
     def _check_double_entry(self, appended):
         groups = {}
         for e in appended:
-            if not self.decls[e['class']].get('ledger', {}).get('double_entry'):
+            if not self._decl(e['class']).get('ledger', {}).get('double_entry'):
                 continue
             g = groups.setdefault((e['class'], e.get('posting_group', e['entry_id'])), {})
             for a in self._amounts(e['class']):

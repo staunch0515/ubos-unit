@@ -6,13 +6,13 @@
 
 | Profile | MUST clauses with a range | Covered | Coverage | Vectors | Prototype vectors |
 |---|---|---|---|---|---|
-| Core | 137 | 123 | 90% | 1164 | 355 |
-| Bitemporal | 11 | 10 | 91% | 61 | 30 |
-| Ledger | 9 | 9 | 100% | 55 | 52 |
+| Core | 137 | 123 | 90% | 1163 | 355 |
+| Bitemporal | 12 | 12 | 100% | 69 | 30 |
+| Ledger | 12 | 12 | 100% | 92 | 52 |
 | Proof | 9 | 9 | 100% | 73 | 16 |
 | Governance | 11 | 9 | 82% | 209 | 0 |
 | Protocol | 9 | 8 | 89% | 141 | 0 |
-| **All** | **186** | **168** | **90%** | **1703** | **453** |
+| **All** | **190** | **173** | **91%** | **1747** | **453** |
 
 ## Clauses
 
@@ -71,7 +71,10 @@
 | STD-KIND-022 | Ledger | yes | 6 (VER-CONF-1050…VER-CONF-1055) |
 | STD-KIND-023 | Ledger | yes | 5 (VER-CONF-1070…VER-CONF-1074) |
 | STD-KIND-024 | Ledger | yes | 5 (VER-CONF-1085…VER-CONF-1089) |
-| STD-KIND-025 | Ledger | yes | 5 (VER-CONF-1095…VER-CONF-1099) |
+| STD-KIND-025 | Ledger | yes | 14 (VER-CONF-1095…VER-CONF-1108) |
+| STD-KIND-026 | Ledger | yes | 8 (VER-CONF-1110…VER-CONF-1117) |
+| STD-KIND-027 | Ledger | yes | 13 (VER-CONF-1165…VER-CONF-1177) |
+| STD-KIND-028 | Ledger | yes | 7 (VER-CONF-1185…VER-CONF-1191) |
 | STD-KIND-040 | Core | yes | 2 (VER-CONF-1120…VER-CONF-1121) |
 | STD-KIND-060 | Core | yes | 3 (VER-CONF-1140…VER-CONF-1142) |
 | STD-KIND-080 | Core | yes | 2 (VER-CONF-1160…VER-CONF-1161) |
@@ -92,7 +95,7 @@
 | STD-VER-052 | Core | yes | 4 (VER-CONF-1490…VER-CONF-1493) |
 | STD-VER-053 | Core | yes | 2 (VER-CONF-1500…VER-CONF-1501) |
 | STD-VER-054 | Ledger | yes | 7 (VER-CONF-1505…VER-CONF-1511) |
-| STD-VER-055 | Core | yes | 7 (VER-CONF-1525…VER-CONF-1531) |
+| STD-VER-055 | Core | yes | 7 (VER-CONF-1525…VER-CONF-1108) |
 | STD-VER-056 | Core | yes | 4 (VER-CONF-1545…VER-CONF-1548) |
 | STD-VER-057 | Core | yes | 6 (VER-CONF-1550…VER-CONF-1555) |
 | STD-VER-058 | Core | yes | 5 (VER-CONF-1560…VER-CONF-1564) |
@@ -115,7 +118,8 @@
 | STD-TIME-030 | Bitemporal | yes | 5 (VER-CONF-1850…VER-CONF-1854) |
 | STD-TIME-031 | Bitemporal | yes | 5 (VER-CONF-1860…VER-CONF-1864) |
 | STD-TIME-040 | Bitemporal | yes | 6 (VER-CONF-1875…VER-CONF-5063) |
-| STD-TIME-041 | Bitemporal | yes | **none** |
+| STD-TIME-041 | Bitemporal | yes | 4 (VER-CONF-1885…VER-CONF-1888) |
+| STD-TIME-042 | Bitemporal | yes | 4 (VER-CONF-1910…VER-CONF-1913) |
 | STD-TIME-050 | Bitemporal | yes | 7 (VER-CONF-1900…VER-CONF-5515) |
 | STD-TXN-001 | Core | yes | 2 (VER-CONF-2000…VER-CONF-2001) |
 | STD-TXN-002 | Core | yes | 2 (VER-CONF-2015…VER-CONF-2016) |
