@@ -1,0 +1,332 @@
+{
+  "suite": "SUITE-NOD-BENCH",
+  "item": "VER-BENCH-2000",
+  "quick": false,
+  "environment": {
+    "host": "workstation",
+    "cpus": 4,
+    "database": "PostgreSQL",
+    "build": "release"
+  },
+  "params": {
+    "objects": 300000,
+    "rounds": 50,
+    "seconds": 60.0,
+    "workers": 8,
+    "parts": "query,mixed,ports"
+  },
+  "load_seconds": 846.6,
+  "query": {
+    "objects": 300000,
+    "rounds": 50,
+    "denied_rounds": 10,
+    "latency_ms": {
+      "http/eq": {
+        "n": 50,
+        "p50": 45.44,
+        "p95": 61.37,
+        "p99": 92.62,
+        "max": 92.62,
+        "mean": 46.01,
+        "rows": 5000
+      },
+      "http/eq_denied": {
+        "n": 10,
+        "p50": 1333.88,
+        "p95": 1728.55,
+        "p99": 1728.55,
+        "max": 1728.55,
+        "mean": 1324.94,
+        "rows": 0
+      },
+      "http/eq_filter": {
+        "n": 50,
+        "p50": 113.36,
+        "p95": 153.24,
+        "p99": 166.98,
+        "max": 166.98,
+        "mean": 118.74,
+        "rows": 5000
+      },
+      "http/key": {
+        "n": 50,
+        "p50": 11.19,
+        "p95": 14.46,
+        "p99": 16.59,
+        "max": 16.59,
+        "mean": 11.47,
+        "rows": 50
+      },
+      "http/page2": {
+        "n": 50,
+        "p50": 56.64,
+        "p95": 71.98,
+        "p99": 82.93,
+        "max": 82.93,
+        "mean": 57.74,
+        "rows": 5000
+      },
+      "http/range": {
+        "n": 50,
+        "p50": 47.25,
+        "p95": 55.54,
+        "p99": 63.41,
+        "max": 63.41,
+        "mean": 46.98,
+        "rows": 5000
+      },
+      "kernel/eq": {
+        "n": 50,
+        "p50": 46.95,
+        "p95": 62.14,
+        "p99": 85.92,
+        "max": 85.92,
+        "mean": 47.76,
+        "rows": 5000
+      },
+      "kernel/eq_denied": {
+        "n": 10,
+        "p50": 1384.75,
+        "p95": 1655.36,
+        "p99": 1655.36,
+        "max": 1655.36,
+        "mean": 1391.96,
+        "rows": 0
+      },
+      "kernel/eq_filter": {
+        "n": 50,
+        "p50": 110.31,
+        "p95": 156.24,
+        "p99": 554.06,
+        "max": 554.06,
+        "mean": 121.28,
+        "rows": 5000
+      },
+      "kernel/key": {
+        "n": 50,
+        "p50": 10.03,
+        "p95": 13.41,
+        "p99": 15.02,
+        "max": 15.02,
+        "mean": 10.44,
+        "rows": 50
+      },
+      "kernel/page2": {
+        "n": 50,
+        "p50": 56.25,
+        "p95": 90.34,
+        "p99": 7068.44,
+        "max": 7068.44,
+        "mean": 198.02,
+        "rows": 5000
+      },
+      "kernel/range": {
+        "n": 50,
+        "p50": 50.72,
+        "p95": 65.52,
+        "p99": 69.23,
+        "max": 69.23,
+        "mean": 51.34,
+        "rows": 5000
+      },
+      "ws/eq": {
+        "n": 50,
+        "p50": 56.92,
+        "p95": 67.82,
+        "p99": 7574.52,
+        "max": 7574.52,
+        "mean": 206.83,
+        "rows": 5000
+      },
+      "ws/eq_denied": {
+        "n": 10,
+        "p50": 1437.61,
+        "p95": 1667.49,
+        "p99": 1667.49,
+        "max": 1667.49,
+        "mean": 1457.91,
+        "rows": 0
+      },
+      "ws/eq_filter": {
+        "n": 50,
+        "p50": 124.27,
+        "p95": 176.06,
+        "p99": 424.74,
+        "max": 424.74,
+        "mean": 134.93,
+        "rows": 5000
+      },
+      "ws/key": {
+        "n": 50,
+        "p50": 12.96,
+        "p95": 16.81,
+        "p99": 17.42,
+        "max": 17.42,
+        "mean": 13.25,
+        "rows": 50
+      },
+      "ws/page2": {
+        "n": 50,
+        "p50": 68.76,
+        "p95": 85.29,
+        "p99": 91.87,
+        "max": 91.87,
+        "mean": 69.23,
+        "rows": 5000
+      },
+      "ws/range": {
+        "n": 50,
+        "p50": 57.93,
+        "p95": 73.8,
+        "p99": 77.23,
+        "max": 77.23,
+        "mean": 58.79,
+        "rows": 5000
+      }
+    },
+    "edge_p95_ms": {
+      "ws/eq": 5.68,
+      "http/eq": -0.77,
+      "ws/page2": -5.05,
+      "http/page2": -18.36,
+      "ws/range": 8.28,
+      "http/range": -9.98,
+      "ws/key": 3.4,
+      "http/key": 1.05,
+      "ws/eq_filter": 19.82,
+      "http/eq_filter": -3.0,
+      "ws/eq_denied": 12.13,
+      "http/eq_denied": 73.19
+    },
+    "errors": {},
+    "target": "first 100 rows p95 <= 100 ms (NR-PERF-008)",
+    "met_ordinary_pages": false
+  },
+  "mixed": {
+    "workers": 8,
+    "mix": "70% reads, 20% commits of 1-10 objects, 5% queries, 5% ledger appends",
+    "capacity_ops_per_s": 57.9,
+    "capacity_errors": 0,
+    "target_ops_per_s": 40.6,
+    "achieved_ops_per_s": 36.9,
+    "seconds": 60.0,
+    "errors": 0,
+    "latency_ms": {
+      "append": {
+        "n": 127,
+        "p50": 208.21,
+        "p95": 293.23,
+        "p99": 314.7,
+        "max": 319.73,
+        "mean": 208.81
+      },
+      "commit": {
+        "n": 416,
+        "p50": 225.51,
+        "p95": 317.72,
+        "p99": 375.3,
+        "max": 481.78,
+        "mean": 228.63
+      },
+      "query": {
+        "n": 100,
+        "p50": 202.57,
+        "p95": 298.32,
+        "p99": 330.66,
+        "max": 375.41,
+        "mean": 199.87
+      },
+      "read": {
+        "n": 1574,
+        "p50": 199.13,
+        "p95": 300.09,
+        "p99": 345.51,
+        "max": 462.63,
+        "mean": 202.88
+      },
+      "commit_retries": 0,
+      "all": {
+        "n": 2217,
+        "p50": 204.17,
+        "p95": 302.44,
+        "p99": 352.75,
+        "max": 481.78,
+        "mean": 207.92
+      }
+    },
+    "commit_to_handler_ms": {
+      "idle": {
+        "n": 50,
+        "p50": 103.76,
+        "p95": 126.79,
+        "p99": 380.21,
+        "max": 380.21,
+        "mean": 110.51,
+        "missing": 0
+      },
+      "loaded": {
+        "n": 76,
+        "p50": 372.58,
+        "p95": 555.17,
+        "p99": 642.61,
+        "max": 655.87,
+        "mean": 383.7,
+        "missing": 0
+      },
+      "target": "p95 <= 500 ms, p99 <= 2 s (NR-PERF-011)",
+      "met": false,
+      "measure": "commit time of the ping to commit time of its handler (kernel tx_time)"
+    },
+    "subscription_ms": {
+      "from_request": {
+        "n": 81,
+        "p50": 276.52,
+        "p95": 427.07,
+        "p99": 470.89,
+        "max": 524.62,
+        "mean": 286.34
+      },
+      "from_result": {
+        "n": 81,
+        "p50": 47.38,
+        "p95": 226.54,
+        "p99": 249.57,
+        "max": 269.25,
+        "mean": 68.46
+      },
+      "lost": 0,
+      "measure": "a target subscription on another session: commit request (or its result) to the emit; NR-PERF-015 (PH-2) recorded"
+    }
+  },
+  "ports": {
+    "small_branch": {
+      "n": 5,
+      "p50": 64.71,
+      "p95": 76.84,
+      "p99": 76.84,
+      "max": 76.84,
+      "mean": 66.94,
+      "errors": []
+    },
+    "dataset_branch": {
+      "n": 5,
+      "p50": 60.08,
+      "p95": 69.24,
+      "p99": 69.24,
+      "max": 69.24,
+      "mean": 59.54,
+      "errors": []
+    },
+    "next_read_ms": {
+      "ms": 15.5,
+      "ok": true
+    }
+  },
+  "met": false,
+  "seconds": 1075,
+  "signature": {
+    "alg": "ed25519",
+    "key": "ba49bca49a2704cf475dfbe3205a1b9ecc2f152bbc1fa71791c3f98d310ece6e",
+    "sig": "554401f7fd3fafb7ef9846e25b41395c60427d2174a9413da46ac111baad8b023e00df95d243cfa2f874952aadc1481462ed0e30166bf7ed87f20ee16ce2e20a"
+  }
+}
