@@ -1142,10 +1142,10 @@ impl StoreRead for PgBackend {
         &self,
         scope: &str,
         key: &str,
-    ) -> Result<Option<(Hash, Option<Vec<u8>>)>, BpaError> {
+    ) -> Result<Option<(Hash, Option<Vec<u8>>, Option<String>)>, BpaError> {
         let r = self
             .opt(
-                sqlx::query("SELECT request_hash, outcome FROM idempotency_record WHERE tenant_id = $1::uuid AND scope = $2 AND key = $3")
+                sqlx::query("SELECT request_hash, outcome, to_char(expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') FROM idempotency_record WHERE tenant_id = $1::uuid AND scope = $2 AND key = $3")
                     .bind(&self.scope.tenant)
                     .bind(scope)
                     .bind(key),
@@ -1155,9 +1155,20 @@ impl StoreRead for PgBackend {
             Ok((
                 hash_col(r.try_get(0).map_err(db)?)?,
                 r.try_get(1).map_err(db)?,
+                r.try_get(2).map_err(db)?,
             ))
         })
         .transpose()
+    }
+    async fn sweep_idempotency(&self, scope_prefix: &str, now: &str) -> Result<u64, BpaError> {
+        let r = sqlx::query("DELETE FROM idempotency_record WHERE tenant_id = $1::uuid AND starts_with(scope, $2) AND expires_at <= $3::timestamptz")
+            .bind(&self.scope.tenant)
+            .bind(scope_prefix)
+            .bind(now)
+            .execute(&self.pool)
+            .await
+            .map_err(db)?;
+        Ok(r.rows_affected())
     }
 }
 
@@ -1731,13 +1742,19 @@ impl StoreTx for PgTx {
         Ok(())
     }
     async fn idempotency_put(&mut self, row: &IdempotencyRow) -> Result<bool, BpaError> {
-        let r = sqlx::query("INSERT INTO idempotency_record (tenant_id, scope, key, request_hash, outcome, commit_id) VALUES ($1::uuid, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING")
+        // a record of the same key that expired at this commit is replaced (DSN-DVM-531)
+        let r = sqlx::query("INSERT INTO idempotency_record (tenant_id, scope, key, request_hash, outcome, commit_id, expires_at) VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::timestamptz) \
+             ON CONFLICT (tenant_id, scope, key) DO UPDATE SET request_hash = EXCLUDED.request_hash, outcome = EXCLUDED.outcome, \
+             commit_id = EXCLUDED.commit_id, expires_at = EXCLUDED.expires_at \
+             WHERE idempotency_record.expires_at <= $8::timestamptz")
             .bind(&self.scope.tenant)
             .bind(&row.scope)
             .bind(&row.key)
             .bind(&row.request_hash[..])
             .bind(row.outcome.as_deref())
             .bind(row.commit_id.map(|h| h.to_vec()))
+            .bind(row.expires_at.as_deref())
+            .bind(&row.now)
             .execute(&mut *self.tx)
             .await
             .map_err(db)?;
@@ -2616,6 +2633,8 @@ impl Plan {
                 request_hash: hash_of(hash)?,
                 outcome: Some(bytes(outcome)?),
                 commit_id: Some(commit.commit_id),
+                expires_at: f.idempotency_expires.clone(),
+                now: f.commit["tx_time"].as_str().unwrap_or_default().to_string(),
             }),
             None => None,
         };
@@ -3582,16 +3601,25 @@ impl Store for PgStore {
     fn idempotency_rec(&mut self, scope: &str, key: &str) -> Result<Option<Value>, BpaError> {
         // Scoped by tenant (the table), VAE and initiator (STD-TXN-040).
         let scope = format!("{}:{scope}", self.backend.scope.vae);
-        let Some((hash, outcome)) = self.rt.block_on(self.backend.idempotency(&scope, key))? else {
+        let Some((hash, outcome, expires)) =
+            self.rt.block_on(self.backend.idempotency(&scope, key))?
+        else {
             return Ok(None);
         };
         let result = match outcome {
             Some(b) => json(&b)?,
             None => Value::Null,
         };
-        Ok(Some(
-            serde_json::json!({"hash": hash_text(&hash), "result": result}),
-        ))
+        let mut rec = serde_json::json!({"hash": hash_text(&hash), "result": result});
+        if let Some(e) = expires {
+            rec["expires_at"] = serde_json::json!(e);
+        }
+        Ok(Some(rec))
+    }
+    fn sweep_idempotency(&mut self, now: &str) -> Result<u64, BpaError> {
+        let prefix = format!("{}:", self.backend.scope.vae);
+        self.rt
+            .block_on(self.backend.sweep_idempotency(&prefix, now))
     }
     fn backend(&self) -> &'static str {
         "postgresql"

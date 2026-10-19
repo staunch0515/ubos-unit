@@ -1774,6 +1774,7 @@ pub(crate) fn commit_on(
     let effects = u32::try_from(tx.outbox.len()).unwrap_or(u32::MAX);
     if let Some((scope, key, hash)) = idempotency {
         tx.idempotency = Some((scope, key, hash, result.clone()));
+        tx.idempotency_expires = Some(idempotency_expiry(repo.store, now_)?);
     }
     let head = tx.head;
     let id = {
@@ -1784,6 +1785,28 @@ pub(crate) fn commit_on(
     result["commit_id"] = json!(c.commit_id);
     result["tx_time"] = json!(c.tx_time);
     Ok((result, classes, effects))
+}
+
+/// The default and smallest retention of idempotency records, in days (FR-TXN-032).
+pub const IDEMPOTENCY_RETENTION_DAYS: i64 = 7;
+
+/// The retention of the VAE's idempotency records in days (FR-TXN-032, DSN-DVM-531).
+pub fn idempotency_retention(store: &mut dyn Store) -> Result<i64, BpaError> {
+    Ok(store
+        .meta("idempotency_retention_days")?
+        .and_then(|v| v.as_i64())
+        .unwrap_or(IDEMPOTENCY_RETENTION_DAYS))
+}
+
+/// When an idempotency record written at `now` expires: `now` plus the VAE's retention.
+fn idempotency_expiry(store: &mut dyn Store, now: &str) -> Result<String, BpaError> {
+    let days = idempotency_retention(store)?;
+    let t = chrono::DateTime::parse_from_rfc3339(now)
+        .map_err(|_| BpaError::new("MODEL.INVALID_VALUE", "the clock is not an instant"))?
+        .with_timezone(&chrono::Utc);
+    Ok((t + chrono::Duration::days(days))
+        .format("%Y-%m-%dT%H:%M:%S%.6fZ")
+        .to_string())
 }
 
 /// The rule binding of a commit over the transaction's state (STD-TIME-040).

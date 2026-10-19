@@ -285,6 +285,10 @@ pub struct IdempotencyRow {
     pub outcome: Option<Vec<u8>>,
     /// Commit of the outcome.
     pub commit_id: Option<Hash>,
+    /// Expiry (RFC 3339), if the record expires (DSN-DVM-531).
+    pub expires_at: Option<String>,
+    /// The commit's transaction time: a record of the same key expired at it is replaced.
+    pub now: String,
 }
 
 /// A `head_index` row.
@@ -666,12 +670,14 @@ pub trait StoreRead {
     async fn outbox_of_commit(&self, branch_id: i64, cseq: i64) -> Result<Vec<Vec<u8>>, BpaError>;
     /// Pending timers.
     async fn timers(&self) -> Result<Vec<TimerRow>, BpaError>;
-    /// An idempotency record: `(request hash, outcome)`.
+    /// An idempotency record: `(request hash, outcome, expiry)`.
     async fn idempotency(
         &self,
         scope: &str,
         key: &str,
-    ) -> Result<Option<(Hash, Option<Vec<u8>>)>, BpaError>;
+    ) -> Result<Option<(Hash, Option<Vec<u8>>, Option<String>)>, BpaError>;
+    /// Remove the idempotency records of a scope prefix that expired at `now`.
+    async fn sweep_idempotency(&self, scope_prefix: &str, now: &str) -> Result<u64, BpaError>;
     /// The commits of a branch as `(commit_no, cseq)`, by ordinal.
     async fn branch_commits(&self, branch_id: i64) -> Result<Vec<(u64, u64)>, BpaError>;
     /// The commit records of a branch as `(cseq, body)`, by ordinal (verifiers).

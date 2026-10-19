@@ -101,6 +101,9 @@ pub struct Flush {
     /// Idempotency record of the commit (STD-TXN-040): `(scope, key, request hash,
     /// outcome)`.
     pub idempotency: Option<(String, String, String, Value)>,
+    /// When the idempotency record expires (DSN-DVM-531): the commit's transaction time
+    /// plus the VAE's retention; a record without one does not expire.
+    pub idempotency_expires: Option<String>,
     /// Derivation records of the commit (STD-TXN-030): `{id, record, inputs, outputs}`.
     pub derivations: Vec<Value>,
     /// Future segment starts to emit BecameEffective for (STD-TIME-050): `{key: [branch,
@@ -561,9 +564,14 @@ pub trait Store {
             .collect();
         self.put_meta("schedule", &Value::Array(keep))
     }
-    /// An idempotency record (`hash`, `result`), written by a flush.
+    /// An idempotency record (`hash`, `result`, `expires_at`), written by a flush.
     fn idempotency_rec(&mut self, scope: &str, key: &str) -> Result<Option<Value>, BpaError> {
         self.meta(&format!("idem:{scope}:{key}"))
+    }
+    /// Remove the idempotency records of this VAE that expired at `now` (DSN-DVM-531);
+    /// the number removed.
+    fn sweep_idempotency(&mut self, _now: &str) -> Result<u64, BpaError> {
+        Ok(0)
     }
     /// Tenant and VAE of a kernel store (verifiers and the storage suite), if any.
     fn scope(&self) -> Option<kernel::Scope> {
@@ -694,6 +702,13 @@ pub struct MemStore {
     next: u64,
 }
 
+/// Whether an idempotency record (`{hash, result, expires_at?}`) has expired at `now`.
+pub fn expired(rec: &Value, now: &str) -> bool {
+    rec.get("expires_at")
+        .and_then(Value::as_str)
+        .is_some_and(|e| !now.is_empty() && e <= now)
+}
+
 fn missing(what: &str) -> BpaError {
     BpaError::new("NOD.STORAGE_UNAVAILABLE", format!("missing {what}"))
 }
@@ -782,8 +797,10 @@ impl Store for MemStore {
         let _phase = ubos_types::trace::span("store.flush");
         // a request whose idempotency record another flush wrote meanwhile is not committed
         // twice: the flush fails like a moved head and the caller replays (STD-TXN-040)
+        // (an expired record is replaced, DSN-DVM-531)
         if let Some((scope, key, _, _)) = &f.idempotency
-            && self.meta(&format!("idem:{scope}:{key}"))?.is_some()
+            && let Some(known) = self.meta(&format!("idem:{scope}:{key}"))?
+            && !expired(&known, f.commit["tx_time"].as_str().unwrap_or_default())
         {
             return Ok(false);
         }
@@ -1075,6 +1092,12 @@ impl Store for MemStore {
     fn meta(&mut self, key: &str) -> Result<Option<Value>, BpaError> {
         Ok(self.meta.get(key).cloned())
     }
+    fn sweep_idempotency(&mut self, now: &str) -> Result<u64, BpaError> {
+        let before = self.meta.len();
+        self.meta
+            .retain(|k, v| !(k.starts_with("idem:") && expired(v, now)));
+        Ok((before - self.meta.len()) as u64)
+    }
     fn backend(&self) -> &'static str {
         "memory"
     }
@@ -1088,10 +1111,11 @@ fn apply_metadata(s: &mut dyn Store, f: &Flush) -> Result<(), BpaError> {
         s.outbox_push(&f.outbox)?;
     }
     if let Some((scope, key, hash, result)) = &f.idempotency {
-        s.put_meta(
-            &format!("idem:{scope}:{key}"),
-            &serde_json::json!({"hash": hash, "result": result}),
-        )?;
+        let mut rec = serde_json::json!({"hash": hash, "result": result});
+        if let Some(e) = &f.idempotency_expires {
+            rec["expires_at"] = serde_json::json!(e);
+        }
+        s.put_meta(&format!("idem:{scope}:{key}"), &rec)?;
     }
     for d in &f.derivations {
         let id = d.get("id").and_then(Value::as_str).unwrap_or_default();
@@ -1316,6 +1340,9 @@ impl Store for Group {
     }
     fn meta(&mut self, key: &str) -> Result<Option<Value>, BpaError> {
         self.inner.meta(key)
+    }
+    fn sweep_idempotency(&mut self, now: &str) -> Result<u64, BpaError> {
+        Ok(self.overlay.sweep_idempotency(now)? + self.inner.sweep_idempotency(now)?)
     }
     fn authority(&self) -> String {
         self.inner.authority()

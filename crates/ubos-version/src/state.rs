@@ -1040,6 +1040,7 @@ impl<'a> Repo<'a> {
             extra: Map::new(),
             outbox: Vec::new(),
             idempotency: None,
+            idempotency_expires: None,
             derivations: Vec::new(),
             timers: Vec::new(),
             partial: false,
@@ -1241,6 +1242,7 @@ impl<'a> Repo<'a> {
                 .collect(),
             outbox: tx.outbox,
             idempotency,
+            idempotency_expires: tx.idempotency_expires,
             derivations: tx.derivations,
             timers: tx.timers,
         };
@@ -1681,6 +1683,8 @@ pub struct Tx {
     /// Idempotency record of the commit: `(scope, key, request hash, result so far)`; the
     /// write completes the result with the commit identity (STD-TXN-040).
     pub idempotency: Option<(String, String, String, Value)>,
+    /// When the idempotency record expires (DSN-DVM-531).
+    pub idempotency_expires: Option<String>,
     /// Derivation records of the commit: `{id, record, inputs, outputs}` (STD-TXN-030).
     pub derivations: Vec<Value>,
     /// Future segment starts that emit BecameEffective (STD-TIME-050).
