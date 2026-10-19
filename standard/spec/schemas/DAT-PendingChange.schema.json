@@ -1,0 +1,51 @@
+{
+  "$id": "DAT-PendingChange",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "approvals": {
+      "description": "DAT-Approval items",
+      "type": "array"
+    },
+    "changes": {
+      "description": "DAT-Change items with bases (versions stored as chunks)",
+      "type": "array"
+    },
+    "expires_at": {
+      "description": "expiry",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "type": "string"
+    },
+    "preview": {
+      "description": "content-id of validation and diff at request time",
+      "type": "string"
+    },
+    "requirements": {
+      "description": "approval requirements from decisions",
+      "type": "array"
+    },
+    "state": {
+      "description": "pending | applied | rejected | expired | invalidated",
+      "enum": [
+        "pending",
+        "applied",
+        "rejected",
+        "expired",
+        "invalidated"
+      ],
+      "type": "string"
+    },
+    "target_branch": {
+      "description": "branch name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "target_branch",
+    "changes",
+    "preview",
+    "requirements",
+    "state"
+  ],
+  "title": "DAT-PendingChange",
+  "type": "object"
+}

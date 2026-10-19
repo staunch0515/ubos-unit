@@ -42,6 +42,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-086 | PH-1 step 19b: the PH-1 part of privacy by default (classification by declaration, the class default, `internal` otherwise; raise-only; rectification as a new version with the reason `rectification`); masking and read logging by default move with DSN-DVM-821/-823 to PH-2, subject-key encryption of rectified versions with DSN-DVM-830; `forge check` reports classification coverage | Accepted |
 | DEC-087 | PH-1 close-out with carry-overs: the PH-1 Must requirements not built in PH-1 move to PH-2 (balance projections and their rebuild to step 3, `forge new`/`pack` to step 7, TLS, tenant customisation lines and the metrics catalogue to step 11, the process reading its branch on demand, the file-replacement test and the idempotency retention to a new step 0b) and FR-STD-042 to PH-3; the benchmark gaps stay in PH-1 for the reference runs; `release/ph1` is cut (`ph1-rc1`) and PH-2 starts | Accepted |
 | DEC-088 | PH-2 step 0b-1b: the commit-time checks of references and relationships (STD-CLS-040, -041; DSN-DVM-109) run on indexes instead of the full branch state — reference rows of relationship fields in the field index, built for existing data when a VAE opens, URI resolution from the slug index, the sources of an ended target from the reference rows, cardinality for the targets a commit can change; extensions and sheets are read by class; amends DEC-050 item 3 | Accepted |
+| DEC-089 | PH-2 step 1 opened: BPA 1.0-rc8 scoped by a phase rule (`{base: 1.0-rc7, phase: PH-2}`, six profiles): 224 clauses, 23 added, MUST coverage 168/186 at the opening; the step in parts 1a–1h by clause area, standard and reference model only, each part's clarifications in its own decision; the kernel keeps claiming 1.0-rc1 plus the clauses it implements | Accepted |
 
 ---
 
@@ -583,3 +584,33 @@ the records from DEC-060 on follow.
   - A separate reference table was rejected: the field index already has the needed shape, branch chaining and row closing, and needs no migration.
   - Keeping the full state for cardinality was rejected: every commit of a model with a one-to-one relationship would read the whole branch.
 - **Affects:** STD-CLS-030, STD-CLS-040, STD-CLS-041, DSN-DVM-109, DSN-DVM-902, DEC-050, DEC-087
+
+### DEC-089 — BPA 1.0-rc8 opened: scope by phase for PH-2 (PH-2 step 1, part 1a)
+- **Date:** 2026-10-19 · **Status:** Accepted
+- **Context:** Step 1 of PH-2 (UBS-PH-2 §11) writes the BPA 1.0 release candidates for the PH-2 kernel, standard before code (AR-033), split by clause area (DEC-085 item 4). The scope rule of DEC-039 knows only the gates of PH-1, and BPA 1.0-rc7 left out every clause whose requirements are in PH-2: STD-LGS-040, STD-PROTO-021, and the Core, Bitemporal and Governance clauses of PH-2. Of the ten topics of step 1, the clauses of four do not exist yet: relationship authorization, masking, matching and close, and simulation and workflows. The owner confirmed the plan of step 1 with the default suggestions on 2026-10-19.
+- **Decision:**
+  1. **Scope by phase.** A scope rule may name a phase instead of a gate (`standard/tools/bpa/scope.py`): its scope adds every clause of the listed profiles that satisfies a requirement of PH-0, PH-1 or the named phase. `standard/release/1.0-rc8/scope.json` states `{base: 1.0-rc7, phase: PH-2, profiles: Core, Bitemporal, Ledger, Proof, Governance, Protocol}`.
+     - The scope is 224 clauses, 23 added: STD-ADDR-003, -004, STD-CLS-023, -050, -060, -061, -062, STD-CTX-031, STD-ISA-053, -071, -081, -082, -083, -090, STD-LGS-040, STD-OBJ-010, -011, STD-PROTO-021, STD-TIME-041, STD-TXN-051, -060, -080 and STD-VER-082.
+     - Clauses written during the step that satisfy PH-2 requirements join the scope by the same rule. The Sync profile and the clauses of PH-3 and later stay out.
+  2. **Build.** `regen_all.sh` builds 1.0-rc8 (`standard/spec/`, schemas, coverage, manifest); 1.0-rc7 stays frozen as tagged (DEC-045 item 3). The coverage report lists the MUST clauses without vectors until the release: 18 of 186 at the opening.
+  3. **Parts.** Each part writes or completes the clauses of its area, the reference model in `standard/tools/bpa/`, the adapter operations its vectors need, and the vectors. Before a part starts, its semantic choices are put to the owner, and the clarifications are recorded in the part's own decision.
+
+     | Part | Area | Clauses |
+     |---|---|---|
+     | 1b | money and periods | STD-KIND-025 clarified, STD-TIME-041, new clauses for close artefacts, matching and reconciliation, retroactive correction and restatement |
+     | 1c | approvals and rules | STD-TXN-060, new clauses for approval requirements and separation of duties, STD-LGS-040, STD-ISA-053, a new simulation clause |
+     | 1d | long-running work and models | a new workflow clause, STD-TXN-051, -080, STD-CTX-031, STD-CLS-050, -060…062, STD-VER-082 |
+     | 1e | protection | new clauses for relationship authorization and masking, STD-OBJ-010, -011 |
+     | 1f | integration and addressing | STD-PROTO-021, STD-ISA-071, -090, STD-ADDR-003, -004 |
+     | 1g | search and views | STD-ISA-081, -082, -083, STD-CLS-023 |
+     | 1h | release | notes, freeze, the owner's signed tag `bpa-v1.0.0-rc8` |
+
+  4. **Standard before code.** The vectors of 1.0-rc8 are verified against the reference model, and the kernel runs them as steps 3–8 and 12 implement the clauses. Until then `crates/ubos-forge/tests/conformance.rs` keeps claiming 1.0-rc1 plus the listed clauses of the latest release it implements. New vectors are not tagged `prototype`, and vectors are added, never changed (DEC-039 item 3).
+- **Consequences:**
+  - `standard/release/1.0-rc8/` exists with `scope.json`, `notes.md` (in development), `coverage.md` and `manifest.json`.
+  - `standard/spec/` carries the clauses of 1.0-rc8. EXIT-2-01 (candidates) is met at part 1h.
+- **Alternatives considered:**
+  - Listing the 23 clauses by hand was rejected: the phase rule keeps the scope consistent with the requirement phases, and clauses added later join without editing the scope.
+  - Gates for PH-2 were rejected: UBS-PHF-2 carries none, and step 1 serves both gates.
+  - One release candidate per part was rejected: each candidate needs a signed tag and notes, and the kernel takes up the clauses only from step 3.
+- **Affects:** DSN-BPA-001, EXIT-2-01, DEC-024, DEC-039, DEC-045, DEC-064, DEC-085

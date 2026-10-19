@@ -1,0 +1,52 @@
+{
+  "$id": "DAT-Lens",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "class": {
+      "description": "class URI",
+      "type": "string"
+    },
+    "from": {
+      "description": "source schema version",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "one_way": {
+      "description": "true if backward is not total",
+      "type": "boolean"
+    },
+    "one_way_reason": {
+      "description": "required when one_way",
+      "type": "string"
+    },
+    "ops": {
+      "description": "ordered operations",
+      "type": "array"
+    },
+    "residual_backward": {
+      "description": "L2 function",
+      "type": "string"
+    },
+    "residual_forward": {
+      "description": "L2 function for cases not covered",
+      "type": "string"
+    },
+    "to": {
+      "description": "target schema version (from + 1)",
+      "type": [
+        "integer",
+        "string"
+      ]
+    }
+  },
+  "required": [
+    "class",
+    "from",
+    "to",
+    "ops"
+  ],
+  "title": "DAT-Lens",
+  "type": "object"
+}

@@ -6,6 +6,11 @@ Its scope is the scope of the base release plus every clause of the listed profi
 earliest satisfied requirement lies in PH-0 or in the named gate of PH-1 (the gate of a PH-1
 requirement is read from the generated feature list UBS-PHF-1). A clause without a
 **Satisfies** line is definitional and belongs to the scope when its profile is listed.
+
+From 1.0-rc8 (DEC-089) a rule may name a phase instead of a gate:
+  {"base": "<released version>", "phase": "PH-2", "profiles": [...]}
+Its scope adds every clause of the listed profiles that satisfies a requirement of PH-0, PH-1
+or the named phase.
 """
 import json
 import os
@@ -43,7 +48,11 @@ def rule_scope(cat, doc, std_dir):
         return None
     base = json.load(open(os.path.join(std_dir, 'release', rule['base'], 'scope.json')))
     out = {'STD-%s-%s' % (a, n) for a, ns in base['clauses'].items() for n in ns}
-    wanted = {'PH-0', 'PH-1/' + rule['gate']}
+    if 'phase' in rule:
+        n = int(rule['phase'].split('-')[1])
+        wanted = {'PH-%d' % i for i in range(n + 1)} | {'PH-1/1a', 'PH-1/1b'}
+    else:
+        wanted = {'PH-0', 'PH-1/' + rule['gate']}
     phase = requirement_phases()
     for cid, c in cat.items():
         if c['profile'] not in rule['profiles']:

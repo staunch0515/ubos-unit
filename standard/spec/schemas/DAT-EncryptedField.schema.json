@@ -1,0 +1,39 @@
+{
+  "$id": "DAT-EncryptedField",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "commit": {
+      "description": "content-id of the field commitment",
+      "type": "string"
+    },
+    "ct": {
+      "description": "base64url ciphertext of canonical({salt, value})",
+      "type": "string"
+    },
+    "enc": {
+      "description": "aes-256-gcm | xchacha20-poly1305",
+      "enum": [
+        "aes-256-gcm",
+        "xchacha20-poly1305"
+      ],
+      "type": "string"
+    },
+    "key": {
+      "description": "{subject_id: text, key_version: integer}",
+      "type": "object"
+    },
+    "nonce": {
+      "description": "base64url nonce",
+      "type": "string"
+    }
+  },
+  "required": [
+    "enc",
+    "key",
+    "nonce",
+    "ct",
+    "commit"
+  ],
+  "title": "DAT-EncryptedField",
+  "type": "object"
+}
