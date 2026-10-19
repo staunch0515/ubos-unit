@@ -6,13 +6,13 @@
 
 | Profile | MUST clauses with a range | Covered | Coverage | Vectors | Prototype vectors |
 |---|---|---|---|---|---|
-| Core | 137 | 123 | 90% | 1163 | 355 |
+| Core | 137 | 123 | 90% | 1166 | 355 |
 | Bitemporal | 12 | 12 | 100% | 69 | 30 |
 | Ledger | 12 | 12 | 100% | 92 | 52 |
 | Proof | 9 | 9 | 100% | 73 | 16 |
-| Governance | 11 | 9 | 82% | 209 | 0 |
+| Governance | 15 | 15 | 100% | 259 | 0 |
 | Protocol | 9 | 8 | 89% | 141 | 0 |
-| **All** | **190** | **173** | **91%** | **1747** | **453** |
+| **All** | **194** | **179** | **92%** | **1800** | **453** |
 
 ## Clauses
 
@@ -135,7 +135,7 @@
 | STD-TXN-040 | Core | yes | 6 (VER-CONF-2150…VER-CONF-2155) |
 | STD-TXN-050 | Core | yes | 7 (VER-CONF-2165…VER-CONF-2171) |
 | STD-TXN-051 | Core | yes | **none** |
-| STD-TXN-060 | Governance | yes | **none** |
+| STD-TXN-060 | Governance | yes | 9 (VER-CONF-2190…VER-CONF-5167) |
 | STD-TXN-070 | Core | yes | 6 (VER-CONF-2215…VER-CONF-2220) |
 | STD-TXN-080 | Core | yes | **none** |
 | STD-PROOF-001 | Proof | yes | 11 (VER-CONF-2300…VER-CONF-2310) |
@@ -178,7 +178,7 @@
 | STD-ISA-050 | Core | yes | 13 (VER-CONF-3400…VER-CONF-3412) |
 | STD-ISA-051 | Core | no | 2 (VER-CONF-3430…VER-CONF-3431) |
 | STD-ISA-052 | Core | no | 2 (VER-CONF-3440…VER-CONF-3441) |
-| STD-ISA-053 | Core | no | **none** |
+| STD-ISA-053 | Core | no | 3 (VER-CONF-3450…VER-CONF-3452) |
 | STD-ISA-054 | Core | no | 3 (VER-CONF-3470…VER-CONF-3472) |
 | STD-ISA-055 | Core | no | 1 (VER-CONF-3480…VER-CONF-3480) |
 | STD-ISA-070 | Core | no | **none** |
@@ -235,7 +235,11 @@
 | STD-LGS-023 | Governance | yes | 7 (VER-CONF-5025…VER-CONF-5031) |
 | STD-LGS-030 | Governance | yes | 29 (VER-CONF-5035…VER-CONF-5063) |
 | STD-LGS-031 | Governance | yes | 20 (VER-CONF-5065…VER-CONF-5084) |
-| STD-LGS-040 | Governance | yes | **none** |
+| STD-LGS-040 | Governance | yes | 22 (VER-CONF-5090…VER-CONF-5111) |
+| STD-LGS-041 | Governance | yes | 5 (VER-CONF-5130…VER-CONF-5134) |
+| STD-LGS-042 | Governance | yes | 4 (VER-CONF-5150…VER-CONF-5153) |
+| STD-LGS-043 | Governance | yes | 5 (VER-CONF-5165…VER-CONF-5169) |
+| STD-LGS-044 | Governance | yes | 6 (VER-CONF-5180…VER-CONF-5185) |
 | STD-PROTO-001 | Protocol | yes | 15 (VER-CONF-5400…VER-CONF-5414) |
 | STD-PROTO-002 | Protocol | yes | 12 (VER-CONF-5420…VER-CONF-5431) |
 | STD-PROTO-010 | Protocol | yes | 21 (VER-CONF-5440…VER-CONF-5460) |

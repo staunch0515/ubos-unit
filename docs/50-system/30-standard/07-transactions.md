@@ -173,7 +173,12 @@ DAT-Derivation:
 - **Grammar / Schema:** `DAT-PendingChange`
 - **Conformance vectors:** VER-CONF-2190…2214
 - **Satisfies:** FR-FLOW-042, FR-FLOW-044
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-091):
+  - **Request.** A port call made with `defer` stores a pending change when its decisions require steps; without `defer` it fails with `RULE.DECISION_REQUIRES` as before.
+  - **Identity.** The pending change is identified by the process that requested it, and `preview` is the content ID of `{branch, changes}`. The requirements are those of STD-LGS-041. `expires_at` is the request time plus the shortest `expires_in`.
+  - **States.** At each read or approval, an expired pending change becomes `expired`, and one whose bases are no longer the heads becomes `invalidated`, listing the changed objects with their approved and current bodies (`changed_since`) and keeping the voided approvals.
+  - **Application.** The final approval commits the stored changes in a new process with the requester as initiator. A failure of that commit invalidates the pending change with the error code (`invalid_reason`).
+  - **Ending.** A rejection ends it as `rejected`; a decision on a pending change that is no longer `pending` returns its state.
 
 ```yaml
 DAT-PendingChange:

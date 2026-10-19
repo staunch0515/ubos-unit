@@ -196,7 +196,98 @@ DAT-DecisionResult:
 
 ### STD-LGS-040 — Decision tables
 - **Clause:** Decision tables MUST declare typed inputs, outputs, rows (L1 conditions per input column, or `-` for any) and a hit policy (`unique`, `first`, `priority`, `collect` with an aggregator). Authoring MUST report gaps and hit-policy overlaps for enumerable and range inputs (FR-RULE-042).
-- **Grammar / Schema:** —
+- **Grammar / Schema:** `DAT-DecisionTable`
 - **Conformance vectors:** VER-CONF-5090…5129
 - **Satisfies:** FR-RULE-041, FR-RULE-042
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-091):
+  - **Storage.** A decision table is an object of the genesis Definition class `DecisionTable` below `ConfigAsset`; it is evaluated in its version valid at `asof`.
+  - **Conditions.** A condition cell is an L1 boolean over `params`, the inputs, which are validated against their declared types (`MODEL.INVALID_VALUE`). A missing cell or `-` matches any value. Every row gives every output.
+  - **Hit policies.**
+    - `unique`: exactly one row matches; none fails with `RULE.NO_MATCH`, several with `RULE.MULTIPLE_MATCH`.
+    - `first`: the first matching row in row order.
+    - `priority`: the matching row with the highest `priority`; the first of equal priorities.
+    - `collect`: the outputs of every matching row, in row order. The aggregator `sum`, `min` or `max` reduces each numeric output, and `count` gives `{count}`. An aggregator with another policy is `MODEL.INVALID_VALUE`.
+  - **Result.** `{outputs, rows}`, where `rows` lists the indexes of the rows that decided.
+  - **Authoring check.** It evaluates the rows on the representative values of each input:
+    - for `boolean` and `enum` inputs, the domain;
+    - for `integer`, `decimal` and `date` inputs, every literal the conditions compare the input with, the values one unit (1, 0.01 or one day) below and above it, and the midpoints between them.
+
+    It reports, for at most 10,000 combinations:
+    - `gaps`: combinations no row matches (not for `collect`);
+    - `overlaps`: combinations several rows match for `unique`, or several rows of the top priority match for `priority`.
+
+    Other inputs, or more combinations, are reported as `unchecked`.
+
+```yaml
+DAT-DecisionTable:
+  name: { type: text, required: true, description: "table name" }
+  inputs: { type: list, required: true, description: "{name, type, constraints} items" }
+  outputs: { type: list, required: true, description: "{name, type, constraints} items" }
+  rows: { type: list, required: true, description: "{when: {input: L1 condition | -}, then: {output: value}, priority?} items" }
+  hit_policy: { type: enum, required: true, description: "unique | first | priority | collect" }
+  aggregator: { type: enum, required: false, description: "sum | min | max | count (collect only)" }
+  description: { type: text, required: true, description: "description" }
+```
+
+### STD-LGS-041 — Approval requirements
+- **Clause:** The steps of a `require` outcome (STD-LGS-031) MUST become the requirements of the pending change (STD-TXN-060). The kernel property `approvals` specifies the approval step:
+  - `count`, the number of approvals;
+  - `roles` or `principals`, the eligible approvers;
+  - `order`: `any`, or `sequence`, in which the named principals approve in their listed order;
+  - `incompatible` duties (STD-LGS-042);
+  - `expires_in`, a duration after which the pending change expires.
+
+  An `approval` step of a decision without the property requires one approval. Eligibility:
+  - an approver who is neither a named principal nor holds an eligible role is denied (`IAM.DENIED`, details `{approval: not_eligible}`);
+  - an approver out of sequence is denied (details `{approval: out_of_sequence}`).
+
+  The change is applied when every step is met:
+  - `approval` by `count` approvals;
+  - `second_person` by one approval;
+  - `signature` by one approval that carries a signature.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5130…5149
+- **Satisfies:** FR-FLOW-041, DSN-DVM-740
+- **Notes:** Each requirement is `{step, object_id, port}` with `count`, `order`, `roles`, `principals`, `incompatible` and `expires_in` for `approval`. Since 1.0-rc8 (DEC-091).
+
+### STD-LGS-042 — Separation of duties
+- **Clause:** An approval MUST be denied (`IAM.DENIED` with `details.sod`) when one of these holds for the approver or the principal named in `on_behalf_of`:
+  - it initiated the pending change (`maker_checker`);
+  - it already decided on the pending change (`one_decision_per_principal`);
+  - it initiated a committed call of a port the requirement lists as `incompatible` on the same object (`incompatible_duty`, with the `duty`).
+
+  These checks apply to every approval of the chain, and through delegations.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5150…5164
+- **Satisfies:** FR-FLOW-043
+- **Notes:** The incompatible-duty matrix is declared per action through `approvals.incompatible`; organisation-wide matrices are sheets that set it on the classes concerned. Since 1.0-rc8 (DEC-091).
+
+### STD-LGS-043 — Approval evidence
+- **Clause:** Every approval or rejection MUST be recorded as a `DAT-Approval` item with:
+  - the approver, `on_behalf_of` when delegated, and the decision;
+  - the preview it decided on, the time and the authentication level;
+  - the comment and the signature when given.
+
+  Change-set approvals (STD-VER-021) and pending-change approvals MUST use the same item. A pending change's approvals become void when it is invalidated (STD-TXN-060), and the voided items stay visible. The commit that applies a pending change MUST reference the pending change, its preview and the approvers.
+- **Grammar / Schema:** `DAT-Approval`
+- **Conformance vectors:** VER-CONF-5165…5179
+- **Satisfies:** FR-FLOW-044, FR-FLOW-045, FR-FLOW-046, DSN-DVM-742
+- **Notes:** The default authentication level of the adapter is `basic`. A pending-change approval also records its `step`. Change-set approvals record `auth_level` and `comment` when given. Since 1.0-rc8 (DEC-091).
+
+### STD-LGS-044 — Simulation of rule changes
+- **Clause:** A simulation MUST:
+  - select the historical port calls of a target branch in a window and by an optional port, in commit order;
+  - re-run each, up to a budget of processes, in the `simulation` profile on a sandbox branch created from the target as of just before the call's commit, with the candidate rules of the source branch: the objects of `GovernanceSheet`, `PropertyDecl` and `DecisionTable` on it;
+  - compare each simulated outcome (`committed` with the result hash, or `failed` with the error code) with the actual one;
+  - report `changed` per call.
+
+  Effects of the re-runs MUST NOT be released. When the budget ends before the selection, the result MUST state the coverage: the calls covered, those selected, `complete` and the dates covered. Every run MUST be stored as an object of the genesis System class `SimulationRun` with:
+  - the source, the target and the window;
+  - the budget, the coverage and the results;
+  - the versions of the candidate rules.
+
+  A run given a change set MUST be linked from the change set's `simulations`.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5180…5199
+- **Satisfies:** FR-RULE-071, FR-RULE-072, FR-RULE-073, DSN-DVM-760, DSN-DVM-761, DSN-DVM-762
+- **Notes:** The budget counts processes; CPU and time budgets are the node's (DSN-DVM-762). The sandbox branches stay as evidence. Since 1.0-rc8 (DEC-091).

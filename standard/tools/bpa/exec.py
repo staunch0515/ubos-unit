@@ -40,7 +40,9 @@ IMPLEMENTED = ('commit.create', 'commit.update', 'commit.end', 'commit.move', 'c
                # BPA 1.0-rc2, PH-1 step 10c (DEC-067)
                'read.explain', 'run.validate', 'search.query',
                # BPA 1.0-rc3, PH-1 step 12a (DEC-071)
-               'commit.transition', 'read.actions')
+               'commit.transition', 'read.actions',
+               # BPA 1.0-rc8, PH-2 step 1c (DEC-091)
+               'run.decision')
 SYSTEM = {'sys.uuid': 'pure', 'sys.random_bytes': 'pure', 'adapter.observe': 'journaled'}
 READ_ACTIONS = ('read', 'read_history', 'reflect', 'explain')
 L2_FORBIDDEN = ('eval', 'print', 'debug', 'import', 'export', 'Fn', 'call', 'curry', 'is_def_fn', 'is_def_var',
@@ -98,6 +100,7 @@ class Run:
         self.frames = []
         # STD-ISA-017 (1.0-rc3): the transitions of this process by object and the guards passed
         self.transitions, self.guards = {}, []
+        self.tables = []                        # STD-ISA-053 (1.0-rc8): decision table versions
         self.cancel_after = i.get('cancel_after_units')
         self.context = self._context()
 
@@ -773,6 +776,23 @@ class Run:
         return self.run_function(Frame(asset, vh, fname, this=body, cls=cls, port=port, impl_class=found['class'],
                                        oid=oid), params)
 
+    def i_run_decision(self, a, d):
+        """STD-ISA-053 (1.0-rc8): evaluate a decision table at the process `asof` (or `asof`);
+        the table version is recorded in the rule binding."""
+        from .tables import evaluate, TABLE_CLASS
+        from .store import tl_at
+        st = self.state()
+        oid, o = self.s._table(st, self.target_id(a['table']) if not str(a['table']).startswith('ubos://') else a['table'])
+        self.authorize(d['authorization'], TABLE_CLASS)
+        seg = tl_at(o['timeline'], a.get('asof') or self.context['asof'])
+        if seg is None:
+            raise BpaError('QRY.NOT_FOUND_AT_TIME', 'no version of the table at asof')
+        body = self.s.versions[seg[2]]['body']
+        self.per_item(d, len(body.get('rows') or []))
+        if seg[2] not in self.tables:
+            self.tables.append(seg[2])
+        return evaluate(body, a['inputs'])['outputs']
+
     def i_run_validate(self, a, d):
         """STD-ISA-054: the validation preview of proposed changes or of the unit of work on
         a target."""
@@ -954,18 +974,26 @@ class Exec:
             seed = seed0 if attempt == 1 else hashlib.sha256(seed0 + attempt.to_bytes(4, 'big')).digest()
             run = Run(self, i, p, seed, replay)
             retryable = False
+            # STD-TXN-060 (1.0-rc8): with `defer`, a require outcome stores a pending change
+            self._deferring = [] if i.get('defer') and replay is None else None
             try:
                 result, retryable = self._start(run, i)
                 if replay is not None:
                     return self._compare(run, result, replay)
+                if self._deferring:
+                    deferred, self._deferring = self._deferring, None
+                    return self._defer(run, i, p, result, attempt, deferred)
+                self._deferring = None
                 if attempt in interfere:
                     self.commit(branch, interfere[attempt])
                 cid = None
                 if run.uow:
                     p['serializable'] = i.get('serializable', False)
                     p['reads'] = dict(run.reads)
-                    _, cid = self._do_commit(branch, run.uow, p, flow={'transitions': run.transitions, 'guards': run.guards})
+                    _, cid = self._do_commit(branch, run.uow, p, flow={'transitions': run.transitions, 'guards': run.guards,
+                                                                       'tables': run.tables})
             except BpaError as e:
+                self._deferring = None
                 if replay is not None:
                     raise
                 if e.code in RETRY_CODES and retryable and attempt < max_attempts:

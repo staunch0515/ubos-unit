@@ -1,4 +1,5 @@
 """Adapter operations (STD-CONF-005) and a vector runner."""
+from . import tables as _tables
 from . import BpaError
 from . import values
 from .canon import canonical, content_id, nfc
@@ -103,6 +104,8 @@ PURE = {
 # BPA 1.0-rc2, PH-1 step 10b (DEC-066)
 PURE.update(sheets.sheet_ops())
 PURE['parse_query'] = lambda i: lang_parse_query(i['text'])
+# BPA 1.0-rc8, PH-2 step 1c (DEC-091)
+PURE['check_table'] = lambda i: _tables.check_table(i['table'])
 
 STATEFUL = {
     'reset': lambda s, i: s.reset(),
@@ -182,6 +185,11 @@ STATEFUL = {
     'match': lambda s, i: s.match(i),
     'unmatch': lambda s, i: s.unmatch(i),
     'restate': lambda s, i: s.restate(i),
+    # BPA 1.0-rc8, PH-2 step 1c (DEC-091): decision tables, deferred commits, approvals, simulation
+    'decide_table': lambda s, i: s.decide_table(i),
+    'pending_change': lambda s, i: s.pending_change(i),
+    'approve': lambda s, i: s.approve(i),
+    'simulate': lambda s, i: s.simulate(i),
 }
 
 # Members of `ubtp` frames an implementation assigns (process identifiers), stripped like the

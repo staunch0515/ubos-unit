@@ -65,7 +65,7 @@
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3450…3469
 - **Satisfies:** FR-RULE-041, FR-RULE-043
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-091): the table is evaluated as in STD-LGS-040, in its version valid at `asof`, and the result is its `outputs`; the versions of the tables a process evaluated are listed in the `tables` member of the rule binding of its commit (STD-TIME-040). An unknown table is `IAM.NOT_FOUND`.
 
 ### STD-ISA-054 — `run.validate`
 - **Clause:** Evaluates validations, invariants and commit-point declarations for proposed changes without committing, and returns all findings (the validation preview).

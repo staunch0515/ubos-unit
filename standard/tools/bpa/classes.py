@@ -100,6 +100,20 @@ GENESIS = {
                                _f('rule', 'text'), _f('rule_ref', 'text'), _f('actor', 'text', True),
                                _f('unmatches', 'text'), _f('reason', 'text')],
                     'ledger': {'key': ['match_set'], 'amounts': [], 'double_entry': False}},
+    # STD-LGS-040 (BPA 1.0-rc8, DEC-091): decision tables are Definition objects below
+    # ConfigAsset; STD-LGS-044: simulation runs are System objects written by simulate.
+    'DecisionTable': {'name': 'DecisionTable', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
+                      'fields': [_f('name', 'text', True), _f('inputs', 'json', True), _f('outputs', 'json', True),
+                                 _f('rows', 'json', True),
+                                 _f('hit_policy', 'enum', True, constraints={'allowed_values': [
+                                     'unique', 'first', 'priority', 'collect']}),
+                                 _f('aggregator', 'enum', constraints={'allowed_values': ['sum', 'min', 'max', 'count']}),
+                                 _f('description', 'text', True)]},
+    'SimulationRun': {'name': 'SimulationRun', 'kind': 'system', 'parent': 'SystemObject', 'abstract': False,
+                      'fields': [_f('source', 'text', True), _f('target', 'text', True), _f('window', 'json', True),
+                                 _f('budget', 'json', True), _f('rule_versions', 'json', True),
+                                 _f('coverage', 'json', True), _f('results', 'json', True),
+                                 _f('changed', 'integer', True), _f('change_set', 'text')]},
     'Release': {'name': 'Release', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
                 'fields': [_f('version', 'text', True), _f('tag', 'text', True), _f('notes', 'text'),
                            _f('change_sets', 'json'), _f('approvals', 'json')]},

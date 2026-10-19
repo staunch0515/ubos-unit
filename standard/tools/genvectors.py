@@ -24,7 +24,7 @@ from bpa.store import Store                              # noqa: E402
 
 OUT = os.path.join(REPO, 'standard', 'vectors')
 AREAS = ['fnd', 'obj', 'cls', 'kind', 'ver', 'time', 'txn', 'proof', 'err', 'model', 'history', 'proofs', 'language', 'execution',
-         'sheets', 'rules', 'core1b', 'ubtp', 'flow', 'periods']
+         'sheets', 'rules', 'core1b', 'ubtp', 'flow', 'periods', 'approvals']
 # Stateful operations whose expected results are stripped of implementation-dependent members
 # and compared as subsets by default (STD-CONF-005, rule 6); the operations of step 1b keep
 # exact matching.
@@ -34,7 +34,8 @@ STRIPPED = ('commit', 'read', 'read_ledger', 'actions', 'merge', 'diff', 'export
             'bulk', 'commit_record', 'prove', 'consistency_proof', 'tenant_root', 'export_archive',
             'import_archive', 'resolve', 'query', 'execute', 'journal', 'metering', 'metering_total', 'replay',
             'verify_asset', 'bpu_descriptor', 'bpu_state', 'verify_bpu', 'cascade', 'explain_cascade', 'decide', 'ubtp',
-            'close_period', 'reopen_period', 'match', 'unmatch', 'restate')  # 1.0-rc8 (DEC-090)
+            'close_period', 'reopen_period', 'match', 'unmatch', 'restate',  # 1.0-rc8 (DEC-090)
+            'decide_table', 'pending_change', 'approve', 'simulate')       # 1.0-rc8 (DEC-091)
 
 
 # The time-zone vectors use only transitions that are stable in every tz database release

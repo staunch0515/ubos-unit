@@ -44,6 +44,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-088 | PH-2 step 0b-1b: the commit-time checks of references and relationships (STD-CLS-040, -041; DSN-DVM-109) run on indexes instead of the full branch state — reference rows of relationship fields in the field index, built for existing data when a VAE opens, URI resolution from the slug index, the sources of an ended target from the reference rows, cardinality for the targets a commit can change; extensions and sheets are read by class; amends DEC-050 item 3 | Accepted |
 | DEC-089 | PH-2 step 1 opened: BPA 1.0-rc8 scoped by a phase rule (`{base: 1.0-rc7, phase: PH-2}`, six profiles): 224 clauses, 23 added, MUST coverage 168/186 at the opening; the step in parts 1a–1h by clause area, standard and reference model only, each part's clarifications in its own decision; the kernel keeps claiming 1.0-rc1 plus the clauses it implements | Accepted |
 | DEC-090 | PH-2 step 1b: money and periods in BPA 1.0-rc8 — period transitions (open ↔ closing by update, `close_period`/`reopen_period` for closed), close artefacts with a signed tag (STD-KIND-026), deterministic matching and match records (STD-KIND-027, -028), restatement on a correction branch with re-evaluation modes (STD-TIME-041, -042); VER-CONF-1528 superseded | Accepted |
+| DEC-091 | PH-2 step 1c: approvals and rules in BPA 1.0-rc8 — deferred commits with `defer` (STD-TXN-060), decision tables with hit policies and an authoring check (STD-LGS-040, STD-ISA-053), approval requirements, separation of duties and approval evidence (STD-LGS-041…043), simulation of rule changes (STD-LGS-044) | Accepted |
 
 ---
 
@@ -659,3 +660,51 @@ the records from DEC-060 on follow.
   - A subset-sum search for many-to-one matches was rejected: its cost is exponential, and the result depends on search order.
   - Seals of close artefacts in 1.0-rc8 were rejected: STD-PROOF-055 is a PH-5 clause.
 - **Affects:** STD-KIND-025, STD-KIND-026, STD-KIND-027, STD-KIND-028, STD-TIME-041, STD-TIME-042, STD-CONF-005, FR-LEDG-061, FR-LEDG-062, FR-LEDG-071, FR-LEDG-073, FR-TIME-043, FR-TIME-064, DSN-DVM-322, DSN-DVM-443, DSN-DVM-445, DEC-067, DEC-089
+
+### DEC-091 — Approvals and rules in BPA 1.0-rc8 (PH-2 step 1, part 1c)
+- **Date:** 2026-10-19 · **Status:** Accepted
+- **Context:** Part 1c of PH-2 step 1 (DEC-089) writes the clauses and vectors of approvals and rules.
+  - STD-TXN-060 (deferred commits), STD-LGS-040 (decision tables) and STD-ISA-053 (`run.decision`) existed without the detail an implementation needs.
+  - FR-FLOW-041, -043, -045, -046, FR-RULE-071…073 and DSN-DVM-740, -742, -760…762 had no clause.
+  - BPA 1.0-rc2 left the pending change of a `require` outcome to PH-2 (STD-LGS-031 notes).
+
+  The owner confirmed the semantic choices with the default suggestions on 2026-10-19.
+- **Decision:**
+  1. **Deferred commits (STD-TXN-060).** A port call with `defer` whose decisions require steps stores its changes as a pending change instead of failing; without `defer` it still fails with `RULE.DECISION_REQUIRES` (released behaviour).
+     - **Record.** The pending change is identified by the requesting process. It holds the changes with their bases, the preview (content ID of `{branch, changes}`), the requirements and the approvals.
+     - **Expiry and invalidation.** At each read or approval it expires at `expires_at`. It is invalidated when a base is no longer the head, and the voided approvals and the changed bodies stay visible.
+     - **Application.** The final approval commits the changes in a new process with the requester as initiator. A failure of that commit invalidates the pending change, and a rejection ends it.
+  2. **Approval requirements (STD-LGS-041, new).** The kernel property `approvals` gains `principals`, `incompatible` and `expires_in` beside `count`, `roles` and `order`.
+     - **Eligibility.** Eligibility and sequence are checked per approval (`IAM.DENIED` with details).
+     - **Steps.** `approval` needs `count` approvals, `second_person` one, and `signature` one signed approval.
+  3. **Separation of duties (STD-LGS-042, new).** The approver and the delegator are each checked against three rules:
+     - maker–checker;
+     - one decision per principal and pending change;
+     - the incompatible duties of the requirement: a committed call of a listed port on the same object.
+
+     A breach is denied with `IAM.DENIED` and `details.sod`; no new error code.
+  4. **Approval evidence (STD-LGS-043, new).** One `DAT-Approval` item serves pending changes and change sets: approver, `on_behalf_of`, decision, preview, time, authentication level, comment and signature. Change-set approvals record `auth_level` and `comment` when given, so their released results are unchanged. The applying commit references the pending change, its preview and the approvers.
+  5. **Decision tables (STD-LGS-040, STD-ISA-053).** Tables are objects of the genesis class `DecisionTable` with typed inputs and outputs and rows of L1 conditions over `params` (`-` for any).
+     - **Hit policies.** `unique` (`RULE.NO_MATCH`, `RULE.MULTIPLE_MATCH`), `first`, `priority` (the highest `priority`, first of ties) and `collect` (a list, or `sum`, `min`, `max`, `count`).
+     - **Version.** A table is evaluated in its version valid at `asof`. `run.decision` records the table versions in the rule binding (`tables`).
+     - **Authoring check.** It enumerates the representative values of the boolean, enum, integer, decimal and date inputs: domains, compared literals, one unit around them and midpoints. It reports gaps and the overlaps the policy forbids, and lists other inputs as unchecked.
+  6. **Simulation (STD-LGS-044, new).** The historical port calls of a target branch, selected by a window and an optional port, are re-run in commit order up to a budget of processes.
+     - **Re-run.** Each runs in the `simulation` profile on a sandbox branch created as of just before its commit, with the candidate sheets, property declarations and decision tables of the source branch.
+     - **Effects.** No effects are released.
+     - **Comparison.** The outcome (`committed` with the result hash, or `failed` with the error code) is compared with the actual one.
+     - **Coverage.** It states the calls covered and selected, completeness and the dates covered.
+     - **Record.** The run is stored as an object of the genesis System class `SimulationRun` and linked from the change set given.
+  7. **Adapter operations.** `decide_table`, `check_table`, `pending_change`, `approve` and `simulate`, and `execute` with `defer` (STD-CONF-005). The reference model is in `standard/tools/bpa/approvals.py` and `tables.py`, the cases in `standard/tools/cases/approvals.py`.
+- **Consequences:**
+  - 1.0-rc8 has 232 clauses and 1,800 vectors.
+  - Part 1c adds 53 vectors:
+    - Governance: 50;
+    - Core (STD-ISA-053): 3.
+  - MUST coverage is 179/194.
+  - No released vector changed. `crates/` is unchanged; the kernel takes up these clauses in PH-2 steps 4 and 5.
+- **Alternatives considered:**
+  - Making `require` defer by default was rejected: released vectors and clients expect `RULE.DECISION_REQUIRES`.
+  - A new SoD error code was rejected: `IAM.DENIED` with details gives the explanation FR-FLOW-043 asks for.
+  - Analysing arbitrary conditions symbolically was rejected: sampling at the compared literals finds the gaps and overlaps of range and enumerable inputs, and other inputs are reported as unchecked rather than guessed.
+  - Simulating by replaying journals with substituted rules was rejected for 1.0-rc8: the journal pins the original reads and rule bindings, so the candidate rules would not be evaluated. Re-running on a sandbox as of the original snapshot evaluates them.
+- **Affects:** STD-TXN-060, STD-LGS-011, STD-LGS-031, STD-LGS-040, STD-LGS-041, STD-LGS-042, STD-LGS-043, STD-LGS-044, STD-ISA-053, STD-VER-021, STD-TIME-040, STD-CONF-005, FR-FLOW-041, FR-FLOW-042, FR-FLOW-043, FR-FLOW-044, FR-FLOW-045, FR-FLOW-046, FR-RULE-041, FR-RULE-042, FR-RULE-071, FR-RULE-072, FR-RULE-073, DSN-DVM-740, DSN-DVM-742, DSN-DVM-760, DSN-DVM-761, DSN-DVM-762, DEC-089

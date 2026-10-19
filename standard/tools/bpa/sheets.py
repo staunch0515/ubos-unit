@@ -36,7 +36,11 @@ KERNEL_PROPERTIES = {
     'approvals': ('action', 'max', {'type': 'composite', 'constraints': {'members': {
         'count': {'type': 'integer', 'required': True, 'constraints': {'min': 1}},
         'roles': {'type': 'list', 'constraints': {'item_type': {'type': 'text'}}},
-        'order': _enum(('any', 'sequence'))}}}),
+        'order': _enum(('any', 'sequence')),
+        # since 1.0-rc8 (STD-LGS-041, -042, DEC-091)
+        'principals': {'type': 'list', 'constraints': {'item_type': {'type': 'text'}}},
+        'incompatible': {'type': 'list', 'constraints': {'item_type': {'type': 'text'}}},
+        'expires_in': {'type': 'duration'}}}}),
     'maker_checker': ('action', 'override', {'type': 'boolean'}),
     'read_only': ('commit', 'override', {'type': 'boolean'}),
     'field_required': ('commit', 'union', {'type': 'list', 'constraints': {'item_type': {'type': 'text'}}}),

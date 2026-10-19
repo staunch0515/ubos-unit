@@ -27,6 +27,8 @@ from .rules import Rules, DryRun
 from .flow import Flow
 from .ubtp import Ubtp
 from .periods import Periods
+from .tables import Tables
+from .approvals import Approvals
 from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
@@ -123,7 +125,7 @@ def tl_at(tl, asof):
     return None
 
 
-class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods):
+class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Tables, Approvals):
     def __init__(self):
         self.reset()
 
@@ -220,7 +222,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods):
             decls[d['name']] = d
         eff = {}
         for n in list(decls) + ['ChangeSet', 'Release', 'Logic', 'GovernanceSheet', 'PropertyDecl', 'Lifecycle', 'Policy',
-                                'CloseArtefact', 'MatchRecord']:
+                                'CloseArtefact', 'MatchRecord', 'DecisionTable', 'SimulationRun']:
             eff[n] = effective_class(list(decls.values()), n)
         for n, e in eff.items():
             old = self.classes.get(n)
@@ -754,6 +756,10 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods):
         lg = sorted(set(logic) | {x for d in self._derived for x in self.derivations[d[3]]['logic']})
         if lg:
             out['logic'] = lg
+        # STD-TIME-040, STD-ISA-053 (1.0-rc8): the decision table versions a process evaluated
+        tables = (getattr(self, '_flow', None) or {}).get('tables') or []
+        if tables:
+            out['tables'] = sorted(tables)
         guards = (getattr(self, '_flow', None) or {}).get('guards') or []
         if guards:
             out['guards'] = list(guards)
@@ -778,7 +784,8 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods):
             raise BpaError('MODEL.ABSTRACT_INSTANTIATION')
         # STD-KIND-026 (1.0-rc8): close artefacts are written by close_period only
         if (eff['kind'] == 'system' or eff['kind'] == 'ledger') and not (
-                cls == 'CloseArtefact' and getattr(self, '_period_op', None) == ('closing', 'closed')):
+                cls == 'CloseArtefact' and getattr(self, '_period_op', None) == ('closing', 'closed')) and not (
+                cls == 'SimulationRun' and getattr(self, '_sim_op', False)):
             raise BpaError('LOGIC.FORBIDDEN_TARGET')
         if oid in st['objects'] or self._entry_owner(st, oid)[1]:
             raise BpaError('TXN.ALREADY_EXISTS')

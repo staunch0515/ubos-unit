@@ -9,9 +9,9 @@ with the owner's signed tag `bpa-v1.0.0-rc8`. BPA 1.0-rc7 stays frozen as tagged
 | Item | Value |
 |---|---|
 | Profiles | Core, Bitemporal, Ledger, Proof, Governance, Protocol |
-| Clauses | 228 (scope by phase, `scope.json`): the 201 clauses of BPA 1.0-rc7, 23 that satisfy PH-2 requirements, and 4 written in part 1b |
-| MUST clauses with a vector range | 190, 173 covered (`coverage.md`) |
-| Vectors | 1,747: those of BPA 1.0-rc7 without VER-CONF-1528 (superseded), and 45 of part 1b |
+| Clauses | 232 (scope by phase, `scope.json`): the 201 clauses of BPA 1.0-rc7, 23 that satisfy PH-2 requirements, and 8 written in parts 1b and 1c |
+| MUST clauses with a vector range | 194, 179 covered (`coverage.md`) |
+| Vectors | 1,800: those of BPA 1.0-rc7 without VER-CONF-1528 (superseded), 45 of part 1b and 53 of part 1c |
 
 ## Changes since BPA 1.0-rc7
 
@@ -33,3 +33,9 @@ with the owner's signed tag `bpa-v1.0.0-rc8`. BPA 1.0-rc7 stays frozen as tagged
   - **Re-evaluation modes** for logic assets (STD-TIME-041) and **restatement** on a correction branch (STD-TIME-042, new).
   - **Adapter operations** `close_period`, `reopen_period`, `match`, `unmatch` and `restate`.
   - **Supersession:** VER-CONF-1528 closed a period by an update. It is superseded by VER-CONF-1108, which closes the period with `close_period`.
+- Part 1c (DEC-091), approvals and rules:
+  - **Deferred commits** with `defer` (STD-TXN-060).
+  - **Approval requirements, separation of duties and approval evidence** (STD-LGS-041…043, new).
+  - **Decision tables** with hit policies and an authoring check (STD-LGS-040, STD-ISA-053).
+  - **Simulation of rule changes** (STD-LGS-044, new).
+  - **Adapter operations** `decide_table`, `check_table`, `pending_change`, `approve` and `simulate`.
