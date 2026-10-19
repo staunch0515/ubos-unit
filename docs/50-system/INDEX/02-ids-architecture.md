@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (87)
+## DEC (88)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -181,4 +181,5 @@ depends_on: [UBS-IDX-00]
 | DEC-085 | PH-1 close-out, the frozen line `release/ph1`, and the PH-2 step plan | `90-decisions/000-index.md` |
 | DEC-086 | Privacy by default in the PH-1 scope (PH-1 step 19b) | `90-decisions/000-index.md` |
 | DEC-087 | PH-1 close-out with carry-overs and the start of PH-2 | `90-decisions/000-index.md` |
+| DEC-088 | Commit checks of references and relationships on indexes (PH-2 step 0b-1b) | `90-decisions/000-index.md` |
 

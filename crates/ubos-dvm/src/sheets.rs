@@ -185,6 +185,15 @@ impl StateMatcher<'_, '_> {
         &mut self,
         uri: &str,
     ) -> Result<Option<(String, ubos_version::ObjectState)>, BpaError> {
+        // a partial transaction resolves through the slug index at its base
+        if let Some(tx) = self.tx
+            && tx.partial
+        {
+            let Some((class, slug)) = crate::relations::parse_uri(uri, &self.authority) else {
+                return Ok(None);
+            };
+            return self.repo.slug_in(tx, class, slug);
+        }
         if let Some(tid) = resolve(self.st, uri, &self.authority) {
             return Ok(Some((tid.clone(), self.st.objects[&tid].clone())));
         }

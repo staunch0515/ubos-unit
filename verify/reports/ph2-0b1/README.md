@@ -37,3 +37,5 @@
    not show here. A finance model (references everywhere) would pay it on every commit. This
    is proposed to the owner as part 0b-1b: the checks over indexes (reference targets by
    identifier, unique keys by the field index, sheets by class), as in this part.
+   Done in part 0b-1b (DEC-088, `verify/reports/ph2-0b1b/`); the commit path checks no unique
+   keys, so there was nothing of them to move.

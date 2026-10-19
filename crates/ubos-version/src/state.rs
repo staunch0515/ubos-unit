@@ -278,18 +278,62 @@ pub fn version_record(
 }
 
 /// The field index rows of a head version (DSN-DVM-902): `(field, value key)` for every
-/// indexed field of the class; none for a tombstone.
+/// indexed field of the class, and the reference rows of its relationship fields
+/// (`ref_rows`); none for a tombstone.
 pub fn index_rows(reg: &Registry, class: &str, version: &Value) -> Vec<(String, Vec<u8>)> {
     if version["tombstone"] == json!(true) {
         return Vec::new();
     }
-    reg.indexed_fields(class)
+    let mut out: Vec<(String, Vec<u8>)> = reg
+        .indexed_fields(class)
         .into_iter()
         .filter_map(|(f, t)| {
             let value = version["body"].get(&f).cloned().unwrap_or(Value::Null);
             ubos_model::types::values::index_key(&t, &value).map(|k| (f, k))
         })
-        .collect()
+        .collect();
+    out.extend(ref_rows(reg, class, &version["body"]));
+    out
+}
+
+/// Prefix of the reference rows in the field index: no declared field name starts with it.
+pub const REF_ROW: &str = "@ref:";
+
+/// The reference rows of a body (PH-2 step 0b): `(REF_ROW + field, key of the URI)` for
+/// every URI of a relationship field, so that the commit checks of STD-CLS-040 find the
+/// sources of a target without reading the branch.
+pub fn ref_rows(reg: &Registry, class: &str, body: &Value) -> Vec<(String, Vec<u8>)> {
+    let Ok(c) = reg.class(class) else {
+        return Vec::new();
+    };
+    let mut out: BTreeSet<(String, Vec<u8>)> = BTreeSet::new();
+    for (f, uri) in c.refs(body) {
+        if c.relationship(&f).is_some()
+            && let Some(k) = ubos_model::types::values::index_key("reference", &json!(uri))
+        {
+            out.insert((format!("{REF_ROW}{f}"), k));
+        }
+    }
+    out.into_iter().collect()
+}
+
+/// Whether a class has relationship fields (and so reference rows).
+pub fn has_relationships(reg: &Registry, class: &str) -> bool {
+    reg.class(class)
+        .is_ok_and(|c| c.fields.keys().any(|f| c.relationship(f).is_some()))
+}
+
+/// The relationship fields of the registry: field name → the classes that have it.
+pub fn relationship_fields(reg: &Registry) -> BTreeMap<String, Vec<String>> {
+    let mut out: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for c in reg.classes() {
+        for f in c.fields.keys() {
+            if c.relationship(f).is_some() {
+                out.entry(f.clone()).or_default().push(c.name.clone());
+            }
+        }
+    }
+    out
 }
 
 /// Parsed tree nodes shared by the views of this thread, keyed by hash (the process-local
@@ -616,6 +660,20 @@ impl<'a> Repo<'a> {
         class: &str,
         slug: &str,
     ) -> Result<Option<(String, ObjectState)>, BpaError> {
+        Ok(self
+            .objects_by_slug(branch, cseq, class, slug)?
+            .into_iter()
+            .next())
+    }
+
+    /// Every object of `class` with `slug` at an ordinal of a branch, from the slug index.
+    pub fn objects_by_slug(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        class: &str,
+        slug: &str,
+    ) -> Result<BTreeMap<String, ObjectState>, BpaError> {
         let mut ids = BTreeSet::new();
         for (b, c) in self.chain(branch, cseq)? {
             for (id, _) in self.store.objects_by_slug(&b, c, class, slug)? {
@@ -623,13 +681,175 @@ impl<'a> Repo<'a> {
             }
         }
         if ids.is_empty() {
-            return Ok(None);
+            return Ok(BTreeMap::new());
         }
         let ids: Vec<String> = ids.into_iter().collect();
-        Ok(self
-            .objects_in_ids(branch, cseq, &ids)?
-            .into_iter()
-            .find(|(_, o)| o.class == class && o.slug == slug))
+        let mut out = self.objects_in_ids(branch, cseq, &ids)?;
+        out.retain(|_, o| o.class == class && o.slug == slug);
+        Ok(out)
+    }
+
+    /// The object of `class` with `slug` as a transaction sees it: the smallest identifier
+    /// among the matches of its state (through `slug_view` when set) and, for a partial
+    /// transaction, the matches of the slug index at its base (a loaded object matches by
+    /// its state in the transaction).
+    pub fn slug_in(
+        &mut self,
+        tx: &Tx,
+        class: &str,
+        slug: &str,
+    ) -> Result<Option<(String, ObjectState)>, BpaError> {
+        let mut best = match &tx.slug_view {
+            Some(v) => v
+                .get(&(class.to_string(), slug.to_string()))
+                .into_iter()
+                .flatten()
+                .filter_map(|id| tx.state.objects.get(id).map(|o| (id, o)))
+                .find(|(_, o)| o.class == class && o.slug == slug)
+                .map(|(id, o)| (id.clone(), o.clone())),
+            None => tx
+                .state
+                .objects
+                .iter()
+                .find(|(_, o)| o.class == class && o.slug == slug)
+                .map(|(id, o)| (id.clone(), o.clone())),
+        };
+        if tx.partial {
+            let key = (class.to_string(), slug.to_string());
+            let found = match tx.slugs.get(&key) {
+                Some(m) => m.clone(),
+                None => self.objects_by_slug(&tx.branch, tx.base, class, slug)?,
+            };
+            for (id, o) in found {
+                // a loaded object matches by its state in the transaction
+                let o = if tx.loaded.contains_key(&id) {
+                    match tx.state.objects.get(&id) {
+                        Some(s_) if s_.class == class && s_.slug == slug => s_.clone(),
+                        _ => continue,
+                    }
+                } else {
+                    o
+                };
+                if best.as_ref().is_none_or(|(b, _)| id < *b) {
+                    best = Some((id, o));
+                }
+            }
+        }
+        Ok(best)
+    }
+
+    /// Read the slug index at the base of a partial transaction for the given
+    /// `(class, slug)` pairs in bulk (one query per class and branch of the chain).
+    pub fn prefetch_slugs(
+        &mut self,
+        tx: &mut Tx,
+        pairs: &BTreeSet<(String, String)>,
+    ) -> Result<(), BpaError> {
+        let mut by_class: BTreeMap<&str, Vec<String>> = BTreeMap::new();
+        for (c, s_) in pairs {
+            if !tx.slugs.contains_key(&(c.clone(), s_.clone())) {
+                by_class.entry(c).or_default().push(s_.clone());
+            }
+        }
+        for (class, slugs) in by_class {
+            let mut ids = BTreeSet::new();
+            for (b, c) in self.chain(&tx.branch, tx.base)? {
+                for (id, _) in self.store.objects_by_slugs(&b, c, class, &slugs)? {
+                    ids.insert(id);
+                }
+            }
+            for s_ in &slugs {
+                tx.slugs
+                    .insert((class.to_string(), s_.clone()), BTreeMap::new());
+            }
+            let ids: Vec<String> = ids.into_iter().collect();
+            for (id, o) in self.objects_in_ids(&tx.branch, tx.base, &ids)? {
+                if o.class == class
+                    && let Some(m) = tx.slugs.get_mut(&(class.to_string(), o.slug.clone()))
+                {
+                    m.insert(id, o);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Read the reference rows at the base of a partial transaction for the given URIs in
+    /// bulk (one query per relationship field and branch of the chain); `false` when the
+    /// store has no field index.
+    pub fn prefetch_referrers(
+        &mut self,
+        tx: &mut Tx,
+        uris: &BTreeSet<String>,
+    ) -> Result<bool, BpaError> {
+        let mut keys: BTreeMap<Vec<u8>, String> = BTreeMap::new();
+        let mut found: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+        for u in uris {
+            if tx.referrers.contains_key(u) {
+                continue;
+            }
+            if let Some(k) = ubos_model::types::values::index_key("reference", &json!(u)) {
+                keys.insert(k, u.clone());
+            }
+            found.insert(u.clone(), BTreeSet::new());
+        }
+        if !keys.is_empty() {
+            let list: Vec<Vec<u8>> = keys.keys().cloned().collect();
+            for (field, classes) in relationship_fields(self.reg) {
+                let name = format!("{REF_ROW}{field}");
+                for (b, c) in self.chain(&tx.branch, tx.base)? {
+                    let Some(rows) = self.store.field_keys(&b, c, &classes, &name, &list)? else {
+                        return Ok(false);
+                    };
+                    for (id, k) in rows {
+                        if let Some(u) = keys.get(&k)
+                            && let Some(s_) = found.get_mut(u)
+                        {
+                            s_.insert(id);
+                        }
+                    }
+                }
+            }
+        }
+        tx.referrers.extend(found);
+        Ok(true)
+    }
+
+    /// Load the given objects into a transaction from the index in bulk (those not loaded).
+    pub fn load_ids(&mut self, tx: &mut Tx, ids: &BTreeSet<String>) -> Result<(), BpaError> {
+        let want: Vec<String> = ids
+            .iter()
+            .filter(|id| !tx.loaded.contains_key(*id))
+            .cloned()
+            .collect();
+        if want.is_empty() {
+            return Ok(());
+        }
+        let mut got = self.objects_in_ids(&tx.branch, tx.base, &want)?;
+        for id in want {
+            let o = got.remove(&id);
+            if let Some(o) = &o {
+                tx.state.objects.insert(id.clone(), o.clone());
+            }
+            tx.loaded.insert(id, o);
+        }
+        Ok(())
+    }
+
+    /// The objects whose head at the base of a partial transaction carried `uri` in a
+    /// relationship field (the reference rows, PH-2 step 0b-1b); `None` when the store has
+    /// no field index. Candidates only: the caller checks them against their state.
+    pub fn referrers(
+        &mut self,
+        tx: &mut Tx,
+        uri: &str,
+    ) -> Result<Option<BTreeSet<String>>, BpaError> {
+        if !tx.referrers.contains_key(uri)
+            && !self.prefetch_referrers(tx, &BTreeSet::from([uri.to_string()]))?
+        {
+            return Ok(None);
+        }
+        Ok(tx.referrers.get(uri).cloned())
     }
 
     /// The given objects of a branch at an ordinal, read from the index in bulk.
@@ -811,6 +1031,7 @@ impl<'a> Repo<'a> {
             loaded_entries: HashSet::new(),
             loaded_queues: HashSet::new(),
             versions: Vec::new(),
+            version_ix: HashMap::new(),
             appended: Vec::new(),
             now: None,
             inherited: HashMap::new(),
@@ -821,6 +1042,10 @@ impl<'a> Repo<'a> {
             idempotency: None,
             derivations: Vec::new(),
             timers: Vec::new(),
+            partial: false,
+            slugs: HashMap::new(),
+            referrers: HashMap::new(),
+            slug_view: None,
         })
     }
 
@@ -925,7 +1150,8 @@ impl<'a> Repo<'a> {
             // the field index rows of the new head (DSN-DVM-902)
             let mut index = Vec::new();
             if let Some(o) = new
-                && !self.reg.indexed_fields(&o.class).is_empty()
+                && (!self.reg.indexed_fields(&o.class).is_empty()
+                    || has_relationships(self.reg, &o.class))
             {
                 let v = self.version_in(&tx, &o.head)?;
                 index = index_rows(self.reg, &o.class, &v);
@@ -1056,14 +1282,15 @@ impl<'a> Repo<'a> {
             provenance,
             state,
         )?;
+        tx.version_ix.entry(vh.clone()).or_insert(tx.versions.len());
         tx.versions.push((vh.clone(), rec));
         Ok(vh)
     }
 
     /// A version record, looking first at the versions of an open transaction.
     pub fn version_in(&mut self, tx: &Tx, hash: &str) -> Result<Value, BpaError> {
-        match tx.versions.iter().find(|(h, _)| h == hash) {
-            Some((_, v)) => Ok(v.clone()),
+        match tx.version_ix.get(hash) {
+            Some(i) => Ok(tx.versions[*i].1.clone()),
             None => self.version(hash),
         }
     }
@@ -1434,6 +1661,8 @@ pub struct Tx {
     pub loaded_queues: HashSet<(String, String)>,
     /// New version records.
     pub versions: Vec<(String, Value)>,
+    /// Position of each new version record in `versions`.
+    pub version_ix: HashMap<String, usize>,
     /// Entries appended in this commit.
     pub appended: Vec<Entry>,
     /// The adapter clock, for the transaction time of the commit.
@@ -1456,4 +1685,16 @@ pub struct Tx {
     pub derivations: Vec<Value>,
     /// Future segment starts that emit BecameEffective (STD-TIME-050).
     pub timers: Vec<Value>,
+    /// The state holds only what the commit read: references resolve and sources are found
+    /// through the indexes at the base (PH-2 step 0b), not by a scan of the state.
+    pub partial: bool,
+    /// The slug index at the base, as read by this commit: `(class, slug)` → the objects
+    /// with that slug.
+    pub slugs: HashMap<(String, String), BTreeMap<String, ObjectState>>,
+    /// The reference rows at the base, as read by this commit: URI → the objects whose
+    /// relationship fields carried it.
+    pub referrers: HashMap<String, BTreeSet<String>>,
+    /// The objects of the state by `(class, slug)` while no slug changes (the commit
+    /// checks); `None` otherwise, when lookups scan the state.
+    pub slug_view: Option<HashMap<(String, String), BTreeSet<String>>>,
 }

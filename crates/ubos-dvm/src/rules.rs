@@ -555,6 +555,7 @@ impl Engine {
         if ubos_version::expires_of(&meta)?.is_some_and(|exp| self.now >= exp) {
             return Err(BpaError::new("VER.BRANCH_ARCHIVED", branch));
         }
+        let refs = self.refs_indexed(&branch)?;
         let r = crate::stateful::commit_on(
             self.store.as_mut(),
             &self.registry,
@@ -569,6 +570,7 @@ impl Engine {
             self.max_violations,
             &mut self.rules,
             None,
+            refs,
         );
         match r {
             Ok((result, _, _)) => Ok(json!({

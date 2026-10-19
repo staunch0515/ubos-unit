@@ -236,6 +236,55 @@ pub trait Store {
     ) -> Result<u64, BpaError> {
         Ok(self.objects(branch, cseq, class)?.len() as u64)
     }
+    /// Whether `field_scan` and `field_keys` answer (the backend keeps field indexes).
+    fn has_field_index(&self) -> bool {
+        false
+    }
+    /// The local rows of the objects of `class` carrying one of `slugs` at `cseq`, in one
+    /// round trip where the backend allows it (the slug lookups of a commit's checks, PH-2
+    /// step 0b-1b). The default asks one slug at a time.
+    fn objects_by_slugs(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        class: &str,
+        slugs: &[String],
+    ) -> Result<Vec<(String, Option<Value>)>, BpaError> {
+        let mut out = Vec::new();
+        for slug in slugs {
+            out.extend(self.objects_by_slug(branch, cseq, class, slug)?);
+        }
+        Ok(out)
+    }
+    /// The rows of a field index of the given classes at `cseq` whose value key is one of
+    /// `keys`, as `(object_id, value key)`, in one round trip where the backend allows it;
+    /// `None` without field indexes. The default scans one key at a time.
+    fn field_keys(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        classes: &[String],
+        field: &str,
+        keys: &[Vec<u8>],
+    ) -> Result<Option<FieldRows>, BpaError> {
+        let mut out = Vec::new();
+        for k in keys {
+            let Some(rows) = self.field_scan(
+                branch,
+                cseq,
+                classes,
+                field,
+                Some(k),
+                Some(k),
+                usize::MAX >> 2,
+            )?
+            else {
+                return Ok(None);
+            };
+            out.extend(rows);
+        }
+        Ok(Some(out))
+    }
     /// A declared field index of the given classes at `cseq`: the objects whose head
     /// version has a value key in `[lo, hi]` (either bound open when `None`), as
     /// `(object_id, value key)` in key order then object order, at most `limit` rows
@@ -628,6 +677,9 @@ pub struct MemStore {
     commit_metas: HashMap<u64, Value>,
     /// Object identifiers by branch and class (the class of an object never changes).
     by_class: HashMap<String, HashMap<String, Vec<String>>>,
+    /// Object identifiers by branch, class and slug, for every slug an object had (the
+    /// slug index; candidates are checked against the row at the ordinal).
+    by_slug: HashMap<String, HashMap<(String, String), Vec<String>>>,
     by_cseq: HashMap<(String, u64), u64>,
     branches: HashMap<String, BranchRef>,
     objects: HashMap<String, BTreeMap<String, Vec<MemObject>>>,
@@ -764,7 +816,21 @@ impl Store for MemStore {
         self.by_cseq.insert((f.branch.clone(), f.cseq), f.commit_id);
         let objects = self.objects.entry(f.branch.clone()).or_default();
         let by_class = self.by_class.entry(f.branch.clone()).or_default();
+        let by_slug = self.by_slug.entry(f.branch.clone()).or_default();
         for o in &f.objects {
+            if let Some(slug) = o
+                .state
+                .as_ref()
+                .and_then(|s| s.get("slug"))
+                .and_then(Value::as_str)
+            {
+                let ids = by_slug
+                    .entry((o.class.clone(), slug.to_string()))
+                    .or_default();
+                if !ids.contains(&o.object_id) {
+                    ids.push(o.object_id.clone());
+                }
+            }
             let rows = objects.entry(o.object_id.clone()).or_default();
             if rows.is_empty() {
                 by_class
@@ -907,6 +973,40 @@ impl Store for MemStore {
             .and_then(|m| m.get(object_id))
             .and_then(|rows| rows.iter().find(|r| visible(r, cseq)))
             .map(|r| r.state.clone()))
+    }
+    fn has_field_index(&self) -> bool {
+        true
+    }
+    fn objects_by_slug(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        class: &str,
+        slug: &str,
+    ) -> Result<Vec<(String, Option<Value>)>, BpaError> {
+        let mut out = Vec::new();
+        let (Some(objects), Some(ids)) = (
+            self.objects.get(branch),
+            self.by_slug
+                .get(branch)
+                .and_then(|m| m.get(&(class.to_string(), slug.to_string()))),
+        ) else {
+            return Ok(out);
+        };
+        for id in ids {
+            if let Some(r) = objects
+                .get(id)
+                .and_then(|rows| rows.iter().find(|r| visible(r, cseq)))
+                && r.state
+                    .as_ref()
+                    .and_then(|s| s.get("slug"))
+                    .and_then(Value::as_str)
+                    == Some(slug)
+            {
+                out.push((id.clone(), r.state.clone()));
+            }
+        }
+        Ok(out)
     }
     fn objects(
         &mut self,

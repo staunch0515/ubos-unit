@@ -185,6 +185,7 @@ impl Engine {
                 }
             }
         }
+        self.mark_ref_rows()?;
         Ok(out)
     }
 }

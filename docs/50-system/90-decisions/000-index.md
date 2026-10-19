@@ -41,6 +41,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-085 | PH-1 close-out and PH-2 start: step 19 in parts 19a–19d; after step 19 the frozen line `release/ph1` (tag `ph1-rc1`) carries the gate-1b acceptance and the reference runs, fixes reaching it from `main`; `main` becomes the development line of PH-2; the PH-2 step plan (steps 0–20, gates 2a and 2b) in UBS-PH-2 §11 | Accepted |
 | DEC-086 | PH-1 step 19b: the PH-1 part of privacy by default (classification by declaration, the class default, `internal` otherwise; raise-only; rectification as a new version with the reason `rectification`); masking and read logging by default move with DSN-DVM-821/-823 to PH-2, subject-key encryption of rectified versions with DSN-DVM-830; `forge check` reports classification coverage | Accepted |
 | DEC-087 | PH-1 close-out with carry-overs: the PH-1 Must requirements not built in PH-1 move to PH-2 (balance projections and their rebuild to step 3, `forge new`/`pack` to step 7, TLS, tenant customisation lines and the metrics catalogue to step 11, the process reading its branch on demand, the file-replacement test and the idempotency retention to a new step 0b) and FR-STD-042 to PH-3; the benchmark gaps stay in PH-1 for the reference runs; `release/ph1` is cut (`ph1-rc1`) and PH-2 starts | Accepted |
+| DEC-088 | PH-2 step 0b-1b: the commit-time checks of references and relationships (STD-CLS-040, -041; DSN-DVM-109) run on indexes instead of the full branch state — reference rows of relationship fields in the field index, built for existing data when a VAE opens, URI resolution from the slug index, the sources of an ended target from the reference rows, cardinality for the targets a commit can change; extensions and sheets are read by class; amends DEC-050 item 3 | Accepted |
 
 ---
 
@@ -561,3 +562,24 @@ the records from DEC-060 on follow.
   - Closing the gaps in PH-1 before the cut was rejected by the owner. TLS, the projections and the process change belong to work that PH-2 does anyway, and they would delay PH-2.
   - Moving the process change later in PH-2 was rejected. Every port call, handler and job of the finance Buk runs on large branches, so it comes first.
 - **Affects:** UBS-PH-1, UBS-PH-2, EXIT-1-17, EXIT-1-20, VER-INSP-9500, FR-LEDG-031, FR-LEDG-033, FR-ANL-021, FR-DEV-011, CR-SOC2-003, NR-SEC-004, FR-TEN-031, NR-OBS-002, FR-FILE-011, FR-TXN-032, FR-STD-042, DSN-DVM-420, DSN-DVM-531, NR-PERF-011, DEC-085
+
+### DEC-088 — Commit checks of references and relationships on indexes (PH-2 step 0b-1b)
+- **Date:** 2026-10-19 · **Status:** Accepted
+- **Context:** DEC-050 item 3 has a commit load the full branch state when the registry declares references or relationships, when extensions are in force, or when the commit writes one; sheets were added to the same rule with BPA 1.0-rc2. Part 0b-1 of step 0b (DEC-087) made processes read on demand and found that the commit path still loads the whole branch in these models: every commit of a finance model would read every object of its branch. The owner confirmed part 0b-1b on 2026-10-19.
+- **Decision:**
+  1. **Reference rows.** The field index (DSN-DVM-902) carries, for every head version, one row per URI in a relationship field, under the field name prefixed `@ref:` (the `relationship_index` of DSN-DVM-109). Rows are written at flush and by archive import.
+  2. **Existing data.** When a VAE opens or its declarations change, the relationship fields without rows (recorded in the VAE metadata `ref_rows`) get rows at the head of every branch if their classes have instances; the rows serve each branch from that commit (`index_since`, as for a rebuilt field index). Until then, and on a store without field indexes, commits use the full state as before.
+  3. **Checks on a partial state.** A commit without a parent line reads only what it needs:
+     - URIs resolve from the slug index at the base, in bulk, with the objects of the transaction taking precedence; the smallest identifier wins, as on the full state;
+     - the sources of an ended target (`on_end` restrict, cascade and detach) are the objects the commit changed plus the candidates from the reference rows, each checked against its state;
+     - cardinality is checked for the targets the commit can change: the targets of the one-to-one and one-to-many references it writes, and the objects it creates or renames whose class is such a target. The committed state already satisfies cardinality;
+     - class extensions and sheets are loaded by class.
+  4. **Unchanged:** a branch with a parent line, merges and reverts keep the full state; error codes and their order are the same.
+- **Consequences:**
+  - Conformance (BPA 1.0-rc7), replay corpus and scenarios pass unchanged in memory and on PostgreSQL.
+  - The benchmark `ubos-bench refs` measures commits on a model with relationships (`verify/reports/ph2-0b1b/`).
+  - A model that adds a cardinality rule to data that already violates it is reported only by the commits touching the violating targets; on the full state, every commit of the branch failed.
+- **Alternatives considered:**
+  - A separate reference table was rejected: the field index already has the needed shape, branch chaining and row closing, and needs no migration.
+  - Keeping the full state for cardinality was rejected: every commit of a model with a one-to-one relationship would read the whole branch.
+- **Affects:** STD-CLS-030, STD-CLS-040, STD-CLS-041, DSN-DVM-109, DSN-DVM-902, DEC-050, DEC-087

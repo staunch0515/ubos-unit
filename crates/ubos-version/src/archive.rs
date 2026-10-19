@@ -460,7 +460,8 @@ impl Repo<'_> {
                 // the field index rows of the head (DSN-DVM-902), rebuilt on import
                 let mut index = Vec::new();
                 if let Some(o) = new
-                    && !self.reg.indexed_fields(&o.class).is_empty()
+                    && (!self.reg.indexed_fields(&o.class).is_empty()
+                        || crate::state::has_relationships(self.reg, &o.class))
                     && let Some(env) = versions.get(&o.head)
                     && let Some(body) = chunks.get(text(env, "body_ref"))
                 {
