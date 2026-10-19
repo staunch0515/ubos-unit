@@ -158,6 +158,9 @@ pub fn refs(args: &[String], url: &str) -> Result<Value, BpaError> {
     let mut free = busy;
     let mut report = serde_json::Map::new();
     for (mode, n) in [("indexed", rounds), ("full", full_rounds)] {
+        if n == 0 {
+            continue;
+        }
         if mode == "full" {
             // the checks over the whole branch state, as before step 0b-1b
             e.index_since.insert(
@@ -230,6 +233,7 @@ pub fn refs(args: &[String], url: &str) -> Result<Value, BpaError> {
         if !errors.is_empty() {
             m.insert("errors".into(), json!(errors));
         }
+        eprintln!("{mode}: {}", Value::Object(m.clone()));
         report.insert(mode.into(), Value::Object(m));
     }
     Ok(json!({
