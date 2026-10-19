@@ -21,4 +21,13 @@
 
 ## Verification
 
-<!-- rows filled after the run -->
+| Check | Result |
+|---|---|
+| Scenarios (all, with SLUG-1…SLUG-3 and MKEY-1…MKEY-3) | 40 of 40 in memory, on PostgreSQL and over UBTP (WebSocket and HTTP) |
+| Conformance (BPA 1.0-rc7), in memory, on PostgreSQL and with the prototype tag | 0 failures |
+| Replay corpus | 10,000 of 10,000 outcomes and 1,000 of 1,000 replays identical |
+| Simulation (with the contended keys of step 0b-3) | 2,000 seeds, 0 violations |
+| Properties; L2 escape; storage; fault | 10,000 cases each, 0 failures; 382 of 382 blocked; 20 of 20; 40 SIGKILL events, 0 findings |
+| Node | node suite 12 of 12; SUITE-NOD-EVENTS 15 of 15; SUITE-NOD-JOBS 13 of 13; SUITE-NOD-ISO 544 of 544; `cargo test` of node, forge, dvm, store, version and model on PostgreSQL |
+| Benchmark tools | `ubos-bench` small dataset and `ubos-edge-bench --quick` run |
+| fmt, clippy, `check_deps.py`, `regen_all.sh` | clean; PH-1 results 313 Must, 292 verified, 8 on the workstation only, 13 gaps |
