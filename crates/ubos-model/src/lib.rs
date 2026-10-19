@@ -1109,6 +1109,43 @@ impl Registry {
             .collect()
     }
 
+    /// The unique keys of a class (STD-CLS-001 `keys`, DSN-DVM-111): `(declaring class,
+    /// fields)` along the linearization. A key declared on a class is unique among the
+    /// objects of that class and its subclasses.
+    pub fn unique_keys(&self, class: &str) -> Vec<(String, Vec<String>)> {
+        let Ok(c) = self.class(class) else {
+            return Vec::new();
+        };
+        let mut out = Vec::new();
+        for anc in &c.linearization {
+            if let Some(d) = self.decls.get(anc) {
+                for key in members(d, "keys") {
+                    let fields: Vec<String> = key
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(Value::as_str)
+                        .map(str::to_string)
+                        .collect();
+                    if !fields.is_empty() {
+                        out.push((anc.clone(), fields));
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    /// Whether a field of a class is indexed by a declaration (on the class or an
+    /// ancestor), not only as a key field.
+    pub fn is_declared_index(&self, class: &str, field: &str) -> bool {
+        self.class(class).is_ok_and(|c| {
+            c.linearization
+                .iter()
+                .any(|a| self.indexes.get(a).is_some_and(|fs| fs.contains(field)))
+        })
+    }
+
     /// Whether a field of a class is indexed.
     pub fn is_indexed(&self, class: &str, field: &str) -> bool {
         self.indexed_fields(class).iter().any(|(f, _)| f == field)

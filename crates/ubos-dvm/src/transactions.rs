@@ -488,7 +488,8 @@ impl Engine {
     }
 
     /// The stored result of a repeated request, or `TXN.IDEMPOTENCY_MISMATCH` when the
-    /// payload differs.
+    /// payload differs; a record past its retention is gone, and the request is new
+    /// (DSN-DVM-531).
     pub fn replay(
         &mut self,
         scope: &str,
@@ -497,6 +498,7 @@ impl Engine {
     ) -> Result<Option<Value>, BpaError> {
         match self.store.idempotency_rec(scope, key)? {
             None => Ok(None),
+            Some(known) if ubos_store::expired(&known, &self.now) => Ok(None),
             Some(known) => {
                 if s(&known, "hash") != Some(hash) {
                     return Err(BpaError::new(
@@ -507,6 +509,34 @@ impl Engine {
                 Ok(Some(known["result"].clone()))
             }
         }
+    }
+
+    /// The retention of the VAE's idempotency records in days (FR-TXN-032).
+    pub fn idempotency_retention(&mut self) -> Result<Value, BpaError> {
+        let days = crate::stateful::idempotency_retention(self.store.as_mut())?;
+        Ok(json!({"days": days}))
+    }
+
+    /// Set the retention of the VAE's idempotency records: at least 7 days (FR-TXN-032).
+    /// It applies to the records written from now on.
+    pub fn set_idempotency_retention(&mut self, days: i64) -> Result<Value, BpaError> {
+        if days < crate::stateful::IDEMPOTENCY_RETENTION_DAYS {
+            return Err(BpaError::new(
+                "MODEL.INVALID_VALUE",
+                "idempotency records are kept at least 7 days",
+            ));
+        }
+        self.store
+            .put_meta("idempotency_retention_days", &json!(days))?;
+        Ok(json!({"days": days}))
+    }
+
+    /// Remove the idempotency records expired at `now` (the clock by default; the sweep of
+    /// DSN-DVM-531); the number removed.
+    pub fn sweep_idempotency(&mut self, now: Option<&str>) -> Result<Value, BpaError> {
+        let now = now.map_or_else(|| self.now.clone(), str::to_string);
+        let removed = self.store.sweep_idempotency(&now)?;
+        Ok(json!({"removed": removed, "now": now}))
     }
 
     // ---- range queries, history, derivation records (STD-TIME-014, -040, STD-TXN-030) ----

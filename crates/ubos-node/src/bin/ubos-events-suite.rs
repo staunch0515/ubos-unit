@@ -550,17 +550,26 @@ fn free_port() -> Result<String, BpaError> {
 }
 
 fn spawn_node(url: &str, tenant: &str, addr: &str) -> Result<Child, BpaError> {
+    spawn_node_as(url, tenant, addr, false)
+}
+
+/// A node process, in the dev preset (its test clock) when `dev`.
+fn spawn_node_as(url: &str, tenant: &str, addr: &str, dev: bool) -> Result<Child, BpaError> {
     let exe = std::env::current_exe().map_err(err)?;
+    let mut args = vec![
+        "--serve",
+        "--database",
+        url,
+        "--tenant",
+        tenant,
+        "--listen",
+        addr,
+    ];
+    if dev {
+        args.push("--dev");
+    }
     let proc = std::process::Command::new(exe)
-        .args([
-            "--serve",
-            "--database",
-            url,
-            "--tenant",
-            tenant,
-            "--listen",
-            addr,
-        ])
+        .args(args)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .spawn()
@@ -588,9 +597,10 @@ impl Drop for Child {
     }
 }
 
-fn serve(url: &str, tenant: &str, listen: &str) -> Result<(), BpaError> {
+fn serve(url: &str, tenant: &str, listen: &str, dev: bool) -> Result<(), BpaError> {
     let node = Arc::new(ubos_node::Node::connect(url)?);
-    let s = Server::new(Box::new(NodeVaes(node)), Preset::Server, tenant, "acme");
+    let preset = if dev { Preset::Dev } else { Preset::Server };
+    let s = Server::new(Box::new(NodeVaes(node)), preset, tenant, "acme");
     s.identity(tenant)?.bootstrap_admin("root", PW)?;
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -1456,6 +1466,200 @@ fn files(e: &Env) -> Result<Value, BpaError> {
     });
     check(logged >= 2, "personal downloads logged (DSN-NOD-327)")?;
     Ok(json!({"file": file, "sha256": h.get("ubos-content-sha256"), "downloads_logged": logged}))
+}
+
+/// One upload of `data` in a single piece; the file identifier.
+fn upload(e: &Env, data: &[u8], name_b64: &str) -> Result<String, BpaError> {
+    let (addr, tok) = (e.c.addr.as_str(), Some(e.c.token.as_str()));
+    let (st, h, _) = http_raw(
+        addr,
+        "POST",
+        "/files/v1/acme",
+        tok,
+        &[
+            ("Tus-Resumable", "1.0.0".into()),
+            ("Upload-Length", data.len().to_string()),
+            ("Upload-Metadata", format!("filename {name_b64}")),
+        ],
+        b"",
+    )?;
+    check_v(st == 201, "an upload created", &json!(h))?;
+    let loc = h.get("location").cloned().unwrap_or_default();
+    let (st, h, _) = http_raw(
+        addr,
+        "PATCH",
+        &loc,
+        tok,
+        &[
+            ("Tus-Resumable", "1.0.0".into()),
+            ("Upload-Offset", "0".into()),
+            ("Content-Type", "application/offset+octet-stream".into()),
+        ],
+        data,
+    )?;
+    let file = h.get("ubos-file").cloned().unwrap_or_default();
+    check_v(
+        st == 204 && file.starts_with("sha256:"),
+        "the file completed",
+        &json!(h),
+    )?;
+    Ok(file)
+}
+
+/// FR-FILE-011: a replaced attachment makes a new version of the object; each version's
+/// file stays readable through that version (read at its commit).
+fn file_versions(e: &Env) -> Result<Value, BpaError> {
+    let addr = e.c.addr.as_str();
+    let first: Vec<u8> = (0..150_001u32).map(|i| (i * 7 % 251) as u8).collect();
+    let second: Vec<u8> = (0..90_007u32).map(|i| (i * 13 % 241) as u8).collect();
+    let (f1, f2) = (
+        upload(e, &first, "djEuYmlu")?,
+        upload(e, &second, "djIuYmlu")?,
+    );
+    check(f1 != f2, "two contents, two files")?;
+    let reference = |f: &str, n: usize, name: &str| json!({"content_id": f, "size": n, "media_type": "application/octet-stream", "name": name});
+    let (slug, oid) = (e.slug("att"), uuid());
+    let c1 = e.c.commit(
+        BR,
+        json!([{"op": "create", "class": "Statement", "object_id": oid, "slug": slug,
+        "body": {"title": "statement", "scan": reference(&f1, first.len(), "v1.bin")}}]),
+    )?;
+    let v1 = c1["versions"][&oid].clone();
+    let c2 = e.c.commit(
+        BR,
+        json!([{"op": "update", "object_id": oid, "base": v1,
+        "body": {"title": "statement", "scan": reference(&f2, second.len(), "v2.bin")}}]),
+    )?;
+    let v2 = c2["versions"][&oid].clone();
+    check_v(
+        v1 != v2 && v2.is_string(),
+        "the replacement is a new version",
+        &c2,
+    )?;
+    let mut got = Vec::new();
+    for (sel, want, vh) in [
+        (format!("?branch={BR}"), &second, &v2),
+        (
+            format!(
+                "?branch={BR}&commit={}",
+                c1["commits"][0].as_str().unwrap_or_default()
+            ),
+            &first,
+            &v1,
+        ),
+        (
+            format!(
+                "?branch={BR}&commit={}",
+                c2["commits"][0].as_str().unwrap_or_default()
+            ),
+            &second,
+            &v2,
+        ),
+    ] {
+        let (st, link) = e.c.call(
+            "POST",
+            "/files/v1/acme/links",
+            &json!({"object": format!("ubos://acme/Statement/{slug}{sel}"), "field": "scan"}),
+        )?;
+        check_v(st == 200, &format!("a link at {sel}"), &link)?;
+        let url = link["url"].as_str().unwrap_or_default();
+        let (st, _, body) = http_raw(addr, "GET", url, None, &[], b"")?;
+        check_v(
+            st == 200 && body == **want,
+            &format!("the file of the version at {sel}"),
+            &json!({"status": st, "len": body.len(), "want": want.len()}),
+        )?;
+        got.push(json!({"at": sel, "version": vh, "file": link["file"], "size": body.len()}));
+    }
+    Ok(json!({"versions": got}))
+}
+
+/// FR-TXN-032, DSN-DVM-531 (PostgreSQL): an idempotency record outlives the node process
+/// and is kept for the VAE's retention, 7 days by default and never less: a retry 6 days
+/// later through a restarted node returns the first result; after the retention the key
+/// is new; the sweep removes the expired records.
+fn idempotency_retention(e: &Env) -> Result<Value, BpaError> {
+    let Some((url, node, _)) = e.pg() else {
+        return Ok(json!({"skipped": "needs PostgreSQL"}));
+    };
+    let slug = format!("evi{}", &uuid().replace('-', "")[..12]);
+    seed_pg(node, &slug)?;
+    let addr = free_port()?;
+    let mut n1 = spawn_node_as(url, &slug, &addr, true)?;
+    let c = Client::sign_in(&addr)?;
+    let t0 = "2026-11-02T09:00:00.000000Z";
+    let clock = |c: &Client, at: &str| -> Result<(), BpaError> {
+        let (st, r) = c.call("POST", "/api/v1/admin/clock", &json!({"set": at}))?;
+        check_v(st == 200, "the test clock set", &r)
+    };
+    clock(&c, t0)?;
+    let (st, r) = c.call("GET", "/api/v1/admin/idempotency/retention", &Value::Null)?;
+    check_v(st == 200 && r["days"] == 7, "7 days by default", &r)?;
+    let (st, r) = c.call(
+        "PUT",
+        "/api/v1/admin/idempotency/retention",
+        &json!({"days": 3}),
+    )?;
+    check_v(st != 200, "fewer than 7 days refused", &r)?;
+    let request = |key: &str, slug: &str| {
+        json!({"vae": "acme", "branch": BR, "idempotency_key": key, "commit": {"changes": [
+            {"op": "create", "class": "Account", "object_id": uuid(), "slug": slug,
+             "body": {"name": slug, "status": "open"}}]}})
+    };
+    let (first, other) = (request("retry-1", "idem-a"), request("retry-1", "idem-b"));
+    let r1 = c.mutate(first.clone())?;
+    check_v(r1["type"] == "result", "the first request commits", &r1)?;
+    let commit = r1["body"]["commits"][0].clone();
+    // the node process ends; another one opens the VAE (restart and failover)
+    n1.kill();
+    let n2 = spawn_node_as(url, &slug, &addr, true)?;
+    let c = Client::sign_in(&n2.addr)?;
+    clock(&c, "2026-11-08T09:00:00.000000Z")?;
+    let r6 = c.mutate(first.clone())?;
+    check_v(
+        r6["type"] == "result" && r6["body"]["commits"][0] == commit,
+        "a retry 6 days later returns the first result",
+        &r6,
+    )?;
+    let m6 = c.mutate(other.clone())?;
+    check_v(
+        m6["body"]["code"] == "TXN.IDEMPOTENCY_MISMATCH",
+        "another payload under the key is refused within the retention",
+        &m6,
+    )?;
+    clock(&c, "2026-11-10T09:00:00.000000Z")?;
+    let r8 = c.mutate(other)?;
+    check_v(
+        r8["type"] == "result" && r8["body"]["commits"][0] != commit,
+        "after the retention the key is new",
+        &r8,
+    )?;
+    let (_, swept) = c.call(
+        "POST",
+        "/api/v1/admin/idempotency/sweep",
+        &json!({"now": "2026-12-01T00:00:00.000000Z"}),
+    )?;
+    check_v(
+        swept["removed"].as_u64().unwrap_or(0) >= 1,
+        "the sweep removes the expired record",
+        &swept,
+    )?;
+    let (st, r) = c.call(
+        "PUT",
+        "/api/v1/admin/idempotency/retention",
+        &json!({"days": 30}),
+    )?;
+    check_v(
+        st == 200 && r["days"] == 30,
+        "the retention set per VAE",
+        &r,
+    )?;
+    let (_, r) = c.call("GET", "/api/v1/admin/idempotency/retention", &Value::Null)?;
+    check_v(r["days"] == 30, "and kept", &r)?;
+    drop(n2);
+    Ok(
+        json!({"first": commit, "after_retention": r8["body"]["commits"][0], "swept": swept["removed"]}),
+    )
 }
 
 // ---- SUITE-NOD-JOBS ----
@@ -2498,6 +2702,8 @@ const EVENTS: &[Case] = &[
     ("traces", "NR-OBS-001", traces),
     ("diagnostics", "DSN-NOD-615", diagnostics),
     ("files", "DSN-NOD-320", files),
+    ("file_versions", "FR-FILE-011", file_versions),
+    ("idempotency_retention", "FR-TXN-032", idempotency_retention),
     ("crash_recovery", "NR-DUR-006", crash_recovery),
     ("failover", "DSN-NOD-228", failover),
 ];
@@ -2620,6 +2826,7 @@ fn main() {
             &db.unwrap_or_default(),
             &arg("--tenant").unwrap_or_default(),
             &arg("--listen").unwrap_or_default(),
+            flag("--dev"),
         ) {
             eprintln!("{e}");
             std::process::exit(1);

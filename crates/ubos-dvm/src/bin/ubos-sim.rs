@@ -25,8 +25,10 @@
 //! ledger sequences per key, and the serializable-history check in the manner of Elle: per
 //! branch the written versions of the commits in `cseq` order form one chain per object
 //! (every version's predecessor is the version the previous write of that object produced),
-//! and a serializable transaction's read set was the head when it committed. A failing seed
-//! is reproduced with `--only SEED`.
+//! and a serializable transaction's read set was the head when it committed. Some steps create
+//! a `Badge` whose unique key `code` takes one of three values, so nodes contend for the same
+//! key (DSN-DVM-111): each branch holds at most one live badge per code. A failing seed is
+//! reproduced with `--only SEED`.
 
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -195,6 +197,8 @@ impl Store for Shared {
 const OBJECTS: u64 = 6;
 const KEYS: [&str; 2] = ["bolt", "nut"];
 const BRANCHES: [&str; 3] = ["main", "feature/a", "feature/b"];
+/// The codes of the badges, a unique key (DSN-DVM-111).
+const CODES: [&str; 3] = ["red", "green", "blue"];
 
 fn uid(n: u64) -> String {
     format!("01890a5d-ac96-7{:03x}-8000-{:012x}", n % 4096, n)
@@ -209,7 +213,9 @@ fn classes() -> Value {
          "description": "StockMove", "schema_version": 1,
          "fields": [{"name": "item", "type": "text", "label": "item", "description": "item", "required": true},
                     {"name": "quantity", "type": "decimal", "label": "quantity", "description": "quantity", "required": true}],
-         "ledger": {"key": ["item"], "amounts": ["quantity"], "double_entry": false}}
+         "ledger": {"key": ["item"], "amounts": ["quantity"], "double_entry": false}},
+        {"name": "Badge", "namespace": "sim", "kind": "definition", "parent": "DataObject", "label": "Badge",
+         "description": "Badge", "schema_version": 1, "fields": [f("code")], "keys": [["code"]]}
     ])
 }
 
@@ -250,6 +256,7 @@ struct Sim {
     read_set_changed: u64,
     clock_jumps: u64,
     rejected_clock: u64,
+    key_conflicts: u64,
     log: Vec<String>,
 }
 
@@ -293,6 +300,7 @@ impl Sim {
             read_set_changed: 0,
             clock_jumps: 0,
             rejected_clock: 0,
+            key_conflicts: 0,
             log: Vec::new(),
         };
         let n0 = &mut sim.nodes[0].adapter;
@@ -370,6 +378,9 @@ impl Sim {
                 Ok(_) => self.nodes[n].now = now,
                 Err(_) => self.rejected_clock += 1,
             }
+        }
+        if self.rng.chance(15) {
+            return self.badge(n, branch);
         }
         // the transaction: reads, then updates against what was read, and appends
         let n_reads = 1 + self.rng.below(2);
@@ -455,6 +466,55 @@ impl Sim {
                 }
             }
         }
+    }
+
+    /// Create a badge with one of the three codes (DSN-DVM-111): it commits, or the code is
+    /// taken on the branch and `MODEL.KEY_CONFLICT` refuses it.
+    fn badge(&mut self, n: usize, branch: &str) -> Result<(), BpaError> {
+        self.next_entry += 1;
+        let code = CODES[self.rng.below(3) as usize];
+        let input = json!({"branch": branch, "changes": [{"op": "create", "class": "Badge",
+            "object_id": uid(self.next_entry), "slug": format!("b{}", self.next_entry), "body": {"code": code},
+            "valid": {"from": "2026-01-01"}}]});
+        for _ in 0..5 {
+            let fault = match self.rng.below(100) {
+                0..=9 => Some(Fault::AbortBeforeApply),
+                10..=14 => Some(Fault::CrashAfterApply),
+                _ => None,
+            };
+            self.shared.with(|c| c.next_fault = fault);
+            let out = self.nodes[n].adapter.execute("commit", &input);
+            self.shared.with(|c| c.next_fault = None);
+            match out {
+                Ok(r) => {
+                    self.record_ack(n, branch, &r, &BTreeMap::new(), Vec::new(), None);
+                    return Ok(());
+                }
+                Err(e) if e.code == "TXN.HEAD_MOVED" => {
+                    self.head_moved += 1;
+                    self.retries += 1;
+                }
+                Err(e) if e.code == "MODEL.KEY_CONFLICT" => {
+                    self.key_conflicts += 1;
+                    return Ok(());
+                }
+                Err(e) if e.code == "NOD.STORAGE_UNAVAILABLE" => {
+                    self.restart(n)?;
+                    return Ok(());
+                }
+                Err(e) if e.code.starts_with("TIME.") => return Ok(()),
+                Err(e) => {
+                    return Err(BpaError::new(
+                        e.code,
+                        format!(
+                            "unexpected badge outcome at step {}: {}",
+                            self.steps, e.message
+                        ),
+                    ));
+                }
+            }
+        }
+        Ok(())
     }
 
     // ---- the checker ----
@@ -563,6 +623,26 @@ impl Sim {
                     }
                 }
             }
+            // 6. unique keys: at most one live badge per code (DSN-DVM-111)
+            let badges = self.nodes[0]
+                .adapter
+                .execute("list_objects", &json!({"branch": b, "class": "Badge"}))
+                .map_err(|e| e.to_string())?;
+            let mut codes: BTreeMap<String, String> = BTreeMap::new();
+            for o in badges["objects"].as_array().into_iter().flatten() {
+                let r = self.nodes[0]
+                    .adapter
+                    .execute("read", &json!({"branch": b, "object_id": o}))
+                    .map_err(|e| e.to_string())?;
+                let code = r["body"]["code"].as_str().unwrap_or_default().to_string();
+                if let Some(other) =
+                    codes.insert(code.clone(), o.as_str().unwrap_or_default().to_string())
+                {
+                    return fail(format!(
+                        "{b}: badges {other} and {o} both carry the code {code}"
+                    ));
+                }
+            }
             // 4. gap-free ledger sequences per key
             for key in KEYS {
                 let r = self.nodes[0]
@@ -665,7 +745,8 @@ impl Sim {
             json!({"seed": seed, "nodes": sim.nodes.len(), "branches": sim.branches.len(), "steps": sim.steps,
                   "commits": sim.acks.len(), "head_moved": sim.head_moved, "read_set_changed": sim.read_set_changed,
                   "retries": sim.retries, "aborted_flushes": aborted, "crashes_after_apply": crashed,
-                  "restarts": restarts, "clock_jumps": sim.clock_jumps, "rejected_clock_jumps": sim.rejected_clock}),
+                  "restarts": restarts, "clock_jumps": sim.clock_jumps, "rejected_clock_jumps": sim.rejected_clock,
+                  "key_conflicts": sim.key_conflicts}),
         )
     }
 }
@@ -715,7 +796,8 @@ fn fork_heads(
 
 // ---- driver ----
 
-static TOTALS: [AtomicU64; 9] = [
+static TOTALS: [AtomicU64; 10] = [
+    AtomicU64::new(0),
     AtomicU64::new(0),
     AtomicU64::new(0),
     AtomicU64::new(0),
@@ -726,7 +808,7 @@ static TOTALS: [AtomicU64; 9] = [
     AtomicU64::new(0),
     AtomicU64::new(0),
 ];
-const KEYS_T: [&str; 9] = [
+const KEYS_T: [&str; 10] = [
     "steps",
     "commits",
     "head_moved",
@@ -736,6 +818,7 @@ const KEYS_T: [&str; 9] = [
     "crashes_after_apply",
     "restarts",
     "clock_jumps",
+    "key_conflicts",
 ];
 
 fn main() {

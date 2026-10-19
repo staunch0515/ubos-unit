@@ -92,11 +92,16 @@ CONTACT = cls('Contact', [field('name', 'text', True, classification='personal')
               classification_default='confidential')
 VIP = cls('VipContact', [field('email', 'text', classification='sensitive_personal'), field('tier', 'text')],
           parent='Contact')
+# unique keys at commit (PH-2 step 0b-3, DSN-DVM-111): a single and a composite key on a class,
+# shared by its subclass (STD-CLS-001 `keys`)
+SUPPLIER = cls('Supplier', [field('name', 'text', True), field('tax_id', 'text'), field('country', 'text'),
+                            field('code', 'text')], keys=[['tax_id'], ['country', 'code']])
+PREFERRED = cls('PreferredSupplier', [field('tier', 'text')], parent='Supplier')
 
 w('forge.toml', '[project]\nname = "gate-1a-scenarios"\nversion = "0.1.0"\nvae = "acme"\nabi = "1.0"\nbranch = "main"\n')
 w('model/classes.yaml', 'classes:\n' + ''.join('  - %s\n' % y(c) for c in
                                           [PARTY, AGREEMENT, SERVICE, PRODUCT, CUSTOMER, PRICELIST, RATE, CASH, JOB, FEE,
-                                           MONEY, PAYMENT, REFUND, CONTACT, VIP]))
+                                           MONEY, PAYMENT, REFUND, CONTACT, VIP, SUPPLIER, PREFERRED]))
 
 # ---- logic ----
 def asset(name, exports, functions=None, tier='host', source=None, capabilities=None, profile='standard'):
@@ -567,4 +572,52 @@ tests_file('tests/privacy.yaml', [
                                 'why': {'message': 'subject request 42', 'reason': 'rectification'}}]})),
     ], clock='2026-03-01T10:00:00.000000Z'),
 ], 'Privacy by default in PH-1 — classification by declaration, raise-only, rectification (DSN-DVM-824, DSN-DVM-836, NR-PRIV-003; DEC-086)')
+# unique keys (PH-2 step 0b-3, DSN-DVM-111, STD-ISA-010)
+S1, S2, S3, S4, S5 = (uid(i, 20) for i in range(1, 6))
+
+
+def supplier(oid, slug, klass='Supplier', **body):
+    return create(oid, klass, slug, dict({'name': slug}, **body))
+
+
+def commit(*changes):
+    return {'branch': 'main', 'changes': list(changes)}
+
+
+tests_file('tests/keys.yaml', [
+    test('KEY-1: a second object with the same key is refused; another value commits', [
+        step('commit', commit(supplier(S1, 's-1', tax_id='T1')), subset({})),
+        step('commit', commit(supplier(S2, 's-2', tax_id='T1')),
+             err('MODEL.KEY_CONFLICT', {'class': 'Supplier', 'fields': ['tax_id']})),
+        step('commit', commit(supplier(S2, 's-2', tax_id='T2')), subset({})),
+    ]),
+    test('KEY-2: an update that takes another object\'s key is refused', [
+        step('commit', commit(supplier(S1, 's-1', tax_id='T1'), supplier(S2, 's-2', tax_id='T2')), subset({})),
+        step('read', {'branch': 'main', 'object_id': S2}, subset({}), label='v2'),
+        step('commit', commit({'op': 'update', 'object_id': S2, 'base': {'$ref': 'v2/version_hash'},
+                               'body': {'name': 's-2', 'tax_id': 'T1'}}), err('MODEL.KEY_CONFLICT')),
+    ]),
+    test('KEY-3: a key declared on a class holds across its subclasses', [
+        step('commit', commit(supplier(S1, 's-1', tax_id='T1')), subset({})),
+        step('commit', commit(supplier(S3, 'p-1', 'PreferredSupplier', tax_id='T1', tier='gold')),
+             err('MODEL.KEY_CONFLICT')),
+    ]),
+    test('KEY-4: two objects of one commit with the same key are refused; an absent key field constrains nothing', [
+        step('commit', commit(supplier(S1, 's-1', tax_id='T1'), supplier(S2, 's-2', tax_id='T1')),
+             err('MODEL.KEY_CONFLICT')),
+        step('commit', commit(supplier(S1, 's-1'), supplier(S2, 's-2')), subset({})),
+    ]),
+    test('KEY-5: a composite key compares all its fields', [
+        step('commit', commit(supplier(S1, 's-1', country='US', code='A'), supplier(S2, 's-2', country='US', code='B'),
+                              supplier(S3, 's-3', country='DE', code='A')), subset({})),
+        step('commit', commit(supplier(S4, 's-4', country='US', code='A')),
+             err('MODEL.KEY_CONFLICT', {'class': 'Supplier', 'fields': ['country', 'code']})),
+    ]),
+    test('KEY-6: an ended object releases its key', [
+        step('commit', commit(supplier(S1, 's-1', tax_id='T1')), subset({})),
+        step('read', {'branch': 'main', 'object_id': S1}, subset({}), label='v1'),
+        step('commit', commit({'op': 'end', 'object_id': S1, 'base': {'$ref': 'v1/version_hash'}}), subset({})),
+        step('commit', commit(supplier(S5, 's-5', tax_id='T1')), subset({})),
+    ]),
+], 'Unique keys at commit — STD-CLS-001 `keys`, STD-ISA-010 (DSN-DVM-111; PH-2 step 0b-3)')
 print('scenarios written')

@@ -133,7 +133,20 @@ The regenerated results (UBS-VER-31) leave 13 gaps of 313 PH-1 Must requirements
 benchmarks of §3.1 and NR-PERF-011. They close with the reference runs on the frozen line
 `release/ph1`. EXIT-1-20 is then met.
 
-## 6. Reproduce
+## 6. Correction in PH-2 step 0b-3
+
+PH-2 step 0b-1b found that the PH-1 commit checked no unique keys. FR-MODEL-013 had counted
+as verified through the conformance suite, but only structurally (§1). It is now recorded
+`not-met` at the requirement level:
+- acceptance 1 (a second object with the same key is refused `MODEL.KEY_CONFLICT`) is met
+  from step 0b-3 (`verify/reports/ph2-0b3/`);
+- slugs unique per class and branch, and the key conflict of a merge (acceptance 2), are not
+  built.
+
+The PH-1 results are 313 Must requirements, 291 verified, 8 on the workstation only and
+14 gaps. The 14th gap needs work, not a reference run. That work is proposed to the owner.
+
+## 7. Reproduce
 
 ```
 bash docs/tools/regen_all.sh          # runs gen_results.py; prints the PH-1 results line

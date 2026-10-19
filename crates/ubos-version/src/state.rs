@@ -815,6 +815,26 @@ impl<'a> Repo<'a> {
         Ok(true)
     }
 
+    /// The field-index rows of the classes whose value key is one of `keys`, at an ordinal,
+    /// over the branch chain (candidates, newest branch first); `None` without field index.
+    pub fn field_keys(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        classes: &[String],
+        field: &str,
+        keys: &[Vec<u8>],
+    ) -> Result<Option<ubos_store::FieldRows>, BpaError> {
+        let mut out = Vec::new();
+        for (b, c) in self.chain(branch, cseq)? {
+            let Some(rows) = self.store.field_keys(&b, c, classes, field, keys)? else {
+                return Ok(None);
+            };
+            out.extend(rows);
+        }
+        Ok(Some(out))
+    }
+
     /// Load the given objects into a transaction from the index in bulk (those not loaded).
     pub fn load_ids(&mut self, tx: &mut Tx, ids: &BTreeSet<String>) -> Result<(), BpaError> {
         let want: Vec<String> = ids
@@ -1040,6 +1060,7 @@ impl<'a> Repo<'a> {
             extra: Map::new(),
             outbox: Vec::new(),
             idempotency: None,
+            idempotency_expires: None,
             derivations: Vec::new(),
             timers: Vec::new(),
             partial: false,
@@ -1241,6 +1262,7 @@ impl<'a> Repo<'a> {
                 .collect(),
             outbox: tx.outbox,
             idempotency,
+            idempotency_expires: tx.idempotency_expires,
             derivations: tx.derivations,
             timers: tx.timers,
         };
@@ -1681,6 +1703,8 @@ pub struct Tx {
     /// Idempotency record of the commit: `(scope, key, request hash, result so far)`; the
     /// write completes the result with the commit identity (STD-TXN-040).
     pub idempotency: Option<(String, String, String, Value)>,
+    /// When the idempotency record expires (DSN-DVM-531).
+    pub idempotency_expires: Option<String>,
     /// Derivation records of the commit: `{id, record, inputs, outputs}` (STD-TXN-030).
     pub derivations: Vec<Value>,
     /// Future segment starts that emit BecameEffective (STD-TIME-050).

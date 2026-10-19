@@ -425,6 +425,12 @@ fn host_call(vae: &mut Vae, op: &str, input: &Value) -> Result<Value, BpaError> 
                 json!({"checked": r.checked, "findings": r.findings.iter().map(|f| json!({"check": f.check, "key": f.key, "detail": f.detail})).collect::<Vec<_>>()}),
             )
         }
+        // the retention of idempotency records and its sweep (FR-TXN-032, DSN-DVM-531)
+        "host.idempotency_retention" => vae.engine_mut().idempotency_retention(),
+        "host.set_idempotency_retention" => vae
+            .engine_mut()
+            .set_idempotency_retention(input["days"].as_i64().unwrap_or_default()),
+        "host.sweep_idempotency" => vae.engine_mut().sweep_idempotency(input["now"].as_str()),
         "host.field_classification" => {
             // the classification of a field, declared or inherited (STD-FND-027)
             let field = input["field"].as_str().unwrap_or_default();
@@ -1774,6 +1780,9 @@ impl Server {
                 }
                 if sweep_jobs && let Err(e) = self.sweep_jobs(&key, &h).await {
                     self.log_error("job sweep", format!("job sweep {key}"), &e);
+                }
+                if sweep && let Err(e) = h.call("host.sweep_idempotency", json!({})).await {
+                    self.log_error("idempotency sweep", format!("idempotency sweep {key}"), &e);
                 }
                 if sweep {
                     let (me, k) = (self.clone(), key.clone());
@@ -3167,6 +3176,8 @@ fn lease_name(key: &str) -> String {
 /// | `GET events` | `?vae&type&object&from&to&after&limit` — the event log (DSN-NOD-202) |
 /// | `GET events/retention`, `PUT events/retention` | `{type, days}` (`days: null` removes the rule; `*` for the other types) |
 /// | `POST events/sweep` | `{now?}` — apply the retention now |
+/// | `GET idempotency/retention`, `PUT idempotency/retention` | `{days}` — the retention of idempotency records, at least 7 (FR-TXN-032) |
+/// | `POST idempotency/sweep` | `{now?}` — remove the expired idempotency records now (DSN-DVM-531) |
 /// | `GET leaders` | this node's leadership of each open VAE (DSN-NOD-228) |
 /// | `GET listeners` | `?vae&branch&type&handler` — the listener registry (FR-EVT-022) |
 /// | `GET jobs`, `GET jobs/{id}` | `?vae&state&kind&limit` — jobs and dead letters |
@@ -3228,6 +3239,31 @@ async fn admin_api(
             .map(|(k, l)| json!({"vae": k, "leader": l.held, "token": l.token, "node": s.node_id}))
             .collect();
         return Json(json!({"items": items})).into_response();
+    }
+    if matches!(p.as_slice(), ["idempotency", "retention" | "sweep"]) {
+        let h = match s.vae_async(&tenant, &vae).await {
+            Ok(h) => h,
+            Err(e) => return problem_response(&e),
+        };
+        let r = match (method.as_str(), p[1]) {
+            ("GET", "retention") => h.call("host.idempotency_retention", json!({})).await,
+            ("PUT", "retention") => {
+                h.call(
+                    "host.set_idempotency_retention",
+                    json!({"days": body["days"]}),
+                )
+                .await
+            }
+            ("POST", "sweep") => {
+                h.call("host.sweep_idempotency", json!({"now": body["now"]}))
+                    .await
+            }
+            _ => Err(BpaError::new("IAM.NOT_FOUND", "unknown admin route")),
+        };
+        return match r {
+            Ok(v) => Json(v).into_response(),
+            Err(e) => problem_response(&e),
+        };
     }
     if (method.as_str(), p.as_slice()) == ("GET", &["listeners"][..]) {
         let h = match s.vae_async(&tenant, &vae).await {

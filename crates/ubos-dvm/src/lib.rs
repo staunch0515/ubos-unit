@@ -13,6 +13,7 @@ pub mod execution;
 pub mod expressions;
 pub mod flow;
 pub mod host;
+pub mod keys;
 pub mod process;
 pub mod proofs;
 pub mod relations;
