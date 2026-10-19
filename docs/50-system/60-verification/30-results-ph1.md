@@ -137,7 +137,7 @@ measured.
 |---|---|---|
 | `met-workstation` | NR-PERF-008 | indexed pages through the edge at 300,000 objects p95 60.9–98.4 ms (`verify/reports/exit-1-17/edge/`); the row-filtered page (p95 182–208 ms) and the denied page (about 2 s) are the residual post-filter of DEC-074; the 10,000,000-object run on ENV-REF-SERVER is pending |
 | `met-workstation` | NR-PERF-009 | warm p95 0.41 ms per object (`verify/reports/exit-1-14/workstation/`) |
-| `not-met` | NR-PERF-011 | commit to handler start under WL-MIXED-OLTP at 70 % of one VAE's capacity: p95 578 ms against 500 ms, p99 659 ms within 2 s (`verify/reports/exit-1-17/edge/`) |
+| `not-met` | NR-PERF-011 | commit to handler start under WL-MIXED-OLTP at 70 % of one VAE's capacity: p95 578 ms against 500 ms, p99 659 ms within 2 s (`verify/reports/exit-1-17/edge/`); after PH-2 step 0b-1: p95 555 ms, p99 643 ms (`verify/reports/ph2-0b1/`) |
 | `met-workstation` | NR-PERF-012 | 1,000 became-effective events p99 0.51 s on PostgreSQL (`verify/reports/exit-1-17/nod/`) |
 | `met-workstation` | FR-TEN-024 | a tenant at ten times another's load raises the other's p95 by 26 % under the per-principal limit (171 % without it; `verify/reports/exit-1-17/edge/`) |
 | `met` | CR-GDPR-001 | the PH-1 part of privacy by default (DEC-086): classification by declaration, class default and `internal`, raise-only, rectification; PRIV-1…PRIV-4 in CI and the coverage inspection (`verify/reports/privacy-ph1/`); masking and purpose limitation follow with DSN-DVM-821/-823 in PH-2. The traceability maps it to Notary and federation suites only |

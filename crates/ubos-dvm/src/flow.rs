@@ -181,6 +181,7 @@ impl Engine {
         oid: &str,
         ctx: &Map<String, Value>,
         permit: Option<Permit<'_>>,
+        lazy: Option<(String, Option<u64>)>,
     ) -> Result<Value, BpaError> {
         let Some(o) = st.objects.get(oid).cloned() else {
             return Err(BpaError::new("IAM.NOT_FOUND", "unknown object"));
@@ -207,7 +208,8 @@ impl Engine {
             None => &mut allow,
         };
         let empty = json!({});
-        let mut decide = |port: &str| self.decide_in(st, branch, oid, port, &empty, ctx);
+        let mut decide =
+            |port: &str| self.decide_in(st, branch, oid, port, &empty, ctx, lazy.clone());
         ubos_flow::actions(
             &reg,
             &o.class,
@@ -257,7 +259,7 @@ impl Engine {
         ] {
             ctx.entry(k.to_string()).or_insert_with(|| json!(d));
         }
-        let mut out = self.actions_in(&st, &branch, &oid, &ctx, None)?;
+        let mut out = self.actions_in(&st, &branch, &oid, &ctx, None, None)?;
         out["evaluated_at"] = json!(ev);
         Ok(out)
     }

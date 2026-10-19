@@ -606,6 +606,32 @@ impl<'a> Repo<'a> {
         Ok(n)
     }
 
+    /// The object of `class` with `slug` at an ordinal of a branch (URI resolution, PH-2
+    /// step 0b): candidates from the slug index of each branch of the chain, checked against
+    /// their state at the coordinate; the smallest identifier wins, as in a view.
+    pub fn object_by_slug(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        class: &str,
+        slug: &str,
+    ) -> Result<Option<(String, ObjectState)>, BpaError> {
+        let mut ids = BTreeSet::new();
+        for (b, c) in self.chain(branch, cseq)? {
+            for (id, _) in self.store.objects_by_slug(&b, c, class, slug)? {
+                ids.insert(id);
+            }
+        }
+        if ids.is_empty() {
+            return Ok(None);
+        }
+        let ids: Vec<String> = ids.into_iter().collect();
+        Ok(self
+            .objects_in_ids(branch, cseq, &ids)?
+            .into_iter()
+            .find(|(_, o)| o.class == class && o.slug == slug))
+    }
+
     /// The given objects of a branch at an ordinal, read from the index in bulk.
     pub fn objects_in_ids(
         &mut self,
@@ -630,7 +656,7 @@ impl<'a> Repo<'a> {
     }
 
     /// Ledger entries of a branch at an ordinal, optionally of one key or one identifier.
-    pub(crate) fn entries_in(
+    pub fn entries_in(
         &mut self,
         branch: &str,
         cseq: u64,

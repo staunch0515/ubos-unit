@@ -397,7 +397,7 @@ impl Engine {
             Some(oid) if staged.is_none() => {
                 let mut permit = |perm: &str, _: &str| perms.get(perm).copied().unwrap_or(true);
                 let p: Permit<'_> = &mut permit;
-                let a = self.actions_in(&st, &branch, oid, &ctx, Some(p))?;
+                let a = self.actions_in(&st, &branch, oid, &ctx, Some(p), None)?;
                 a["actions"].clone()
             }
             _ => json!([]),

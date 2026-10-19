@@ -11,14 +11,14 @@ use crate::transactions::effects_of;
 use crate::versioning::{Process, process, record};
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use ubos_expr::{Ty, Val, from_json};
 use ubos_model::Registry;
 use ubos_runtime::isa;
 use ubos_runtime::program::{self, PROTECTED};
 use ubos_runtime::{Core, Frame, Host, Instruction, Pending, Replay};
 use ubos_types::{BpaError, canonical, content_id, names};
-use ubos_version::{Repo, Segment, State, at};
+use ubos_version::{ObjectState, Repo, Segment, State, at};
 
 /// Codes that start another attempt (STD-TXN-023).
 const RETRY_CODES: &[&str] = &["TXN.HEAD_MOVED", "TXN.READ_SET_CHANGED"];
@@ -61,7 +61,16 @@ fn unhex32(v: &Value, what: &str) -> Result<[u8; 32], BpaError> {
 /// the instructions that read or change the store.
 pub struct EngineHost<'a> {
     e: &'a mut Engine,
+    /// The part of the pinned snapshot the process has read (PH-2 step 0b, DEC-087): the
+    /// governance objects and logic assets, then each object on its first use; the whole
+    /// snapshot on a branch with a parent line.
     view: Option<State>,
+    /// `(branch, cseq)` of the pinned snapshot.
+    coord: Option<(String, u64)>,
+    /// The view holds the whole snapshot.
+    full: bool,
+    /// Objects already looked up in the index (present or not).
+    tried: HashSet<String>,
     /// The transitions and guards of the process for its commit (STD-ISA-017, since 1.0-rc3).
     pub(crate) flow: ubos_flow::Flow,
     /// The policy set of the branch at the snapshot, resolved on the first enforcement
@@ -76,6 +85,9 @@ impl<'a> EngineHost<'a> {
         EngineHost {
             e,
             view: None,
+            coord: None,
+            full: false,
+            tried: HashSet::new(),
             flow: ubos_flow::Flow::default(),
             policies: None,
             decisions: BTreeMap::new(),
@@ -236,9 +248,7 @@ impl<'a> EngineHost<'a> {
                 .and_then(|(_, _, b)| s(&b, "initial").map(str::to_string)));
         }
         let head = self
-            .state(core)?
-            .objects
-            .get(oid)
+            .object(core, oid)?
             .map(|o| o.head.clone())
             .ok_or_else(|| not_found("unknown object"))?;
         Ok(crate::flow::state_of(&self.version(&head)?))
@@ -393,7 +403,9 @@ impl<'a> EngineHost<'a> {
         let oid = self.target(core, &a["target"])?;
         let cls = self.class_of(core, &oid)?;
         self.permit(core, &d.authorization, &cls, Some(&oid))?;
+        self.object(core, &oid)?;
         let st = self.state(core)?.clone();
+        let lazy = self.lazy();
         let dctx = self.decision_ctx(core)?;
         let dctx = dctx.as_object().cloned().unwrap_or_default();
         let branch = core.branch.clone();
@@ -409,7 +421,7 @@ impl<'a> EngineHost<'a> {
         };
         let out = self
             .e
-            .actions_in(&st, &branch, &oid, &dctx, Some(&mut permit))?;
+            .actions_in(&st, &branch, &oid, &dctx, Some(&mut permit), lazy)?;
         let n = out["actions"].as_array().map_or(0, Vec::len) as u64;
         core.per_item(d, n)?;
         Ok(out)
@@ -419,7 +431,12 @@ impl<'a> EngineHost<'a> {
         Repo::new(self.e.store.as_mut(), &self.e.registry)
     }
 
-    /// The pinned snapshot of the branch (STD-TXN-002).
+    /// The pinned snapshot of the branch (STD-TXN-002), as far as the process has read it:
+    /// the objects a process reads as a whole (policies, lifecycles, class extensions,
+    /// sheets and property declarations, logic assets) are loaded first, every other object
+    /// on its first use ([`Self::object`]), so that a process costs what it reads and not
+    /// the size of its branch (PH-2 step 0b, DEC-087). A branch with a parent line
+    /// (STD-VER-080) is read as a whole view.
     fn state(&mut self, core: &mut Core) -> Result<&State, BpaError> {
         if !core.pins.contains_key(&core.branch) {
             let mut repo = self.repo();
@@ -428,12 +445,82 @@ impl<'a> EngineHost<'a> {
             core.pins.insert(core.branch.clone(), id);
         }
         if self.view.is_none() {
-            let (v, _) = self
-                .repo()
-                .view(&core.branch, &json!({"evaluated_at": core.pins}))?;
-            self.view = Some(v.state);
+            let branch = core.branch.clone();
+            let parent_line = self.e.branch_meta(&branch)?.parent_line.is_some();
+            let classes = self.whole_classes();
+            let mut repo = self.repo();
+            let snap = repo.select(&branch, &json!({"commit": core.pins[&branch]}))?;
+            let cseq = repo.meta(snap.commit)?.cseq;
+            let st = if parent_line {
+                repo.view(&branch, &json!({"evaluated_at": core.pins}))?
+                    .0
+                    .state
+            } else {
+                let mut st = State::default();
+                for c in &classes {
+                    st.objects.extend(repo.objects_in(&branch, cseq, Some(c))?);
+                }
+                st
+            };
+            self.full = parent_line;
+            self.coord = Some((branch, cseq));
+            self.view = Some(st);
         }
         Ok(self.view.as_ref().expect("view"))
+    }
+
+    /// The classes a process reads as a whole: the governance classes and the logic
+    /// asset classes.
+    fn whole_classes(&self) -> Vec<String> {
+        let mut out: Vec<String> = [
+            "Policy",
+            "Lifecycle",
+            "ClassExtension",
+            "GovernanceSheet",
+            "PropertyDecl",
+        ]
+        .iter()
+        .map(|c| c.to_string())
+        .collect();
+        out.extend(
+            self.e
+                .registry
+                .classes()
+                .filter(|c| c.linearization.iter().any(|x| x == "LogicAsset"))
+                .map(|c| c.name.clone()),
+        );
+        out
+    }
+
+    /// An object of the pinned snapshot, read from the index on its first use.
+    fn object(&mut self, core: &mut Core, oid: &str) -> Result<Option<ObjectState>, BpaError> {
+        self.state(core)?;
+        if !self.full
+            && !self.tried.contains(oid)
+            && !self
+                .view
+                .as_ref()
+                .is_some_and(|v| v.objects.contains_key(oid))
+        {
+            let (branch, cseq) = self.coord.clone().expect("coordinate");
+            let found = self
+                .repo()
+                .objects_in_ids(&branch, cseq, &[oid.to_string()])?;
+            if let (Some(v), Some(o)) = (self.view.as_mut(), found.get(oid)) {
+                v.objects.insert(oid.to_string(), o.clone());
+            }
+            self.tried.insert(oid.to_string());
+        }
+        Ok(self.view.as_ref().and_then(|v| v.objects.get(oid).cloned()))
+    }
+
+    /// The `:rel` coordinate of a cascade over the view: the snapshot, unless the view is
+    /// whole.
+    fn lazy(&self) -> Option<(String, Option<u64>)> {
+        match (&self.coord, self.full) {
+            (Some((b, c)), false) => Some((b.clone(), Some(*c))),
+            _ => None,
+        }
     }
 
     fn version(&mut self, vh: &str) -> Result<Value, BpaError> {
@@ -460,7 +547,7 @@ impl<'a> EngineHost<'a> {
         missing_ok: bool,
     ) -> Result<Option<String>, BpaError> {
         if let Some(id) = t.as_str().filter(|x| names::matches("uuid", x)) {
-            if core.pending.contains_key(id) || self.state(core)?.objects.contains_key(id) {
+            if core.pending.contains_key(id) || self.object(core, id)?.is_some() {
                 return Ok(Some(id.to_string()));
             }
             if missing_ok {
@@ -488,13 +575,24 @@ impl<'a> EngineHost<'a> {
         {
             return Ok(Some(oid.clone()));
         }
-        let st = self.state(core)?;
-        if let Some((oid, _)) = st
-            .objects
-            .iter()
-            .find(|(_, o)| o.class == class && o.slug == slug)
-        {
-            return Ok(Some(oid.clone()));
+        self.state(core)?;
+        let found = if self.full {
+            self.view.as_ref().and_then(|st| {
+                st.objects
+                    .iter()
+                    .find(|(_, o)| o.class == class && o.slug == slug)
+                    .map(|(id, o)| (id.clone(), o.clone()))
+            })
+        } else {
+            let (branch, cseq) = self.coord.clone().expect("coordinate");
+            self.repo().object_by_slug(&branch, cseq, class, slug)?
+        };
+        if let Some((oid, o)) = found {
+            if let Some(v) = self.view.as_mut() {
+                v.objects.insert(oid.clone(), o);
+            }
+            self.tried.insert(oid.clone());
+            return Ok(Some(oid));
         }
         if missing_ok {
             return Ok(None);
@@ -512,9 +610,7 @@ impl<'a> EngineHost<'a> {
     fn segment(&mut self, core: &mut Core, oid: &str) -> Result<Option<Segment>, BpaError> {
         let asof = core.asof();
         Ok(self
-            .state(core)?
-            .objects
-            .get(oid)
+            .object(core, oid)?
             .and_then(|o| at(&o.timeline, &asof).cloned()))
     }
 
@@ -523,9 +619,7 @@ impl<'a> EngineHost<'a> {
             return Ok(p.class.clone());
         }
         Ok(self
-            .state(core)?
-            .objects
-            .get(oid)
+            .object(core, oid)?
             .map(|o| o.class.clone())
             .unwrap_or_default())
     }
@@ -535,9 +629,7 @@ impl<'a> EngineHost<'a> {
             return Ok(p.body.clone());
         }
         let head = self
-            .state(core)?
-            .objects
-            .get(oid)
+            .object(core, oid)?
             .map(|o| o.head.clone())
             .ok_or_else(|| not_found("unknown object"))?;
         Ok(self.version(&head)?["body"]
@@ -551,9 +643,7 @@ impl<'a> EngineHost<'a> {
             return Ok(p.slug.clone());
         }
         Ok(self
-            .state(core)?
-            .objects
-            .get(oid)
+            .object(core, oid)?
             .map(|o| o.slug.clone())
             .unwrap_or_default())
     }
@@ -566,6 +656,9 @@ impl<'a> EngineHost<'a> {
         core: &mut Core,
         key: &str,
     ) -> Result<(Value, String), BpaError> {
+        if names::matches("uuid", key) {
+            self.object(core, key)?;
+        }
         let objects: Vec<(String, String, String)> = self
             .state(core)?
             .objects
@@ -792,9 +885,7 @@ impl<'a> EngineHost<'a> {
         let idx = core.add(ch)?;
         let (class, old_slug) = {
             let o = self
-                .state(core)?
-                .objects
-                .get(&oid)
+                .object(core, &oid)?
                 .ok_or_else(|| not_found("unknown object"))?;
             (o.class.clone(), o.slug.clone())
         };
@@ -853,9 +944,16 @@ impl<'a> EngineHost<'a> {
 
     fn entry_class(&mut self, core: &mut Core, eid: &Value) -> Result<String, BpaError> {
         let eid = eid.as_str().unwrap_or_default();
-        self.state(core)?
-            .find_entry(eid)
-            .map(|e| e.class.clone())
+        self.state(core)?;
+        if let Some(e) = self.view.as_ref().and_then(|v| v.find_entry(eid)) {
+            return Ok(e.class.clone());
+        }
+        let (branch, cseq) = self.coord.clone().expect("coordinate");
+        self.repo()
+            .entries_in(&branch, cseq, None, Some(eid))?
+            .into_iter()
+            .next()
+            .map(|e| e.class)
             .ok_or_else(|| not_found("unknown entry"))
     }
 
@@ -947,9 +1045,7 @@ impl<'a> EngineHost<'a> {
         };
         if !core.pending.contains_key(&oid) && !core.reads.contains_key(&oid) {
             let head = self
-                .state(core)?
-                .objects
-                .get(&oid)
+                .object(core, &oid)?
                 .map(|o| o.head.clone())
                 .unwrap_or_default();
             core.reads.insert(oid.clone(), head);
@@ -993,9 +1089,7 @@ impl<'a> EngineHost<'a> {
                     .segment(core, &oid)?
                     .ok_or_else(|| BpaError::new("QRY.NOT_FOUND_AT_TIME", "no segment at asof"))?;
                 let head = self
-                    .state(core)?
-                    .objects
-                    .get(&oid)
+                    .object(core, &oid)?
                     .map(|o| o.head.clone())
                     .unwrap_or_default();
                 core.reads.entry(oid.clone()).or_insert(head);
@@ -1061,9 +1155,7 @@ impl<'a> EngineHost<'a> {
         let cls = self.class_of(core, &oid)?;
         self.permit(core, &d.authorization, &cls, Some(&oid))?;
         let first = self
-            .state(core)?
-            .objects
-            .get(&oid)
+            .object(core, &oid)?
             .and_then(|o| o.timeline.iter().map(|x| x.from.clone()).min());
         let lo = a
             .get("valid_from")
@@ -1321,7 +1413,9 @@ impl<'a> EngineHost<'a> {
                         "a decision explanation names the port",
                     ));
                 };
+                self.object(core, &oid)?;
                 let st = self.state(core)?.clone();
+                let lazy = self.lazy();
                 let dctx = self.decision_ctx(core)?;
                 let branch = core.branch.clone();
                 self.e.decide_in(
@@ -1331,6 +1425,7 @@ impl<'a> EngineHost<'a> {
                     port,
                     &json!({}),
                     dctx.as_object().expect("context"),
+                    lazy,
                 )
             }
             _ => Err(BpaError::new(
@@ -1371,7 +1466,9 @@ impl<'a> EngineHost<'a> {
             // STD-LGS-031: the decisions of a command port run before it (DSN-DVM-720) and
             // their result is journaled (DSN-DVM-721)
             let params = a.get("params").cloned().unwrap_or_else(|| json!({}));
+            self.object(core, &oid)?;
             let st = self.state(core)?.clone();
+            let lazy = self.lazy();
             let dctx = self.decision_ctx(core)?;
             let branch = core.branch.clone();
             let args = json!({"target": oid, "port": port, "params": params});
@@ -1383,6 +1480,7 @@ impl<'a> EngineHost<'a> {
                     &port,
                     &params,
                     dctx.as_object().expect("context"),
+                    lazy.clone(),
                 )
             })?;
             match s(&r, "outcome") {

@@ -1162,6 +1162,28 @@ impl StoreRead for PgBackend {
 }
 
 impl PgBackend {
+    /// The rows of the objects of `class` whose row visible at `cseq` carries `slug`
+    /// (index `head_slug`, migration 0016; PH-2 step 0b).
+    async fn objects_by_slug(
+        &self,
+        branch_id: i64,
+        cseq: u64,
+        class: &str,
+        slug: &str,
+    ) -> Result<Vec<(String, Option<ObjectFacts>)>, BpaError> {
+        static BY_SLUG: std::sync::LazyLock<String> =
+            std::sync::LazyLock::new(|| facts_query(" AND h.class_name = $5 AND h.slug = $6"));
+        let q = sqlx::query(&BY_SLUG)
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .bind(branch_id)
+            .bind(int(cseq))
+            .bind(class)
+            .bind(slug);
+        let rows = self.rows(q).await?;
+        facts_of(&rows)
+    }
+
     async fn rows(
         &self,
         q: sqlx::query::Query<'_, Postgres, sqlx::postgres::PgArguments>,
@@ -2958,6 +2980,24 @@ impl Store for PgStore {
             return Ok(Vec::new());
         };
         let rows = self.rt.block_on(self.backend.objects(bid, cseq, class))?;
+        Ok(rows
+            .into_iter()
+            .map(|(id, f)| (id, f.as_ref().and_then(crate::state_of)))
+            .collect())
+    }
+    fn objects_by_slug(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        class: &str,
+        slug: &str,
+    ) -> Result<Vec<(String, Option<Value>)>, BpaError> {
+        let Some(bid) = self.branch_id(branch)? else {
+            return Ok(Vec::new());
+        };
+        let rows = self
+            .rt
+            .block_on(self.backend.objects_by_slug(bid, cseq, class, slug))?;
         Ok(rows
             .into_iter()
             .map(|(id, f)| (id, f.as_ref().and_then(crate::state_of)))
