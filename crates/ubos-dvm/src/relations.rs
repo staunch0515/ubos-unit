@@ -1,17 +1,23 @@
 //! References, relationships and class extensions at commit time (STD-CLS-030, -040,
 //! -041; DEC-050).
 //!
-//! The checks run on the full branch state loaded into the transaction: reference
-//! integrity of written versions and appended entries (targets resolve, fit the target
-//! class and are valid for the period or instant), link objects of relationships with an
-//! attributes class, the `on_end` rules and compositions when objects end, cardinality, and
-//! every extension written in the commit applying to its target.
+//! The checks: reference integrity of written versions and appended entries (targets
+//! resolve, fit the target class and are valid for the period or instant), link objects of
+//! relationships with an attributes class, the `on_end` rules and compositions when objects
+//! end, cardinality, and every extension written in the commit applying to its target.
+//!
+//! On a partial transaction (PH-2 step 0b) they read through the indexes at the base: URIs
+//! resolve from the slug index, the sources of a target come from the reference rows of the
+//! field index, and cardinality is checked for the targets this commit can change (the
+//! targets of the sources it writes, and the objects it creates or renames). Otherwise they
+//! run on the full branch state loaded into the transaction.
 
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use ubos_model::{Class, Registry};
 use ubos_types::BpaError;
-use ubos_version::{Repo, Segment, State, Tx, at, lt};
+use ubos_version::state::has_relationships;
+use ubos_version::{ObjectState, Repo, Segment, State, Tx, at, lt};
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
     v.get(k).and_then(Value::as_str)
@@ -26,14 +32,20 @@ pub fn uri_of(authority: &str, class: &str, slug: &str) -> String {
     format!("ubos://{authority}/{class}/{slug}")
 }
 
-/// Object identifier a canonical URI names on a state, if any.
-pub fn resolve(st: &State, uri: &str, authority: &str) -> Option<String> {
+/// The class and slug a canonical URI of this authority names.
+pub fn parse_uri<'u>(uri: &'u str, authority: &str) -> Option<(&'u str, &'u str)> {
     let rest = uri.strip_prefix("ubos://")?;
     let mut parts = rest.split('/');
     let (auth, class, slug) = (parts.next()?, parts.next()?, parts.next()?);
     if parts.next().is_some() || auth != authority {
         return None;
     }
+    Some((class, slug))
+}
+
+/// Object identifier a canonical URI names on a state, if any.
+pub fn resolve(st: &State, uri: &str, authority: &str) -> Option<String> {
+    let (class, slug) = parse_uri(uri, authority)?;
     st.objects
         .iter()
         .find(|(_, o)| o.class == class && o.slug == slug)
@@ -59,6 +71,17 @@ fn covered(tl: &[Segment], f: &str, t: Option<&str>) -> bool {
     at_.is_none() || (t.is_some() && !lt(at_, t))
 }
 
+/// The relationship references of the objects a commit changed (`Checks::changed_refs`).
+#[derive(Default)]
+struct Changed {
+    /// URI → `(source, field, relationship)`.
+    by_uri: BTreeMap<String, Vec<(String, String, Value)>>,
+    /// The changed objects.
+    ids: BTreeSet<String>,
+    /// The URIs each changed object carries.
+    of: BTreeMap<String, Vec<String>>,
+}
+
 /// The commit-time checks over a transaction.
 pub struct Checks<'a, 'r> {
     /// The repository view (store and registry with the state's extensions).
@@ -74,12 +97,201 @@ impl Checks<'_, '_> {
         self.repo.version_in(self.tx, head)
     }
 
+    /// An object as the transaction sees it; a partial transaction loads it on first use.
+    fn get(&mut self, oid: &str) -> Result<Option<ObjectState>, BpaError> {
+        if self.tx.partial {
+            return self.repo.obj(self.tx, oid);
+        }
+        Ok(self.tx.state.objects.get(oid).cloned())
+    }
+
     fn live(&mut self, oid: &str) -> Result<bool, BpaError> {
-        let Some(o) = self.tx.state.objects.get(oid) else {
+        let Some(o) = self.get(oid)? else {
             return Ok(false);
         };
-        let head = o.head.clone();
-        Ok(self.version(&head)?["tombstone"] != json!(true))
+        Ok(self.version(&o.head)?["tombstone"] != json!(true))
+    }
+
+    /// The object a URI names, loaded into a partial transaction.
+    fn resolve(&mut self, uri: &str) -> Result<Option<String>, BpaError> {
+        let authority = self.repo.store.authority();
+        if !self.tx.partial {
+            return Ok(resolve(&self.tx.state, uri, &authority));
+        }
+        let Some((class, slug)) = parse_uri(uri, &authority) else {
+            return Ok(None);
+        };
+        // no slug changes while the checks run: map the state once
+        if self.tx.slug_view.is_none() {
+            let mut v: std::collections::HashMap<(String, String), BTreeSet<String>> =
+                Default::default();
+            for (id, o) in &self.tx.state.objects {
+                v.entry((o.class.clone(), o.slug.clone()))
+                    .or_default()
+                    .insert(id.clone());
+            }
+            self.tx.slug_view = Some(v);
+        }
+        let Some((id, o)) = self.repo.slug_in(self.tx, class, slug)? else {
+            return Ok(None);
+        };
+        if !self.tx.loaded.contains_key(&id) {
+            if let Some(v) = self.tx.slug_view.as_mut() {
+                v.entry((o.class.clone(), o.slug.clone()))
+                    .or_default()
+                    .insert(id.clone());
+            }
+            self.tx.state.objects.insert(id.clone(), o.clone());
+            self.tx.loaded.insert(id.clone(), Some(o));
+        }
+        Ok(Some(id))
+    }
+
+    /// Read the slug index for the URIs in bulk before resolving them one by one.
+    fn prefetch(&mut self, uris: &BTreeSet<String>) -> Result<(), BpaError> {
+        if !self.tx.partial {
+            return Ok(());
+        }
+        let authority = self.repo.store.authority();
+        let pairs: BTreeSet<(String, String)> = uris
+            .iter()
+            .filter_map(|u| parse_uri(u, &authority))
+            .map(|(c, s_)| (c.to_string(), s_.to_string()))
+            .collect();
+        self.repo.prefetch_slugs(self.tx, &pairs)
+    }
+
+    /// Read the reference rows of the targets in bulk before `sources_of`.
+    fn prefetch_sources(&mut self, targets: &BTreeSet<String>) -> Result<(), BpaError> {
+        if !self.tx.partial {
+            return Ok(());
+        }
+        let authority = self.repo.store.authority();
+        let uris: BTreeSet<String> = targets
+            .iter()
+            .filter_map(|t| self.tx.state.objects.get(t))
+            .map(|o| uri_of(&authority, &o.class, &o.slug))
+            .collect();
+        self.prefetch(&uris)?;
+        if !self.repo.prefetch_referrers(self.tx, &uris)? {
+            return Err(BpaError::new(
+                "NOD.STORAGE_UNAVAILABLE",
+                "the store has no field index",
+            ));
+        }
+        Ok(())
+    }
+
+    /// The objects of the state changed by this commit: created, or with a new head.
+    fn changed(&self) -> Vec<String> {
+        self.tx
+            .state
+            .objects
+            .iter()
+            .filter(|(id, o)| {
+                self.tx
+                    .loaded
+                    .get(*id)
+                    .and_then(Option::as_ref)
+                    .is_none_or(|l| l.head != o.head)
+            })
+            .map(|(id, _)| id.clone())
+            .collect()
+    }
+
+    /// The relationship references of the live objects this commit changed, by URI, and
+    /// the changed objects (empty on the full state, which `sources_of` scans).
+    fn changed_refs(&mut self) -> Result<Changed, BpaError> {
+        let mut out = Changed::default();
+        if !self.tx.partial {
+            return Ok(out);
+        }
+        for oid in self.changed() {
+            self.refresh(&mut out, &oid)?;
+        }
+        Ok(out)
+    }
+
+    /// Record the current references of a changed object.
+    fn refresh(&mut self, ch: &mut Changed, oid: &str) -> Result<(), BpaError> {
+        if !self.tx.partial {
+            return Ok(());
+        }
+        ch.ids.insert(oid.to_string());
+        for u in ch.of.remove(oid).unwrap_or_default() {
+            if let Some(v) = ch.by_uri.get_mut(&u) {
+                v.retain(|(s_, _, _)| s_ != oid);
+            }
+        }
+        let o = self.tx.state.objects[oid].clone();
+        if !has_relationships(self.repo.reg, &o.class) || !self.live(oid)? {
+            return Ok(());
+        }
+        let eff = self.class(&o.class)?;
+        let body = self.version(&o.head)?["body"].clone();
+        for (field, uri) in eff.refs(&body) {
+            if let Some(rel) = eff.relationship(&field) {
+                ch.of.entry(oid.to_string()).or_default().push(uri.clone());
+                ch.by_uri
+                    .entry(uri)
+                    .or_default()
+                    .push((oid.to_string(), field, rel.clone()));
+            }
+        }
+        Ok(())
+    }
+
+    /// `(source, field, relationship)` of the live sources whose relationship fields
+    /// resolve to `target`, in source order: over the state, or for a partial transaction
+    /// from the references of the objects it changed and the reference rows of the others.
+    fn sources_of(
+        &mut self,
+        target: &str,
+        ch: &Changed,
+    ) -> Result<Vec<(String, String, Value)>, BpaError> {
+        if !self.tx.partial {
+            return Ok(self
+                .relations()?
+                .into_iter()
+                .filter(|(_, _, _, t)| t == target)
+                .map(|(s_, f, r, _)| (s_, f, r))
+                .collect());
+        }
+        let Some(t) = self.get(target)? else {
+            return Ok(Vec::new());
+        };
+        let uri = uri_of(&self.repo.store.authority(), &t.class, &t.slug);
+        // a reference names its target by this URI, which may resolve to another object
+        if self.resolve(&uri)?.as_deref() != Some(target) {
+            return Ok(Vec::new());
+        }
+        let mut out: Vec<(String, String, Value)> =
+            ch.by_uri.get(&uri).cloned().unwrap_or_default();
+        let Some(mut cands) = self.repo.referrers(self.tx, &uri)? else {
+            return Err(BpaError::new(
+                "NOD.STORAGE_UNAVAILABLE",
+                "the store has no field index",
+            ));
+        };
+        cands.retain(|id| !ch.ids.contains(id));
+        self.repo.load_ids(self.tx, &cands)?;
+        for oid in cands {
+            if !self.live(&oid)? {
+                continue;
+            }
+            let o = self.get(&oid)?.expect("live object");
+            let eff = self.class(&o.class)?;
+            let body = self.version(&o.head)?["body"].clone();
+            for (field, u) in eff.refs(&body) {
+                if u == uri
+                    && let Some(rel) = eff.relationship(&field)
+                {
+                    out.push((oid.clone(), field, rel.clone()));
+                }
+            }
+        }
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(out)
     }
 
     fn class(&self, name: &str) -> Result<Class, BpaError> {
@@ -94,7 +306,8 @@ impl Checks<'_, '_> {
         period: Option<(&str, Option<&str>)>,
         instant: Option<&str>,
     ) -> Result<String, BpaError> {
-        let oid = resolve(&self.tx.state, uri, &self.repo.store.authority())
+        let oid = self
+            .resolve(uri)?
             .ok_or_else(|| invalid_ref(format!("reference {uri} does not resolve")))?;
         let o = self.tx.state.objects[&oid].clone();
         let f = &eff.fields[field];
@@ -148,7 +361,8 @@ impl Checks<'_, '_> {
                 _ => vec![],
             };
             for u in uris {
-                let link = resolve(&self.tx.state, &u, &self.repo.store.authority())
+                let link = self
+                    .resolve(&u)?
                     .map(|id| self.tx.state.objects[&id].clone());
                 let Some(link) = link else {
                     return Err(invalid_ref(format!("link is not a {ac}")));
@@ -191,6 +405,21 @@ impl Checks<'_, '_> {
     /// Reference integrity of the versions written and the entries appended in this commit
     /// (STD-CLS-041).
     pub fn integrity(&mut self, written: &[(String, String)]) -> Result<(), BpaError> {
+        if self.tx.partial {
+            let mut uris = BTreeSet::new();
+            for (_, vh) in written {
+                let v = self.version(vh)?;
+                if let Ok(eff) = self.class(s(&v, "class").unwrap_or_default()) {
+                    uris.extend(eff.refs(&v["body"]).into_iter().map(|(_, u)| u));
+                }
+            }
+            for e in &self.tx.appended {
+                if let Ok(eff) = self.repo.reg.class(&e.class) {
+                    uris.extend(eff.refs(&e.body).into_iter().map(|(_, u)| u));
+                }
+            }
+            self.prefetch(&uris)?;
+        }
         for (oid, vh) in written {
             let v = self.version(vh)?;
             if v["tombstone"] == json!(true) || !self.live(oid)? {
@@ -260,6 +489,7 @@ impl Checks<'_, '_> {
         result: &mut Value,
     ) -> Result<(), BpaError> {
         let mut done: BTreeSet<String> = BTreeSet::new();
+        let mut ch = self.changed_refs()?;
         loop {
             let todo: Vec<(String, String)> = ended
                 .iter()
@@ -269,6 +499,8 @@ impl Checks<'_, '_> {
             if todo.is_empty() {
                 break;
             }
+            let xs: BTreeSet<String> = todo.iter().map(|(x, _)| x.clone()).collect();
+            self.prefetch_sources(&xs)?;
             for (x, d) in todo {
                 done.insert(x.clone());
                 let o = self.tx.state.objects[&x].clone();
@@ -278,15 +510,16 @@ impl Checks<'_, '_> {
                     let composition = eff
                         .relationship(&field)
                         .is_some_and(|r| s(r, "ownership") == Some("composition"));
-                    if let Some(tid) = resolve(&self.tx.state, &uri, &self.repo.store.authority())
-                        && composition
+                    if composition
+                        && let Some(tid) = self.resolve(&uri)?
                         && self.live(&tid)?
                     {
                         self.end_object(&tid, &d, result, ended)?;
+                        self.refresh(&mut ch, &tid)?;
                     }
                 }
-                for (src, field, rel, tid) in self.relations()? {
-                    if tid != x || src == x {
+                for (src, field, rel) in self.sources_of(&x, &ch)? {
+                    if src == x {
                         continue;
                     }
                     match s(&rel, "on_end").unwrap_or("restrict") {
@@ -299,14 +532,18 @@ impl Checks<'_, '_> {
                         "cascade" => {
                             if self.live(&src)? {
                                 self.end_object(&src, &d, result, ended)?;
+                                self.refresh(&mut ch, &src)?;
                             }
                         }
-                        _ => self.detach(&src, &field, &x, &d, result)?,
+                        _ => {
+                            self.detach(&src, &field, &x, &d, result)?;
+                            self.refresh(&mut ch, &src)?;
+                        }
                     }
                 }
             }
         }
-        self.cardinality()
+        self.cardinality_with(&ch)
     }
 
     fn detach(
@@ -368,7 +605,8 @@ impl Checks<'_, '_> {
 
     /// Cardinality of the relations of the state (STD-CLS-040).
     pub fn cardinality_check(&mut self) -> Result<(), BpaError> {
-        self.cardinality()
+        let ch = self.changed_refs()?;
+        self.cardinality_with(&ch)
     }
 
     /// End an object at `d` (reverts end the objects a reverted commit created).
@@ -382,11 +620,69 @@ impl Checks<'_, '_> {
         self.end_object(oid, d, result, ended)
     }
 
-    fn cardinality(&mut self) -> Result<(), BpaError> {
+    fn cardinality_with(&mut self, ch: &Changed) -> Result<(), BpaError> {
+        let one = |rel: &Value| matches!(s(rel, "cardinality"), Some("one_to_one" | "one_to_many"));
         let mut counts: BTreeMap<(String, String), BTreeSet<String>> = BTreeMap::new();
-        for (src, field, rel, tid) in self.relations()? {
-            if matches!(s(&rel, "cardinality"), Some("one_to_one" | "one_to_many")) {
-                counts.entry((field, tid)).or_default().insert(src);
+        if self.tx.partial {
+            // the committed state satisfies cardinality: only the targets of the sources
+            // this commit writes, and the objects it creates or renames, can change
+            let target_classes: BTreeSet<String> = self
+                .repo
+                .reg
+                .classes()
+                .flat_map(|c| {
+                    c.fields
+                        .keys()
+                        .filter_map(|f| c.relationship(f))
+                        .filter(|r| one(r))
+                        .filter_map(|r| s(r, "target").map(str::to_string))
+                        .collect::<Vec<_>>()
+                })
+                .collect();
+            let mut targets: BTreeSet<String> = BTreeSet::new();
+            for oid in &ch.ids {
+                let o = self.tx.state.objects[oid].clone();
+                let renamed = self
+                    .tx
+                    .loaded
+                    .get(oid)
+                    .and_then(Option::as_ref)
+                    .is_none_or(|l| l.slug != o.slug);
+                if renamed
+                    && self
+                        .class(&o.class)?
+                        .linearization
+                        .iter()
+                        .any(|l| target_classes.contains(l))
+                {
+                    targets.insert(oid.clone());
+                }
+            }
+            let uris: BTreeSet<String> = ch
+                .by_uri
+                .iter()
+                .filter(|(_, refs)| refs.iter().any(|(_, _, rel)| one(rel)))
+                .map(|(u, _)| u.clone())
+                .collect();
+            self.prefetch(&uris)?;
+            for uri in &uris {
+                if let Some(tid) = self.resolve(uri)? {
+                    targets.insert(tid);
+                }
+            }
+            self.prefetch_sources(&targets)?;
+            for tid in targets {
+                for (src, field, rel) in self.sources_of(&tid, ch)? {
+                    if one(&rel) {
+                        counts.entry((field, tid.clone())).or_default().insert(src);
+                    }
+                }
+            }
+        } else {
+            for (src, field, rel, tid) in self.relations()? {
+                if one(&rel) {
+                    counts.entry((field, tid)).or_default().insert(src);
+                }
             }
         }
         if counts.values().any(|v| v.len() > 1) {
@@ -414,6 +710,9 @@ impl Checks<'_, '_> {
                 .map_err(|_| invalid_ref(format!("unknown target class {target}")))?;
         }
         if any {
+            if self.tx.partial {
+                self.repo.load_class(self.tx, "ClassExtension")?;
+            }
             let mut exts = Vec::new();
             let objs: Vec<_> = self
                 .tx

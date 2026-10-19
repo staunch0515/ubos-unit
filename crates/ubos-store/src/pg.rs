@@ -1184,6 +1184,58 @@ impl PgBackend {
         facts_of(&rows)
     }
 
+    async fn objects_by_slugs(
+        &self,
+        branch_id: i64,
+        cseq: u64,
+        class: &str,
+        slugs: &[String],
+    ) -> Result<Vec<(String, Option<ObjectFacts>)>, BpaError> {
+        static BY_SLUGS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+            facts_query(" AND h.class_name = $5 AND h.slug = ANY($6::text[])")
+        });
+        let q = sqlx::query(&BY_SLUGS)
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .bind(branch_id)
+            .bind(int(cseq))
+            .bind(class)
+            .bind(slugs.to_vec());
+        let rows = self.rows(q).await?;
+        facts_of(&rows)
+    }
+
+    async fn field_keys(
+        &self,
+        branch_id: i64,
+        cseq: u64,
+        classes: &[String],
+        field: &str,
+        keys: &[Vec<u8>],
+    ) -> Result<Vec<(String, Vec<u8>)>, BpaError> {
+        let q = sqlx::query(
+            "SELECT object_id::text, value_key FROM field_index WHERE tenant_id = $1::uuid AND vae_id = $2::uuid \
+             AND branch_id = $3 AND class_name = ANY($4::text[]) AND field = $5 AND value_key = ANY($6::bytea[]) \
+             AND cseq_from <= $7 AND cseq_to > $7",
+        )
+        .bind(&self.scope.tenant)
+        .bind(&self.scope.vae)
+        .bind(branch_id)
+        .bind(classes.to_vec())
+        .bind(field)
+        .bind(keys.to_vec())
+        .bind(int(cseq));
+        let rows = self.rows(q).await?;
+        rows.iter()
+            .map(|r| {
+                Ok((
+                    r.try_get::<String, _>(0).map_err(db)?,
+                    r.try_get::<Vec<u8>, _>(1).map_err(db)?,
+                ))
+            })
+            .collect()
+    }
+
     async fn rows(
         &self,
         q: sqlx::query::Query<'_, Postgres, sqlx::postgres::PgArguments>,
@@ -3003,6 +3055,42 @@ impl Store for PgStore {
             .map(|(id, f)| (id, f.as_ref().and_then(crate::state_of)))
             .collect())
     }
+    fn has_field_index(&self) -> bool {
+        true
+    }
+    fn objects_by_slugs(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        class: &str,
+        slugs: &[String],
+    ) -> Result<Vec<(String, Option<Value>)>, BpaError> {
+        let Some(bid) = self.branch_id(branch)? else {
+            return Ok(Vec::new());
+        };
+        let rows = self
+            .rt
+            .block_on(self.backend.objects_by_slugs(bid, cseq, class, slugs))?;
+        Ok(rows
+            .into_iter()
+            .map(|(id, f)| (id, f.as_ref().and_then(crate::state_of)))
+            .collect())
+    }
+    fn field_keys(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        classes: &[String],
+        field: &str,
+        keys: &[Vec<u8>],
+    ) -> Result<Option<crate::FieldRows>, BpaError> {
+        let Some(bid) = self.branch_id(branch)? else {
+            return Ok(Some(Vec::new()));
+        };
+        self.rt
+            .block_on(self.backend.field_keys(bid, cseq, classes, field, keys))
+            .map(Some)
+    }
     fn count_objects(
         &mut self,
         branch: &str,
@@ -3036,7 +3124,7 @@ impl Store for PgStore {
             let mut tx = backend.begin().await?;
             for start in (0..ids.len()).step_by(10_000) {
                 let end = (start + 10_000).min(ids.len());
-                sqlx::query("INSERT INTO field_index (tenant_id, vae_id, branch_id, class_name, field, value_key, object_id, cseq_from, cseq_to) SELECT $1::uuid, $2::uuid, $3, t.c, t.f, t.k, t.o::uuid, $4, $5 FROM unnest($6::text[], $7::text[], $8::bytea[], $9::text[]) AS t(c, f, k, o)")
+                sqlx::query("INSERT INTO field_index (tenant_id, vae_id, branch_id, class_name, field, value_key, object_id, cseq_from, cseq_to) SELECT $1::uuid, $2::uuid, $3, t.c, t.f, t.k, t.o::uuid, $4, $5 FROM unnest($6::text[], $7::text[], $8::bytea[], $9::text[]) AS t(c, f, k, o) ON CONFLICT DO NOTHING")
                     .bind(&backend.scope.tenant)
                     .bind(&backend.scope.vae)
                     .bind(bid)

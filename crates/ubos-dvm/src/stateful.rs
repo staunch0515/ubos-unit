@@ -64,6 +64,13 @@ pub struct Engine {
     pub ubtp_pid: Option<String>,
 }
 
+/// A reference row to build: `(class, field, value key, object)`.
+type RefRow = (String, String, Vec<u8>, String);
+
+/// The `index_since` entry of the reference rows (PH-2 step 0b): `index_usable` of
+/// lineage `@ref` and field `rows`.
+const REF_SINCE: &str = "@ref.rows";
+
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
     v.get(k).and_then(Value::as_str)
 }
@@ -236,6 +243,7 @@ impl Engine {
             "genesis",
             &json!({"classes": self.registry.declarations(), "value_types": self.registry.value_types().values().collect::<Vec<_>>()}),
         )?;
+        self.ensure_ref_rows()?;
         Ok(Value::Bool(true))
     }
 
@@ -285,6 +293,7 @@ impl Engine {
             e.index_since = serde_json::from_value(since).unwrap_or_default();
         }
         e.next_process = e.store.process_ids()?.len() as u64;
+        e.ensure_ref_rows()?;
         Ok(e)
     }
 
@@ -380,6 +389,98 @@ impl Engine {
         Ok(true)
     }
 
+    /// Whether the reference rows serve the commits on `branch` (PH-2 step 0b): always when
+    /// the relationship fields had no instances when they were declared; from the commit at
+    /// which their rows were built over the objects of the branch (or the branch it was
+    /// created from) otherwise.
+    pub(crate) fn refs_indexed(&mut self, branch: &str) -> Result<bool, BpaError> {
+        if !self.store.has_field_index() {
+            return Ok(false);
+        }
+        if !self.index_since.contains_key(REF_SINCE) {
+            return Ok(true);
+        }
+        let cseq = {
+            let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+            let Ok(head) = repo.head(branch) else {
+                return Ok(false);
+            };
+            repo.meta(head)?.cseq
+        };
+        self.index_usable(branch, cseq, &["@ref".to_string()], "rows")
+    }
+
+    /// Build the reference rows of the relationship fields that have none (PH-2 step 0b):
+    /// for a VAE written before they existed, or a field declared on classes with
+    /// instances. The rows of later heads are written at flush; the objects already on a
+    /// branch get rows at its head, which serve the branch from that commit.
+    pub(crate) fn ensure_ref_rows(&mut self) -> Result<(), BpaError> {
+        let fields = ubos_version::state::relationship_fields(&self.registry);
+        let want: BTreeSet<(String, String)> = fields
+            .iter()
+            .flat_map(|(f, cs)| cs.iter().map(move |c| (c.clone(), f.clone())))
+            .collect();
+        let have: BTreeSet<(String, String)> = self
+            .store
+            .meta("ref_rows")?
+            .and_then(|v| serde_json::from_value(v).ok())
+            .unwrap_or_default();
+        if want == have {
+            return Ok(());
+        }
+        let new: BTreeSet<&(String, String)> = want.difference(&have).collect();
+        let classes: BTreeSet<&String> = new.iter().map(|(c, _)| c).collect();
+        let mut built: Vec<(String, u64, Vec<RefRow>)> = Vec::new();
+        let mut instances = false;
+        for branch in self.store.branch_names()? {
+            let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+            let head = repo.head(&branch)?;
+            let cseq = repo.meta(head)?.cseq;
+            let mut rows = Vec::new();
+            for c in &classes {
+                for (oid, o) in repo.objects_in(&branch, cseq, Some(c))? {
+                    instances = true;
+                    let v = repo.version(&o.head)?;
+                    if v["tombstone"] == json!(true) {
+                        continue;
+                    }
+                    for (f, key) in
+                        ubos_version::state::ref_rows(&self.registry, &o.class, &v["body"])
+                    {
+                        let name = f.trim_start_matches(ubos_version::state::REF_ROW);
+                        if new.contains(&(o.class.clone(), name.to_string())) {
+                            rows.push((o.class.clone(), f, key, oid.clone()));
+                        }
+                    }
+                }
+            }
+            built.push((branch, cseq, rows));
+        }
+        // without instances there is nothing to build, and no earlier commit had any
+        if instances {
+            for (branch, cseq, rows) in built {
+                self.store.put_field_rows(&branch, cseq, &rows)?;
+                let since = self.index_since.entry(REF_SINCE.into()).or_default();
+                let at = since.entry(branch).or_default();
+                *at = (*at).max(cseq);
+            }
+            let since = serde_json::to_value(&self.index_since).unwrap_or_default();
+            self.store.put_meta("index_since", &since)?;
+        }
+        self.store.put_meta("ref_rows", &json!(want))
+    }
+
+    /// The reference rows are complete for the registry (an imported archive writes them
+    /// with every commit).
+    pub(crate) fn mark_ref_rows(&mut self) -> Result<(), BpaError> {
+        let want: BTreeSet<(String, String)> =
+            ubos_version::state::relationship_fields(&self.registry)
+                .into_iter()
+                .flat_map(|(f, cs)| cs.into_iter().map(move |c| (c, f.clone())))
+                .collect();
+        self.store.put_meta("ref_rows", &json!(want))
+    }
+
     /// The key of the signed query cursors (DSN-DVM-908): derived from the VAE
     /// authority until the node host supplies the tenant key (step 14).
     pub(crate) fn cursor_key(&self) -> [u8; 32] {
@@ -445,6 +546,7 @@ impl Engine {
             crate::versioning::record(self.store.as_mut(), &p, "aborted", None, 0)?;
             return Ok(json!({"state": "aborted"}));
         }
+        let refs = self.refs_indexed(&branch)?;
         let r = commit_on(
             self.store.as_mut(),
             &self.registry,
@@ -459,6 +561,7 @@ impl Engine {
             self.max_violations,
             &mut self.rules,
             None,
+            refs,
         );
         let (r, classes, effects) = match r {
             Ok(x) => x,
@@ -532,6 +635,7 @@ impl Engine {
                 self.max_violations,
                 &mut self.rules,
                 None,
+                false,
             ) {
                 Ok((r, c, _)) => {
                     out.push(Ok(r));
@@ -1239,6 +1343,7 @@ pub(crate) fn commit_on(
     max_violations: u64,
     cache: &mut ubos_rules::Cache,
     flow: Option<&ubos_flow::Flow>,
+    refs_indexed: bool,
 ) -> Result<(Value, Vec<String>, u32), BpaError> {
     let flow = flow.cloned().unwrap_or_default();
     let changes = input
@@ -1262,7 +1367,8 @@ pub(crate) fn commit_on(
         Err(_) => String::new(),
     };
     // Extensions in force on the branch, and whether the checks of STD-CLS-030, -040 and
-    // -041 need the full state (DEC-050).
+    // -041 run (DEC-050): on the indexes at the base when the reference rows serve the
+    // branch (PH-2 step 0b), on the full state otherwise.
     let exts = {
         let mut r = Repo::new(&mut *store, registry);
         let head = r.head(&branch)?;
@@ -1303,6 +1409,10 @@ pub(crate) fn commit_on(
         reg_ext = registry.with_extensions(&exts)?;
         &reg_ext
     };
+    // an extension that declares a relationship field has no reference rows before it
+    let ext_relationships = !exts.is_empty()
+        && ubos_version::state::relationship_fields(reg)
+            != ubos_version::state::relationship_fields(registry);
     let mut repo = Repo::new(store, reg);
     let has_parent_line = meta.parent_line.is_some();
     let mut tx = if has_parent_line {
@@ -1312,7 +1422,20 @@ pub(crate) fn commit_on(
     };
     tx.now = Some(now_.to_string());
     if full && !has_parent_line {
-        repo.load_all(&mut tx)?;
+        if refs_indexed && !ext_relationships {
+            // the governance objects the checks and the enforcement read as a set
+            tx.partial = true;
+            if !exts.is_empty() || writes_extension {
+                repo.load_class(&mut tx, "ClassExtension")?;
+            }
+            if has_sheets || writes_sheet {
+                for c in crate::sheets::SHEET_CLASSES {
+                    repo.load_class(&mut tx, c)?;
+                }
+            }
+        } else {
+            repo.load_all(&mut tx)?;
+        }
     }
     let full = full || has_parent_line;
     let mut ended: Vec<(String, String)> = Vec::new();

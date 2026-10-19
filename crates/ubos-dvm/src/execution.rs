@@ -1922,6 +1922,7 @@ impl Engine {
                     };
                     let meta = self.branch_meta(&branch)?;
                     let input = json!({"branch": branch, "changes": core.uow, "process": pr.p});
+                    let refs = self.refs_indexed(&branch)?;
                     let committed = commit_on(
                         self.store.as_mut(),
                         &self.registry,
@@ -1936,6 +1937,7 @@ impl Engine {
                         self.max_violations,
                         &mut self.rules,
                         Some(&flow),
+                        refs,
                     );
 
                     // staged → flushing → committed; a conflict re-runs or aborts, a storage

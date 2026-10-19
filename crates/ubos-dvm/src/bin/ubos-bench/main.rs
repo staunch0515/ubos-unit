@@ -6,6 +6,8 @@
 //! ubos-bench invariants [--invariants I] [--commits C]
 //! ubos-bench query [--objects N] [--per-commit K] [--rounds R] [--backend memory|postgres]
 //!                  [--database URL] [--seed S]
+//! ubos-bench refs  [--objects N] [--per-commit K] [--rounds R] [--full-rounds F]
+//!                  [--backend memory|postgres] [--database URL]
 //! ubos-bench load  --database URL [--objects N] [--months M] [--seed S] [--threads T]
 //! ubos-bench check --database URL [--objects N] [--months M] [--seed S]
 //! ubos-bench run   --database URL --what read|commit|diff|branch|merge|asof [--objects N]
@@ -19,6 +21,7 @@
 
 mod load;
 mod query;
+mod refs;
 mod run;
 mod sheets;
 mod tree;
@@ -51,6 +54,7 @@ fn main() {
         Some("sheets") => sheets::sheets(&args[1..]).map_err(|e| e.to_string()),
         Some("invariants") => sheets::invariants(&args[1..]).map_err(|e| e.to_string()),
         Some("query") => query::query(&args[1..], &url).map_err(|e| e.to_string()),
+        Some("refs") => refs::refs(&args[1..], &url).map_err(|e| e.to_string()),
         Some("load") => load::load(&url, spec, threads).map_err(|e| e.to_string()),
         Some("check") => load::check(&url, spec).map_err(|e| e.to_string()),
         Some("run") => {
