@@ -19,7 +19,7 @@ run pending). A suite counts when it runs one of the verification methods the re
 
 | Must requirements | Verified | Verified on the workstation only | Gaps |
 |---|---|---|---|
-| 313 | 292 | 8 | 13 |
+| 313 | 291 | 8 | 14 |
 
 | Title | Requirement | Result | By |
 |---|---|---|---|
@@ -146,7 +146,7 @@ run pending). A suite counts when it runs one of the verification methods the re
 | No other network path | FR-LOGIC-102 | verified | SUITE-DVM-SEC |
 | Classes are versioned objects | FR-MODEL-011 | verified | SUITE-DVM-CONF |
 | Mandatory class declaration content | FR-MODEL-012 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
-| Natural keys and slugs | FR-MODEL-013 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
+| Natural keys and slugs | FR-MODEL-013 | gap | not-met (requirement result) |
 | Stable identity independent of slug | FR-MODEL-014 | verified | SUITE-DVM-CONF |
 | Namespaces owned by Buks | FR-MODEL-015 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
 | Abstract classes | FR-MODEL-016 | verified | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL |
@@ -345,6 +345,7 @@ Must requirements without a passing result, with the results of their suites and
 |---|---|---|---|
 | Fairness and limits | FR-EVT-034 | pending | SUITE-NOD-BENCH (partial), SUITE-NOD-SYNC (later) |
 | Append cost independent of history | FR-LEDG-014 | pending | SUITE-DVM-BENCH (pending) |
+| Natural keys and slugs | FR-MODEL-013 | not-met | SUITE-DVM-CONF (passed), SUITE-DVM-REPLAY (passed), SUITE-DVM-STORE (passed), SUITE-DVM-XIMPL (passed) |
 | Chunking of large content | FR-PROOF-013 | pending | — |
 | Large diffs | FR-VER-043 | pending | — |
 | Diff cost proportional to change | FR-VER-045 | pending | SUITE-DVM-BENCH (pending) |

@@ -64,6 +64,9 @@ pub struct Engine {
     pub ubtp_pid: Option<String>,
 }
 
+/// `(class, row name)` of the implicit rows of the field index.
+type RowNames = BTreeSet<(String, String)>;
+
 /// A reference row to build: `(class, field, value key, object)`.
 type RefRow = (String, String, Vec<u8>, String);
 
@@ -410,26 +413,58 @@ impl Engine {
         self.index_usable(branch, cseq, &["@ref".to_string()], "rows")
     }
 
-    /// Build the reference rows of the relationship fields that have none (PH-2 step 0b):
-    /// for a VAE written before they existed, or a field declared on classes with
-    /// instances. The rows of later heads are written at flush; the objects already on a
-    /// branch get rows at its head, which serve the branch from that commit.
-    pub(crate) fn ensure_ref_rows(&mut self) -> Result<(), BpaError> {
-        let fields = ubos_version::state::relationship_fields(&self.registry);
-        let want: BTreeSet<(String, String)> = fields
-            .iter()
-            .flat_map(|(f, cs)| cs.iter().map(move |c| (c.clone(), f.clone())))
+    /// The rows the field index carries without a declaration and that commits rely on:
+    /// `(class, row name)` of the reference rows of relationship fields (`@ref:<field>`,
+    /// PH-2 step 0b-1b), and of the indexable fields of unique keys that are not declared
+    /// indexes (step 0b-3).
+    fn implicit_rows(&self) -> (RowNames, RowNames) {
+        let refs = ubos_version::state::relationship_fields(&self.registry)
+            .into_iter()
+            .flat_map(|(f, cs)| {
+                cs.into_iter()
+                    .map(move |c| (c, format!("{}{f}", ubos_version::state::REF_ROW)))
+            })
             .collect();
-        let have: BTreeSet<(String, String)> = self
-            .store
-            .meta("ref_rows")?
-            .and_then(|v| serde_json::from_value(v).ok())
-            .unwrap_or_default();
-        if want == have {
+        let mut keys = BTreeSet::new();
+        for c in self.registry.classes() {
+            let indexed: BTreeMap<String, String> =
+                self.registry.indexed_fields(&c.name).into_iter().collect();
+            for (_, fields) in self.registry.unique_keys(&c.name) {
+                for f in fields {
+                    if indexed.contains_key(&f) && !self.registry.is_declared_index(&c.name, &f) {
+                        keys.insert((c.name.clone(), f));
+                    }
+                }
+            }
+        }
+        (refs, keys)
+    }
+
+    /// Build the implicit rows that existing objects lack (PH-2 step 0b): for a VAE written
+    /// before reference rows existed, a relationship field declared on classes with
+    /// instances, or a unique key added to them. The rows of later heads are written at
+    /// flush; the objects already on a branch get rows at its head, which serve the branch
+    /// from that commit. Key rows have been written at flush since PH-1 step 13a, so a VAE
+    /// without the record starts from its current keys.
+    pub(crate) fn ensure_ref_rows(&mut self) -> Result<(), BpaError> {
+        let (refs, keys) = self.implicit_rows();
+        let read =
+            |e: &mut Engine, k: &str| -> Result<Option<BTreeSet<(String, String)>>, BpaError> {
+                Ok(e.store
+                    .meta(k)?
+                    .and_then(|v| serde_json::from_value(v).ok()))
+            };
+        let have_refs = read(self, "implicit_ref_rows")?.unwrap_or_default();
+        let have_keys = read(self, "implicit_key_rows")?.unwrap_or_else(|| keys.clone());
+        if refs == have_refs && keys == have_keys {
             return Ok(());
         }
-        let new: BTreeSet<&(String, String)> = want.difference(&have).collect();
-        let classes: BTreeSet<&String> = new.iter().map(|(c, _)| c).collect();
+        let new: BTreeSet<(String, String)> = refs
+            .difference(&have_refs)
+            .chain(keys.difference(&have_keys))
+            .cloned()
+            .collect();
+        let classes: BTreeSet<String> = new.iter().map(|(c, _)| c.clone()).collect();
         let mut built: Vec<(String, u64, Vec<RefRow>)> = Vec::new();
         let mut instances = false;
         for branch in self.store.branch_names()? {
@@ -441,14 +476,8 @@ impl Engine {
                 for (oid, o) in repo.objects_in(&branch, cseq, Some(c))? {
                     instances = true;
                     let v = repo.version(&o.head)?;
-                    if v["tombstone"] == json!(true) {
-                        continue;
-                    }
-                    for (f, key) in
-                        ubos_version::state::ref_rows(&self.registry, &o.class, &v["body"])
-                    {
-                        let name = f.trim_start_matches(ubos_version::state::REF_ROW);
-                        if new.contains(&(o.class.clone(), name.to_string())) {
+                    for (f, key) in ubos_version::state::index_rows(&self.registry, &o.class, &v) {
+                        if new.contains(&(o.class.clone(), f.clone())) {
                             rows.push((o.class.clone(), f, key, oid.clone()));
                         }
                     }
@@ -467,18 +496,16 @@ impl Engine {
             let since = serde_json::to_value(&self.index_since).unwrap_or_default();
             self.store.put_meta("index_since", &since)?;
         }
-        self.store.put_meta("ref_rows", &json!(want))
+        self.store.put_meta("implicit_ref_rows", &json!(refs))?;
+        self.store.put_meta("implicit_key_rows", &json!(keys))
     }
 
-    /// The reference rows are complete for the registry (an imported archive writes them
+    /// The implicit rows are complete for the registry (an imported archive writes them
     /// with every commit).
     pub(crate) fn mark_ref_rows(&mut self) -> Result<(), BpaError> {
-        let want: BTreeSet<(String, String)> =
-            ubos_version::state::relationship_fields(&self.registry)
-                .into_iter()
-                .flat_map(|(f, cs)| cs.into_iter().map(move |c| (c, f.clone())))
-                .collect();
-        self.store.put_meta("ref_rows", &json!(want))
+        let (refs, keys) = self.implicit_rows();
+        self.store.put_meta("implicit_ref_rows", &json!(refs))?;
+        self.store.put_meta("implicit_key_rows", &json!(keys))
     }
 
     /// The key of the signed query cursors (DSN-DVM-908): derived from the VAE
@@ -1667,6 +1694,18 @@ pub(crate) fn commit_on(
         checks.integrity(&written)?;
         checks.extensions_apply(registry, &written)?;
         crate::sheets::check_sheets(&mut repo, &tx, &written, cache)?;
+    }
+    // STD-CLS-001, DSN-DVM-111: unique keys (PH-2 step 0b-3)
+    {
+        let written: Vec<(String, String)> = result["versions"]
+            .as_object()
+            .map(|m| {
+                m.iter()
+                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or_default().to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        crate::keys::check(&mut repo, &mut tx, reg, &written, refs_indexed)?;
     }
     let written_classes: Vec<String> = result["versions"]
         .as_object()

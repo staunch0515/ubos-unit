@@ -815,6 +815,26 @@ impl<'a> Repo<'a> {
         Ok(true)
     }
 
+    /// The field-index rows of the classes whose value key is one of `keys`, at an ordinal,
+    /// over the branch chain (candidates, newest branch first); `None` without field index.
+    pub fn field_keys(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        classes: &[String],
+        field: &str,
+        keys: &[Vec<u8>],
+    ) -> Result<Option<ubos_store::FieldRows>, BpaError> {
+        let mut out = Vec::new();
+        for (b, c) in self.chain(branch, cseq)? {
+            let Some(rows) = self.store.field_keys(&b, c, classes, field, keys)? else {
+                return Ok(None);
+            };
+            out.extend(rows);
+        }
+        Ok(Some(out))
+    }
+
     /// Load the given objects into a transaction from the index in bulk (those not loaded).
     pub fn load_ids(&mut self, tx: &mut Tx, ids: &BTreeSet<String>) -> Result<(), BpaError> {
         let want: Vec<String> = ids
