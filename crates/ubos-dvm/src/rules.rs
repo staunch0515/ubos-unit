@@ -358,6 +358,7 @@ pub(crate) fn enforce(
 impl Engine {
     /// `DAT-DecisionResult` of a port call on an object of a state (STD-LGS-031,
     /// DSN-DVM-720): any `deny` denies, otherwise the union of the steps requires.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn decide_in(
         &mut self,
         st: &State,
@@ -366,6 +367,7 @@ impl Engine {
         port: &str,
         params: &Value,
         ctx: &Map<String, Value>,
+        lazy: Option<(String, Option<u64>)>,
     ) -> Result<Value, BpaError> {
         let kind = self.branch_meta(branch)?.kind;
         let Some(o) = st.objects.get(oid).cloned() else {
@@ -406,7 +408,8 @@ impl Engine {
         ] {
             ctx.entry(k.to_string()).or_insert_with(|| json!(d));
         }
-        let (eff, bindings, _) = cascade_state(
+        // over the partial view of a process, a `:rel` qualifier reads at its snapshot
+        let (eff, bindings, _) = crate::sheets::cascade_lazy(
             &mut repo,
             None,
             st,
@@ -417,6 +420,7 @@ impl Engine {
             &asof,
             &ctx,
             crate::flow::state_of(&head).as_deref(),
+            lazy,
         )?;
         if decl.get("kind") == Some(&json!("query")) {
             return Ok(json!({"outcome": "allow", "explanations": [], "bindings": bindings}));
@@ -528,7 +532,7 @@ impl Engine {
             .and_then(Value::as_object)
             .cloned()
             .unwrap_or_default();
-        self.decide_in(&st, &branch, &oid, &port, &params, &ctx)
+        self.decide_in(&st, &branch, &oid, &port, &params, &ctx, None)
     }
 
     /// `validate` (STD-CONF-005, FR-RULE-035): the violations and warnings a commit of the

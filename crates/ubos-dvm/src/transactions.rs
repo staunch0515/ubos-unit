@@ -1034,18 +1034,43 @@ impl Engine {
         }
         let branch = branch.unwrap_or_else(|| "main".into());
         let (class, slug) = (text_of(&p["class"]), text_of(&p["slug"]));
+        // the object from the slug index at the snapshot (PH-2 step 0b); a branch with a
+        // parent line (STD-VER-080) is resolved in a view of its state
+        let parent_line = self.branch_meta(&branch)?.parent_line.is_some();
         let mut repo = Repo::new(self.store.as_mut(), &self.registry);
-        let (view, snap) = repo.view(&branch, &i)?;
-        let mut cands: Vec<String> = view
-            .state
-            .objects
-            .iter()
-            .filter(|(_, o)| o.class == class && o.slug == slug)
-            .map(|(id, _)| id.clone())
-            .collect();
+        let (snap, evaluated_at, mut cands, objects): (
+            _,
+            BTreeMap<String, String>,
+            Vec<String>,
+            BTreeMap<String, ubos_version::ObjectState>,
+        ) = if parent_line {
+            let (view, snap) = repo.view(&branch, &i)?;
+            let cands = view
+                .state
+                .objects
+                .iter()
+                .filter(|(_, o)| o.class == class && o.slug == slug)
+                .map(|(id, _)| id.clone())
+                .collect();
+            (snap, view.evaluated_at, cands, view.state.objects)
+        } else {
+            let snap = repo.select(&branch, &i)?;
+            let cseq = repo.meta(snap.commit)?.cseq;
+            let ev = BTreeMap::from([(branch.clone(), repo.commit_id(snap.commit)?)]);
+            let mut objects = BTreeMap::new();
+            let mut cands = Vec::new();
+            if let Some((id, o)) = repo.object_by_slug(&branch, cseq, &class, &slug)? {
+                cands.push(id.clone());
+                objects.insert(id, o);
+            } else {
+                // a former slug (redirect): the objects of the class
+                objects = repo.objects_in(&branch, cseq, Some(&class))?;
+            }
+            (snap, ev, cands, objects)
+        };
         let mut redirected = false;
         if cands.is_empty() {
-            for (id, o) in &view.state.objects {
+            for (id, o) in &objects {
                 if o.class == class && repo.store.object_slugs(id)?.contains(&slug) {
                     cands.push(id.clone());
                 }
@@ -1059,7 +1084,7 @@ impl Engine {
                 text_of(&p["canonical"])
             )));
         };
-        let o = view.state.objects[&oid].clone();
+        let o = objects[&oid].clone();
         let mut out = if let Some(n) = p.get("version").and_then(Value::as_u64) {
             let mut heads: Vec<String> = Vec::new();
             let mut line = repo.first_parents(snap.commit)?;
@@ -1092,7 +1117,7 @@ impl Engine {
         out["object_id"] = json!(oid);
         out["branch"] = json!(branch);
         out["redirected"] = json!(redirected);
-        out["evaluated_at"] = json!(view.evaluated_at);
+        out["evaluated_at"] = json!(evaluated_at);
         out["canonical"] = json!(format!("ubos://{authority}/{}/{}", o.class, o.slug));
         Ok(out)
     }

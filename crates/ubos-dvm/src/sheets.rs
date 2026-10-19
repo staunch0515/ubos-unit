@@ -170,7 +170,7 @@ pub(crate) fn version_of(
 
 /// Qualifier evaluation over a state at a coordinate. On the index path the state holds
 /// only the sheets and the object evaluated; the whole state is materialised when a
-/// `:rel` qualifier first resolves a reference (`lazy`).
+/// `:rel` qualifier resolves a reference from the slug index at the coordinate (`lazy`).
 struct StateMatcher<'a, 'r> {
     st: &'r State,
     repo: &'r mut Repo<'a>,
@@ -178,7 +178,6 @@ struct StateMatcher<'a, 'r> {
     asof: String,
     authority: String,
     lazy: Option<(String, Option<u64>)>,
-    loaded: Option<State>,
 }
 
 impl StateMatcher<'_, '_> {
@@ -192,14 +191,20 @@ impl StateMatcher<'_, '_> {
         let Some((branch, time)) = &self.lazy else {
             return Ok(None);
         };
-        if self.loaded.is_none() {
-            self.loaded = Some(self.repo.state_at(branch, *time)?);
+        // the object at the URI from the slug index at the coordinate (PH-2 step 0b), not a
+        // view of the whole branch
+        let rest = uri.strip_prefix("ubos://").unwrap_or_default();
+        let mut parts = rest.split('/');
+        let (Some(auth), Some(class), Some(slug), None) =
+            (parts.next(), parts.next(), parts.next(), parts.next())
+        else {
+            return Ok(None);
+        };
+        if auth != self.authority {
+            return Ok(None);
         }
-        let full = self.loaded.as_ref().expect("state");
-        Ok(
-            resolve(full, uri, &self.authority)
-                .map(|tid| (tid.clone(), full.objects[&tid].clone())),
-        )
+        let cseq = self.repo.ordinal(branch, *time)?;
+        self.repo.object_by_slug(branch, cseq, class, slug)
     }
 }
 
@@ -298,7 +303,6 @@ pub(crate) fn cascade_lazy(
         asof: asof.to_string(),
         authority,
         lazy,
-        loaded: None,
     };
     let (out, bindings) = ubos_rules::cascade(&reg, &set.refs, &index, &lin, body, ctx, &mut m)?;
     Ok((out, bindings, reg))

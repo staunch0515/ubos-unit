@@ -189,6 +189,27 @@ pub trait Store {
         cseq: u64,
         class: Option<&str>,
     ) -> Result<Vec<(String, Option<Value>)>, BpaError>;
+    /// The local rows of the objects of `class` whose row visible at `cseq` carries `slug`
+    /// (URI resolution, PH-2 step 0b). Shadowing by a child branch is the caller's: the
+    /// rows are candidates, checked against the state at the coordinate.
+    fn objects_by_slug(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        class: &str,
+        slug: &str,
+    ) -> Result<Vec<(String, Option<Value>)>, BpaError> {
+        Ok(self
+            .objects(branch, cseq, Some(class))?
+            .into_iter()
+            .filter(|(_, v)| {
+                v.as_ref()
+                    .and_then(|v| v.get("slug"))
+                    .and_then(Value::as_str)
+                    == Some(slug)
+            })
+            .collect())
+    }
     /// The local rows of the given objects visible at `cseq`, in one round trip where the
     /// backend allows it (objects without a local row are left out).
     fn objects_by_id(
@@ -1156,6 +1177,21 @@ impl Store for Group {
             .into_iter()
             .collect();
         out.extend(self.overlay.objects(branch, cseq, class)?);
+        Ok(out.into_iter().collect())
+    }
+    fn objects_by_slug(
+        &mut self,
+        branch: &str,
+        cseq: u64,
+        class: &str,
+        slug: &str,
+    ) -> Result<Vec<(String, Option<Value>)>, BpaError> {
+        let mut out: BTreeMap<String, Option<Value>> = self
+            .inner
+            .objects_by_slug(branch, cseq, class, slug)?
+            .into_iter()
+            .collect();
+        out.extend(self.overlay.objects_by_slug(branch, cseq, class, slug)?);
         Ok(out.into_iter().collect())
     }
     fn entries(
