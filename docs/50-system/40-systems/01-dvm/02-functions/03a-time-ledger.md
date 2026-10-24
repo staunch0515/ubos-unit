@@ -436,6 +436,7 @@ This file designs the crates `ubos-time` and `ubos-ledger`; `ubos-txn` is in `03
 - **Verification:** CONF
 - **Origin:** FR-LEDG-063, CR-SOX-005
 - **Phase note:** DEC-101: PH-2 step 3d implements the reopening of STD-KIND-025 (a reason recorded with the commit's process; the close artefacts stay); the approval of the reopen decision, with its deferred commit and change set, is built with the approvals of PH-2 step 4.
+- **Phase note:** DEC-107: PH-2 step 4c builds the governed reopening of BPA 1.0-rc10 (STD-KIND-025, STD-TXN-060): the decisions of the period class's command port `reopen` govern `reopen_period`, and a reopening that requires approval waits as a pending change, applied by the final approval with the reason. The approval is a pending-change approval (STD-LGS-041…043), not a change set, and a reopening without the required approval fails with `RULE.DECISION_REQUIRES` instead of `VER.CHANGE_SET_REQUIRED`.
 
 ### DSN-DVM-445 — Matching engine
 - **Statement:** The DVM MUST provide a deterministic matching operator: given two entry sets and a matching rule (keys, tolerances, date windows, many-to-one allowed), it produces match records and breaks. Match records MUST be immutable objects (FR-LEDG-073); un-matching MUST create a new record that supersedes the old one.

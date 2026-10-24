@@ -123,6 +123,40 @@ fn view(rec: &Value) -> Value {
 }
 
 impl Engine {
+    /// Adapter operation `principal` (STD-ISA-071, BPA 1.0-rc8): register a principal's
+    /// clearances and roles in the adapter's directory, under `kernel_meta`
+    /// `principal:<did>`. The roles are those of STD-LGS-060…062 (BPA 1.0-rc10).
+    pub fn principal_entry(&mut self, i: &Value) -> Result<Value, BpaError> {
+        let Some(did) = s(i, "did") else {
+            return Err(BpaError::new("MODEL.DECLARATION_INCOMPLETE", "did"));
+        };
+        let clearances = i.get("clearances").cloned().unwrap_or(json!(["internal"]));
+        let ok = clearances.as_array().is_some_and(|l| {
+            l.iter().all(|c| {
+                c.as_str()
+                    .is_some_and(|c| ubos_types::values::LEVELS.contains(&c))
+            })
+        });
+        if !ok {
+            return Err(BpaError::new(
+                "MODEL.INVALID_VALUE",
+                "clearances are classification levels",
+            ));
+        }
+        let mut roles: Vec<String> = i["roles"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|r| r.as_str().map(str::to_string))
+            .collect();
+        roles.sort();
+        let entry = json!({"clearances": clearances, "roles": roles});
+        self.store.put_meta(&format!("principal:{did}"), &entry)?;
+        let mut out = entry;
+        out["did"] = json!(did);
+        Ok(out)
+    }
+
     fn pc_key(id: &str) -> String {
         format!("pending_change:{id}")
     }
@@ -141,6 +175,7 @@ impl Engine {
         initiator: &str,
         changes: &[Value],
         decisions: &[(String, String, Value)],
+        extra: Value,
     ) -> Result<Value, BpaError> {
         let reqs = requirements(decisions);
         let stripped: Vec<Value> = changes
@@ -170,6 +205,9 @@ impl Engine {
         }
         if let Some(e) = exp {
             rec["expires_at"] = json!(e);
+        }
+        for (k, v) in extra.as_object().into_iter().flatten() {
+            rec[k] = v.clone();
         }
         self.pc_put(&rec)?;
         let mut ids = self
@@ -448,7 +486,14 @@ impl Engine {
                                        "preview": rec["preview"], "approvers": approvers}]);
         let input = json!({"branch": rec["target_branch"], "changes": rec["changes"],
                            "process": process});
-        match self.commit(&input) {
+        // STD-KIND-025 (1.0-rc10): a governed reopening leaves `closed` as the period
+        // operation does
+        let committed = if rec["period_op"] == json!(true) {
+            crate::periods::as_operation("closed", "open", || self.commit(&input))
+        } else {
+            self.commit(&input)
+        };
+        match committed {
             Ok(res) => {
                 rec["state"] = json!("applied");
                 rec["cseq"] = res["cseq"].clone();

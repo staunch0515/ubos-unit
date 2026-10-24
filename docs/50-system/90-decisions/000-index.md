@@ -30,6 +30,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-104 | PH-2 step 3 closed: money and periods (parts 3a–3f, DEC-098…103) — BPA 1.0-rc9, currencies and rates, projections, period close and reopen, matching and statement lines, restatement and proposals in the kernel; 122 step-3 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 | DEC-105 | PH-2 step 4 opened in parts 4a–4g; part 4a: BPA 1.0-rc10 — delegations (STD-LGS-060), tasks (STD-LGS-061), work queues, assignment and inbox (STD-LGS-062), due dates and escalation (STD-LGS-063), service-level report (STD-LGS-064), governed reopening of periods; 250 clauses, 2,181 vectors, MUST coverage 212/212 | Accepted |
 | DEC-106 | PH-2 step 4b: deferred commits and approvals in the kernel — pending changes of port calls called with `defer`, requirements, expiry and invalidation, eligibility, separation of duties, approval evidence and the application in a new process; STD-TXN-060 and STD-LGS-041…043 claimed (22 vectors, memory and PostgreSQL) | Accepted |
+| DEC-107 | PH-2 step 4c: governed reopening of periods in the kernel — the decisions of the port `reopen` govern `reopen_period`, a reopening that requires approval waits as a pending change; the adapter's directory (`principal`); the conformance test runs BPA 1.0-rc10 | Accepted |
 
 ---
 
@@ -596,3 +597,22 @@ DEC-090 on follow.
   - A `PendingChange` System object on the target branch (the first wording of DSN-DVM-550) was rejected: its commit would move the target's commit sequence and the released vectors fix it.
   - Searching the journals of all processes for incompatible duties was rejected: the cost grows with the number of processes, and a list per object answers the check directly.
 - **Affects:** STD-TXN-060, STD-LGS-041, STD-LGS-042, STD-LGS-043, DSN-DVM-550, DSN-DVM-551, DSN-DVM-552, DSN-DVM-740, DSN-DVM-741, DSN-DVM-742, FR-FLOW-041, FR-FLOW-042, FR-FLOW-043, FR-FLOW-044, FR-FLOW-045, FR-FLOW-046, DEC-105
+
+### DEC-107 — Governed reopening of periods in the kernel (PH-2 step 4, part 4c)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** Part 4c of PH-2 step 4 (DEC-105) implements the governed reopening of periods that BPA 1.0-rc10 adds to STD-KIND-025 and STD-TXN-060 (DSN-DVM-444, deferred from step 3 by DEC-101 and DEC-104). Separation of duties and approval evidence, first planned for this part, were built in part 4b (DEC-106). The two vectors of the reopening register their principals with the adapter operation `principal`, which the kernel did not implement. The owner confirmed the part with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Reopening.** When the period's class declares a command port `reopen`, `reopen_period` first evaluates that port's decisions, with the parameter `reason` and the given `ctx`:
+     - `deny` fails with `RULE.DECISION_DENIED`;
+     - `require` fails with `RULE.DECISION_REQUIRES`, or, with `defer` and a process naming its ID and initiator, stores the reopening as a pending change (part 4b) with the reason and returns `{state: closed, reason, pending}`;
+     - `allow` reopens as before.
+  2. **Application.** The final approval applies a reopening as the period operation `closed → open` (the guard of STD-KIND-025), in a new process that records the reason.
+  3. **Directory.** The adapter operation `principal {did, clearances, roles}` (STD-ISA-071) registers a principal under `kernel_meta` `principal:<did>`; the roles serve the delegations and tasks of parts 4d and 4e.
+  4. **Claim.** The conformance test runs the vectors of BPA 1.0-rc10 whose clauses the kernel implements (`NEXT_RELEASE`); the two reopening vectors verify STD-TXN-060 and STD-KIND-025, both claimed.
+  5. **DSN-DVM-444.** A phase note records that the approval is a pending-change approval, not a change set.
+- **Consequences:**
+  - The 46 vectors of STD-TXN-060, STD-LGS-041…043 and STD-KIND-025…026 pass in memory and on PostgreSQL 16, and the conformance test passes on BPA 1.0-rc10.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - Requiring a change set for every reopening (the first wording of DSN-DVM-444) was rejected, as in DEC-105: the decisions of the port `reopen` make the governance a declaration of the class, and the released reopening vectors stay valid.
+- **Affects:** STD-KIND-025, STD-TXN-060, STD-ISA-071, DSN-DVM-444, FR-LEDG-063, DEC-101, DEC-104, DEC-105, DEC-106

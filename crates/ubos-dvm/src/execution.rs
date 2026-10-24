@@ -2065,8 +2065,14 @@ impl Engine {
                         .fire(crate::process::Event::CommitEmpty)
                         .map_err(invariant)?;
                     let initiator = s(&p.p, "initiator").unwrap_or_default().to_string();
-                    pending =
-                        Some(self.defer_changes(&branch, &p.id, &initiator, &core.uow, &deferred)?);
+                    pending = Some(self.defer_changes(
+                        &branch,
+                        &p.id,
+                        &initiator,
+                        &core.uow,
+                        &deferred,
+                        json!({}),
+                    )?);
                     return Ok((result, None));
                 }
                 if let Some(changes) = interfere.get(&attempt) {

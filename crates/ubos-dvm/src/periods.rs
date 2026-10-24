@@ -92,7 +92,7 @@ fn leak(state: &str) -> &'static str {
 }
 
 /// Run `f` as the period operation making the transition `from → to`.
-fn as_operation<T>(
+pub(crate) fn as_operation<T>(
     from: &'static str,
     to: &'static str,
     f: impl FnOnce() -> Result<T, BpaError>,
@@ -312,11 +312,71 @@ impl Engine {
         }
         let mut process = i.get("process").cloned().unwrap_or_else(|| json!({}));
         process["reason"] = json!(reason);
-        let input = json!({"branch": branch, "process": process, "changes": [
-            {"op": "update", "object_id": pid, "base": head_v, "body": {"state": "open"}}]});
+        let change =
+            json!({"op": "update", "object_id": pid, "base": head_v, "body": {"state": "open"}});
+        if let Some(pending) = self.governed_reopen(&branch, &pid, &reason, i, &process, &change)? {
+            return Ok(pending);
+        }
+        let input = json!({"branch": branch, "process": process, "changes": [change]});
         let res = as_operation("closed", "open", || self.commit(&input))?;
         Ok(
             json!({"cseq": res["cseq"], "commit_id": res["commit_id"], "state": "open", "reason": reason}),
         )
+    }
+
+    /// STD-KIND-025 (1.0-rc10, DSN-DVM-444): with a command port `reopen` on the period's
+    /// class, its decisions govern the reopening; `require` with `defer` stores a pending
+    /// change (STD-TXN-060). None when the reopening goes ahead.
+    fn governed_reopen(
+        &mut self,
+        branch: &str,
+        pid: &str,
+        reason: &str,
+        i: &Value,
+        process: &Value,
+        change: &Value,
+    ) -> Result<Option<Value>, BpaError> {
+        let (o, ..) = self.object_view(branch, &json!({}), pid)?;
+        let governed = self
+            .registry
+            .class(&o.class)?
+            .ports
+            .get("reopen")
+            .is_some_and(|p| s(&p.decl, "kind") != Some("query"));
+        if !governed {
+            return Ok(None);
+        }
+        let mut q = json!({"branch": branch, "object_id": pid, "port": "reopen",
+                           "params": {"reason": reason}});
+        if let Some(c) = i.get("ctx") {
+            q["ctx"] = c.clone();
+        }
+        let r = self.decide(&q)?;
+        match s(&r, "outcome") {
+            Some("deny") => return Err(BpaError::with_details("RULE.DECISION_DENIED", r)),
+            Some("require") => {}
+            _ => return Ok(None),
+        }
+        if i.get("defer").and_then(Value::as_bool) != Some(true) {
+            return Err(BpaError::with_details("RULE.DECISION_REQUIRES", r));
+        }
+        let (Some(id), Some(initiator)) = (s(process, "process_id"), s(process, "initiator"))
+        else {
+            return Err(BpaError::new(
+                "MODEL.DECLARATION_INCOMPLETE",
+                "a deferred reopening names its process and initiator",
+            ));
+        };
+        let pending = self.defer_changes(
+            branch,
+            id,
+            initiator,
+            std::slice::from_ref(change),
+            &[(pid.to_string(), "reopen".to_string(), r)],
+            json!({"process": {"reason": reason}, "period_op": true}),
+        )?;
+        Ok(Some(
+            json!({"state": "closed", "reason": reason, "pending": pending}),
+        ))
     }
 }
