@@ -31,6 +31,7 @@ from .tables import Tables
 from .approvals import Approvals
 from .workflows import Workflows
 from .lenses import Lenses
+from .protection import Protection, is_marker
 from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
@@ -127,7 +128,7 @@ def tl_at(tl, asof):
     return None
 
 
-class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Tables, Approvals, Workflows, Lenses):
+class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Tables, Approvals, Workflows, Lenses, Protection):
     def __init__(self):
         self.reset()
 
@@ -165,6 +166,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         self._node_init()
         self._orch_init()
         self._lens_init()
+        self._prot_init()
         root = self._new_commit('main', [], {'objects': {}, 'ledger': {}}, 0, tx=False)
         self.branches['main'] = {'head': root, 'kind': 'main', 'created_at': self.now, 'active_at': self.now,
                                  'parent_line': None, 'created_from': root}
@@ -393,6 +395,10 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
             raise BpaError('MODEL.INVALID_VALUE', 'body is an object')
         out = {}
         for k, v in body.items():
+            # STD-OBJ-011 (1.0-rc8): an erased field is kept as it is stored
+            if is_marker(v) and v['commitment'] in self.erased_store:
+                out[k] = v
+                continue
             if k not in eff['fields']:
                 # STD-CLS-060 (1.0-rc8): values a lens archived by drop_with_archive
                 if k == '_archived' and isinstance(v, dict):
@@ -418,9 +424,12 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         return out
 
     def _version(self, oid, cls, slug, body, valid, predecessor=None, tombstone=False, provenance=None, state=None):
+        stored = self._protect(oid, cls, body)
         env = {'object_id': oid, 'class': cls, 'class_version': content_id('ubos.chunk.v1', self._decl(cls)),
                'schema_version': self._decl(cls).get('schema_version', 1), 'kind': self._cls(cls)['kind'],
-               'slug': slug, 'valid': valid, 'body_ref': content_id('ubos.chunk.v1', body)}
+               'slug': slug, 'valid': valid,
+               # STD-OBJ-010 (1.0-rc8): hashes cover the stored form of protected fields
+               'body_ref': content_id('ubos.chunk.v1', stored)}
         if state is not None:
             env['state'] = state
         if predecessor:
@@ -433,6 +442,10 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         old = self.versions.get(vh)
         self.versions[vh] = {'object_id': oid, 'class': cls, 'slug': slug, 'body': body, 'valid': valid,
                              'tombstone': tombstone, 'cseq': old['cseq'] if old else self._cseq, 'envelope': env}
+        if stored is not body:
+            self.versions[vh]['stored'] = stored
+            if old is not None:
+                self.versions[vh]['body'] = old['body']     # an erased version stays erased
         if provenance:
             self.versions[vh]['provenance_ref'] = provenance
         if state is not None:
@@ -654,7 +667,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         finally:
             self._exts = None
             self._eff_cache = {}
-            self._cur_branch = self._cur_p = None
+            self._cur_branch = self._cur_p = self._cur_st = None
         own = {oid: o for oid, o in st['objects'].items() if oid not in inh or (o['head'], o['timeline']) != inh[oid]}
         self._note_overrides(branch, own, inh)          # STD-VER-082 (1.0-rc8)
         state = {'objects': own, 'ledger': st['ledger']}
@@ -668,6 +681,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         return result, cid
 
     def _begin(self, st, p):
+        self._cur_st = st                               # STD-OBJ-010 (1.0-rc8): subjects by reference
         self._exts = self._extensions(st)
         self._eff_cache = {}
         self._written, self._ended, self._ops, self._derived = [], [], {}, []
@@ -1276,7 +1290,9 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         seg = tl_at(o['timeline'], a)
         if seg is None:
             raise BpaError('QRY.NOT_FOUND_AT_TIME')
+        self._check_keys(self.versions[seg[2]])         # DSN-DVM-834 (1.0-rc8)
         out = self._lens_read(self._segment(seg), self.versions[seg[2]], sel)
+        out = self._view_read(st, branch, object_id, out, sel)     # STD-LGS-051, -052 (1.0-rc8)
         out['evaluated_at'] = ev
         if sel.get('provenance'):
             b, c = prov[object_id]

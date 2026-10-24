@@ -188,6 +188,12 @@ def check_field(f):
     rel = f.get('relationship')
     if rel is not None:
         check_relationship(f, rel)
+    # STD-LGS-050 (1.0-rc8): an authorization relation is named on a reference field
+    if 'authz_relation' in f:
+        if not isinstance(f['authz_relation'], str) or not GRAMMARS['member-name'].match(f['authz_relation']):
+            raise BpaError('MODEL.INVALID_NAME', 'authz_relation')
+        if f['type'] != 'reference' and not is_reference_list(f):
+            raise BpaError('MODEL.INVALID_VALUE', 'an authorization relation is a reference or a list of references')
 
 
 def is_reference_list(f):
@@ -310,6 +316,15 @@ def check_decl(d):
     if 'validations' in d:
         check_validations(d['validations'])
     check_overlay_policy(d)
+    # STD-OBJ-010, STD-LGS-050 (1.0-rc8): the subject key and the principal field name fields
+    fields = {f['name']: f for f in d['fields']}
+    sk = d.get('subject_key')
+    if sk is not None and sk != 'self' and (sk not in fields or fields[sk]['type'] not in ('text', 'reference')
+                                            or fields[sk].get('classification') in ('personal', 'sensitive_personal')):
+        raise BpaError('MODEL.INVALID_VALUE', 'subject_key is self or an unprotected text or reference field')
+    pf = d.get('principal_field')
+    if pf is not None and (pf not in fields or fields[pf]['type'] != 'text'):
+        raise BpaError('MODEL.INVALID_VALUE', 'principal_field names a text field')
     # STD-CLS-004 (1.0-rc3): the lifecycle is a URI; a class with a lifecycle has no field state
     if 'lifecycle' in d:
         if not isinstance(d['lifecycle'], str) or not d['lifecycle']:

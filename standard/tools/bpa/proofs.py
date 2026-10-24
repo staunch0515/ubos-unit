@@ -198,7 +198,7 @@ class Proofs:
         for vh, v in self.versions.items():
             if any(vh == o['head'] or any(s[2] == vh for s in o['timeline'])
                    for c in self.commits.values() for o in c['state']['objects'].values()):
-                chunk(v['body'])
+                chunk(v.get('stored') or v['body'])        # STD-OBJ-010 (1.0-rc8): the stored form
                 versions[vh] = v['envelope']
         for c in self.commits.values():
             ledger = []
@@ -284,14 +284,18 @@ class Proofs:
             _fail('the counts differ from the manifest')
         # load
         now = self.now
+        keys = (self.subject_keys, self.erased_store, self.lookup)    # the key service is not reset
         self.reset()
         self.now = now
+        self.subject_keys, self.erased_store, self.lookup = keys
         self.load_genesis([chunks[c] for c in m.get('classes') or []])
         self.commits, self.branches = {}, {}
         for vh, env in versions.items():
             self.versions[vh] = {'object_id': env['object_id'], 'class': env['class'], 'slug': env['slug'],
-                                 'body': chunks[env['body_ref']], 'valid': env['valid'],
+                                 'body': self._unprotect(chunks[env['body_ref']]), 'valid': env['valid'],
                                  'tombstone': bool(env.get('tombstone')), 'cseq': 0, 'envelope': env}
+            if self.versions[vh]['body'] is not chunks[env['body_ref']]:
+                self.versions[vh]['stored'] = chunks[env['body_ref']]
             if env.get('provenance_ref'):
                 self.versions[vh]['provenance_ref'] = env['provenance_ref']
         ids = {}

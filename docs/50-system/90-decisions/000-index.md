@@ -46,6 +46,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-090 | PH-2 step 1b: money and periods in BPA 1.0-rc8 — period transitions (open ↔ closing by update, `close_period`/`reopen_period` for closed), close artefacts with a signed tag (STD-KIND-026), deterministic matching and match records (STD-KIND-027, -028), restatement on a correction branch with re-evaluation modes (STD-TIME-041, -042); VER-CONF-1528 superseded | Accepted |
 | DEC-091 | PH-2 step 1c: approvals and rules in BPA 1.0-rc8 — deferred commits with `defer` (STD-TXN-060), decision tables with hit policies and an authoring check (STD-LGS-040, STD-ISA-053), approval requirements, separation of duties and approval evidence (STD-LGS-041…043), simulation of rule changes (STD-LGS-044) | Accepted |
 | DEC-092 | PH-2 step 1d: workflows, sagas, quarantine, lenses and upstream changes in BPA 1.0-rc8 — workflow definitions, instances, events, timers, tasks and migration (STD-TXN-090…092), sagas (STD-TXN-080), quarantine (STD-CTX-031), computed change classification, lenses and their application and totality check (STD-CLS-050, -060…062), upstream change detection (STD-VER-082) | Accepted |
+| DEC-093 | PH-2 step 1e: protection in BPA 1.0-rc8 — encrypted fields under subject keys and erasure (STD-OBJ-010, -011), authorization relations (STD-LGS-050), relation-based access rules (STD-LGS-051), field masking (STD-LGS-052) | Accepted |
 
 ---
 
@@ -752,3 +753,43 @@ the records from DEC-060 on follow.
   - Treating `load_genesis` as a class change was rejected: released vectors reload declarations freely.
   - Lensing reads only on request was rejected: a body in an older schema version does not conform to the current class.
 - **Affects:** STD-TXN-080, STD-TXN-090, STD-TXN-091, STD-TXN-092, STD-CTX-031, STD-CLS-050, STD-CLS-060, STD-CLS-061, STD-CLS-062, STD-VER-082, STD-CONF-005, FR-FLOW-061, FR-FLOW-062, FR-FLOW-064, FR-TXN-061, FR-TXN-062, FR-TXN-063, FR-LOGIC-064, FR-MODEL-081, FR-MODEL-082, FR-MODEL-083, FR-MODEL-084, FR-MODEL-085, FR-MODEL-086, FR-VER-086, DSN-DVM-750, DSN-DVM-751, DSN-DVM-752, DSN-DVM-753, DEC-089
+
+### DEC-093 — Protection in BPA 1.0-rc8 (PH-2 step 1, part 1e)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** Part 1e of PH-2 step 1 (DEC-089) writes the clauses and vectors of protection.
+  - STD-OBJ-010 (encrypted fields) and STD-OBJ-011 (erased fields) entered 1.0-rc8 without vectors.
+  - FR-IAM-051…053, -061…063 and DSN-DVM-810…812, -821, -822 had no clause.
+
+  The owner confirmed the semantic choices with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Encrypted fields (STD-OBJ-010).**
+     - **Scope.** A class that declares `subject_key` stores its `personal` and `sensitive_personal` fields as `DAT-EncryptedField` items under AES-256-GCM. `subject_key` is `self` or an unprotected text or reference field; a referenced subject is the object ID. A class without `subject_key` stores its fields as they are, so released declarations keep their behaviour.
+     - **Hashes.** Version hashes, trees and archives cover the stored form; reads, rules and logic see the plaintext.
+     - **Keys.** Subject keys belong to the key service, outside business data and archives. They are created on first use and rotated by `subject_key`; earlier versions stay readable.
+     - **Evidence.** `disclose` returns the value and salt of a field commitment, and `verify_disclosure` checks them.
+     - **Naming.** The commitment member is renamed from `commit` to `commitment`, which no implementation used: `commit` is a member of released results. `nonce`, `ct`, `salt` and `commitment` become implementation-dependent members (STD-CONF-005, rule 6).
+  2. **Erasure (STD-OBJ-011).** `erase_subject` destroys a subject key. Every version encrypted under it reads with erased markers, and hashes and proofs are unchanged. A disclosure or a new protected value for the subject fails with `PROOF.VALUE_ERASED`; other fields stay writable. An unavailable key fails reads with `IAM.KEY_UNAVAILABLE` (DSN-DVM-834). Checking legal holds before erasure stays in PH-3 (DSN-DVM-831).
+  3. **Authorization relations (STD-LGS-050, new).** Reference fields declare `authz_relation`, and classes declare `principal_field`. Relations are derived from the versions at the snapshot of the request, with no separate tuple store.
+  4. **Access rules (STD-LGS-051, new).**
+     - **Rules.** The kernel property `access` (union) holds rules `{action, allow_if}` with paths `principal in this(.relation)*` of at most four relations; other paths fail with `RULE.PARSE_ERROR` at commit.
+     - **Enforcement.** Where rules apply to an action, one must reach the principal. Reads made as a viewer fail with `IAM.NOT_FOUND` and port calls with `IAM.DENIED`. A query made as a viewer leaves out the objects the viewer may not read, inside its execution.
+     - **Unrestricted actions.** Actions without rules are not restricted, so released vectors are unchanged.
+  5. **Masking (STD-LGS-052, new).** A viewer `{principal, clearances, ctx}` given as `as` to `read`, `query` and `outbox` sees:
+     - declared masks in their modes: `hide`; `partial`, the last four characters; `hash`, keyed by the tenant lookup key;
+     - fields above its clearances hidden.
+
+     Filters and sorts on masked fields fail with `QRY.INVALID_QUERY`. A read without a viewer is the system read.
+  6. **Adapter operations.** `subject_key`, `key_availability`, `erase_subject`, `stored_form`, `disclose`, `verify_disclosure`, `lookup_key`, `relations` and `check_access`; `as` on `read`, `query` and `outbox` (STD-CONF-005). The reference model is in `standard/tools/bpa/protection.py`, the cases in `standard/tools/cases/protection.py`.
+- **Consequences:**
+  - 1.0-rc8 has 238 clauses and 1,965 vectors.
+  - Part 1e adds 43 vectors:
+    - Core: 15;
+    - Governance: 28.
+  - MUST coverage is 194/200.
+  - No released vector changed. `crates/` is unchanged; the kernel takes up these clauses in PH-2 steps 4 and 5.
+- **Alternatives considered:**
+  - Encrypting the personal fields of every class was rejected for 1.0-rc8: released declarations have no subject and their vectors would change. A class change can add `subject_key`.
+  - A separate relation tuple store was rejected (DSN-DVM-810): derived tuples cannot drift from the data.
+  - Masking every adapter read was rejected: the adapter's reads are system reads, and a viewer must be named for its clearances and context.
+  - Reporting a node without the subject keys as erased was rejected: only key destruction erases, so a missing key reads as unavailable.
+- **Affects:** STD-OBJ-010, STD-OBJ-011, STD-OBJ-012, STD-LGS-011, STD-LGS-050, STD-LGS-051, STD-LGS-052, STD-CONF-005, FR-IAM-051, FR-IAM-052, FR-IAM-053, FR-IAM-061, FR-IAM-062, FR-IAM-063, FR-PROOF-071, FR-PROOF-072, FR-PROOF-073, DSN-DVM-810, DSN-DVM-811, DSN-DVM-812, DSN-DVM-821, DSN-DVM-822, DSN-DVM-830, DSN-DVM-834, DEC-089

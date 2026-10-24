@@ -1,6 +1,7 @@
 """Adapter operations (STD-CONF-005) and a vector runner."""
 from . import tables as _tables
 from . import lenses as _lenses
+from . import protection as _protection
 from . import BpaError
 from . import values
 from .canon import canonical, content_id, nfc
@@ -111,6 +112,8 @@ PURE['check_table'] = lambda i: _tables.check_table(i['table'])
 PURE['classify_change'] = lambda i: _lenses.classify_change(i)
 PURE['apply_lens'] = lambda i: _lenses.apply_lens(i)
 PURE['check_lens'] = lambda i: _lenses.lens_check(i)
+# BPA 1.0-rc8, PH-2 step 1e (DEC-093)
+PURE['verify_disclosure'] = lambda i: _protection.verify_disclosure(i)
 
 STATEFUL = {
     'reset': lambda s, i: s.reset(),
@@ -146,7 +149,7 @@ STATEFUL = {
     'lineage': lambda s, i: s.lineage(i['process_id'], i.get('direction', 'ancestors')),
     'derivation': lambda s, i: s.derivation(i['branch'], i.get('object_id'), i.get('entry_id'), i),
     'impact': lambda s, i: s.impact(i['branch'], i['time']),
-    'outbox': lambda s, i: s.outbox_list(),
+    'outbox': lambda s, i: s.outbox_list(i.get('as')),
     'ack': lambda s, i: s.ack(i['effect_ids']),
     'bulk': lambda s, i: s.bulk(i),
     # BPA 1.0-rc1, PH-1 step 1d (DEC-042)
@@ -206,6 +209,15 @@ STATEFUL = {
     'change_class': lambda s, i: s.change_class(i),
     'upstream_changes': lambda s, i: s.upstream_changes(i),
     'resolve_upstream': lambda s, i: s.resolve_upstream(i),
+    # BPA 1.0-rc8, PH-2 step 1e (DEC-093): subject keys, erasure, relations, access, masking
+    'subject_key': lambda s, i: s.subject_key(i),
+    'key_availability': lambda s, i: s.key_availability(i),
+    'erase_subject': lambda s, i: s.erase_subject(i),
+    'stored_form': lambda s, i: s.stored_form(i),
+    'disclose': lambda s, i: s.disclose(i),
+    'lookup_key': lambda s, i: s.lookup_key(i),
+    'relations': lambda s, i: s.relations(i),
+    'check_access': lambda s, i: s.check_access(i),
 }
 
 # Members of `ubtp` frames an implementation assigns (process identifiers), stripped like the
@@ -227,7 +239,9 @@ IMPLEMENTATION_DEPENDENT = ('version_hash', 'entry_hash', 'root', 'head', 'versi
                             'snapshots', 'logic_versions', 'commit_ids', 'changes_hash', 'cpu_us', 'peak_memory',
                             'wall_us', 'asset', 'record_id', 'json_schema',
                             # since 1.0-rc2 (DEC-066): sheet versions bound by a cascade
-                            'sheet_version', 'bindings')
+                            'sheet_version', 'bindings',
+                            # since 1.0-rc8 (DEC-093): the random members of encrypted fields
+                            'nonce', 'ct', 'salt', 'commitment')
 
 
 def strip(value, extra=()):

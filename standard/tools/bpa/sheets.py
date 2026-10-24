@@ -55,6 +55,9 @@ KERNEL_PROPERTIES = {
     'rate_limit': ('action', 'override', {'type': 'composite', 'constraints': {'members': {
         'per': {'type': 'enum', 'required': True, 'constraints': {'allowed_values': ['second', 'minute', 'hour', 'day']}},
         'count': {'type': 'integer', 'required': True, 'constraints': {'min': 1}}}}}),
+    # STD-LGS-051 (1.0-rc8, DEC-093): access rules over authorization relations.
+    'access': ('action', 'union', {'type': 'list', 'constraints': {'item_type': {'type': 'composite', 'constraints': {
+        'members': {'action': {'type': 'text', 'required': True}, 'allow_if': {'type': 'text', 'required': True}}}}}}),
     # STD-LGS-030, -031 (DEC-067): validations, invariants and decisions declared in sheets.
     'validations': ('commit', 'union', {'type': 'list', 'constraints': {'item_type': {'type': 'composite', 'constraints': {'members': {
         'name': {'type': 'text', 'required': True}, 'rule': {'type': 'text', 'required': True},
@@ -470,7 +473,11 @@ def _check_declaration(reg, d):
     value = d['value']
     if root == 'approvals' and isinstance(value, int) and not isinstance(value, bool):
         value = {'count': value}
-    return validate_value(schema['type'], schema.get('constraints'), value)
+    out = validate_value(schema['type'], schema.get('constraints'), value)
+    if root == 'access':
+        from .protection import check_rules
+        check_rules(out)
+    return out
 
 
 def _normalise(reg, d):

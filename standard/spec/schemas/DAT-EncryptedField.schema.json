@@ -2,8 +2,8 @@
   "$id": "DAT-EncryptedField",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
-    "commit": {
-      "description": "content-id of the field commitment",
+    "commitment": {
+      "description": "content-id of the field commitment (named commit before 1.0-rc8)",
       "type": "string"
     },
     "ct": {
@@ -32,7 +32,7 @@
     "key",
     "nonce",
     "ct",
-    "commit"
+    "commitment"
   ],
   "title": "DAT-EncryptedField",
   "type": "object"

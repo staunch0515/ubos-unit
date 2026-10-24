@@ -673,6 +673,10 @@ class Run:
             if tr and state not in tr['from']:
                 raise BpaError('FLOW.PORT_UNAVAILABLE', {'port': a['port'], 'state': state})
         self.authorize(port.get('permission', 'none'), cls)
+        # STD-LGS-051 (1.0-rc8): the access rules of the object for the port
+        if not self.s._access(self.state(), self.branch, oid, self.context['principal'], a['port'],
+                              self.decision_ctx())[0]:
+            raise BpaError('IAM.DENIED', {'port': a['port'], 'access': 'no rule allows the principal'})
         if oid not in self.pending:
             # STD-LGS-031: the decisions of a command port run before it (DSN-DVM-720)
             self.s._check_decision(self.state(), self.branch, oid, a['port'], a.get('params') or {},

@@ -9,9 +9,9 @@ with the owner's signed tag `bpa-v1.0.0-rc8`. BPA 1.0-rc7 stays frozen as tagged
 | Item | Value |
 |---|---|
 | Profiles | Core, Bitemporal, Ledger, Proof, Governance, Protocol |
-| Clauses | 235 (scope by phase, `scope.json`): the 201 clauses of BPA 1.0-rc7, 23 that satisfy PH-2 requirements, and 11 written in parts 1b–1d |
-| MUST clauses with a vector range | 197, 189 covered (`coverage.md`) |
-| Vectors | 1,922: those of BPA 1.0-rc7 without VER-CONF-1528 (superseded), 45 of part 1b, 53 of part 1c and 122 of part 1d |
+| Clauses | 238 (scope by phase, `scope.json`): the 201 clauses of BPA 1.0-rc7, 23 that satisfy PH-2 requirements, and 14 written in parts 1b–1e |
+| MUST clauses with a vector range | 200, 194 covered (`coverage.md`) |
+| Vectors | 1,965: those of BPA 1.0-rc7 without VER-CONF-1528 (superseded), 45 of part 1b, 53 of part 1c, 122 of part 1d and 43 of part 1e |
 
 ## Changes since BPA 1.0-rc7
 
@@ -47,3 +47,9 @@ with the owner's signed tag `bpa-v1.0.0-rc8`. BPA 1.0-rc7 stays frozen as tagged
   - **Upstream changes** (STD-VER-082): overrides marked when the parent line changes them, resolved by acknowledgement or three-way merge.
   - **Adapter operations** `start_workflow`, `deliver_event`, `complete_task`, `migrate_workflow`, `run_saga`, `quarantine_policy`, `release_quarantine`, `change_class`, `classify_change`, `apply_lens`, `check_lens`, `upstream_changes` and `resolve_upstream`; `read` and `commit` take `schema_version`.
   - **Moved:** STD-TXN-051 (pre-commit external calls) is written in part 1f with `call.connector`.
+- Part 1e (DEC-093), protection:
+  - **Encrypted fields** (STD-OBJ-010): personal fields of classes with `subject_key` stored under AES-256-GCM with field commitments; hashes cover the stored form; key rotation and disclosure. The commitment member is named `commitment`.
+  - **Erasure** (STD-OBJ-011): destroying a subject key erases its fields in every version with hashes and proofs unchanged; unavailable keys are distinct from erasure.
+  - **Authorization relations** (STD-LGS-050, new), **relation-based access rules** with the kernel property `access` (STD-LGS-051, new) and **field masking** for viewers (STD-LGS-052, new).
+  - **Adapter operations** `subject_key`, `key_availability`, `erase_subject`, `stored_form`, `disclose`, `verify_disclosure`, `lookup_key`, `relations` and `check_access`; `read`, `query` and `outbox` take `as`.
+  - **Rule 6 of STD-CONF-005:** `nonce`, `ct`, `salt` and `commitment` are implementation-dependent members.

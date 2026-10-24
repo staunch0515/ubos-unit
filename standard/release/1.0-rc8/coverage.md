@@ -6,13 +6,13 @@
 
 | Profile | MUST clauses with a range | Covered | Coverage | Vectors | Prototype vectors |
 |---|---|---|---|---|---|
-| Core | 140 | 133 | 95% | 1288 | 355 |
+| Core | 140 | 135 | 96% | 1303 | 355 |
 | Bitemporal | 12 | 12 | 100% | 69 | 30 |
 | Ledger | 12 | 12 | 100% | 92 | 52 |
 | Proof | 9 | 9 | 100% | 73 | 16 |
-| Governance | 15 | 15 | 100% | 259 | 0 |
+| Governance | 18 | 18 | 100% | 287 | 0 |
 | Protocol | 9 | 8 | 89% | 141 | 0 |
-| **All** | **197** | **189** | **96%** | **1922** | **453** |
+| **All** | **200** | **194** | **97%** | **1965** | **453** |
 
 ## Clauses
 
@@ -40,8 +40,8 @@
 | STD-OBJ-005 | Core | yes | 5 (VER-CONF-0345…VER-CONF-0349) |
 | STD-OBJ-008 | Core | yes | 2 (VER-CONF-0360…VER-CONF-0361) |
 | STD-OBJ-009 | Core | yes | 5 (VER-CONF-0375…VER-CONF-0379) |
-| STD-OBJ-010 | Core | yes | **none** |
-| STD-OBJ-011 | Core | yes | **none** |
+| STD-OBJ-010 | Core | yes | 10 (VER-CONF-0380…VER-CONF-0389) |
+| STD-OBJ-011 | Core | yes | 5 (VER-CONF-0400…VER-CONF-0404) |
 | STD-OBJ-012 | Core | yes | 5 (VER-CONF-0405…VER-CONF-0409) |
 | STD-CLS-001 | Core | yes | 16 (VER-CONF-0500…VER-CONF-0515) |
 | STD-CLS-002 | Core | yes | 25 (VER-CONF-0530…VER-CONF-0554) |
@@ -243,6 +243,9 @@
 | STD-LGS-042 | Governance | yes | 4 (VER-CONF-5150…VER-CONF-5153) |
 | STD-LGS-043 | Governance | yes | 5 (VER-CONF-5165…VER-CONF-5169) |
 | STD-LGS-044 | Governance | yes | 6 (VER-CONF-5180…VER-CONF-5185) |
+| STD-LGS-050 | Governance | yes | 6 (VER-CONF-5310…VER-CONF-5315) |
+| STD-LGS-051 | Governance | yes | 11 (VER-CONF-5330…VER-CONF-5340) |
+| STD-LGS-052 | Governance | yes | 11 (VER-CONF-5355…VER-CONF-5365) |
 | STD-PROTO-001 | Protocol | yes | 15 (VER-CONF-5400…VER-CONF-5414) |
 | STD-PROTO-002 | Protocol | yes | 12 (VER-CONF-5420…VER-CONF-5431) |
 | STD-PROTO-010 | Protocol | yes | 21 (VER-CONF-5440…VER-CONF-5460) |

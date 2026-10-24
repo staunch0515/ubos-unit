@@ -104,6 +104,7 @@ DAT-PropertyDecl:
   | `validations` | list of `{name, rule, severity, message}` | commit | union | validations of the matched objects (STD-LGS-030); since 1.0-rc2 |
   | `invariants` | list of `{name, scope, rule, severity, message}` | commit | union | invariants over the objects of the scope classes (STD-LGS-030); since 1.0-rc2 |
   | `decisions` | list of `{name, when, outcome, steps, message}` | action | union | decisions before a command port (STD-LGS-031); since 1.0-rc2 |
+  | `access` | list of `{action, allow_if}` | action | union | relation-based access rules (STD-LGS-051); since 1.0-rc8 |
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4880…4939
 - **Satisfies:** FR-RULE-013, SCN-009, SCN-012
@@ -291,3 +292,39 @@ DAT-DecisionTable:
 - **Conformance vectors:** VER-CONF-5180…5199
 - **Satisfies:** FR-RULE-071, FR-RULE-072, FR-RULE-073, DSN-DVM-760, DSN-DVM-761, DSN-DVM-762
 - **Notes:** The budget counts processes; CPU and time budgets are the node's (DSN-DVM-762). The sandbox branches stay as evidence. Since 1.0-rc8 (DEC-091).
+
+## 6. Relations, access and masking
+
+### STD-LGS-050 — Authorization relations
+- **Clause:** A reference field, or a list of references, MAY declare `authz_relation: <name>`. The authorization relations of an object MUST be derived from its version at the snapshot of the request, with one tuple `(object, relation, target)` per referenced object; they MUST NOT be kept in a separate store, so a commit that changes a reference changes the relation at that commit. A class MAY declare `principal_field`, a text field holding the DID of the principal an object stands for.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5310…5329
+- **Satisfies:** FR-IAM-051, DSN-DVM-810
+- **Notes:** Since 1.0-rc8 (DEC-093):
+  - **Declarations.** `authz_relation` on another type fails with `MODEL.INVALID_VALUE`, and so does a `principal_field` that names no text field.
+  - **Operation.** The adapter operation `relations {branch, object_id}` returns `{object_id, relations, principal}`, with the targets of each relation as object IDs in field and list order. It takes the snapshot selectors.
+
+### STD-LGS-051 — Relation-based access rules
+- **Clause:** The kernel property `access` MUST hold rules `{action, allow_if}` where `allow_if` is a relation path `principal in this(.relation)*` of at most four relations; a longer or malformed path MUST fail with `RULE.PARSE_ERROR` when the sheet is committed. When rules for an action (or `*`) apply to an object, the action MUST be allowed only if a rule's path, followed from the object at the snapshot of the request, reaches an object whose `principal_field` holds the principal. A refused read MUST fail with `IAM.NOT_FOUND`, and a refused port call with `IAM.DENIED`. Actions without rules are not restricted by relations.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5330…5354
+- **Satisfies:** FR-IAM-052, FR-IAM-053, FR-IAM-062, DSN-DVM-811, DSN-DVM-812
+- **Notes:** Since 1.0-rc8 (DEC-093):
+  - **Actions.** The action of a read is `read`; the action of a port call is the port name.
+  - **Combination.** `access` combines by union across the cascade, so a rule of any matching sheet can allow.
+  - **Operations.** `check_access {branch, object_id, principal, action, ctx}` returns `{allowed, rule}` with the rule that allowed. A `read` or `query` given `as: {principal, clearances, ctx}` is made as that principal: the read is refused when no rule allows it, and a query leaves out, inside its execution, the objects the principal may not read, so pages and counts agree (FR-IAM-062).
+  - **Consistency.** The rules and the relations are evaluated at the snapshot of the request, so a selector of an earlier commit sees the relations of that commit (FR-IAM-053).
+
+### STD-LGS-052 — Field masking
+- **Clause:** Reads made as a viewer MUST pass every body through masking after authorization:
+  - a field with a declared `mask` (STD-LGS-011) is shown in its mode: `hide` removes it, `partial` keeps the last four characters of a text and replaces the others with `*`, `hash` gives `hmac-sha256:` and the keyed hash of STD-OBJ-012 under the tenant lookup key;
+  - a field whose classification the viewer's clearances do not cover (STD-FND-027) is hidden unless a mask declares another mode.
+
+  The same masking MUST apply to query results, to event payloads delivered to the viewer and to every other output that carries bodies. A query made as a viewer that filters or sorts on a field masked for the viewer MUST fail with `QRY.INVALID_QUERY`.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5355…5384
+- **Satisfies:** FR-IAM-061, FR-IAM-063, DSN-DVM-821, DSN-DVM-822
+- **Notes:** Since 1.0-rc8 (DEC-093):
+  - **Viewer.** A viewer is `{principal, clearances, ctx}`; clearances default to `internal`, and `ctx` selects masks with context qualifiers. A read without a viewer is the adapter's system read and is not masked.
+  - **Modes.** `partial` on a value that is not a text hides it, and so does `hash` without a tenant lookup key (adapter operation `lookup_key`). An erased marker (STD-OBJ-011) is masked like a value.
+  - **Events.** `outbox` given `as` masks each payload by the masks and classifications of the effect's object.
