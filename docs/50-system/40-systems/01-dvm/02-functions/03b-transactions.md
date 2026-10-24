@@ -314,6 +314,7 @@ This file designs the crate `ubos-txn`. Reading order:
   1. Given a payment above the approval threshold, when submitted, then a pending change exists, and the target state is unchanged.
 - **Verification:** CONF
 - **Origin:** STD-TXN-060, FR-VER-031
+- **Phase note:** DEC-106: built in PH-2 step 4b. As in BPA 1.0-rc8 (STD-TXN-060), the pending change is kept outside the branch state, so the target branch gets no commit until the change is applied: a kernel record (`kernel_meta` `pending_change:<id>`) with the changes, their bases, the preview and the requirements. The process ends `committed` without effect on the target, as the standard states.
 
 ### DSN-DVM-551 — Applying a pending change
 - **Statement:** Approval of a pending change MUST start a process that re-validates bases against the current head. If bases are unchanged, it commits the staged changes with the approval recorded. If bases changed, it MUST re-run the original process (when re-executable) and require re-approval when the preview hash differs.
@@ -324,6 +325,7 @@ This file designs the crate `ubos-txn`. Reading order:
   1. Given a pending change whose base object changed, when approved, then re-approval is requested with the new preview.
 - **Verification:** CONF, SIM
 - **Origin:** STD-TXN-060, STD-VER-021
+- **Phase note:** DEC-106: built in PH-2 step 4b as BPA 1.0-rc8 states it (STD-TXN-060): when a base changed, the pending change becomes `invalidated` with the approved and current bodies, and its approvals are voided; the requester submits again. Re-running the original process for a new preview is not in the standard and is not built.
 
 ### DSN-DVM-552 — Pending-change expiry
 - **Statement:** Pending changes MUST expire after a configured time (default 30 days) and move to state expired, emitting an event.
@@ -334,6 +336,7 @@ This file designs the crate `ubos-txn`. Reading order:
   1. Given a pending change older than its expiry, when the sweep runs, then it is expired, and an event is emitted.
 - **Verification:** CONF
 - **Origin:** STD-TXN-060
+- **Phase note:** DEC-106: PH-2 step 4b expires a pending change at the shortest `expires_in` of its requirements, checked when it is read or decided (STD-TXN-060). The default expiry and the event of a sweep come with the node's due-date job in PH-2 step 4f (DSN-NOD-231).
 
 ### DSN-DVM-560 — Bulk processes
 - **Statement:** A bulk process (STD-TXN-070) MUST iterate a query result in batches (default 1,000 objects), commit one commit per batch with a common bulk ID, and persist a checkpoint (last key processed) in each commit. On restart, it MUST resume from the checkpoint. It MUST be cancellable between batches.

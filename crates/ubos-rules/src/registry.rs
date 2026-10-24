@@ -71,6 +71,10 @@ pub fn kernel_properties() -> Vec<Property> {
                 "count": {"type": "integer", "required": true, "constraints": {"min": 1}},
                 "roles": list_of(text.clone()),
                 "order": enumeration(&["any", "sequence"]),
+                // since 1.0-rc8 (STD-LGS-041, -042; PH-2 step 4b, DEC-106)
+                "principals": list_of(text.clone()),
+                "incompatible": list_of(text.clone()),
+                "expires_in": {"type": "duration"},
             })),
         ),
         (

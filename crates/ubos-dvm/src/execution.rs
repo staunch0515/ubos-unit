@@ -1583,7 +1583,9 @@ impl<'a> EngineHost<'a> {
             })?;
             match s(&r, "outcome") {
                 Some("deny") => return Err(BpaError::with_details("RULE.DECISION_DENIED", r)),
-                Some("require") => {
+                // STD-TXN-060 (1.0-rc8): a process called with `defer` goes on, and its
+                // changes become a pending change
+                Some("require") if !crate::approvals::defer(&oid, &port, &r) => {
                     return Err(BpaError::with_details("RULE.DECISION_REQUIRES", r));
                 }
                 _ => {}
@@ -2038,12 +2040,33 @@ impl Engine {
                 &p.p["trigger"],
             )?;
             let mut retryable = false;
+            let mut pending: Option<Value> = None;
+            let mut duty: Option<String> = None;
+            crate::approvals::begin(
+                replay.is_none() && i.get("defer").and_then(Value::as_bool) == Some(true),
+            );
             let r = (|| -> Result<(Value, Option<u64>), BpaError> {
                 let mut host = EngineHost::new(self);
-                let (result, rt) = start(&mut core, &mut host, i)?;
+                let started = start(&mut core, &mut host, i);
+                let deferred = crate::approvals::take();
+                let (result, rt) = started?;
+                if i.get("port").is_some() {
+                    duty = Some(host.target(&mut core, i.get("target").unwrap_or(&Value::Null))?);
+                }
                 let flow = std::mem::take(&mut host.flow);
                 retryable = rt;
                 if replay.is_some() {
+                    return Ok((result, None));
+                }
+                if !deferred.is_empty() {
+                    // STD-TXN-060: the changes wait for approval; the process ends committed
+                    // without effect on the target
+                    machine
+                        .fire(crate::process::Event::CommitEmpty)
+                        .map_err(invariant)?;
+                    let initiator = s(&p.p, "initiator").unwrap_or_default().to_string();
+                    pending =
+                        Some(self.defer_changes(&branch, &p.id, &initiator, &core.uow, &deferred)?);
                     return Ok((result, None));
                 }
                 if let Some(changes) = interfere.get(&attempt) {
@@ -2127,7 +2150,17 @@ impl Engine {
                         let j = self.journal_full(&p.id)?;
                         return Engine::compare_replay(&core, &result, &j);
                     }
-                    return self.finish(&core, i, &p, Some(result), cseq, "ok", attempt, &machine);
+                    // STD-LGS-042: a committed port call is a duty of its initiator
+                    if let (Some(oid), Some(port)) = (&duty, s(i, "port")) {
+                        let initiator = s(&p.p, "initiator").unwrap_or_default().to_string();
+                        self.record_duty(oid, port, &initiator)?;
+                    }
+                    let mut out =
+                        self.finish(&core, i, &p, Some(result), cseq, "ok", attempt, &machine)?;
+                    if let Some(v) = pending {
+                        out["pending"] = v;
+                    }
+                    return Ok(out);
                 }
                 Err(e) => {
                     if replay.is_some() {

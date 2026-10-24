@@ -90,6 +90,12 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-TIME-041",
     "STD-TIME-042",
     "STD-TIME-043",
+    // BPA 1.0-rc8 (PH-2 step 4b, DEC-106): deferred commits, approval requirements,
+    // separation of duties and approval evidence
+    "STD-TXN-060",
+    "STD-LGS-041",
+    "STD-LGS-042",
+    "STD-LGS-043",
 ];
 
 /// The clauses a vector verifies.

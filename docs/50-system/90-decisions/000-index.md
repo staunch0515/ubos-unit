@@ -29,6 +29,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-103 | PH-2 step 3f: re-evaluation, restatement and compensation proposals in the kernel — the logic version of the mode during a re-run, `restate` on a correction branch with old and new bodies and materiality, restated postings captured instead of committed, proposals per ledger key and currency; STD-TIME-041, -042 and -043 claimed; DSN-DVM-331 mode names aligned | Accepted |
 | DEC-104 | PH-2 step 3 closed: money and periods (parts 3a–3f, DEC-098…103) — BPA 1.0-rc9, currencies and rates, projections, period close and reopen, matching and statement lines, restatement and proposals in the kernel; 122 step-3 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 | DEC-105 | PH-2 step 4 opened in parts 4a–4g; part 4a: BPA 1.0-rc10 — delegations (STD-LGS-060), tasks (STD-LGS-061), work queues, assignment and inbox (STD-LGS-062), due dates and escalation (STD-LGS-063), service-level report (STD-LGS-064), governed reopening of periods; 250 clauses, 2,181 vectors, MUST coverage 212/212 | Accepted |
+| DEC-106 | PH-2 step 4b: deferred commits and approvals in the kernel — pending changes of port calls called with `defer`, requirements, expiry and invalidation, eligibility, separation of duties, approval evidence and the application in a new process; STD-TXN-060 and STD-LGS-041…043 claimed (22 vectors, memory and PostgreSQL) | Accepted |
 
 ---
 
@@ -564,3 +565,34 @@ DEC-090 on follow.
   - A stored round-robin counter was rejected: counting the tasks the rule assigned gives the same result and keeps no extra state.
   - Governing every reopening by the period class's decisions was rejected: the port `reopen` makes the governance an explicit declaration and leaves the released reopening vectors unchanged.
 - **Affects:** STD-LGS-043, STD-LGS-060, STD-LGS-061, STD-LGS-062, STD-LGS-063, STD-LGS-064, STD-KIND-025, STD-TXN-060, STD-CONF-005, DSN-DVM-444, DSN-DVM-743, DSN-DVM-744, DSN-DVM-745, DSN-DVM-754, DSN-NOD-231, FR-FLOW-041, FR-FLOW-051, FR-FLOW-052, FR-FLOW-053, FR-FLOW-054, FR-FLOW-081, FR-FLOW-082, FR-FLOW-083, FR-FLOW-091, FR-FLOW-092, FR-FLOW-093, VER-INSP-9008, DEC-045, DEC-089, DEC-104
+
+### DEC-106 — Deferred commits and approvals in the kernel (PH-2 step 4, part 4b)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** Part 4b of PH-2 step 4 (DEC-105) implements the deferred commits of STD-TXN-060 and the approval requirements of STD-LGS-041 (BPA 1.0-rc8) in the kernel (DSN-DVM-550, -551, -552, -740). Before the part, 19 of the 22 Governance vectors of STD-TXN-060 and STD-LGS-041…043 failed and one was not applicable. The owner confirmed the part with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Deferral.** `crates/ubos-dvm/src/approvals.rs` follows the reference model.
+     - **Collection.** A port call made with `defer` collects the `require` decisions of its port calls in a thread-local list, set only while the process runs (as the restatement mode, DEC-103), instead of failing with `RULE.DECISION_REQUIRES`.
+     - **Storage.** When the list is not empty after the run, the unit of work is stored as a pending change: the changes with their bases, the preview (the content ID of `{branch, changes}`), the requirements and the expiry at the shortest `expires_in`. The process ends `committed` without a commit, and `execute` returns the pending change as `pending`.
+     - **Place.** The record is kept outside the branch state under `kernel_meta` (`pending_change:<id>`, listed under `pending_changes`), as the reference model keeps it: a commit on the target would change the commit sequence the vectors expect.
+  2. **Refresh.** At each read or decision, a pending change past its expiry becomes `expired`. One whose bases are no longer the heads becomes `invalidated` with the approved and current bodies (`changed_since`), and its approvals move to `voided`.
+  3. **Approval.** `approve` checks, in the order of the reference model:
+     - maker–checker and one decision per principal, for the approver and `on_behalf_of`;
+     - incompatible duties: the committed port calls of the requirement's object by either principal, recorded under `duties:<object id>` when a port call commits;
+     - eligibility by `principals` or `roles`, and the `sequence` order.
+
+     It records the approval with its step, preview, time, authentication level, comment and signature. A rejection ends the change as `rejected`. When every requirement is met (`approval` by count, `second_person`, `signature` by a signed approval), a new process commits the changes with the requester as initiator and the approvers referenced in the process. A failure invalidates the change with the error code.
+  4. **Sheet property.** The kernel property `approvals` takes `principals`, `incompatible` and `expires_in`, as STD-LGS-041 and the reference registry declare.
+  5. **Scope of the part.** Separation of duties and approval evidence (STD-LGS-042, -043), planned for part 4c, are in the same operation and are built here. Part 4c keeps the governed reopening of periods (STD-KIND-025 notes, BPA 1.0-rc10).
+  6. **Claim.** The conformance test claims STD-TXN-060 and STD-LGS-041…043.
+  7. **Design notes.** DSN-DVM-550, -551 and -552 get phase notes:
+     - the pending change is kept outside the branch state;
+     - a changed base invalidates the pending change instead of re-running the process;
+     - the default expiry and the expiry event come with the due-date job of part 4f.
+- **Consequences:**
+  - The 22 Governance vectors pass in memory and on PostgreSQL 16, and the conformance test passes.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+  - The inbox of part 4e lists the pending changes from `pending_changes`.
+- **Alternatives considered:**
+  - A `PendingChange` System object on the target branch (the first wording of DSN-DVM-550) was rejected: its commit would move the target's commit sequence and the released vectors fix it.
+  - Searching the journals of all processes for incompatible duties was rejected: the cost grows with the number of processes, and a list per object answers the check directly.
+- **Affects:** STD-TXN-060, STD-LGS-041, STD-LGS-042, STD-LGS-043, DSN-DVM-550, DSN-DVM-551, DSN-DVM-552, DSN-DVM-740, DSN-DVM-741, DSN-DVM-742, FR-FLOW-041, FR-FLOW-042, FR-FLOW-043, FR-FLOW-044, FR-FLOW-045, FR-FLOW-046, DEC-105
