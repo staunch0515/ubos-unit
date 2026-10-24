@@ -1,17 +1,17 @@
 #!/usr/bin/env sh
-# Model-check the formal models with TLC (VER-FORM-0001..0004, EXIT-0-02, EXIT-1-07).
+# Model-check the formal models with TLC (VER-FORM-0001..0004, -0100, -0101; EXIT-0-02, EXIT-1-07, EXIT-2-02).
 #
 # Usage: sh verify/models/check.sh [ci|full] [model ...]
 #   ci   - reduced bounds from <model>.ci.cfg, used by CI (a few minutes)
 #   full - the bounds of the verification items from <model>.cfg (see reports/)
-# Models default to: commit_cas merge timeline group_commit.
+# Models default to: commit_cas merge timeline group_commit approvals saga.
 # Needs Java 11 or later. TLC is downloaded once into verify/models/.tools/ and its
 # SHA-256 is verified. Exits non-zero if any property is violated.
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 MODE="${1:-ci}"
 [ $# -gt 0 ] && shift
-MODELS="${*:-commit_cas merge timeline group_commit}"
+MODELS="${*:-commit_cas merge timeline group_commit approvals saga}"
 TLA_VERSION="1.7.4"
 TLA_SHA256="936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88"
 JAR="$DIR/.tools/tla2tools-$TLA_VERSION.jar"

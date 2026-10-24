@@ -129,3 +129,83 @@ Command (per mutation `M` and property `P`): copy `group_commit.ci.cfg`, set
   DSN-DVM-244).
 - The tree is abstracted as a function of the committed state; its incremental update is
   covered by property VER-PROP-0004.
+
+## 6. PH-2 step 2 — approvals and sagas (EXIT-2-02, DEC-097)
+
+| Item | Value |
+|---|---|
+| Date | 2026-10-24 |
+| Tool | TLC 2.19 (`tla2tools.jar` release 1.7.4), as in §1 |
+| Workstation | 4 vCPU, 15 GB RAM, Java 21, `-XX:+UseParallelGC`, 4 workers |
+| Models | `approvals.tla` (VER-FORM-0100), `saga.tla` (VER-FORM-0101) |
+| Verdict | **no property violated** in any run below |
+
+### 6.1 Runs
+
+| Model | Stated bound (VER item, DEC-097) | Exhaustive run | Distinct states | Depth | Time | Simulation at the stated bound | Evidence |
+|---|---|---|---|---|---|---|---|
+| `approvals` | 2 approvers × 3 editors × 3 objects, 2 proposals, versions ≤ 2, 1 source commit per change set (VER-FORM-0100) | 2 × 3 × 3, 2 proposals, **versions ≤ 1**, 1 source commit | 10,360,550 | 14 | 6 min 11 s | 1,000,000 behaviours, depth ≤ 60, 64,907,119 states checked, 1 min 50 s | `approvals.exhaustive.txt`, `approvals.simulation.txt` |
+| `saga` | 3 steps, 2 attempts, 2 coordinator crashes, both recovery modes, failing and non-failing compensations (VER-FORM-0101) | the stated bound (exhaustive, with `Termination`) | 2,268 | 26 | 2 s | not needed | `saga.exhaustive.txt` |
+
+The approvals run at the stated bound was stopped after 22 min with 37,319,314 distinct
+states and 23,317,365 states still on the queue, no violation found before stopping; the
+exhaustive run therefore lowers the version bound (DEC-031). The exhaustive run uses
+`approvals.cfg` with `MaxVer = 1`.
+
+A larger saga run (4 steps, 3 attempts, 3 crashes) also completes: 180,048 distinct
+states, depth 46, 16 s, no violation.
+
+The CI configurations complete exhaustively: `approvals.ci.cfg` (2 approvers × 2 editors ×
+2 objects) 8,297,161 distinct states, 2 min 34 s; `saga.ci.cfg` (2 steps, 1 crash) 528
+distinct states, depth 18.
+
+### 6.2 Findings
+
+- **F-2 (design text).** STD-TXN-080 (BPA 1.0-rc8) gives a saga the terminal state
+  `failed` when a compensation fails or forward recovery is exhausted, but DSN-DVM-566 and
+  VER-FORM-0101 required every started saga to end completed or compensated. The model
+  shows that the stronger property holds only under backward recovery with compensations
+  that do not fail (`EndsCompletedOrCompensated`); in general a saga ends in one of the
+  three terminal states and fails only for those two causes (`FailedJustified`,
+  `Termination`). DSN-DVM-566 and VER-FORM-0101 are reworded (DEC-097).
+- **F-3 (design text).** DSN-DVM-564 called the saga a System-kind object; STD-TXN-080
+  makes it an object of the genesis class `Saga` whose state members only the execution
+  writes. DSN-DVM-564 is reworded (DEC-097).
+- No defect was found in the approval rules of STD-TXN-060, STD-VER-021 and STD-LGS-041,
+  -042. Writing the model made one point explicit: an approver's own commit through an
+  incompatible port gives it a duty on that object, so its later decision on a proposal
+  touching the object is refused (mutation `no_duty_check`).
+
+### 6.3 Sensitivity of the properties (mutation checks)
+
+Each mutation is selected by the constant `Mutation`; the property must fail. The approvals
+mutations are checked at the CI bounds, the saga mutations at the stated bound
+(`forward_order` needs 3 steps).
+
+| Model | Mutation | Meaning | Property that failed |
+|---|---|---|---|
+| `approvals` | `count_stale` | approvals given on an earlier preview of a change set count | `NoCommitWithoutApprovals` |
+| `approvals` | `no_maker_check` | the maker may approve its own proposal | `SoDHolds` |
+| `approvals` | `double_vote` | a principal may decide twice | `SoDHolds` |
+| `approvals` | `no_duty_check` | a principal holding an incompatible duty on an object of the proposal may decide | `SoDHolds` |
+| `approvals` | `no_revalidate` | a pending change is not re-validated against the heads before approval and apply | `NoLostUpdate` |
+| `saga` | `rerun` | after a crash the coordinator runs a step again although its process record exists | `AtMostOnce` |
+| `saga` | `forward_order` | compensations run in step order | `ReverseOrder` |
+| `saga` | `comp_all` | every step is compensated, including steps that never committed | `CompAfterExec` |
+| `saga` | `lost_wait` | a crash leaves the coordinator waiting for the lost process | `Termination` |
+
+Command (per mutation `M` and property `P`): copy the configuration, set `Mutation = "M"`
+and `INVARIANTS P` (or `PROPERTY P`), and run TLC on it.
+
+### 6.4 Scope limits
+
+- **Approvals.** Object versions are counters, and a preview is the base for a pending
+  change or the source revision for a change set; preview hashes are abstracted as these
+  values. One approval requirement per proposal (a count) with one incompatible-duty set;
+  expiry is a nondeterministic event, not a clock. Approval evidence (STD-LGS-043) and the
+  simulation of rule changes (STD-LGS-044) are covered by vectors, not by the model.
+- **Sagas.** One saga, one coordinator; steps on other branches or VAEs are abstracted as
+  processes that commit their effect and their record atomically (STD-TXN-080), so a crash
+  loses at most the process the coordinator waits for. Timeouts are a step outcome. Every
+  step has a compensation (a step without one counts as compensated). Saga
+  definitions and their migration are covered by vectors.

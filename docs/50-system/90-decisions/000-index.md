@@ -20,6 +20,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-094 | PH-2 step 1f: integration and addressing in BPA 1.0-rc8 — connectors and `call.connector` (STD-ISA-090), compensation of pre-commit calls (STD-TXN-051), `emit.notify` (STD-ISA-071), short forms and VFS paths (STD-ADDR-003, -004), REST facade (STD-PROTO-021) | Accepted |
 | DEC-095 | PH-2 step 1g: search and views in BPA 1.0-rc8 — `search.aggregate` (STD-ISA-081), `search.traverse` (STD-ISA-082), `search.text` (STD-ISA-083) with declared parameters, view resolution (STD-CLS-023) | Accepted |
 | DEC-096 | PH-2 step 1h: release of BPA 1.0-rc8 — notes finalised, VER-INSP-9006, the owner's signed tag `bpa-v1.0.0-rc8`, freeze; the candidate part of EXIT-2-01 | Accepted |
+| DEC-097 | PH-2 step 2: extended formal models — approvals and deferred commits (`approvals.tla`, VER-FORM-0100) and sagas (`saga.tla`, VER-FORM-0101) with bounds and mutation checks; terminal state `failed` in DSN-DVM-566 and VER-FORM-0101, saga object wording in DSN-DVM-564; EXIT-2-02 | Accepted |
 
 ---
 
@@ -279,3 +280,19 @@ DEC-090 on follow.
   - Tagging BPA 1.0.0 now was rejected: the kernel has not run the 1.0-rc8 vectors, so defects may still be found and corrected in a further candidate.
   - Waiting for the kernel before tagging was rejected: the standard precedes the code (AR-033), and the kernel steps implement a frozen text.
 - **Affects:** DSN-BPA-001, EXIT-2-01, VER-INSP-9006, DEC-045, DEC-089
+
+### DEC-097 — Extended formal models: approvals and sagas (PH-2 step 2)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** PH-2 step 2 checks the extended formal models of EXIT-2-02: VER-FORM-0100 (approvals and deferred commits) and VER-FORM-0101 (sagas). BPA 1.0-rc8 fixed their semantics (STD-TXN-060, STD-VER-021, STD-LGS-041, -042 in DEC-091; STD-TXN-080 in DEC-092). VER-FORM-0101 and DSN-DVM-566 required every started saga to end completed or compensated, which STD-TXN-080 no longer guarantees. The owner confirmed the plan of step 2 with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Approvals model.** `verify/models/approvals.tla` models editors and approvers who edit objects and make proposals, pending changes with fixed previews and recorded bases, change sets whose preview moves with each source commit, decisions with the preview they saw, separation of duties (maker, one decision per principal, incompatible duties from committed calls), expiry, rejection, and apply with re-validation. Properties: `NoCommitWithoutApprovals`, `StaleNeverCount`, `SoDHolds`, `NoLostUpdate`, `AppliedOnce`, checked on the history of applying commits.
+  2. **Saga model.** `verify/models/saga.tla` models one saga with a coordinator that commits every state transition, step processes that commit effect and record atomically, outcomes ok, fail and timeout, backward and forward recovery, failing compensations, and coordinator crashes, with weak fairness on progress. Properties: `AtMostOnce`, `CompAfterExec`, `ReverseOrder`, `CompletedOK`, `CompensatedOK`, `FailedJustified`, `EndsCompletedOrCompensated` and the liveness property `Termination`.
+  3. **Bounds.** VER-FORM-0100 at 2 approvers × 3 editors × 3 objects, 2 proposals, object versions up to 2 and one source commit per change set; VER-FORM-0101 at 3 steps, 2 attempts and 2 crashes; the rule of DEC-031 applies. CI runs 2 approvers × 2 editors × 2 objects and 2 steps with 1 crash.
+  4. **Sensitivity.** A constant `Mutation` selects five wrong variants per model; each must violate its target property (`verify/models/reports/README.md` §6.3).
+  5. **Design text.** DSN-DVM-566 and VER-FORM-0101 state the terminal state `failed`: a saga ends completed, compensated or failed, fails only when a compensation fails or forward recovery is exhausted, and ends completed or compensated under backward recovery with compensations that do not fail. DSN-DVM-564 calls the saga an object of the genesis class `Saga` whose state the execution alone writes, as STD-TXN-080 does. VER-FORM-0100 also verifies STD-LGS-041 and -042.
+- **Consequences:** EXIT-2-02 is met by the runs recorded in `verify/models/reports/README.md` §6; no property was violated. The kernel steps of PH-2 implement approvals and sagas against these properties, and the 1.0-rc8 vectors (VER-CONF-2225…2244 and the approvals ranges) exercise the same rules on PostgreSQL.
+- **Alternatives considered:**
+  - Keeping the stronger saga property and dropping `failed` from STD-TXN-080 was rejected: a compensation that fails cannot be made to succeed, and 1.0-rc8 is frozen (DEC-096).
+  - Modelling preview hashes as content hashes was rejected: the base or source revision identifies the preview exactly and keeps the state space checkable.
+  - One model for approvals and sagas was rejected: they share no state, and separate models keep the bounds of each item checkable.
+- **Affects:** VER-FORM-0100, VER-FORM-0101, EXIT-2-02, DSN-DVM-564, DSN-DVM-566, STD-TXN-060, STD-VER-021, STD-LGS-041, STD-LGS-042, STD-TXN-080, DEC-031, DEC-091, DEC-092

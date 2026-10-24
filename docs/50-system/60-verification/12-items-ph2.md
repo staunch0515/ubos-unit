@@ -30,14 +30,15 @@ depends_on: [UBS-VER-01, UBS-PH-2]
 - **Supports:** EXIT-2-01
 
 ### VER-FORM-0100 — Approvals and deferred commits model
-- **Verifies:** STD-TXN-060, STD-VER-021, DSN-DVM-550, DSN-DVM-551, DSN-DVM-746, FR-FLOW-043, FR-FLOW-045
+- **Verifies:** STD-TXN-060, STD-VER-021, STD-LGS-041, STD-LGS-042, DSN-DVM-550, DSN-DVM-551, DSN-DVM-746, FR-FLOW-043, FR-FLOW-045
 - **Suite:** SUITE-DVM-FORM · **Phase:** PH-2
 - **Environment:** model-checking workstation
 - **Procedure:**
   1. Model pending changes, approvals with preview hashes, concurrent edits, SoD constraints.
-  2. Check: no commit without valid approvals; stale approvals never count; SoD always holds.
+  2. Check: no commit without valid approvals; stale approvals never count; SoD always holds; no lost update; a proposal is applied at most once.
+  3. Bound (DEC-031, DEC-097): 2 approvers × 3 editors × 3 objects, 2 proposals, object versions up to 2, one source commit per change set; model `verify/models/approvals.tla`.
 - **Pass criterion:** 0 violations at 2 approvers × 3 editors × 3 objects.
-- **Evidence:** model and checker output.
+- **Evidence:** model and checker output (`verify/models/reports/README.md` §6).
 - **Supports:** EXIT-2-02
 
 ### VER-FORM-0101 — Saga model
@@ -46,9 +47,10 @@ depends_on: [UBS-VER-01, UBS-PH-2]
 - **Environment:** model-checking workstation
 - **Procedure:**
   1. Model a 3-step saga with timeouts and coordinator crashes.
-  2. Check: every started saga ends completed or compensated; compensations run at most once per step.
+  2. Check: every started saga ends completed, compensated or failed, and fails only when a compensation fails or forward recovery is exhausted; under backward recovery with compensations that do not fail it ends completed or compensated; steps and compensations run at most once per step, compensations in reverse order (DEC-097).
+  3. Bound: 3 steps, 2 attempts per step, 2 coordinator crashes, both recovery modes; model `verify/models/saga.tla`.
 - **Pass criterion:** 0 violations.
-- **Evidence:** model and checker output.
+- **Evidence:** model and checker output (`verify/models/reports/README.md` §6).
 - **Supports:** EXIT-2-02
 
 ### VER-SCN-2000 — Basic Finance scenario family and accounting correctness

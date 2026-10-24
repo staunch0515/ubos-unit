@@ -356,8 +356,9 @@ This file designs the crate `ubos-txn`. Reading order:
 - **Origin:** NR-PERF-022, STD-CTX-004
 
 ### DSN-DVM-564 — Sagas
-- **Statement:** A saga (STD-TXN-080) MUST be a System-kind object with steps, each a process on a possibly different branch or VAE, with a compensation per step. The saga coordinator MUST run in the host, persisting step state in the saga object through processes, so it survives restarts.
+- **Statement:** A saga (STD-TXN-080) MUST be an object with steps, each a process on a possibly different branch or VAE, with a compensation per step. Its state members are written only by the saga's execution (STD-TXN-080 notes since BPA 1.0-rc8). The saga coordinator MUST run in the host, persisting step state in the saga object through processes, so it survives restarts.
 - **Rationale:** FR-TXN-061, FR-TXN-062.
+- **Phase note:** DEC-097: the saga is a Definition object of the genesis class `Saga` whose state the execution alone writes (STD-TXN-080, BPA 1.0-rc8), not a System-kind object.
 - **Priority:** Must · **Phase:** PH-2 · **Systems:** DVM, NOD
 - **Personas:** PER-LogicDeveloper
 - **Acceptance:**
@@ -376,8 +377,9 @@ This file designs the crate `ubos-txn`. Reading order:
 - **Origin:** FR-TXN-063, FR-TXN-064
 
 ### DSN-DVM-566 — Saga formal model
-- **Statement:** The saga protocol MUST be modelled formally with properties: every started saga ends completed or compensated; compensations run at most once per step.
+- **Statement:** The saga protocol MUST be modelled formally with properties: every started saga ends completed, compensated or failed, and fails only when a compensation fails or forward recovery is exhausted; under backward recovery with compensations that do not fail it ends completed or compensated; steps and compensations run at most once per step.
 - **Rationale:** Distributed failure handling is verified before implementation.
+- **Phase note:** DEC-097: the terminal state `failed` of STD-TXN-080 (BPA 1.0-rc8) added; `verify/models/saga.tla` (VER-FORM-0101).
 - **Priority:** Should · **Phase:** PH-2 · **Systems:** DVM
 - **Personas:** PER-KernelEngineer
 - **Acceptance:**

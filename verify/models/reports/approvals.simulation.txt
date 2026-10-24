@@ -1,0 +1,6 @@
+# approvals: simulation, 1,000,000 behaviours at the bounds of approvals.cfg (DEC-031)
+# command: tlc2.TLC -workers 4 -simulate num=1000000 -depth 60 -config approvals.cfg approvals.tla
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Computed 1 initial states...
+Progress: 64907119 states checked.
+Finished in 01min 50s at (2026-10-24 10:46:25)

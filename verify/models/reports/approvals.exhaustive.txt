@@ -1,0 +1,11 @@
+# approvals: exhaustive run, bounds of approvals.cfg with MaxVer = 1 (DEC-031)
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 2.0E-5
+  based on the actual fingerprints:  val = 1.3E-6
+45746350 states generated, 10360550 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 14.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 31 and the 95th percentile is 4).
+Finished in 06min 11s at (2026-10-24 10:43:13)
