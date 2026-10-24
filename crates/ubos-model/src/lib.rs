@@ -345,6 +345,26 @@ fn genesis() -> BTreeMap<String, Value> {
                 },
             ],
         ),
+        // STD-TIME-021 (BPA 1.0-rc9, DEC-098): projections are Definition objects below
+        // ConfigAsset.
+        g(
+            "Projection",
+            Some("definition"),
+            Some("ConfigAsset"),
+            false,
+            vec![
+                field("name", "text", true),
+                field("source", "text", true),
+                ext_json("group_by"),
+                field("aggregates", "json", true),
+                {
+                    let mut f = field("mode", "enum", false);
+                    f["constraints"] = json!({"allowed_values": ["sync", "async"]});
+                    f
+                },
+                field("description", "text", false),
+            ],
+        ),
         g(
             "Release",
             Some("definition"),
@@ -385,6 +405,7 @@ pub fn is_genesis(name: &str) -> bool {
             | "Currency"
             | "FxRate"
             | "LedgerAccount"
+            | "Projection"
     )
 }
 

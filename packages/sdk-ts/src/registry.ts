@@ -111,6 +111,7 @@ export type Code =
   | "QRY.INVALID_QUERY"
   | "QRY.NOT_FOUND_AT_TIME"
   | "QRY.CLASSIFICATION_NOT_EMBEDDABLE"
+  | "QRY.WATERMARK_TIMEOUT"
   | "IAM.DENIED"
   | "IAM.NOT_FOUND"
   | "IAM.DELEGATION_EXPIRED"
@@ -226,6 +227,7 @@ export const REGISTRY: Readonly<Record<Code, readonly [boolean, boolean, number]
   "QRY.INVALID_QUERY": [false, true, 400],
   "QRY.NOT_FOUND_AT_TIME": [false, true, 404],
   "QRY.CLASSIFICATION_NOT_EMBEDDABLE": [false, true, 422],
+  "QRY.WATERMARK_TIMEOUT": [true, true, 504],
   "IAM.DENIED": [false, true, 403],
   "IAM.NOT_FOUND": [false, true, 404],
   "IAM.DELEGATION_EXPIRED": [false, true, 401],

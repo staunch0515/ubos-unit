@@ -310,7 +310,7 @@ This file designs the crates `ubos-time` and `ubos-ledger`; `ubos-txn` is in `03
 ## Projections and balances
 
 ### DSN-DVM-420 — Balance projection as deltas
-- **Statement:** Declared balance projections (FR-LEDG-031) MUST be maintained in the flush as rows `(projection, key, valid_at, cseq, delta)` in `balance_delta`. Checkpoint rows `(projection, key, valid_at, cseq, balance)` MUST be written by a background task every N deltas per key (default 1,000). A balance read MUST sum deltas after the nearest checkpoint satisfying the bitemporal inclusion rule.
+- **Statement:** Declared balance projections (FR-LEDG-031) MUST be maintained in the flush as rows `(projection, key, valid_at, cseq, delta)` in `projection_delta`, with a mark per branch up to which the rows are complete; a read adds the entries after the mark. Checkpoint rows `(projection, key, valid_at, cseq, balance)` MUST be written by a background task every N deltas per key (default 1,000). A balance read MUST sum deltas after the nearest checkpoint satisfying the bitemporal inclusion rule.
 - **Rationale:** Bitemporal balances with bounded read cost (FR-LEDG-032).
 - **Priority:** Must · **Phase:** PH-2 · **Systems:** DVM
 - **Personas:** PER-FundAccountant
@@ -320,6 +320,7 @@ This file designs the crates `ubos-time` and `ubos-ledger`; `ubos-txn` is in `03
 - **Verification:** BENCH, PROP
 - **Origin:** FR-LEDG-031, FR-LEDG-032, FR-LEDG-033, AR-016
 - **Phase note:** PH-2 step 3 (DEC-087): moved from PH-1 with FR-LEDG-031.
+- **Phase note:** DEC-100: the rows, marks and rebuild are built in PH-2 step 3c (table `projection_delta`, migration 0017); the checkpoint rows follow with the benchmarks of PH-2 step 18, which measure acceptance 1.
 
 ### DSN-DVM-421 — Backdated entries and checkpoints
 - **Statement:** A backdated delta (valid_at before a checkpoint's valid_at) MUST NOT modify existing checkpoints. Reads MUST include such deltas by their `(valid_at, cseq)` coordinates. The checkpoint task MUST create new checkpoints at later `cseq` that include them.

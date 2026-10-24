@@ -104,6 +104,31 @@ impl Store for Shared {
     fn reset(&mut self) -> Result<(), BpaError> {
         self.with(|c| c.store.reset())
     }
+    fn projection_rows(
+        &mut self,
+        branch: &str,
+        projection: &str,
+        version: &str,
+        through: u64,
+    ) -> Result<Vec<ubos_store::ProjectionRow>, BpaError> {
+        self.with(|c| {
+            c.store
+                .projection_rows(branch, projection, version, through)
+        })
+    }
+    fn replace_projection(
+        &mut self,
+        branch: &str,
+        projection: &str,
+        version: &str,
+        rows: &[ubos_store::ProjectionRow],
+        mark: (&str, &Value),
+    ) -> Result<(), BpaError> {
+        self.with(|c| {
+            c.store
+                .replace_projection(branch, projection, version, rows, mark)
+        })
+    }
     fn version(&mut self, hash: &str) -> Result<Value, BpaError> {
         self.with(|c| c.store.version(hash))
     }

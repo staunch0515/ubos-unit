@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (99)
+## DEC (100)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -193,4 +193,5 @@ depends_on: [UBS-IDX-00]
 | DEC-097 | Extended formal models: approvals and sagas (PH-2 step 2) | `90-decisions/000-index.md` |
 | DEC-098 | Money and periods, part 3a: BPA 1.0-rc9 (PH-2 step 3) | `90-decisions/000-index.md` |
 | DEC-099 | Currencies, FX rates and accounts in the kernel (PH-2 step 3, part 3b) | `90-decisions/000-index.md` |
+| DEC-100 | Projections in the kernel (PH-2 step 3, part 3c) | `90-decisions/000-index.md` |
 

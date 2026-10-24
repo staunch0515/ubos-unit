@@ -74,6 +74,24 @@ pub struct EntryRow {
     pub entry: Value,
 }
 
+/// A projection row (DSN-DVM-420, BPA 1.0-rc9 STD-TIME-021): the fold of the entries of one
+/// commit, group and valid time for one declaration version of a projection.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct ProjectionRow {
+    /// Object identifier of the `Projection`.
+    pub projection: String,
+    /// Version hash of its declaration.
+    pub version: String,
+    /// Ordinal of the commit whose entries the row folds.
+    pub cseq: u64,
+    /// Canonical group key.
+    pub group_key: String,
+    /// Valid time of the entries.
+    pub valid_at: String,
+    /// The accumulators (`{key, entries, accs}`).
+    pub delta: Value,
+}
+
 /// Everything a flush writes in one storage transaction.
 #[derive(Debug, Clone, Default)]
 pub struct Flush {
@@ -109,6 +127,10 @@ pub struct Flush {
     /// Future segment starts to emit BecameEffective for (STD-TIME-050): `{key: [branch,
     /// object_id, from, version], class, instant}`.
     pub timers: Vec<Value>,
+    /// Projection rows maintained by the commit (DSN-DVM-420).
+    pub projections: Vec<ProjectionRow>,
+    /// Metadata written with the commit, such as the marks of the projections it maintains.
+    pub marks: Vec<(String, Value)>,
 }
 
 /// Storage of versions, commits, branches, kernel indexes and tree nodes.
@@ -328,6 +350,52 @@ pub trait Store {
         key: Option<(&str, &str)>,
         entry_id: Option<&str>,
     ) -> Result<Vec<Value>, BpaError>;
+    /// The local entries of one ledger class with `after < cseq <= through`, in append
+    /// order (the entries a projection mark does not cover, DSN-DVM-420).
+    fn entries_between(
+        &mut self,
+        branch: &str,
+        class: &str,
+        after: u64,
+        through: u64,
+    ) -> Result<Vec<Value>, BpaError> {
+        Ok(self
+            .entries(branch, through, None, None)?
+            .into_iter()
+            .filter(|e| {
+                e.get("class").and_then(Value::as_str) == Some(class)
+                    && e.get("cseq")
+                        .and_then(Value::as_u64)
+                        .is_some_and(|c| c > after)
+            })
+            .collect())
+    }
+    /// The projection rows of a branch for one declaration version, up to `through`
+    /// (DSN-DVM-420). A store without rows returns none; the readers then fold the entries.
+    fn projection_rows(
+        &mut self,
+        _branch: &str,
+        _projection: &str,
+        _version: &str,
+        _through: u64,
+    ) -> Result<Vec<ProjectionRow>, BpaError> {
+        Ok(Vec::new())
+    }
+    /// Replace the rows of a branch for one declaration version and write the mark, in one
+    /// storage transaction (FR-ANL-023: readers see the old rows or the new ones).
+    fn replace_projection(
+        &mut self,
+        _branch: &str,
+        _projection: &str,
+        _version: &str,
+        _rows: &[ProjectionRow],
+        _mark: (&str, &Value),
+    ) -> Result<(), BpaError> {
+        Err(BpaError::new(
+            "ADAPTER.UNSUPPORTED",
+            "projection rebuilds on this store",
+        ))
+    }
     /// A stored tree node.
     fn node(&mut self, hash: &str) -> Result<Value, BpaError>;
     /// Store a value under a key (class declarations, adapter clock).
@@ -699,6 +767,8 @@ pub struct MemStore {
     entries: HashMap<String, Vec<MemEntry>>,
     nodes: HashMap<String, Value>,
     meta: HashMap<String, Value>,
+    /// Projection rows by branch, projection and declaration version (DSN-DVM-420).
+    projections: HashMap<(String, String, String), Vec<ProjectionRow>>,
     next: u64,
 }
 
@@ -908,8 +978,56 @@ impl Store for MemStore {
         for (h, n) in &f.nodes {
             self.nodes.insert(h.clone(), n.clone());
         }
+        for r in &f.projections {
+            self.projections
+                .entry((f.branch.clone(), r.projection.clone(), r.version.clone()))
+                .or_default()
+                .push(r.clone());
+        }
+        for (k, v) in &f.marks {
+            self.meta.insert(k.clone(), v.clone());
+        }
         apply_metadata(self, f)?;
         Ok(true)
+    }
+    fn projection_rows(
+        &mut self,
+        branch: &str,
+        projection: &str,
+        version: &str,
+        through: u64,
+    ) -> Result<Vec<ProjectionRow>, BpaError> {
+        Ok(self
+            .projections
+            .get(&(
+                branch.to_string(),
+                projection.to_string(),
+                version.to_string(),
+            ))
+            .into_iter()
+            .flatten()
+            .filter(|r| r.cseq <= through)
+            .cloned()
+            .collect())
+    }
+    fn replace_projection(
+        &mut self,
+        branch: &str,
+        projection: &str,
+        version: &str,
+        rows: &[ProjectionRow],
+        mark: (&str, &Value),
+    ) -> Result<(), BpaError> {
+        self.projections.insert(
+            (
+                branch.to_string(),
+                projection.to_string(),
+                version.to_string(),
+            ),
+            rows.to_vec(),
+        );
+        self.meta.insert(mark.0.to_string(), mark.1.clone());
+        Ok(())
     }
     fn put_field_rows(
         &mut self,
@@ -1339,7 +1457,29 @@ impl Store for Group {
         self.inner.put_meta(key, value)
     }
     fn meta(&mut self, key: &str) -> Result<Option<Value>, BpaError> {
+        // the projection marks of the pending flushes (DSN-DVM-420)
+        if key.starts_with("projection_mark:")
+            && let Some(v) = self.overlay.meta(key)?
+        {
+            return Ok(Some(v));
+        }
         self.inner.meta(key)
+    }
+    fn projection_rows(
+        &mut self,
+        branch: &str,
+        projection: &str,
+        version: &str,
+        through: u64,
+    ) -> Result<Vec<ProjectionRow>, BpaError> {
+        let mut out = self
+            .inner
+            .projection_rows(branch, projection, version, through)?;
+        out.extend(
+            self.overlay
+                .projection_rows(branch, projection, version, through)?,
+        );
+        Ok(out)
     }
     fn sweep_idempotency(&mut self, now: &str) -> Result<u64, BpaError> {
         Ok(self.overlay.sweep_idempotency(now)? + self.inner.sweep_idempotency(now)?)

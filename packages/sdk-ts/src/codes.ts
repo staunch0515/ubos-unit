@@ -335,6 +335,10 @@ export class QryNotFoundAtTime extends UbosError {
 export class QryClassificationNotEmbeddable extends UbosError {
   static override readonly code = "QRY.CLASSIFICATION_NOT_EMBEDDABLE";
 }
+/** `QRY.WATERMARK_TIMEOUT`: an asynchronous projection did not reach the requested commit in time (since 1.0-rc9). */
+export class QryWatermarkTimeout extends UbosError {
+  static override readonly code = "QRY.WATERMARK_TIMEOUT";
+}
 /** `IAM.DENIED`: authorization denied (visible resource). */
 export class IamDenied extends UbosError {
   static override readonly code = "IAM.DENIED";
@@ -537,6 +541,7 @@ export const CLASSES: Readonly<Record<string, typeof UbosError>> = {
   "QRY.INVALID_QUERY": QryInvalidQuery,
   "QRY.NOT_FOUND_AT_TIME": QryNotFoundAtTime,
   "QRY.CLASSIFICATION_NOT_EMBEDDABLE": QryClassificationNotEmbeddable,
+  "QRY.WATERMARK_TIMEOUT": QryWatermarkTimeout,
   "IAM.DENIED": IamDenied,
   "IAM.NOT_FOUND": IamNotFound,
   "IAM.DELEGATION_EXPIRED": IamDelegationExpired,

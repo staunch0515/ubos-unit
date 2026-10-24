@@ -1338,6 +1338,29 @@ impl<'a> EngineHost<'a> {
             .validate(&json!({"branch": core.branch, "changes": changes, "process": process}))
     }
 
+    /// STD-ISA-037: a projection at the process snapshot (BPA 1.0-rc9, PH-2 step 3c).
+    fn read_projection(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        self.state(core)?;
+        let (branch, cseq) = self.coord.clone().expect("coordinate");
+        let name = a
+            .get("projection")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let decl = self.e.projection_body(&branch, cseq, name)?;
+        let source = decl["source"].as_str().unwrap_or_default().to_string();
+        self.permit(core, &d.authorization, &source, None)?;
+        let mut input = Value::Object(a.clone());
+        input["time"] = json!(cseq);
+        let r = self.e.projection_at(&branch, &input)?;
+        core.per_item(d, r["groups"].as_array().map_or(0, Vec::len) as u64)?;
+        Ok(r)
+    }
+
     /// STD-ISA-035: explanations of a cascade, a validation outcome or a decision.
     /// STD-ISA-080: a criteria query at the process snapshot (since 1.0-rc2; step 13a).
     fn search_query(
@@ -1698,6 +1721,7 @@ impl Host for EngineHost<'_> {
             "read.effective" => self.read_effective(core, a, d),
             "read.explain" => self.read_explain(core, a, d),
             "search.query" => self.search_query(core, a, d),
+            "read.projection" => self.read_projection(core, a, d),
             "run.validate" => self.run_validate(core, a, d),
             "run.port" => self.run_port(core, a),
             "run.super" => self.run_super(core),

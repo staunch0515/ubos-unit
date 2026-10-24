@@ -23,6 +23,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-097 | PH-2 step 2: extended formal models — approvals and deferred commits (`approvals.tla`, VER-FORM-0100) and sagas (`saga.tla`, VER-FORM-0101) with bounds and mutation checks; terminal state `failed` in DSN-DVM-566 and VER-FORM-0101, saga object wording in DSN-DVM-564; EXIT-2-02 | Accepted |
 | DEC-098 | PH-2 step 3 opened in parts 3a–3g; part 3a: BPA 1.0-rc9 — currency reference data (STD-FND-028), FX rates and `fx_convert` (STD-FND-029), chart of accounts (STD-KIND-029), statement lines (STD-KIND-030), projections (STD-TIME-021), `read.projection` (STD-ISA-037), compensation proposals (STD-TIME-043); VER-CONF-3003 superseded, VER-INSP-9007, the owner's signed tag `bpa-v1.0.0-rc9` | Accepted |
 | DEC-099 | PH-2 step 3b: currencies, FX rates and accounts in the kernel — ISO 4217 table and added codes, `Currency`, `FxRate` and `LedgerAccount` checks, `fx_convert` and `convert` against a branch with the rates journaled, adapter operations `currency` and `fx_rate`; the conformance test claims STD-FND-028, -029 and STD-KIND-029 of BPA 1.0-rc9 | Accepted |
+| DEC-100 | PH-2 step 3c: projections in the kernel — `Projection` declarations, reads with watermark, `at_least`, `group`, `asof` and roll-up, `read.projection`, rows per commit, group and valid time in `projection_delta` (migration 0017) with a mark per branch, atomic rebuild; checkpoints with the benchmarks of step 18; the SDK error registries regenerated for `QRY.WATERMARK_TIMEOUT` | Accepted |
 
 ---
 
@@ -370,4 +371,35 @@ DEC-090 on follow.
   - Computing the inverse rate as `1 / rate` before multiplying was rejected: dividing the amount by the stored rate gives the same rounded result with one division.
   - Accepting decimal strings in every numeric function was rejected: only `money` needs it to match the reference model, and wider coercion would change the errors of released vectors.
 - **Affects:** STD-FND-022, STD-FND-028, STD-FND-029, STD-KIND-029, DSN-DVM-409, DSN-DVM-410, DSN-DVM-441, EXIT-2-01, VER-CONF-8405, DEC-098
+
+### DEC-100 — Projections in the kernel (PH-2 step 3, part 3c)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** Part 3c of PH-2 step 3 (DEC-098) implements STD-TIME-021 and STD-ISA-037 of BPA 1.0-rc9 in the kernel, with the storage design of DSN-DVM-420 (rows maintained in the flush) and the rebuild of FR-ANL-021 and FR-ANL-023. Before the part, the 30 vectors of the two clauses failed on the kernel. The owner confirmed the part with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Declarations.** The genesis class `Projection` (below `ConfigAsset`) is checked at commit in `crates/ubos-dvm/src/finance.rs`: a ledger source class, the fields of `group_by` and `aggregates`, numeric fields for `sum`, `min` and `max`, unique `as` names and a unique `name` among live projections.
+  2. **Reads.** `crates/ubos-dvm/src/projections.rs` folds the entries of the source class by group as the reference model does.
+     - **Results.** Money per currency, decimal scale, `last` by `(valid_at, cseq, seq)`, groups in canonical key order.
+     - **Watermark.** The snapshot, lowered for an `async` projection to the commit its maintenance stopped at (adapter operation `projection_lag`, kept in `kernel_meta`). `at_least` above it fails at once with `QRY.WATERMARK_TIMEOUT`, as with `timeout_ms = 0`.
+     - **Options.** `group`, `asof` and `rollup` over the account hierarchy at the `asof` date follow STD-ISA-037.
+     - **Instruction.** `read.projection` is implemented in the runtime and the engine host, at the process snapshot, authorised as a read of the source class.
+  3. **Rows.** Migration 0017 creates `projection_delta`: one row per branch, projection, declaration version, commit, group and valid time, holding the accumulators of those entries. The flush of a commit that appends entries of a source class, or writes a projection, does two things in the same storage transaction:
+     - it adds the rows of the branch's entries after the projection's mark and of the appended entries;
+     - it moves the mark (`kernel_meta` `projection_mark:<branch>:<projection>:<version>`) to the commit.
+
+     A read takes, per branch of its chain, the rows up to the mark and the fold of the entries after it, from a store method that reads the entries of one class after a commit. A writer that skips the maintenance (a merge, a group-commit member that read an older mark) therefore never changes a result: its entries are folded until the next maintenance includes them.
+  4. **Maintenance of `async` projections.** They are maintained in the flush like `sync` ones; their watermark is applied by the reads. Maintenance by a job after the commit comes with the post-commit work of PH-2 step 6, when the wait of `timeout_ms` becomes meaningful.
+  5. **Rebuild.** `rebuild_projection` replaces the rows of the branch's own entries and the mark in one storage transaction, so readers see the old rows or the new ones (FR-ANL-023); an `async` projection is then maintained up to the head.
+  6. **Not yet.**
+     - **Checkpoints.** The checkpoint rows of DSN-DVM-420 come with the benchmarks of PH-2 step 18, which measure its read latency (acceptance 1); DSN-DVM-420 carries a phase note.
+     - **Definition versions.** Projections over Definition versions (DSN-DVM-422) are not in BPA 1.0-rc9.
+  7. **Error registry.** Part 3a added `QRY.WATERMARK_TIMEOUT` to STD-ERR-002 without regenerating the SDK registries (`crates/ubos-sdk/tools/gen_registry.py`), so that CI check failed on the branch. They are regenerated here, and the server maps the code to HTTP 504.
+- **Consequences:**
+  - The conformance test claims STD-TIME-021 and STD-ISA-037: 58 vectors of BPA 1.0-rc9 pass in memory and on PostgreSQL 16, and the conformance test passes with 2,131 vectors.
+  - **Rows checked against the fold.** A temporary comparison of rows and fold on every projection read of the vectors (26 reads, all through rows) found them equal; it was not kept.
+  - **CI suites.** The suites of the CI pass on PostgreSQL: prototype vectors, storage suite, properties, scenarios, simulation, fault, replay, node, genesis Buks, events, jobs, export and import round trip, and the cargo tests.
+- **Alternatives considered:**
+  - Reading projections by folding all entries at every read was rejected: DSN-DVM-420 requires maintained rows, and their read cost is what step 18 benchmarks.
+  - Requiring the mark to equal the previous commit before maintaining was rejected: commits without entries of the source class would stop the maintenance. Folding the entries after the mark keeps every read exact without that condition.
+  - A separate table for marks was rejected: `kernel_meta` is written in the same storage transaction as the rows.
+- **Affects:** STD-TIME-021, STD-ISA-037, STD-ERR-002, DSN-DVM-420, DSN-DVM-422, DSN-DVM-441, FR-LEDG-031, FR-LEDG-033, FR-ANL-021, FR-ANL-023, DSN-SDK-007, DEC-098
 

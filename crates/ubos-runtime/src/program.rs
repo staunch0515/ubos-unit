@@ -38,6 +38,8 @@ pub const IMPLEMENTED: &[&str] = &[
     "read.timeline",
     "read.diff",
     "read.effective",
+    // BPA 1.0-rc9, PH-2 step 3c (DEC-100)
+    "read.projection",
     "read.explain",
     "run.port",
     "run.validate",

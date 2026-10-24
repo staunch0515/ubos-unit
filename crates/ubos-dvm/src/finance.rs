@@ -11,7 +11,7 @@ use ubos_types::values::{AddedGuard, added_currencies, minor_unit, table_unit};
 use ubos_version::state::{Entry, Repo, Tx, at};
 
 /// The genesis classes whose objects the commit checks here.
-const CLASSES: &[&str] = &["Currency", "FxRate", "LedgerAccount"];
+const CLASSES: &[&str] = &["Currency", "FxRate", "LedgerAccount", "Projection"];
 
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
     v.get(k).and_then(Value::as_str)
@@ -135,6 +135,7 @@ pub(crate) fn check(
         match class.as_str() {
             "Currency" => check_currency(repo, tx, oid, b)?,
             "FxRate" => check_rate(repo, tx, oid, b)?,
+            "Projection" => check_projection(repo, tx, oid, b)?,
             _ => check_account(repo, tx, oid, b)?,
         }
     }
@@ -221,6 +222,58 @@ fn check_rate(repo: &mut Repo, tx: &mut Tx, oid: &str, b: &Value) -> Result<(), 
         b,
         &["source", "base", "quote", "rate_type"],
     )
+}
+
+/// STD-TIME-021: the declaration of a projection.
+fn check_projection(repo: &mut Repo, tx: &mut Tx, oid: &str, b: &Value) -> Result<(), BpaError> {
+    let bad = |m: &str| BpaError::new("MODEL.INVALID_VALUE", m.to_string());
+    let src = s(b, "source").unwrap_or_default();
+    let class = match repo.reg.class(src) {
+        Ok(c) if c.kind.as_deref() == Some("ledger") => c.clone(),
+        _ => return Err(bad("the source of a projection is a ledger class")),
+    };
+    let group_by = match b.get("group_by") {
+        None | Some(Value::Null) => Vec::new(),
+        Some(Value::Array(a)) => a.clone(),
+        Some(_) => return Err(bad("group_by names fields of the source class")),
+    };
+    if group_by
+        .iter()
+        .any(|f| f.as_str().is_none_or(|f| !class.fields.contains_key(f)))
+    {
+        return Err(bad("group_by names fields of the source class"));
+    }
+    let aggs = b["aggregates"].as_array().cloned().unwrap_or_default();
+    if aggs.is_empty() {
+        return Err(bad("a projection has aggregates"));
+    }
+    let mut names = Vec::new();
+    for a in &aggs {
+        let fn_ = s(a, "fn").unwrap_or_default();
+        let Some(name) = s(a, "as") else {
+            return Err(bad("an aggregate is {fn, field, as}"));
+        };
+        if !matches!(fn_, "count" | "sum" | "min" | "max" | "last") {
+            return Err(bad("an aggregate is {fn, field, as}"));
+        }
+        if fn_ != "count" {
+            let t = s(a, "field")
+                .and_then(|f| class.fields.get(f))
+                .and_then(|f| s(f, "type"));
+            let ok = match t {
+                None => false,
+                Some(t) => fn_ == "last" || matches!(t, "decimal" | "integer" | "money"),
+            };
+            if !ok {
+                return Err(bad(&format!("the field of {fn_}")));
+            }
+        }
+        if names.contains(&name) {
+            return Err(bad("aggregate names are unique"));
+        }
+        names.push(name);
+    }
+    unique(repo, tx, "Projection", oid, b, &["name"])
 }
 
 fn check_account(repo: &mut Repo, tx: &mut Tx, oid: &str, b: &Value) -> Result<(), BpaError> {

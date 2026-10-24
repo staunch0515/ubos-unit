@@ -221,6 +221,8 @@ pub enum Code {
     QryNotFoundAtTime,
     /// `QRY.CLASSIFICATION_NOT_EMBEDDABLE`: vector index on sensitive data.
     QryClassificationNotEmbeddable,
+    /// `QRY.WATERMARK_TIMEOUT`: an asynchronous projection did not reach the requested commit in time (since 1.0-rc9).
+    QryWatermarkTimeout,
     /// `IAM.DENIED`: authorization denied (visible resource).
     IamDenied,
     /// `IAM.NOT_FOUND`: resource invisible or missing.
@@ -946,6 +948,14 @@ pub const REGISTRY: &[(Code, &str, Area, bool, bool, u16)] = &[
         false,
         true,
         422,
+    ),
+    (
+        Code::QryWatermarkTimeout,
+        "QRY.WATERMARK_TIMEOUT",
+        Area::Qry,
+        true,
+        true,
+        504,
     ),
     (Code::IamDenied, "IAM.DENIED", Area::Iam, false, true, 403),
     (

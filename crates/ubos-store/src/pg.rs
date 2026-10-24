@@ -30,7 +30,7 @@ static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 const TABLES: &str = "kernel_meta, branch_ref, commit, commit_parent, chunk, object_version, \
     ledger_entry, ledger_sequence, merkle_node, head_index, temporal_index, field_index, \
     derivation_edge, idempotency_record, outbox, tag, process_record, change_set, timer, \
-    blob, secret, node_key, event_log, job";
+    blob, secret, node_key, event_log, job, projection_delta";
 
 /// Canonical instant text of a `timestamptz` column (NULL stays NULL).
 fn instant_text(col: &str) -> String {
@@ -1326,6 +1326,59 @@ async fn inherited_on(
 }
 
 impl PgTx {
+    /// Projection rows of a branch (DSN-DVM-420, PH-2 step 3c).
+    async fn put_projection_rows(
+        &mut self,
+        branch_id: i64,
+        rows: &[crate::ProjectionRow],
+    ) -> Result<(), BpaError> {
+        if rows.is_empty() {
+            return Ok(());
+        }
+        let p: Vec<&str> = rows.iter().map(|r| r.projection.as_str()).collect();
+        let v: Vec<&str> = rows.iter().map(|r| r.version.as_str()).collect();
+        let c: Vec<i64> = rows.iter().map(|r| int(r.cseq)).collect();
+        let g: Vec<&str> = rows.iter().map(|r| r.group_key.as_str()).collect();
+        let a: Vec<&str> = rows.iter().map(|r| r.valid_at.as_str()).collect();
+        let d: Vec<Vec<u8>> = rows
+            .iter()
+            .map(|r| serde_json::to_vec(&r.delta).map_err(db))
+            .collect::<Result<_, _>>()?;
+        sqlx::query("INSERT INTO projection_delta (tenant_id, vae_id, branch_id, projection, version, cseq, group_key, valid_at, delta) SELECT $1::uuid, $2::uuid, $3, t.p, t.v, t.c, t.g, t.a, t.d FROM unnest($4::text[], $5::text[], $6::bigint[], $7::text[], $8::text[], $9::bytea[]) AS t(p, v, c, g, a, d)")
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .bind(branch_id)
+            .bind(p)
+            .bind(v)
+            .bind(c)
+            .bind(g)
+            .bind(a)
+            .bind(d)
+            .execute(&mut *self.tx)
+            .await
+            .map_err(db)?;
+        Ok(())
+    }
+
+    /// Remove the rows of one declaration version on a branch (a rebuild).
+    async fn clear_projection(
+        &mut self,
+        branch_id: i64,
+        projection: &str,
+        version: &str,
+    ) -> Result<(), BpaError> {
+        sqlx::query("DELETE FROM projection_delta WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND projection = $4 AND version = $5")
+            .bind(&self.scope.tenant)
+            .bind(&self.scope.vae)
+            .bind(branch_id)
+            .bind(projection)
+            .bind(version)
+            .execute(&mut *self.tx)
+            .await
+            .map_err(db)?;
+        Ok(())
+    }
+
     async fn chain_count(
         &mut self,
         branch_id: i64,
@@ -2477,6 +2530,11 @@ impl PgStore {
                 tx.put_chunks(&p.chunks).await?;
                 tx.put_derivation_edges(&p.edges).await?;
                 tx.put_timers(&p.timers).await?;
+                // projection rows and marks (DSN-DVM-420, PH-2 step 3c)
+                tx.put_projection_rows(p.branch_id, &f.projections).await?;
+                for (k, v) in &f.marks {
+                    tx.put_meta(k, &serde_json::to_vec(v).map_err(db)?).await?;
+                }
                 if !tx
                     .cas_branch_head(
                         p.branch_id,
@@ -3226,6 +3284,98 @@ impl Store for PgStore {
         let v = json(&b)?;
         remember(&mut self.nodes, hash.to_string(), &v);
         Ok(v)
+    }
+    fn entries_between(
+        &mut self,
+        branch: &str,
+        class: &str,
+        after: u64,
+        through: u64,
+    ) -> Result<Vec<Value>, BpaError> {
+        if after >= through {
+            return Ok(Vec::new());
+        }
+        let Some(bid) = self.branch_id(branch)? else {
+            return Ok(Vec::new());
+        };
+        let backend = self.backend.clone();
+        let class = class.to_string();
+        let rows = self.rt.block_on(async move {
+            sqlx::query("SELECT body FROM ledger_entry WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND cseq > $4 AND cseq <= $5 AND ledger_class = $6 ORDER BY cseq, idx")
+                .bind(&backend.scope.tenant)
+                .bind(&backend.scope.vae)
+                .bind(bid)
+                .bind(int(after))
+                .bind(int(through))
+                .bind(&class)
+                .fetch_all(&backend.pool)
+                .await
+                .map_err(db)
+        })?;
+        rows.iter()
+            .map(|r| json(&r.try_get::<Vec<u8>, _>(0).map_err(db)?))
+            .collect()
+    }
+    fn projection_rows(
+        &mut self,
+        branch: &str,
+        projection: &str,
+        version: &str,
+        through: u64,
+    ) -> Result<Vec<crate::ProjectionRow>, BpaError> {
+        let Some(bid) = self.branch_id(branch)? else {
+            return Ok(Vec::new());
+        };
+        let backend = self.backend.clone();
+        let (p, v) = (projection.to_string(), version.to_string());
+        let rows = self.rt.block_on(async move {
+            sqlx::query("SELECT cseq, group_key, valid_at, delta FROM projection_delta WHERE tenant_id = $1::uuid AND vae_id = $2::uuid AND branch_id = $3 AND projection = $4 AND version = $5 AND cseq <= $6 ORDER BY cseq, group_key, valid_at")
+                .bind(&backend.scope.tenant)
+                .bind(&backend.scope.vae)
+                .bind(bid)
+                .bind(&p)
+                .bind(&v)
+                .bind(int(through))
+                .fetch_all(&backend.pool)
+                .await
+                .map_err(db)
+        })?;
+        rows.iter()
+            .map(|r| {
+                let d: Vec<u8> = r.try_get(3).map_err(db)?;
+                Ok(crate::ProjectionRow {
+                    projection: projection.to_string(),
+                    version: version.to_string(),
+                    cseq: r.try_get::<i64, _>(0).map_err(db)? as u64,
+                    group_key: r.try_get(1).map_err(db)?,
+                    valid_at: r.try_get(2).map_err(db)?,
+                    delta: json(&d)?,
+                })
+            })
+            .collect()
+    }
+    fn replace_projection(
+        &mut self,
+        branch: &str,
+        projection: &str,
+        version: &str,
+        rows: &[crate::ProjectionRow],
+        mark: (&str, &Value),
+    ) -> Result<(), BpaError> {
+        let Some(bid) = self.branch_id(branch)? else {
+            return Err(db("unknown branch"));
+        };
+        let backend = self.backend.clone();
+        let (p, v) = (projection.to_string(), version.to_string());
+        let (k, m) = (mark.0.to_string(), serde_json::to_vec(mark.1).map_err(db)?);
+        let rows = rows.to_vec();
+        self.rt.block_on(async move {
+            let mut tx = backend.begin().await?;
+            tx.clear_projection(bid, &p, &v).await?;
+            tx.put_projection_rows(bid, &rows).await?;
+            tx.put_meta(&k, &m).await?;
+            tx.commit().await
+        })
     }
     fn put_meta(&mut self, key: &str, value: &Value) -> Result<(), BpaError> {
         let b = serde_json::to_vec(value).map_err(db)?;

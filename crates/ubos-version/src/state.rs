@@ -524,6 +524,21 @@ impl<'a> Repo<'a> {
 
     /// The branches and ordinals whose local rows make up `branch` at `cseq`, nearest first:
     /// a branch at or before its fork point is its parent (DSN-DVM-008).
+    /// The branches a read of `(branch, cseq)` covers, with the ordinal of each, the branch
+    /// first (its parents follow, up to their fork points).
+    pub fn chain_of(&mut self, branch: &str, cseq: u64) -> Result<Vec<(String, u64)>, BpaError> {
+        self.chain(branch, cseq)
+    }
+
+    /// The entries written on one branch (not its parents) up to `cseq`.
+    pub fn own_entries(&mut self, branch: &str, cseq: u64) -> Result<Vec<Entry>, BpaError> {
+        self.store
+            .entries(branch, cseq, None, None)?
+            .into_iter()
+            .map(parse)
+            .collect()
+    }
+
     fn chain(&mut self, branch: &str, cseq: u64) -> Result<Vec<(String, u64)>, BpaError> {
         let mut out = Vec::new();
         let (mut b, mut c) = (branch.to_string(), cseq);
@@ -1063,6 +1078,8 @@ impl<'a> Repo<'a> {
             idempotency_expires: None,
             derivations: Vec::new(),
             timers: Vec::new(),
+            projections: Vec::new(),
+            marks: Vec::new(),
             partial: false,
             slugs: HashMap::new(),
             referrers: HashMap::new(),
@@ -1265,6 +1282,8 @@ impl<'a> Repo<'a> {
             idempotency_expires: tx.idempotency_expires,
             derivations: tx.derivations,
             timers: tx.timers,
+            projections: tx.projections,
+            marks: tx.marks,
         };
         let branch = f.branch.clone();
         self.branches.remove(&branch);
@@ -1709,6 +1728,10 @@ pub struct Tx {
     pub derivations: Vec<Value>,
     /// Future segment starts that emit BecameEffective (STD-TIME-050).
     pub timers: Vec<Value>,
+    /// Projection rows the commit maintains and their marks (DSN-DVM-420).
+    pub projections: Vec<ubos_store::ProjectionRow>,
+    /// Metadata written with the commit (projection marks).
+    pub marks: Vec<(String, Value)>,
     /// The state holds only what the commit read: references resolve and sources are found
     /// through the indexes at the base (PH-2 step 0b), not by a scan of the state.
     pub partial: bool,

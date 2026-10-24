@@ -16,6 +16,7 @@ pub mod flow;
 pub mod host;
 pub mod keys;
 pub mod process;
+pub mod projections;
 pub mod proofs;
 pub mod relations;
 pub mod rules;

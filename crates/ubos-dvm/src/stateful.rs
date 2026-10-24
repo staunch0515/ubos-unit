@@ -1668,6 +1668,8 @@ pub(crate) fn commit_on(
             })
             .unwrap_or_default();
         crate::finance::check(&mut repo, &mut tx, &written)?;
+        // DSN-DVM-420 (PH-2 step 3c): the projection rows of the commit
+        crate::projections::maintain(&mut repo, &mut tx, &written)?;
     }
     // STD-CLS-004: the shape and the extension rule of the lifecycle objects written
     {
