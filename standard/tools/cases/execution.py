@@ -371,7 +371,12 @@ def cases(g):
       steps=[{'op': 'instructions', 'input': {}, 'frozen': 'the catalogue of ABI 1.0 grows in BPA 1.0-rc3 (STD-ISA-036, DEC-071)'}])
     run1('STD-ISA-001', 'logic sees no instruction outside the descriptors', [
         {'do': 'read.everything', 'args': {}}], caps=('read',), error='LOGIC.FORBIDDEN_CAPABILITY')
-    P('STD-ISA-001', 'the descriptors of ABI 1.0 are normative (since 1.0-rc3)', 'instructions', {})
+    # VER-CONF-3002 asserts the catalogue of 1.0-rc3…rc7: superseded by 1.0-rc8, which declares
+    # the parameters of search.aggregate, search.traverse and search.text (DEC-095).
+    V('STD-ISA-001', 'the descriptors of ABI 1.0 are normative (since 1.0-rc3)', prototype=False,
+      steps=[{'op': 'instructions', 'input': {}, 'frozen': 'the search instructions declare their parameters in '
+                                                            'BPA 1.0-rc8 (STD-ISA-081…083, DEC-095)'}])
+    P('STD-ISA-001', 'the descriptors of ABI 1.0 are normative (since 1.0-rc8)', 'instructions', {})
 
     # ---- STD-ISA-002 ABI versioning ----
     for abi, err in (('1.0', None), ('1.1', 'LOGIC.ABI_UNSUPPORTED'), ('2.0', 'LOGIC.ABI_UNSUPPORTED'),

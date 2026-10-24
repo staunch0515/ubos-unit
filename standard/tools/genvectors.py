@@ -25,7 +25,7 @@ from bpa.store import Store                              # noqa: E402
 OUT = os.path.join(REPO, 'standard', 'vectors')
 AREAS = ['fnd', 'obj', 'cls', 'kind', 'ver', 'time', 'txn', 'proof', 'err', 'model', 'history', 'proofs', 'language', 'execution',
          'sheets', 'rules', 'core1b', 'ubtp', 'flow', 'periods', 'approvals', 'workflows', 'evolution',
-         'protection', 'integration']
+         'protection', 'integration', 'search']
 # Stateful operations whose expected results are stripped of implementation-dependent members
 # and compared as subsets by default (STD-CONF-005, rule 6); the operations of step 1b keep
 # exact matching.
@@ -43,7 +43,8 @@ STRIPPED = ('commit', 'read', 'read_ledger', 'actions', 'merge', 'diff', 'export
             'subject_key', 'key_availability', 'erase_subject', 'stored_form', 'disclose', 'lookup_key',
             'relations', 'check_access',                                    # 1.0-rc8 (DEC-093)
             'egress_allow', 'connector_stub', 'exchanges', 'principal', 'resolve_path',
-            'rest')                                                         # 1.0-rc8 (DEC-094)
+            'rest',                                                         # 1.0-rc8 (DEC-094)
+            'resolve_view', 'index_lag')                                    # 1.0-rc8 (DEC-095)
 
 
 # The time-zone vectors use only transitions that are stable in every tz database release

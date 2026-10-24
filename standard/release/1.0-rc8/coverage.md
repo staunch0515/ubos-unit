@@ -6,13 +6,13 @@
 
 | Profile | MUST clauses with a range | Covered | Coverage | Vectors | Prototype vectors |
 |---|---|---|---|---|---|
-| Core | 140 | 138 | 99% | 1344 | 355 |
+| Core | 140 | 140 | 100% | 1381 | 355 |
 | Bitemporal | 12 | 12 | 100% | 69 | 30 |
 | Ledger | 12 | 12 | 100% | 92 | 52 |
 | Proof | 9 | 9 | 100% | 73 | 16 |
 | Governance | 18 | 18 | 100% | 287 | 0 |
 | Protocol | 9 | 9 | 100% | 151 | 0 |
-| **All** | **200** | **198** | **99%** | **2016** | **453** |
+| **All** | **200** | **200** | **100%** | **2053** | **453** |
 
 ## Clauses
 
@@ -56,7 +56,7 @@
 | STD-CLS-020 | Core | yes | 11 (VER-CONF-0720…VER-CONF-0730) |
 | STD-CLS-021 | Core | yes | 10 (VER-CONF-0740…VER-CONF-0749) |
 | STD-CLS-022 | Core | yes | 12 (VER-CONF-0755…VER-CONF-0766) |
-| STD-CLS-023 | Core | yes | **none** |
+| STD-CLS-023 | Core | yes | 7 (VER-CONF-0770…VER-CONF-0776) |
 | STD-CLS-030 | Core | yes | 15 (VER-CONF-0780…VER-CONF-0794) |
 | STD-CLS-031 | Core | yes | 10 (VER-CONF-0800…VER-CONF-0809) |
 | STD-CLS-040 | Core | yes | 18 (VER-CONF-0810…VER-CONF-0827) |
@@ -156,7 +156,7 @@
 | STD-BPU-004 | Core | yes | 3 (VER-CONF-2635…VER-CONF-2637) |
 | STD-BPU-010 | Core | yes | 3 (VER-CONF-2650…VER-CONF-2652) |
 | STD-BPU-011 | Core | yes | 6 (VER-CONF-2660…VER-CONF-2665) |
-| STD-ISA-001 | Core | yes | 2 (VER-CONF-3001…VER-CONF-3002) |
+| STD-ISA-001 | Core | yes | 2 (VER-CONF-3001…VER-CONF-3003) |
 | STD-ISA-002 | Core | yes | 5 (VER-CONF-3010…VER-CONF-3014) |
 | STD-ISA-003 | Core | no | **none** |
 | STD-ISA-004 | Core | yes | 3 (VER-CONF-3030…VER-CONF-3032) |
@@ -187,9 +187,9 @@
 | STD-ISA-070 | Core | no | **none** |
 | STD-ISA-071 | Core | no | 4 (VER-CONF-3515…VER-CONF-3518) |
 | STD-ISA-080 | Core | no | 6 (VER-CONF-3600…VER-CONF-3605) |
-| STD-ISA-081 | Core | no | **none** |
-| STD-ISA-082 | Core | no | **none** |
-| STD-ISA-083 | Core | yes | **none** |
+| STD-ISA-081 | Core | no | 13 (VER-CONF-3640…VER-CONF-3652) |
+| STD-ISA-082 | Core | no | 9 (VER-CONF-3660…VER-CONF-3668) |
+| STD-ISA-083 | Core | yes | 8 (VER-CONF-3670…VER-CONF-3677) |
 | STD-ISA-090 | Core | no | 18 (VER-CONF-3700…VER-CONF-3717) |
 | STD-CTX-001 | Core | yes | 6 (VER-CONF-4000…VER-CONF-4005) |
 | STD-CTX-002 | Core | no | 3 (VER-CONF-4020…VER-CONF-4022) |

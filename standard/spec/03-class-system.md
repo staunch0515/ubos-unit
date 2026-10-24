@@ -213,7 +213,11 @@ DAT-Transition:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0770…0779
 - **Satisfies:** FR-MODEL-036, FR-UX-012, FR-UX-015
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-095):
+  - **Declarations.** Views are declared as `views: [{mode, view, variants: [{device, role, locale, view}]}]`; extensions of a class may add or override them (STD-CLS-030, overlay policy). A view is an object below `ViewAsset`, such as the genesis class `View`; a view that does not resolve fails with `MODEL.REFERENCE_INVALID`.
+  - **Variants.** The variant whose keys all match the context and that has the most keys wins; the first declared wins ties.
+  - **Generated views.** A generated view lists the visible fields with type, label, classification, `required` and `read_only`, taking `field_visibility` (STD-LGS-011) and the field rules of the lifecycle state into account; display modes are read-only. It also lists the ports available in the state and the state.
+  - **Operation.** The adapter operation `resolve_view {branch, object_id or class, mode, ctx}` returns `{source: declared, class, mode, view, view_id, variant}` or `{source: generated, class, mode, generated}`. The modes are `view`, `edit`, `create`, `list`, `card` and `print`.
 
 ### STD-CLS-030 — Extension objects
 - **Clause:** An extension MUST be an object of class `ClassExtension` that names a target class and adds fields, ports, views, constraints and merge strategies under the narrowing rules. Members added by extensions MUST be stored under the key `<namespace>.<member>`. An extension is effective only on branches where it is visible (by commit or inheritance). In detail (DEC-040):

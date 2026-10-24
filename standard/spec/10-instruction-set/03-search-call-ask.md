@@ -23,6 +23,7 @@
 
   | Aspect | Value |
   |---|---|
+  | Params | `query: query-object`, `group_by: list?`, `aggregates: list`, `convert: {currency, rates}?` |
   | Result | `{groups, evaluated_at}` |
   | Errors | as for `search.query`, plus `MODEL.CURRENCY_MISMATCH` |
   | Determinism | `snapshot` |
@@ -31,26 +32,45 @@
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3640…3659
 - **Satisfies:** FR-QRY-041, FR-QRY-042
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-095):
+  - **Parameters.** They are declared in 1.0-rc8; the descriptor vector of 1.0-rc3 is superseded (STD-CONF-030).
+  - **Aggregates.** `aggregates` are `{fn, field, as, p}`; `count` without `field` counts rows. `group_by` names fields of the queried class. Rows are all rows of the query, subclasses included, that the principal may read (STD-LGS-051).
+  - **Money.** Without `convert`, money is grouped by currency as well (`key.currency`). `convert: {currency, rates}` converts each amount by its rate, rounded half-even to the target's minor units; a currency without a rate fails with `MODEL.CURRENCY_MISMATCH`.
+  - **Results.**
+    - `sum` keeps the largest input scale.
+    - `avg` adds four digits to it (money: minor units), rounded half-even.
+    - `percentile` takes the nearest rank `ceil(p / 100 · n)`.
+    - `min` and `max` compare numbers numerically and other values by canonical JSON.
+  - **Groups.** They are `{key, rows, values}` in the order of the canonical JSON of `key`.
+  - **Errors.** Fields unknown, masked for the principal (STD-LGS-052), or not numeric for `sum` and `avg` fail with `QRY.INVALID_QUERY`. The principal's clearances come from the adapter's directory (`principal`), default `internal`.
 
 ### STD-ISA-082 — `search.traverse`
 - **Clause:** Traverses declared relationships from a start object with a direction, a depth limit (maximum 8) and class filters, authorising each step.
 
   | Aspect | Value |
   |---|---|
+  | Params | `start: uri`, `fields: list?`, `direction: out \| in \| both?`, `depth: integer?`, `classes: list?`, `limit: integer?` |
+  | Result | `{nodes, truncated, evaluated_at}` |
+  | Errors | `MODEL.INVALID_VALUE`, `IAM.NOT_FOUND` |
   | Determinism | `snapshot` |
   | Cost | 10 + 2 per node |
   | Authorization | `read` per node |
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3660…3669
 - **Satisfies:** FR-MODEL-065
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-095):
+  - **Walk.** The walk is breadth-first from `start` over live references; `fields` restricts the reference fields followed. Within a level, sources are taken in object order and their references in `(field, target)` order; each object is visited once.
+  - **Nodes.** A node is `{object_id, uri, class, depth, via: {from, field, direction}}`. `classes` filters the nodes returned, not the walk. `limit` (default 100) sets `truncated`.
+  - **Authorization.** Nodes the principal may not read (STD-LGS-051) are neither returned nor expanded, and a start it may not read is not found.
 
 ### STD-ISA-083 — `search.text` `[since ABI 1.0, available from PH-2]`
 - **Clause:** Performs ranked full-text search over declared text-indexed fields. Results carry the index watermark. When the index lags the snapshot, results MAY omit the newest changes, and the response MUST say so.
 
   | Aspect | Value |
   |---|---|
+  | Params | `text: text`, `classes: list?`, `limit: integer?` |
+  | Result | `{items, watermark, lagging}` |
+  | Errors | `MODEL.INVALID_VALUE` |
   | Determinism | `journaled` (index state is outside the snapshot, so the result is journaled) |
   | Cost | 30 + 1 per result |
   | Authorization | `read` per result, with snippet masking |
@@ -58,6 +78,12 @@
 - **Conformance vectors:** VER-CONF-3670…3679
 - **Satisfies:** FR-QRY-021, FR-QRY-022, FR-QRY-023
 - **Notes:** Journaling keeps replays deterministic even though indexes are asynchronous.
+
+  Since 1.0-rc8 (DEC-095):
+  - **Index.** Fields declared `text_index: true` are indexed. Analysis applies NFKC, lower case and word splitting, and strips plural endings (`ies` → `y`; `es` after s, x, z, ch, sh; a final `s` except `ss`).
+  - **Ranking.** Results are ranked by the number of distinct query words matched, then by their total frequency, then by object ID. Each item is `{object_id, class, score, field, snippet}`; the snippet is the first matching field with matched words in `<em>`, cut to 160 characters around the first match.
+  - **Visibility.** Fields masked for the principal are not searched, and objects it may not read are not found.
+  - **Watermark.** `watermark` is the cseq the index reflects; `lagging` is true when it is behind the head. The adapter operation `index_lag {branch, cseq}` freezes the index of the reference model.
 
 ### STD-ISA-090 — `call.connector`
 - **Clause:** Invokes a declared operation of a connector object. The host resolves credentials (CTR-002) and enforces the egress allow-list, classification rules, rate limits and circuit breakers. The request and response are journaled, with the connector's redaction rules applied to the stored copy. By default the call is made after commit through the outbox (`when: after_commit`). `when: now` makes a pre-commit call and requires a declared compensation, or `compensation: none` accepted by policy.

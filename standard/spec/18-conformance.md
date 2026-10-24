@@ -148,6 +148,7 @@ DAT-ConformanceReport:
   | `principal` | `{did, clearances, roles}` | the directory entry `{did, clearances, roles}` (STD-ISA-071). Since 1.0-rc8. |
   | `resolve_path` | `{branch, path}` and a selector | `{uri, object_id}` (STD-ADDR-003, -004). Since 1.0-rc8. |
   | `rest` | `{method, path, query, headers, body, principal}` | `{status, headers, body}` (STD-PROTO-021); `process_id` members are stripped like those of `ubtp`. Since 1.0-rc8. |
+  | `resolve_view`, `index_lag` | `{branch, object_id or class, mode, ctx}` and a selector; `{branch, cseq}` | the resolved view (STD-CLS-023); `{branch, cseq}` (STD-ISA-083). Since 1.0-rc8. |
   | `read_range` | `{branch, object_id, from, to}` and a selector | `{segments, evaluated_at}`, each segment as `read` clipped to `[from, to)` (STD-TIME-014). Since 1.0-rc1. |
   | `history` | `{branch, object_id, from, to}` | `{commits, evaluated_at}`, each `{cseq, commit_id, tx_time, ops}` for the first-parent commits with `from ≤ tx_time < to` that changed the object; `ops` are `{kind, from, to}` (STD-TIME-014). Since 1.0-rc1. |
   | `tree_diff` | `{from, to}`, each a branch with a selector | `{keys}`, the state-tree keys whose entries differ (STD-VER-031). Since 1.0-rc1. |

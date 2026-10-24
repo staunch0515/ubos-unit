@@ -225,6 +225,9 @@ STATEFUL = {
     'principal': lambda s, i: s.principal(i),
     'resolve_path': lambda s, i: s.resolve_path(i),
     'rest': lambda s, i: s.rest(i),
+    # BPA 1.0-rc8, PH-2 step 1g (DEC-095): views and the text index
+    'resolve_view': lambda s, i: s.resolve_view(i),
+    'index_lag': lambda s, i: s.set_index_lag(i),
 }
 
 # Members of `ubtp` frames an implementation assigns (process identifiers), stripped like the

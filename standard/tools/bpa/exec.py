@@ -44,7 +44,9 @@ IMPLEMENTED = ('commit.create', 'commit.update', 'commit.end', 'commit.move', 'c
                # BPA 1.0-rc8, PH-2 step 1c (DEC-091)
                'run.decision',
                # BPA 1.0-rc8, PH-2 step 1f (DEC-094)
-               'call.connector', 'emit.notify')
+               'call.connector', 'emit.notify',
+               # BPA 1.0-rc8, PH-2 step 1g (DEC-095)
+               'search.aggregate', 'search.traverse', 'search.text')
 SYSTEM = {'sys.uuid': 'pure', 'sys.random_bytes': 'pure', 'adapter.observe': 'journaled'}
 READ_ACTIONS = ('read', 'read_history', 'reflect', 'explain')
 L2_FORBIDDEN = ('eval', 'print', 'debug', 'import', 'export', 'Fn', 'call', 'curry', 'is_def_fn', 'is_def_var',
@@ -859,6 +861,41 @@ class Run:
         if r.get('cursor'):
             out['cursor'] = r['cursor']
         return out
+
+    def i_search_aggregate(self, a, d):
+        """STD-ISA-081 (1.0-rc8): grouped aggregates over the rows the principal may read."""
+        self.state()
+        q = a['query'] if isinstance(a['query'], dict) else {'text': a['query']}
+        self.authorize(d['authorization'], q.get('from') if isinstance(q.get('from'), str) else '')
+        r = self.s.aggregate(self.branch, {'commit': self.pins[self.branch]}, a,
+                             self.s._viewer_of(self.context['principal']))
+        self.per_item(d, sum(g['rows'] for g in r['groups']))
+        return r
+
+    def i_search_traverse(self, a, d):
+        """STD-ISA-082 (1.0-rc8): a traversal along references, authorised per node."""
+        self.state()
+        r = self.s.traverse_graph(self.branch, {'commit': self.pins[self.branch]}, a,
+                                  self.s._viewer_of(self.context['principal']))
+        self.per_item(d, len(r['nodes']))
+        return r
+
+    def i_search_text(self, a, d):
+        """STD-ISA-083 (1.0-rc8): ranked full-text search; the result is journaled because the
+        index is outside the snapshot."""
+        self.authorize(d['authorization'], '')
+        rec = {'instruction': 'search.text', 'args_hash': content_id('ubos.chunk.v1', a)}
+        seq = len(self.records) + 1
+        if self.replay is not None:
+            recs = self.replay['records']
+            if seq > len(recs):
+                raise BpaError('LOGIC.REPLAY_INPUT_MISSING', 'no journal record %d' % seq)
+            val = recs[seq - 1]['result']
+        else:
+            val = self.s.text_search(self.branch, a, self.s._viewer_of(self.context['principal']))
+        self.records.append(dict(rec, seq=seq, result_ref=content_id('ubos.chunk.v1', val), result=val))
+        self.per_item(d, len(val['items']))
+        return val
 
     def i_run_super(self, a, d):
         f = self.frames[-1]

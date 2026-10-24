@@ -10,8 +10,8 @@ with the owner's signed tag `bpa-v1.0.0-rc8`. BPA 1.0-rc7 stays frozen as tagged
 |---|---|
 | Profiles | Core, Bitemporal, Ledger, Proof, Governance, Protocol |
 | Clauses | 238 (scope by phase, `scope.json`): the 201 clauses of BPA 1.0-rc7, 23 that satisfy PH-2 requirements, and 14 written in parts 1b–1e |
-| MUST clauses with a vector range | 200, 198 covered (`coverage.md`) |
-| Vectors | 2,016: those of BPA 1.0-rc7 without VER-CONF-1528 (superseded), 45 of part 1b, 53 of part 1c, 122 of part 1d, 43 of part 1e and 51 of part 1f |
+| MUST clauses with a vector range | 200, 200 covered (`coverage.md`) |
+| Vectors | 2,053: those of BPA 1.0-rc7 without VER-CONF-1528 and VER-CONF-3002 (superseded), 45 of part 1b, 53 of part 1c, 122 of part 1d, 43 of part 1e, 51 of part 1f and 38 of part 1g |
 
 ## Changes since BPA 1.0-rc7
 
@@ -60,3 +60,10 @@ with the owner's signed tag `bpa-v1.0.0-rc8`. BPA 1.0-rc7 stays frozen as tagged
   - **Short forms and VFS paths** (STD-ADDR-003, -004) in `resolve` and `resolve_path`.
   - **REST facade** (STD-PROTO-021) over the UBTP session, with `Idempotency-Key` and RFC 9457 problems.
   - **Adapter operations** `egress_allow`, `connector_stub`, `exchanges`, `principal`, `resolve_path` and `rest`.
+- Part 1g (DEC-095), search and views:
+  - **Descriptors:** `search.aggregate`, `search.traverse` and `search.text` declare their parameters. VER-CONF-3002 (the catalogue of 1.0-rc3) is superseded by VER-CONF-3003.
+  - **Aggregates** (STD-ISA-081) with money per currency or converted by rates, nearest-rank percentiles and visible rows only.
+  - **Traversal** (STD-ISA-082), breadth-first to depth 8 and authorised per node.
+  - **Text search** (STD-ISA-083) over `text_index` fields with ranking, `<em>` snippets, masking, a watermark with `lagging`, and journaled results.
+  - **View resolution** (STD-CLS-023) with context variants and generated views; genesis class `View`.
+  - **Adapter operations** `resolve_view` and `index_lag`.

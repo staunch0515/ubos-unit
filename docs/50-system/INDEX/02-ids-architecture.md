@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (94)
+## DEC (95)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -188,4 +188,5 @@ depends_on: [UBS-IDX-00]
 | DEC-092 | Workflows, sagas, quarantine, lenses and upstream changes in BPA 1.0-rc8 (PH-2 step 1, part 1d) | `90-decisions/000-index.md` |
 | DEC-093 | Protection in BPA 1.0-rc8 (PH-2 step 1, part 1e) | `90-decisions/000-index.md` |
 | DEC-094 | Integration and addressing in BPA 1.0-rc8 (PH-2 step 1, part 1f) | `90-decisions/000-index.md` |
+| DEC-095 | Search and views in BPA 1.0-rc8 (PH-2 step 1, part 1g) | `90-decisions/000-index.md` |
 

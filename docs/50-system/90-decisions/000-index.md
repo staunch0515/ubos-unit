@@ -18,6 +18,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-092 | PH-2 step 1d: workflows, sagas, quarantine, lenses and upstream changes in BPA 1.0-rc8 — workflow definitions, instances, events, timers, tasks and migration (STD-TXN-090…092), sagas (STD-TXN-080), quarantine (STD-CTX-031), computed change classification, lenses and their application and totality check (STD-CLS-050, -060…062), upstream change detection (STD-VER-082) | Accepted |
 | DEC-093 | PH-2 step 1e: protection in BPA 1.0-rc8 — encrypted fields under subject keys and erasure (STD-OBJ-010, -011), authorization relations (STD-LGS-050), relation-based access rules (STD-LGS-051), field masking (STD-LGS-052) | Accepted |
 | DEC-094 | PH-2 step 1f: integration and addressing in BPA 1.0-rc8 — connectors and `call.connector` (STD-ISA-090), compensation of pre-commit calls (STD-TXN-051), `emit.notify` (STD-ISA-071), short forms and VFS paths (STD-ADDR-003, -004), REST facade (STD-PROTO-021) | Accepted |
+| DEC-095 | PH-2 step 1g: search and views in BPA 1.0-rc8 — `search.aggregate` (STD-ISA-081), `search.traverse` (STD-ISA-082), `search.text` (STD-ISA-083) with declared parameters, view resolution (STD-CLS-023) | Accepted |
 
 ---
 
@@ -230,3 +231,34 @@ DEC-090 on follow.
   - New error codes for an open breaker and a rate limit were rejected: `LOGIC.CONNECTOR_UNAVAILABLE` is the retryable code FR-LOGIC-105 names, with the reason in `details`.
   - Real network calls in the reference model were rejected: vectors must be deterministic and offline.
 - **Affects:** STD-ISA-071, STD-ISA-090, STD-TXN-051, STD-ADDR-003, STD-ADDR-004, STD-PROTO-021, STD-CONF-005, FR-LOGIC-101, FR-LOGIC-102, FR-LOGIC-103, FR-LOGIC-104, FR-LOGIC-105, FR-TXN-053, FR-NTF-011, FR-NTF-012, FR-FILE-041, FR-INT-021, FR-INT-023, DEC-089, DEC-092
+
+### DEC-095 — Search and views in BPA 1.0-rc8 (PH-2 step 1, part 1g)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** Part 1g of PH-2 step 1 (DEC-089) writes the clauses and vectors of search and views. STD-ISA-081…083 and STD-CLS-023 entered 1.0-rc8 without vectors, and the three instructions had no parameters in their descriptors. The owner confirmed the semantic choices with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Descriptors.** `search.aggregate`, `search.traverse` and `search.text` declare their parameters (and the last two their results and errors). This changes the catalogue of ABI 1.0: VER-CONF-3002 is superseded by VER-CONF-3003, and the kernel's `isa.json` is regenerated from the clauses.
+  2. **Aggregates (STD-ISA-081).**
+     - **Functions.** `count`, `sum`, `avg`, `min`, `max` and `percentile` (nearest rank).
+     - **Rows.** Only the rows the principal may read count; masked fields are refused.
+     - **Money.** It is grouped by currency unless `convert` gives rates; a missing rate fails with `MODEL.CURRENCY_MISMATCH`.
+     - **Rounding.** Fixed scales, half-even.
+  3. **Traversal (STD-ISA-082).** Breadth-first over references, out, in or both, to depth 8, with field and class filters and a limit. Each node is authorised, and nodes that may not be read are neither returned nor expanded.
+  4. **Text search (STD-ISA-083).**
+     - **Index.** Fields are declared `text_index`; analysis is English with plural stemming.
+     - **Results.** Ranked by matched words and frequency, with `<em>` snippets; masked fields are not searched.
+     - **Watermark.** It is reported with `lagging`, and `index_lag` freezes the reference index.
+     - **Journal.** The result is journaled for replay.
+  5. **Views (STD-CLS-023).** Views are declared per mode with context variants and resolved along the linearization, extensions included; the best-matching variant wins. Otherwise the view is generated from the effective definition, field visibility and the lifecycle state. Views are objects of the genesis class `View`.
+  6. **Principals.** The search instructions evaluate as the process principal, with its clearances from the adapter's directory (default `internal`).
+  7. **Adapter operations.** `resolve_view` and `index_lag` (STD-CONF-005).
+     - **Reference model.** `standard/tools/bpa/search.py`.
+     - **Cases.** `standard/tools/cases/search.py`.
+- **Consequences:**
+  - 1.0-rc8 keeps 238 clauses and has 2,053 vectors, with VER-CONF-3002 superseded.
+  - Part 1g adds 38 Core vectors (VER-CONF-3003 among them) and supersedes one.
+  - MUST coverage is 200/200.
+  - `crates/` changes only in the regenerated `isa.json`; the kernel takes up these clauses in PH-2 steps 9 and 10.
+- **Alternatives considered:**
+  - Passing the arguments inside a query object, as `search.query` does with `limit` and `cursor`, was rejected: traversal and text search have no query object, and undeclared parameters cannot be validated.
+  - Ranking by BM25 was rejected for the standard: exact integer scores keep results identical across implementations; implementations may rank better inside equal scores only when the standard allows it in a later release.
+- **Affects:** STD-ISA-001, STD-ISA-081, STD-ISA-082, STD-ISA-083, STD-CLS-023, STD-CONF-005, STD-CONF-030, FR-QRY-021, FR-QRY-022, FR-QRY-023, FR-QRY-041, FR-QRY-042, FR-MODEL-036, FR-MODEL-065, FR-UX-012, FR-UX-015, DEC-089

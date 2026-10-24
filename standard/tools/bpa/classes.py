@@ -164,6 +164,10 @@ GENESIS = {
                              'abstract': False,
                              'fields': [_f('name', 'text', True), _f('title', 'text', True), _f('body', 'text', True),
                                         _f('description', 'text', True)]},
+    # STD-CLS-023 (BPA 1.0-rc8, DEC-095): views are Definition objects below ViewAsset.
+    'View': {'name': 'View', 'kind': 'definition', 'parent': 'ViewAsset', 'abstract': False,
+             'fields': [_f('name', 'text', True), _f('mode', 'text'), _f('layout', 'json'),
+                        _f('description', 'text', True)]},
     'Release': {'name': 'Release', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
                 'fields': [_f('version', 'text', True), _f('tag', 'text', True), _f('notes', 'text'),
                            _f('change_sets', 'json'), _f('approvals', 'json')]},
