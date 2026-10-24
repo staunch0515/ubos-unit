@@ -34,6 +34,8 @@ from .lenses import Lenses
 from .protection import Protection, is_marker
 from .integration import Integration
 from .search import Search
+from .finance import Finance
+from . import values as _values
 from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
@@ -131,7 +133,7 @@ def tl_at(tl, asof):
 
 
 class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Tables, Approvals, Workflows, Lenses, Protection, Integration,
-            Search):
+            Search, Finance):
     def __init__(self):
         self.reset()
 
@@ -172,6 +174,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         self._prot_init()
         self._int_init()
         self._search_init()
+        self._fin_init()
         root = self._new_commit('main', [], {'objects': {}, 'ledger': {}}, 0, tx=False)
         self.branches['main'] = {'head': root, 'kind': 'main', 'created_at': self.now, 'active_at': self.now,
                                  'parent_line': None, 'created_from': root}
@@ -236,7 +239,8 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         for n in list(decls) + ['ChangeSet', 'Release', 'Logic', 'GovernanceSheet', 'PropertyDecl', 'Lifecycle', 'Policy',
                                 'CloseArtefact', 'MatchRecord', 'DecisionTable', 'SimulationRun',
                                 'WorkflowDefinition', 'WorkflowInstance', 'Saga', 'Quarantine', 'QuarantineRelease',
-                                'Lens', 'Connector', 'NotificationTemplate', 'View']:
+                                'Lens', 'Connector', 'NotificationTemplate', 'View',
+                                'Currency', 'FxRate', 'LedgerAccount', 'Projection']:
             eff[n] = effective_class(list(decls.values()), n)
         for n, e in eff.items():
             old = self.classes.get(n)
@@ -673,6 +677,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
             self._exts = None
             self._eff_cache = {}
             self._cur_branch = self._cur_p = self._cur_st = None
+            _values.ADDED.clear()
         own = {oid: o for oid, o in st['objects'].items() if oid not in inh or (o['head'], o['timeline']) != inh[oid]}
         self._note_overrides(branch, own, inh)          # STD-VER-082 (1.0-rc8)
         state = {'objects': own, 'ledger': st['ledger']}
@@ -687,6 +692,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
 
     def _begin(self, st, p):
         self._cur_st = st                               # STD-OBJ-010 (1.0-rc8): subjects by reference
+        self._use_currencies(st)                        # STD-FND-028 (1.0-rc9): codes added on the branch
         self._exts = self._extensions(st)
         self._eff_cache = {}
         self._written, self._ended, self._ops, self._derived = [], [], {}, []
@@ -727,6 +733,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
             else:
                 raise BpaError('MODEL.INVALID_VALUE', 'unknown change')
         self._check_double_entry(appended)
+        self._check_finance(st, appended)               # 1.0-rc9 (DEC-098)
         self._relationships(st, result)
         self._integrity(st, appended)
         self._check_extensions(st)

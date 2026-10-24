@@ -101,8 +101,35 @@ def decimal_op(op, a, b=None, scale=None, rounding=None):
 
 # ---- money (STD-FND-023) ----
 
-MINOR_UNITS = {'USD': 2, 'EUR': 2, 'GBP': 2, 'CHF': 2, 'CAD': 2, 'CNY': 2, 'JPY': 0, 'KRW': 0,
-               'BHD': 3, 'KWD': 3}
+# STD-FND-028 (1.0-rc9, DEC-098): the ISO 4217 codes of list one with a minor unit, as current on
+# 2026-01-01, and the codes a VAE adds with Currency objects (ADDED, set by the store for the
+# branch of the commit being made).
+ISO_4217 = (
+    'AED AFN ALL AMD AOA ARS AUD AWG AZN BAM BBD BDT BGN BHD BIF BMD BND BOB BOV BRL BSD BTN BWP BYN BZD CAD CDF '
+    'CHE CHF CHW CLF CLP CNY COP COU CRC CUP CVE CZK DJF DKK DOP DZD EGP ERN ETB EUR FJD FKP GBP GEL GHS GIP GMD '
+    'GNF GTQ GYD HKD HNL HTG HUF IDR ILS INR IQD IRR ISK JMD JOD JPY KES KGS KHR KMF KPW KRW KWD KYD KZT LAK LBP '
+    'LKR LRD LSL LYD MAD MDL MGA MKD MMK MNT MOP MRU MUR MVR MWK MXN MXV MYR MZN NAD NGN NIO NOK NPR NZD OMR PAB '
+    'PEN PGK PHP PKR PLN PYG QAR RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLE SOS SRD SSP STN SVC SYP SZL THB '
+    'TJS TMT TND TOP TRY TTD TWD TZS UAH UGX USD USN UYI UYU UYW UZS VED VES VND VUV WST XAF XCD XCG XOF XPF YER '
+    'ZAR ZMW ZWG').split()
+_UNITS_0 = set('BIF CLP DJF GNF ISK JPY KMF KRW PYG RWF UGX UYI VND VUV XAF XOF XPF'.split())
+_UNITS_3 = set('BHD IQD JOD KWD LYD OMR TND'.split())
+_UNITS_4 = set('CLF UYW'.split())
+TABLE_UNITS = {c: 0 if c in _UNITS_0 else 3 if c in _UNITS_3 else 4 if c in _UNITS_4 else 2 for c in ISO_4217}
+ADDED = {}
+
+
+class _Units(dict):
+    """The minor units of the table, overlaid by the currencies added on the current branch."""
+
+    def __contains__(self, c):
+        return dict.__contains__(self, c) or c in ADDED
+
+    def __getitem__(self, c):
+        return dict.__getitem__(self, c) if dict.__contains__(self, c) else ADDED[c]
+
+
+MINOR_UNITS = _Units(TABLE_UNITS)
 
 
 def money_value(v, constraints=None):

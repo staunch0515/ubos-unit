@@ -21,6 +21,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-095 | PH-2 step 1g: search and views in BPA 1.0-rc8 — `search.aggregate` (STD-ISA-081), `search.traverse` (STD-ISA-082), `search.text` (STD-ISA-083) with declared parameters, view resolution (STD-CLS-023) | Accepted |
 | DEC-096 | PH-2 step 1h: release of BPA 1.0-rc8 — notes finalised, VER-INSP-9006, the owner's signed tag `bpa-v1.0.0-rc8`, freeze; the candidate part of EXIT-2-01 | Accepted |
 | DEC-097 | PH-2 step 2: extended formal models — approvals and deferred commits (`approvals.tla`, VER-FORM-0100) and sagas (`saga.tla`, VER-FORM-0101) with bounds and mutation checks; terminal state `failed` in DSN-DVM-566 and VER-FORM-0101, saga object wording in DSN-DVM-564; EXIT-2-02 | Accepted |
+| DEC-098 | PH-2 step 3 opened in parts 3a–3g; part 3a: BPA 1.0-rc9 — currency reference data (STD-FND-028), FX rates and `fx_convert` (STD-FND-029), chart of accounts (STD-KIND-029), statement lines (STD-KIND-030), projections (STD-TIME-021), `read.projection` (STD-ISA-037), compensation proposals (STD-TIME-043); VER-CONF-3003 superseded, VER-INSP-9007, the owner's signed tag `bpa-v1.0.0-rc9` | Accepted |
 
 ---
 
@@ -296,3 +297,46 @@ DEC-090 on follow.
   - Modelling preview hashes as content hashes was rejected: the base or source revision identifies the preview exactly and keeps the state space checkable.
   - One model for approvals and sagas was rejected: they share no state, and separate models keep the bounds of each item checkable.
 - **Affects:** VER-FORM-0100, VER-FORM-0101, EXIT-2-02, DSN-DVM-564, DSN-DVM-566, STD-TXN-060, STD-VER-021, STD-LGS-041, STD-LGS-042, STD-TXN-080, DEC-031, DEC-091, DEC-092
+
+### DEC-098 — Money and periods, part 3a: BPA 1.0-rc9 (PH-2 step 3)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** PH-2 step 3 (UBS-PH-2 §11) implements money and periods in the kernel. A run of the 121 money and period vectors of BPA 1.0-rc8 on the kernel passed 78 (calendars, money, double entry, retroactive changes and impact sets). The other 43 need period transitions, close artefacts, matching and restatement. Several capabilities of the step had no clauses: currency reference data, FX rate objects, the chart of accounts, declared projections with their freshness and rebuild, idempotent statement ingestion and compensation proposals (DSN-DVM-323, -409, -410, -420, -422, -441, -446). The standard precedes the code (AR-033). The owner confirmed the plan of step 3 with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Parts.** Step 3 is done in parts, one pull request each. 3a writes BPA 1.0-rc9 (standard only). 3b–3f implement in the kernel:
+     - 3b: currencies, FX rates and accounts;
+     - 3c: projections and their rebuild, with a storage migration;
+     - 3d: periods, close and reopen;
+     - 3e: matching and statement ingestion;
+     - 3f: re-evaluation, restatement and proposals.
+
+     3g claims the clauses in the kernel's conformance test, runs them on PostgreSQL and closes the step. Bank file formats stay in step 12, projection backfill in step 6, and the close cockpit in step 15.
+  2. **Release.** BPA 1.0-rc9 is opened with the scope rule of DEC-089 on base 1.0-rc8 (`standard/release/1.0-rc9/scope.json`). It is released at the end of part 3a with the owner's signed tag `bpa-v1.0.0-rc9`, and is then frozen like the earlier candidates (DEC-045 item 3). 1.0-rc8 stays frozen as built.
+  3. **Clauses.**
+     - **STD-FND-028.** The ISO 4217 table with minor units, normative in the clause. `Currency` objects add codes that are not in the table.
+     - **STD-FND-029.** `FxRate` objects keyed by `(source, base, quote, rate_type)`, whose version valid at a date gives the rate of that date. `fx_convert(m, quote, rate_type, source?)` looks the rate up at the evaluation's `asof`. It uses the direct rate, or else the inverse computed exactly, and rounds half-even to the quote's minor units. An ambiguous source fails with `MODEL.INVALID_VALUE` and a missing rate with `MODEL.CURRENCY_MISMATCH`. `convert(m, cur, rate_ref)` against a branch reads an `FxRate` object. The journal records the rate versions used.
+     - **STD-KIND-029.** The genesis class `LedgerAccount`; a ledger class names its `account` field. A posting needs an account that is live, a leaf and in the account's currency at the entry's valid time, otherwise `MODEL.CONSTRAINT_VIOLATED` with the reason. Parent cycles fail.
+     - **STD-KIND-030.** `ledger.statement` names source, account, statement and line. The entry id is derived from them (`ubos.statement.v1`). The adapter operation `ingest_statement` skips duplicates and fails a changed line with `TXN.IDEMPOTENCY_MISMATCH`.
+     - **STD-TIME-021.** The genesis class `Projection` (`count`, `sum`, `min`, `max`, `last` over the entries of one ledger class). Reads equal the fold of the included entries at any branch and time. `sync` and `async` maintenance with a watermark, `at_least` and `QRY.WATERMARK_TIMEOUT`. A rebuild equals the fold at the head.
+     - **STD-ISA-037.** `read.projection`, with `rollup` over the account hierarchy at the `asof` date.
+     - **STD-TIME-043.** The `commit.append` changes of a re-run process are its restated postings and are not committed. `proposals` reports the differences per ledger key and currency, dated in the open period (`open_period`, default) or at the original valid time (`original`).
+  4. **Deviation from the plan.** The plan named the lookup function `convert(m, quote, rate_type, source?)`. ABI 1.0 already defines `convert(m, cur, rate_ref)` with a rate reference in the third position, so the lookup by key is the new function `fx_convert`.
+  5. **Consequences for released text.**
+     - `read.projection` changes the instruction catalogue: VER-CONF-3003 is superseded by VER-CONF-3004, and the kernel's `isa.json` is regenerated.
+     - The error registry gains `QRY.WATERMARK_TIMEOUT`.
+     - `DAT-Journal` gains `rates`, and `DAT-ClassDecl` describes `ledger.account` and `ledger.statement`.
+     - The genesis class names avoid the classes of the released vectors (a test class `Account` exists, hence `LedgerAccount`).
+  6. **Reference model.**
+     - **Code.** `standard/tools/bpa/finance.py` and changes to `values.py`, `expr.py`, `exec.py`, `periods.py`, `classes.py` and `store.py`.
+     - **Cases.** `standard/tools/cases/finance.py`.
+     - **Vectors.** Projection vectors run on a feature branch, because `Projection` is a configuration asset and a protected branch takes it through change sets.
+- **Consequences:**
+  - BPA 1.0-rc9 has 245 clauses and 2,125 vectors (73 added, VER-CONF-3003 superseded). MUST coverage is 207/207, and VER-INSP-9007 records it.
+  - No released vector changed.
+  - Parts 3b–3g implement 1.0-rc9 and the money and period clauses of 1.0-rc8 in the kernel.
+- **Alternatives considered:**
+  - Materialising the ISO table as genesis `Currency` objects was rejected: every state root of the released vectors would change.
+  - Overloading `convert` was rejected: its third argument is a rate reference in released vectors (VER-CONF-4540…4699).
+  - Committing the restated appends on the correction branch was rejected: entries are immutable, and the originals would be counted twice on merge.
+  - Detecting a changed statement line by a new entry id (content hash in the identifier) was rejected: a corrected redelivery would silently add a second line.
+- **Affects:** STD-FND-023, STD-FND-028, STD-FND-029, STD-KIND-029, STD-KIND-030, STD-TIME-021, STD-TIME-042, STD-TIME-043, STD-ISA-001, STD-ISA-037, STD-EXPR-005, STD-CTX-011, STD-ERR-002, STD-CONF-005, DSN-DVM-323, DSN-DVM-409, DSN-DVM-410, DSN-DVM-420, DSN-DVM-422, DSN-DVM-441, DSN-DVM-446, FR-LOC-021, FR-LOC-022, FR-LEDG-031, FR-LEDG-033, FR-LEDG-052, FR-LEDG-053, FR-LEDG-074, FR-ANL-021, FR-ANL-023, FR-TIME-045, VER-INSP-9007, DEC-045, DEC-089
+

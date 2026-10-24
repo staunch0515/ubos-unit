@@ -1,0 +1,32 @@
+{
+  "$id": "DAT-Currency",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "code": {
+      "description": "three upper-case letters, not a code of the ISO 4217 table",
+      "type": "string"
+    },
+    "minor_units": {
+      "description": "0 to 4",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "name": {
+      "description": "name of the currency",
+      "type": "string"
+    },
+    "numeric": {
+      "description": "three digits",
+      "type": "string"
+    }
+  },
+  "required": [
+    "code",
+    "name",
+    "minor_units"
+  ],
+  "title": "DAT-Currency",
+  "type": "object"
+}

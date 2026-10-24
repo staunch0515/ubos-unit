@@ -352,6 +352,12 @@ class Periods:
             raise BpaError('MODEL.INVALID_VALUE', 'mode is as_originally, as_effective or current')
         if not isinstance(name, str) or name.split('/')[0] != 'correction':
             raise BpaError('MODEL.INVALID_VALUE', 'a restatement runs on a correction branch')
+        policy = None
+        if i.get('proposals') is not None:                 # STD-TIME-043 (1.0-rc9)
+            req = i['proposals'] if isinstance(i['proposals'], dict) else {}
+            policy = req.get('date_policy', 'open_period')
+            if policy not in ('open_period', 'original'):
+                raise BpaError('MODEL.INVALID_VALUE', 'date_policy is open_period or original')
         imp = self.impact(branch, i['time'])
         pids = []
         for v in imp['impacted']:
@@ -371,16 +377,20 @@ class Periods:
         manual = [p for p in order if p not in self.invocations]
         self.create_branch(name, branch)
         processes = []
+        postings = []
         for pid in rerun:
             inv = copy.deepcopy(self.invocations[pid])
             inv['branch'] = name
             j = self.journals[pid]
             d = (inv.get('ctx') or {}).get('asof') or j['context'].get('asof') or j['context']['now']
             self._logic_mode = {'mode': mode, 'date': d[:10], 'original': list(j['logic'])}
+            self._restating = []
             try:
                 out = self.execute(inv)
             finally:
                 self._logic_mode = None
+                got, self._restating = self._restating, None
+            postings += [dict({'process_id': pid}, **x) for x in got]
             processes.append({'process_id': pid, 'cseq': out.get('cseq')})
         # old and new results of the objects the restatement wrote
         new_st = self._state(name)[0]
@@ -398,4 +408,50 @@ class Periods:
                 c['material'] = bool(eval_expr({'expr': i['materiality'], 'classes': list(self.decls.values()),
                                                 'class': o['class'], 'this': nb, 'old': ob})['value'])
             changes.append(c)
-        return {'branch': name, 'mode': mode, 'processes': processes, 'not_rerun': manual, 'changes': changes}
+        out = {'branch': name, 'mode': mode, 'processes': processes, 'not_rerun': manual, 'changes': changes}
+        if policy is not None:
+            out['proposals'] = self._proposals(branch, st0, rerun, postings, policy)
+            out['postings'] = postings
+        return out
+
+    def _proposals(self, branch, st0, pids, postings, policy):
+        """STD-TIME-043 (1.0-rc9): per ledger class, key and currency, the restated postings
+        minus the entries the original processes appended."""
+        ids = set()
+        for pid in pids:
+            for b, cid in self.processes[pid]['commits']:
+                if b == branch:
+                    ids.update(self.commits[cid].get('appended') or [])
+        groups = {}
+
+        def acc(cls, lk, body, valid_at, side, eid=None):
+            for a in self._amounts(cls):
+                if body.get(a) is None:
+                    continue
+                cur, amt = _amount(body[a])
+                g = groups.setdefault((cls, canonical(lk), cur), {'ledger_key': lk, 'old': {}, 'new': {},
+                                                                  'corrects': [], 'valid': []})
+                g[side][a] = g[side].get(a, 0) + amt
+                if side == 'old':
+                    if eid not in g['corrects']:
+                        g['corrects'].append(eid)
+                    g['valid'].append(valid_at)
+
+        for (cls, _), q in sorted(st0['ledger'].items()):
+            for e in q:
+                if e['entry_id'] in ids:
+                    acc(cls, e['ledger_key'], e['body'], e['valid_at'], 'old', e['entry_id'])
+        for p in postings:
+            acc(p['class'], p['ledger_key'], p['body'], p['valid_at'], 'new')
+        out = []
+        for (cls, _, cur), g in sorted(groups.items()):
+            delta = {a: g['new'].get(a, 0) - g['old'].get(a, 0) for a in sorted(set(g['new']) | set(g['old']))}
+            if all(v == 0 for v in delta.values()):
+                continue
+            amounts = {a: {'amount': fmt_decimal(v, MINOR_UNITS[cur]), 'currency': cur} if cur else fmt_decimal(v)
+                       for a, v in delta.items()}
+            valid = self._today() if policy == 'open_period' else \
+                max(g['valid'] or [p['valid_at'] for p in postings if p['class'] == cls])
+            out.append({'class': cls, 'ledger_key': g['ledger_key'], 'valid_at': valid, 'amounts': amounts,
+                        'corrects': g['corrects']})
+        return out

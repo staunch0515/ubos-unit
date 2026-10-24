@@ -84,6 +84,7 @@
   "QRY.INVALID_QUERY": true,
   "QRY.NOT_FOUND_AT_TIME": true,
   "QRY.SCAN_LIMIT": true,
+  "QRY.WATERMARK_TIMEOUT": true,
   "RULE.AMBIGUOUS_CASCADE": true,
   "RULE.DECISION_DENIED": true,
   "RULE.DECISION_REQUIRES": true,
@@ -861,6 +862,63 @@
     "strict"
    ],
    "result": "{state, actions: list<action>}",
+   "since": "1.0"
+  },
+  {
+   "authorization": "read",
+   "clause": "STD-ISA-037",
+   "cost": {
+    "base": 10,
+    "item": "group",
+    "per_item": 1
+   },
+   "determinism": "snapshot",
+   "errors": [
+    "IAM.NOT_FOUND",
+    "QRY.INVALID_QUERY",
+    "QRY.WATERMARK_TIMEOUT"
+   ],
+   "name": "read.projection",
+   "params": [
+    {
+     "name": "projection",
+     "optional": false,
+     "type": "text"
+    },
+    {
+     "name": "group",
+     "optional": true,
+     "type": "map"
+    },
+    {
+     "name": "asof",
+     "optional": true,
+     "type": "date"
+    },
+    {
+     "name": "rollup",
+     "optional": true,
+     "type": "boolean"
+    },
+    {
+     "name": "at_least",
+     "optional": true,
+     "type": "integer"
+    },
+    {
+     "name": "timeout_ms",
+     "optional": true,
+     "type": "integer"
+    }
+   ],
+   "profiles": [
+    "agent",
+    "batch",
+    "simulation",
+    "standard",
+    "strict"
+   ],
+   "result": "{projection, groups, watermark}",
    "since": "1.0"
   },
   {

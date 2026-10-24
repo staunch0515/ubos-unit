@@ -583,6 +583,9 @@ FUNCTIONS = {
                                          [ts[0], 'boolean'], pos, n)),
     'amount': _sig(MON, result=DEC), 'currency': _sig(MON, result=TEXT), 'money': _sig(NUMS, TEXT, result=MON),
     'convert': _sig(MON, TEXT, TEXT, result=MON),
+    # STD-FND-029 (1.0-rc9): conversion by rate key
+    'fx_convert': lambda ts, pos, n: (_sig(MON, TEXT, TEXT, result=MON) if len(ts) == 3
+                                      else _sig(MON, TEXT, TEXT, TEXT, result=MON))(ts, pos, n),
     'allocate': _sig(MON, ('list',) and ('any',), result=('list', 'money')),
     'today': _sig(result=DATE_T), 'now': _sig(result='instant'), 'date': _sig(INT, INT, INT, result=DATE_T),
     'year': _sig(DATE_T, result=INT), 'month': _sig(DATE_T, result=INT), 'day': _sig(DATE_T, result=INT),
@@ -791,9 +794,10 @@ class Limit(Exception):
 
 class Evaluator:
     def __init__(self, env, ctx=None, objects=None, calendars=None, rates=None, max_units=MAX_UNITS,
-                 max_items=MAX_ITEMS, business_tz='UTC', this=None, params=None, old=None, typed_ref=None):
+                 max_items=MAX_ITEMS, business_tz='UTC', this=None, params=None, old=None, typed_ref=None, fx=None):
         self.env, self.ctx = env, ctx or {}
         self.objects, self.calendars, self.rates = objects or {}, calendars or {}, rates or {}
+        self.fx = fx                    # STD-FND-029 (1.0-rc9): (base, quote, rate_type, source) -> multiplier
         self.max_units, self.max_items, self.tz = max_units, max_items, business_tz
         self.units = 0
         self.roots = {'this': this, 'params': params, 'old': old, 'ctx': self.ctx}
@@ -1185,6 +1189,21 @@ class Evaluator:
             c.prec = 200
             return Money(m.amount * parse_decimal(r['rate']), cur)
 
+    def f_fx_convert(self, pos, m, quote, rate_type, source=None):
+        """STD-FND-029 (1.0-rc9): convert by the rate of a key at the evaluation date, rounded
+        half-even to the minor units of the quote currency."""
+        if quote not in MINOR_UNITS:
+            raise BpaError('MODEL.INVALID_VALUE', 'unknown ISO 4217 currency')
+        if m.currency == quote:
+            return m
+        if self.fx is None:
+            raise BpaError('MODEL.CURRENCY_MISMATCH', {'base': m.currency, 'quote': quote, 'rate_type': rate_type})
+        rate = self.fx(m.currency, quote, rate_type, source)
+        with localcontext() as c:
+            c.prec = 200
+            amt = m.amount * rate
+        return Money(round_decimal(amt, MINOR_UNITS[quote]), quote)
+
     def f_allocate(self, pos, m, weights):
         if not weights or any(not _num(w) or w < 0 for w in weights) or sum(Decimal(w) for w in weights) == 0:
             raise BpaError('MODEL.INVALID_VALUE', 'weights are non-negative numbers with a positive sum')
@@ -1457,6 +1476,29 @@ def check_expr(i):
     return {'type': type_name(t)}
 
 
+def list_fx(items):
+    """STD-FND-029 (1.0-rc9): rate lookup over a list of {source, base, quote, rate_type, rate}
+    (adapter operation eval_expr), with the rules of the FxRate objects."""
+    def fx(base, quote, rate_type, source):
+        cands = []
+        for r in items:
+            if r.get('rate_type') != rate_type or (source is not None and r.get('source') != source):
+                continue
+            if (r.get('base'), r.get('quote')) in ((base, quote), (quote, base)):
+                cands.append((r.get('source'), r.get('base') != base, parse_decimal(r['rate'])))
+        if not cands:
+            raise BpaError('MODEL.CURRENCY_MISMATCH', {'base': base, 'quote': quote, 'rate_type': rate_type})
+        if len({c[0] for c in cands}) > 1:
+            raise BpaError('MODEL.INVALID_VALUE', 'several sources have the rate; name one')
+        _, inverse, rate = next((c for c in cands if not c[1]), cands[0])
+        if inverse:
+            with localcontext() as c:
+                c.prec = 200
+                rate = Decimal(1) / rate
+        return rate
+    return fx
+
+
 def eval_expr(i, typed_ref=None, custom=None):
     """STD-EXPR-001…005: evaluate an expression; the result is canonical JSON, assigned to
     `target` when given (rounded to its scale)."""
@@ -1471,7 +1513,7 @@ def eval_expr(i, typed_ref=None, custom=None):
                    this=from_json(this_t, i.get('this')) if this_t else None,
                    params=from_json(env.roots['params'], i.get('params')) if env.roots['params'] else None,
                    old=from_json(this_t, i.get('old')) if env.roots['old'] and this_t else None,
-                   typed_ref=typed_ref)
+                   typed_ref=typed_ref, fx=list_fx(i['fx_rates']) if i.get('fx_rates') is not None else None)
     if i.get('objects') and not typed_ref:
         classes = i.get('classes') or []
         ev.typed_ref = lambda uri: (None if uri not in i['objects'] else

@@ -42,7 +42,7 @@
       "type": "string"
     },
     "ledger": {
-      "description": "Ledger kind only: {key: [field], amounts: [field], double_entry: boolean, period_scope: text}",
+      "description": "Ledger kind only: {key: [field], amounts: [field], double_entry: boolean, period_scope: text, account: field (since 1.0-rc9), statement: {source, account, statement, line} (since 1.0-rc9)}",
       "type": "object"
     },
     "lens": {

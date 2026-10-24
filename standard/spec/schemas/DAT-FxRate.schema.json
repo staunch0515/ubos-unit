@@ -1,0 +1,41 @@
+{
+  "$id": "DAT-FxRate",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "base": {
+      "description": "currency converted from",
+      "type": "string"
+    },
+    "fixed_at": {
+      "description": "time of the fixing",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "type": "string"
+    },
+    "quote": {
+      "description": "currency converted to",
+      "type": "string"
+    },
+    "rate": {
+      "description": "units of quote per unit of base, positive",
+      "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+      "type": "string"
+    },
+    "rate_type": {
+      "description": "for example spot, average or closing",
+      "type": "string"
+    },
+    "source": {
+      "description": "publisher of the rate, for example a central bank or the VAE itself",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "base",
+    "quote",
+    "rate_type",
+    "rate"
+  ],
+  "title": "DAT-FxRate",
+  "type": "object"
+}

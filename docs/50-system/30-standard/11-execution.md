@@ -159,6 +159,7 @@ DAT-Journal:
   tzdb: { type: text, required: true, description: "tz database version" }
   records: { type: list, required: true, description: "ordered {seq, instruction, args_hash, result_ref}" }
   outputs: { type: composite, required: true, description: "{commits, result_hash, effects}" }
+  rates: { type: list, required: false, description: "{object_id, version_hash} of the FX rates used, in order of first use (STD-FND-029, since 1.0-rc9)" }
 ```
 
 ### STD-CTX-012 — Replay

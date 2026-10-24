@@ -1,0 +1,40 @@
+{
+  "$id": "DAT-LedgerAccount",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "currency": {
+      "description": "the only currency of the account's money amounts",
+      "type": "string"
+    },
+    "name": {
+      "description": "account name",
+      "type": "string"
+    },
+    "number": {
+      "description": "account number",
+      "type": "string"
+    },
+    "parent": {
+      "description": "the parent account",
+      "type": "string"
+    },
+    "type": {
+      "description": "asset | liability | equity | income | expense",
+      "enum": [
+        "asset",
+        "liability",
+        "equity",
+        "income",
+        "expense"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "number",
+    "name",
+    "type"
+  ],
+  "title": "DAT-LedgerAccount",
+  "type": "object"
+}

@@ -18,6 +18,10 @@
       "description": "{commits, result_hash, effects}",
       "type": "object"
     },
+    "rates": {
+      "description": "{object_id, version_hash} of the FX rates used, in order of first use (STD-FND-029, since 1.0-rc9)",
+      "type": "array"
+    },
     "records": {
       "description": "ordered {seq, instruction, args_hash, result_ref}",
       "type": "array"

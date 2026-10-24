@@ -228,6 +228,13 @@ STATEFUL = {
     # BPA 1.0-rc8, PH-2 step 1g (DEC-095): views and the text index
     'resolve_view': lambda s, i: s.resolve_view(i),
     'index_lag': lambda s, i: s.set_index_lag(i),
+    # BPA 1.0-rc9, PH-2 step 3a (DEC-098): currencies, FX rates, statements, projections
+    'currency': lambda s, i: s.currency(i),
+    'fx_rate': lambda s, i: s.fx_rate(i),
+    'ingest_statement': lambda s, i: s.ingest_statement(i),
+    'read_projection': lambda s, i: s.read_projection(i),
+    'projection_lag': lambda s, i: s.projection_lag(i),
+    'rebuild_projection': lambda s, i: s.rebuild_projection(i),
 }
 
 # Members of `ubtp` frames an implementation assigns (process identifiers), stripped like the

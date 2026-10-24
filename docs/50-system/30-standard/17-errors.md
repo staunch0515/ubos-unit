@@ -116,6 +116,7 @@ DAT-Error:
   | `QRY.INVALID_QUERY` | malformed query | no | yes | 400 |
   | `QRY.NOT_FOUND_AT_TIME` | object absent at the coordinates | no | yes | 404 |
   | `QRY.CLASSIFICATION_NOT_EMBEDDABLE` | vector index on sensitive data | no | yes | 422 |
+  | `QRY.WATERMARK_TIMEOUT` | an asynchronous projection did not reach the requested commit in time (since 1.0-rc9) | yes | yes | 504 |
   | `IAM.DENIED` | authorization denied (visible resource) | no | yes | 403 |
   | `IAM.NOT_FOUND` | resource invisible or missing | no | yes | 404 |
   | `IAM.DELEGATION_EXPIRED` | delegation expired | no | yes | 401 |

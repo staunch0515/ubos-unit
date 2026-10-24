@@ -1,0 +1,37 @@
+{
+  "$id": "DAT-Projection",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "aggregates": {
+      "description": "{fn, field, as} items; fn count | sum | min | max | last",
+      "type": "array"
+    },
+    "description": {
+      "description": "purpose",
+      "type": "string"
+    },
+    "group_by": {
+      "description": "field names; no field gives one group",
+      "type": "array"
+    },
+    "mode": {
+      "description": "sync | async (default sync)",
+      "type": "string"
+    },
+    "name": {
+      "description": "unique among the live projections of the branch",
+      "type": "string"
+    },
+    "source": {
+      "description": "name of the ledger class folded",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "source",
+    "aggregates"
+  ],
+  "title": "DAT-Projection",
+  "type": "object"
+}

@@ -260,3 +260,24 @@ branch is the process branch unless a `branch` parameter is allowed and authoris
 - **Conformance vectors:** VER-CONF-3380…3389
 - **Satisfies:** FR-FLOW-024
 - **Notes:** Since 1.0-rc3 (DEC-071). The adapter operation `actions` gives the same list without a principal (every port permitted), with the context given (STD-CONF-005). The actions are listed in port-name order.
+
+### STD-ISA-037 — `read.projection` `[Profile: Ledger]`
+- **Clause:** Reads a projection (STD-TIME-021) at the process snapshot, or at explicit coordinates.
+
+  | Aspect | Value |
+  |---|---|
+  | Params | `projection: text`, `group: map?`, `asof: date?`, `rollup: boolean?`, `at_least: integer?`, `timeout_ms: integer?` |
+  | Result | `{projection, groups, watermark}` |
+  | Errors | `IAM.NOT_FOUND`, `QRY.INVALID_QUERY`, `QRY.WATERMARK_TIMEOUT` |
+  | Determinism | `snapshot` |
+  | Cost | 10 + 1 per group |
+  | Authorization | `read` on the source class |
+
+  `group` keeps the groups whose key has the given values. With `rollup`, the projection MUST group by the `account` field of its source class (STD-KIND-029) and have only `count` and `sum` aggregates (otherwise `QRY.INVALID_QUERY`); the result then holds, besides the groups of the leaves, one group per account above them with the sums over the leaves below it, at the `asof` date's hierarchy. The watermark is `{cseq, commit_id}`.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-3390…3399
+- **Satisfies:** FR-LEDG-031, FR-LEDG-033, DSN-DVM-441
+- **Notes:** Since 1.0-rc9 (DEC-098):
+  - **Names.** `projection` is the `name` of a live projection; an unknown name fails with `IAM.NOT_FOUND`.
+  - **Defaults.** Without `asof`, entries of every valid time count. `timeout_ms` defaults to 0, so a read with `at_least` above the watermark fails at once.
+  - **Snapshot.** The first read of a branch fixes the process snapshot (STD-TXN-002), as for `read.get`.

@@ -46,7 +46,9 @@ IMPLEMENTED = ('commit.create', 'commit.update', 'commit.end', 'commit.move', 'c
                # BPA 1.0-rc8, PH-2 step 1f (DEC-094)
                'call.connector', 'emit.notify',
                # BPA 1.0-rc8, PH-2 step 1g (DEC-095)
-               'search.aggregate', 'search.traverse', 'search.text')
+               'search.aggregate', 'search.traverse', 'search.text',
+               # BPA 1.0-rc9, PH-2 step 3a (DEC-098)
+               'read.projection')
 SYSTEM = {'sys.uuid': 'pure', 'sys.random_bytes': 'pure', 'adapter.observe': 'journaled'}
 READ_ACTIONS = ('read', 'read_history', 'reflect', 'explain')
 L2_FORBIDDEN = ('eval', 'print', 'debug', 'import', 'export', 'Fn', 'call', 'curry', 'is_def_fn', 'is_def_var',
@@ -108,6 +110,7 @@ class Run:
         self.connector_calls = []               # STD-TXN-051 (1.0-rc8): pre-commit calls made
         self.connector_n = 0                    # STD-ISA-090 (1.0-rc8): calls counted by metering
         self.notifications = []                 # STD-ISA-071 (1.0-rc8): notifications requested
+        self.rates_used = []                    # STD-FND-029 (1.0-rc9): FX rate versions used
         self.cancel_after = i.get('cancel_after_units')
         self.context = self._context()
 
@@ -202,13 +205,24 @@ class Run:
         expr.check(ast, env)
         ev = expr.Evaluator(env, ctx=self.ctx_value(), max_units=self.limits['units'] - self.units,
                             this=expr.from_json(this_t, f.this) if this_t and f.this is not None else None,
-                            params=f.params, typed_ref=self.typed_ref)
+                            params=f.params, typed_ref=self.typed_ref, rates=_BranchRates(self), fx=self.fx)
         ev.vars = dict(scope)
         try:
             v = ev.ev(ast)
         finally:
             self.charge(ev.units)
         return v
+
+    def _use_rate(self, oid, vh):
+        rec = {'object_id': oid, 'version_hash': vh}
+        if rec not in self.rates_used:
+            self.rates_used.append(rec)
+
+    def fx(self, base, quote, rate_type, source):
+        """STD-FND-029 (1.0-rc9): the rate of a key at the process's asof and snapshot."""
+        rate, oid, vh, _, _ = self.s._fx_rate(self.state(), self.context['asof'], base, quote, rate_type, source)
+        self._use_rate(oid, vh)
+        return rate
 
     def template(self, t, scope):
         if isinstance(t, dict):
@@ -526,6 +540,13 @@ class Run:
         for k in ('valid_at', 'posting_group', 'source_refs'):
             if a.get(k) is not None:
                 ch[k] = a[k]
+        restating = getattr(self.s, '_restating', None)
+        if restating is not None:
+            # STD-TIME-043 (1.0-rc9): a re-run's appends are its restated postings, not committed
+            restating.append({'class': cls, 'ledger_key': self.s._check_ledger_key(cls, a['ledger_key']),
+                              'valid_at': ch.get('valid_at') or self.s._default_valid(cls),
+                              'body': self.s._check_body(cls, dict(a['fields'] or {}))})
+            return {'entry_id': eid}
         self.add(ch)
         return {'entry_id': eid}
 
@@ -872,6 +893,15 @@ class Run:
         self.per_item(d, sum(g['rows'] for g in r['groups']))
         return r
 
+    def i_read_projection(self, a, d):
+        """STD-ISA-037 (1.0-rc9): a projection at the process snapshot."""
+        st = self.state()
+        _, decl = self.s._projection(st, a.get('projection'))
+        self.authorize(d['authorization'], decl['source'])
+        r = self.s._read_projection(self.branch, dict(a, evaluated_at=self.pins))
+        self.per_item(d, len(r['groups']))
+        return r
+
     def i_search_traverse(self, a, d):
         """STD-ISA-082 (1.0-rc8): a traversal along references, authorised per node."""
         self.state()
@@ -1169,6 +1199,8 @@ class Exec:
                                           'result_hash': content_id('ubos.chunk.v1', result),
                                           'changes_hash': changes_hash,
                                           'effects': [e['type'] for e in run.effects]}}
+        if run.rates_used:
+            self.journals[pid]['rates'] = list(run.rates_used)     # STD-FND-029 (1.0-rc9)
         self.invocations[pid] = {k: v for k, v in i.items() if k not in ('interfere', 'process', 'world')}
         if outcome != 'ok':
             return None
@@ -1475,3 +1507,18 @@ def _names(fn):
     walk((fn or {}).get('body'))
     return out
 
+
+class _BranchRates:
+    """STD-FND-029 (1.0-rc9): `convert` against a branch reads its rate reference as an FxRate
+    object at the process's asof date."""
+
+    def __init__(self, run):
+        self.run = run
+
+    def get(self, ref):
+        r = self.run.s._rate_object(self.run.state(), ref, self.run.context['asof'])
+        if r is None:
+            return None
+        oid, vh, b = r
+        self.run._use_rate(oid, vh)
+        return {'from': b['base'], 'to': b['quote'], 'rate': b['rate']}
