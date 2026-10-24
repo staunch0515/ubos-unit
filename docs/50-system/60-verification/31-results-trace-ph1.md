@@ -356,3 +356,7 @@ Must requirements without a passing result, with the results of their suites and
 | Bitemporal read overhead | NR-PERF-007 | pending | SUITE-DVM-BENCH (pending), VER-BENCH-0100 (pending) |
 | Logic execution overhead | NR-PERF-010 | pending | SUITE-DVM-BENCH (pending), VER-BENCH-0100 (pending) |
 | Event delivery latency | NR-PERF-011 | not-met | VER-BENCH-2000 (partial) |
+
+## Suites and items without a result in the index
+
+VER-INSP-9006

@@ -1,6 +1,6 @@
 {
   "clauses": 238,
-  "content_id": "sha256:435844cbe2dd3ed2bcebb75fa728446fa11896e689912198eb36721aeb021657",
+  "content_id": "sha256:93b0c191081911509c4d7e94a82073799315afcb0ee22d3d20f59d2757d4cd6b",
   "files": [
     {
       "path": "release/1.0-rc8/coverage.md",
@@ -8,7 +8,7 @@
     },
     {
       "path": "release/1.0-rc8/notes.md",
-      "sha256": "863fec0b5861bde6968862f4143ec96f60341641ca34c76feb14340db99ee5f1"
+      "sha256": "cbe89960c6830ab7dd068fa5f6794c38d7cf1e583bfd6a7372060d4edaa715bb"
     },
     {
       "path": "release/1.0-rc8/scope.json",

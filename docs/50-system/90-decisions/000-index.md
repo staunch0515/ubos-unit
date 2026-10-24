@@ -19,6 +19,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-093 | PH-2 step 1e: protection in BPA 1.0-rc8 — encrypted fields under subject keys and erasure (STD-OBJ-010, -011), authorization relations (STD-LGS-050), relation-based access rules (STD-LGS-051), field masking (STD-LGS-052) | Accepted |
 | DEC-094 | PH-2 step 1f: integration and addressing in BPA 1.0-rc8 — connectors and `call.connector` (STD-ISA-090), compensation of pre-commit calls (STD-TXN-051), `emit.notify` (STD-ISA-071), short forms and VFS paths (STD-ADDR-003, -004), REST facade (STD-PROTO-021) | Accepted |
 | DEC-095 | PH-2 step 1g: search and views in BPA 1.0-rc8 — `search.aggregate` (STD-ISA-081), `search.traverse` (STD-ISA-082), `search.text` (STD-ISA-083) with declared parameters, view resolution (STD-CLS-023) | Accepted |
+| DEC-096 | PH-2 step 1h: release of BPA 1.0-rc8 — notes finalised, VER-INSP-9006, the owner's signed tag `bpa-v1.0.0-rc8`, freeze; the candidate part of EXIT-2-01 | Accepted |
 
 ---
 
@@ -262,3 +263,19 @@ DEC-090 on follow.
   - Passing the arguments inside a query object, as `search.query` does with `limit` and `cursor`, was rejected: traversal and text search have no query object, and undeclared parameters cannot be validated.
   - Ranking by BM25 was rejected for the standard: exact integer scores keep results identical across implementations; implementations may rank better inside equal scores only when the standard allows it in a later release.
 - **Affects:** STD-ISA-001, STD-ISA-081, STD-ISA-082, STD-ISA-083, STD-CLS-023, STD-CONF-005, STD-CONF-030, FR-QRY-021, FR-QRY-022, FR-QRY-023, FR-QRY-041, FR-QRY-042, FR-MODEL-036, FR-MODEL-065, FR-UX-012, FR-UX-015, DEC-089
+
+### DEC-096 — Release of BPA 1.0-rc8 (PH-2 step 1, part 1h)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** Part 1h of PH-2 step 1 (DEC-089) releases BPA 1.0-rc8. After parts 1a–1g (DEC-089…095) the release holds 238 clauses and 2,053 vectors, and all 200 MUST clauses with a vector range are covered (`standard/release/1.0-rc8/coverage.md`). The owner confirmed the plan of part 1h with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Release notes.** `standard/release/1.0-rc8/notes.md` is finalised by hand as DEC-045 item 1 prescribes: content, changes since 1.0-rc7 by part, the two superseded vectors and the known limits. The builder lists it in the manifest.
+  2. **Pull request and tag.** The commits of PH-2 steps 0b-4 and 1a–1h are merged through one pull request. After merge the owner creates the signed tag `bpa-v1.0.0-rc8` on the merge commit, with the manifest `content_id` in the tag message (DSN-BPA-001, DEC-030).
+  3. **Freeze.** Once tagged, BPA 1.0-rc8 is frozen like the earlier candidates (DEC-045 item 3): its clauses and vectors are not changed, and the output of `regen_all.sh` must stay identical until a decision opens the next release. Defects are recorded in `standard/errata/`.
+  4. **Verification item.** VER-INSP-9006 records the coverage inspection of 1.0-rc8.
+- **Consequences:**
+  - The candidate part of EXIT-2-01 is met when the tag exists; its kernel part (100% of the vectors on PostgreSQL, VER-CONF-8405) follows the later PH-2 steps.
+  - PH-2 step 1 is complete; step 2 (extended formal models: approvals and sagas, EXIT-2-02) is next.
+- **Alternatives considered:**
+  - Tagging BPA 1.0.0 now was rejected: the kernel has not run the 1.0-rc8 vectors, so defects may still be found and corrected in a further candidate.
+  - Waiting for the kernel before tagging was rejected: the standard precedes the code (AR-033), and the kernel steps implement a frozen text.
+- **Affects:** DSN-BPA-001, EXIT-2-01, VER-INSP-9006, DEC-045, DEC-089

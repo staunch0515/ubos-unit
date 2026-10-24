@@ -1,8 +1,10 @@
-# BPA 1.0.0-rc8 — Release notes (in development)
+# BPA 1.0.0-rc8 — Release notes
 
-Release candidate 8 of BPA 1.0 (PH-2 step 1, DEC-089), the candidate for the PH-2 kernel. It is
-in development: clauses and vectors are added by parts 1b–1g and the release is made in part 1h
-with the owner's signed tag `bpa-v1.0.0-rc8`. BPA 1.0-rc7 stays frozen as tagged.
+Release candidate 8 of BPA 1.0 (PH-2 step 1, DEC-089…096), the candidate for the PH-2 kernel.
+Tag `bpa-v1.0.0-rc8`, signed by the owner (DSN-BPA-001). The manifest
+(`release/1.0-rc8/manifest.json`) lists every released file with its SHA-256; its `content_id`
+identifies this release. BPA 1.0-rc7 stays frozen as tagged. The standard precedes the code
+(AR-033): the PH-2 kernel implements this frozen text in its later steps.
 
 ## Content
 
@@ -54,7 +56,7 @@ with the owner's signed tag `bpa-v1.0.0-rc8`. BPA 1.0-rc7 stays frozen as tagged
   - **Adapter operations** `subject_key`, `key_availability`, `erase_subject`, `stored_form`, `disclose`, `verify_disclosure`, `lookup_key`, `relations` and `check_access`; `read`, `query` and `outbox` take `as`.
   - **Rule 6 of STD-CONF-005:** `nonce`, `ct`, `salt` and `commitment` are implementation-dependent members.
 - Part 1f (DEC-094), integration and addressing:
-  - **Connectors** (STD-ISA-090): `Connector` objects with an egress allow-list, credential handles, schemas, classification checks, retry, breaker and rate limit, redacted records and journaled responses; `after_commit` calls through the outbox. Assets list their connectors in `connectors`.
+  - **Connectors** (STD-ISA-090): `Connector` objects with an egress allow-list, credential handles, schemas, classification checks, retry, breaker and rate limit, redacted records and journaled responses; `after_commit` calls through the outbox. Assets name their connectors as capabilities `connector:<uri>`.
   - **Compensation of pre-commit calls** (STD-TXN-051): reverse order, idempotency keys, at least once through the outbox.
   - **Notifications** (STD-ISA-071): `NotificationTemplate` objects; recipients by DID, role and relation, rendered per recipient with masking.
   - **Short forms and VFS paths** (STD-ADDR-003, -004) in `resolve` and `resolve_path`.
@@ -67,3 +69,23 @@ with the owner's signed tag `bpa-v1.0.0-rc8`. BPA 1.0-rc7 stays frozen as tagged
   - **Text search** (STD-ISA-083) over `text_index` fields with ranking, `<em>` snippets, masking, a watermark with `lagging`, and journaled results.
   - **View resolution** (STD-CLS-023) with context variants and generated views; genesis class `View`.
   - **Adapter operations** `resolve_view` and `index_lag`.
+
+## Superseded vectors
+
+Two vectors of BPA 1.0-rc7 are kept as released and excluded from this release
+(`vectors/superseded.txt`, STD-CONF-030):
+
+- VER-CONF-1528 closed a period by an update; periods are closed by `close_period` (VER-CONF-1108, DEC-090).
+- VER-CONF-3002 asserted the instruction catalogue of 1.0-rc3; the search instructions declare their parameters (VER-CONF-3003, DEC-095).
+
+## Known limits
+
+- **Kernel.** The vectors added in 1.0-rc8 are not tagged `prototype` and have not run on the kernel. The kernel's conformance test keeps claiming the clauses it implements and runs these vectors as the later PH-2 steps implement them (EXIT-2-01, VER-CONF-8405).
+- **Simulated outside world.** Connector responses are scripted (`connector_stub`). The text index of the reference model is current unless `index_lag` freezes it. Subject keys are derived by the reference model, where implementations use their key service.
+- **Not in this release:**
+  - L2 residual functions of lenses (`LOGIC.NOT_AVAILABLE`);
+  - business-calendar timers of workflows (FR-FLOW-063);
+  - the legal-hold check before erasure (DSN-DVM-831, PH-3);
+  - personal-data read logging (DSN-DVM-823, kernel);
+  - short forms in the reference values of changes (VER-CONF-0849).
+- **Bindings.** The Protocol vectors exercise the in-process binding and the REST facade over it; the other bindings replay them with the Server.
