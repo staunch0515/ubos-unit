@@ -26,6 +26,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-100 | PH-2 step 3c: projections in the kernel — `Projection` declarations, reads with watermark, `at_least`, `group`, `asof` and roll-up, `read.projection`, rows per commit, group and valid time in `projection_delta` (migration 0017) with a mark per branch, atomic rebuild; checkpoints with the benchmarks of step 18; the SDK error registries regenerated for `QRY.WATERMARK_TIMEOUT` | Accepted |
 | DEC-101 | PH-2 step 3d: periods, close and reopen in the kernel — period transitions checked at commit, `close_period` with the `CloseArtefact` System object and the signed tag `close-<slug>-<n>`, `reopen_period` with a reason; STD-KIND-025, -026 and STD-VER-055 claimed; the approval of reopening with step 4 | Accepted |
 | DEC-102 | PH-2 step 3e: matching, match records and statement lines in the kernel — `match` with the three rule kinds, tolerances, windows and breaks, `MatchRecord` entries with derived ids appended by `match` and `unmatch` only, statement-line ids derived at commit and `ingest_statement`; STD-KIND-027, -028 and -030 claimed | Accepted |
+| DEC-103 | PH-2 step 3f: re-evaluation, restatement and compensation proposals in the kernel — the logic version of the mode during a re-run, `restate` on a correction branch with old and new bodies and materiality, restated postings captured instead of committed, proposals per ledger key and currency; STD-TIME-041, -042 and -043 claimed; DSN-DVM-331 mode names aligned | Accepted |
 
 ---
 
@@ -448,4 +449,34 @@ DEC-090 on follow.
   - Matching by searching subsets of entries whose sum equals the amount was rejected: STD-KIND-027 forms groups from equal fields only, so the cost grows with the number of entries.
   - Ingesting with one commit per line was rejected: a statement is appended in one commit, so a failed ingestion leaves nothing behind.
 - **Affects:** STD-KIND-027, STD-KIND-028, STD-KIND-030, DSN-DVM-445, DSN-DVM-446, FR-LEDG-071, FR-LEDG-072, FR-LEDG-073, FR-LEDG-074, DEC-098
+
+### DEC-103 — Re-evaluation, restatement and proposals in the kernel (PH-2 step 3, part 3f)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** Part 3f of PH-2 step 3 (DEC-098) implements STD-TIME-041 and STD-TIME-042 of BPA 1.0-rc8 and STD-TIME-043 of BPA 1.0-rc9 in the kernel (DSN-DVM-322, -323, -331). Before the part, their 14 vectors failed: the adapter operation `restate` was missing. DSN-DVM-331 still named the modes of an earlier draft (`as-recorded` as the default). The owner confirmed the part with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Restatement.** `crates/ubos-dvm/src/restate.rs` follows the reference model.
+     - **Inputs.** The mode, the correction-branch name and the date policy are checked first.
+     - **Processes.** The impact set of the correcting commit (STD-TIME-031) gives the processes through the derivation records of the impacted versions and entries, in that order. Processes with a journaled invocation are re-run; the others are reported as `not_rerun`.
+     - **Re-run.** The correction branch is created from the source head. Each process is re-run there with its recorded invocation, the `asof` of its journal and the logic versions of the mode.
+     - **Report.** For every object the correction branch changed, the old and new bodies, with `material` when a materiality expression is given.
+  2. **Modes.** While a re-run executes, the engine host pins each logic asset to:
+     - the version whose timeline covers the recomputed date (`as_effective`);
+     - the version the original process ran (`as_originally`);
+     - the head (`current`).
+
+     The derivation records the mode (`ubos-runtime` `with_derivation_mode`).
+  3. **Postings.** During a re-run, `commit.append` validates the ledger key and body as an append would and captures them as a restated posting instead of committing them (STD-TIME-043).
+     - **Proposals.** With `proposals`, the restatement compares these postings with the entries the original processes appended (from their commits' operations). It reports one proposal per class, ledger key and currency with a non-zero difference.
+     - **Dates.** A proposal is dated at the business date (`open_period`) or at the latest original valid time (`original`). The postings are reported too.
+  4. **Scoped state.** The mode and the captured postings live in thread-local values set only while a re-run executes, as for the period operations (DEC-101).
+  5. **DSN-DVM-331.** The statement now names the modes and the default of STD-TIME-041 as released (`as_effective`, `as_originally`, `current`), with a phase note.
+  6. **Claim.** The conformance test claims STD-TIME-041, -042 and -043.
+- **Consequences:**
+  - The 14 vectors pass in memory and on PostgreSQL 16, and the conformance test passes with 2,131 vectors.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+  - With 3b–3f, every money and period clause of BPA 1.0-rc8 and 1.0-rc9 that step 3 covers is implemented; part 3g closes the step.
+- **Alternatives considered:**
+  - Committing the restated appends on the correction branch was rejected, as in DEC-098: entries are immutable and would be counted twice on merge.
+  - Re-running under the original process ID was rejected: the original keeps its record, and the re-run is a new process on the correction branch, as in the reference model.
+- **Affects:** STD-TIME-031, STD-TIME-041, STD-TIME-042, STD-TIME-043, DSN-DVM-322, DSN-DVM-323, DSN-DVM-331, FR-TIME-043, FR-TIME-044, FR-TIME-045, FR-TIME-063, FR-TIME-064, DEC-098
 

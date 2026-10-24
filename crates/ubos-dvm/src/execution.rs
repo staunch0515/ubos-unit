@@ -722,7 +722,18 @@ impl<'a> EngineHost<'a> {
                 "not a logic asset",
             ));
         }
-        let vh = core.pinned.entry(oid).or_insert(head).clone();
+        // STD-TIME-041: under a restatement, the version of the re-evaluation mode
+        let vh = match core.pinned.get(&oid) {
+            Some(v) => v.clone(),
+            None => {
+                let v = match self.object(core, &oid)? {
+                    Some(o) => crate::restate::logic_version(&o),
+                    None => head,
+                };
+                core.pinned.insert(oid, v.clone());
+                v
+            }
+        };
         let body = self.version(&vh)?["body"].clone();
         self.check_asset(core, &body)?;
         if !core.logic.contains(&vh) {
@@ -966,8 +977,44 @@ impl<'a> EngineHost<'a> {
                 ch[k] = v.clone();
             }
         }
+        // STD-TIME-043 (1.0-rc9): a re-run's appends are its restated postings
+        if crate::restate::capture(self.posting(&cls, &ch)?) {
+            return Ok(json!({"entry_id": eid}));
+        }
         core.add(ch)?;
         Ok(json!({"entry_id": eid}))
+    }
+
+    /// A restated posting `{class, ledger_key, valid_at, body}`, validated as an append
+    /// would be (STD-TIME-043); empty outside a restatement.
+    fn posting(&mut self, cls: &str, ch: &Value) -> Result<Value, BpaError> {
+        let c = self.e.registry.class(cls)?.clone();
+        let keys: Vec<String> = c
+            .ledger
+            .as_ref()
+            .and_then(|l| l.get("key"))
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|x| x.as_str().map(str::to_string))
+            .collect();
+        let mut key = Map::new();
+        for k in &keys {
+            let f = c.fields.get(k).cloned().unwrap_or(Value::Null);
+            let v = ubos_types::values::validate_value(
+                s(&f, "type").unwrap_or("text"),
+                f.get("constraints"),
+                &ch["ledger_key"][k],
+            )?;
+            key.insert(k.clone(), v);
+        }
+        let body = self.e.registry.check_body(cls, &ch["body"], false)?;
+        let valid = ch
+            .get("valid_at")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .unwrap_or_else(|| self.e.default_valid_of(cls));
+        Ok(json!({"class": cls, "ledger_key": key, "valid_at": valid, "body": body}))
     }
 
     fn entry_class(&mut self, core: &mut Core, eid: &Value) -> Result<String, BpaError> {

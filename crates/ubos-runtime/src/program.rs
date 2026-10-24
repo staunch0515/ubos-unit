@@ -450,8 +450,9 @@ impl Core {
         }
         if matches!(s(&change, "op"), Some("create" | "update" | "append")) {
             let vh = self.frames.last().and_then(|f| f.vh.clone());
-            change["derivation"] =
-                json!({"logic": [vh], "inputs": self.triples, "mode": "as_effective"});
+            let mode = DERIVATION_MODE.with(|m| m.borrow().clone());
+            change["derivation"] = json!({"logic": [vh], "inputs": self.triples,
+                                          "mode": mode.as_deref().unwrap_or("as_effective")});
         }
         self.uow.push(change);
         Ok(self.uow.len() - 1)
@@ -543,6 +544,20 @@ pub fn eval(
     drop(ev);
     let (core, _) = resolver.inner.into_inner();
     core.charge(used)?;
+    r
+}
+
+thread_local! {
+    /// The re-evaluation mode recorded on derivations during a restatement (STD-TIME-041).
+    static DERIVATION_MODE: RefCell<Option<String>> = const { RefCell::new(None) };
+}
+
+/// Run `f` with derivations recording the re-evaluation mode `mode` (STD-TIME-041, BPA
+/// 1.0-rc8): the engine's restatement re-runs processes under it.
+pub fn with_derivation_mode<T>(mode: &str, f: impl FnOnce() -> T) -> T {
+    DERIVATION_MODE.with(|m| *m.borrow_mut() = Some(mode.to_string()));
+    let r = f();
+    DERIVATION_MODE.with(|m| *m.borrow_mut() = None);
     r
 }
 

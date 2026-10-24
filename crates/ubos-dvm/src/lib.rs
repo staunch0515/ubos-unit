@@ -21,6 +21,7 @@ pub mod process;
 pub mod projections;
 pub mod proofs;
 pub mod relations;
+pub mod restate;
 pub mod rules;
 pub mod sheets;
 pub mod stateful;

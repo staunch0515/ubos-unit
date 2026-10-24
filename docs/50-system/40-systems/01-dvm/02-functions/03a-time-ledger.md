@@ -196,7 +196,7 @@ This file designs the crates `ubos-time` and `ubos-ledger`; `ubos-txn` is in `03
 - **Origin:** FR-TIME-061, FR-TIME-062, STD-TIME-040
 
 ### DSN-DVM-331 — Re-evaluation modes
-- **Statement:** Re-evaluation of a derived result MUST support the modes of STD-TIME-041: `as-recorded` (default; the original bindings), `as-of-valid-time` (bindings effective at the result's valid time) and `current` (current bindings). The mode used MUST be recorded on the new version.
+- **Statement:** Re-evaluation of a derived result MUST support the modes of STD-TIME-041: `as_effective` (default; the logic versions effective at the recomputed date), `as_originally` (the versions the original process ran) and `current` (the head versions). The mode used MUST be recorded on the new version.
 - **Rationale:** Old data follows old logic by default (FR-TIME-064).
 - **Priority:** Must · **Phase:** PH-2 · **Systems:** DVM
 - **Personas:** PER-FundAccountant
@@ -204,6 +204,7 @@ This file designs the crates `ubos-time` and `ubos-ledger`; `ubos-txn` is in `03
   1. Given a fee rule changed in March, when a January fee is re-evaluated in the default mode, then the January rule is used.
 - **Verification:** CONF
 - **Origin:** FR-TIME-063, FR-TIME-064, STD-TIME-041
+- **Phase note:** DEC-103: the mode names and the default follow STD-TIME-041 as released in BPA 1.0-rc8 (DEC-090); built in PH-2 step 3f.
 
 ## Ledger storage and appends
 
