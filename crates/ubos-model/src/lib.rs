@@ -363,6 +363,28 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("balances", "json", true),
             ],
         ),
+        // STD-KIND-028 (BPA 1.0-rc8, DEC-090): match records are entries of a genesis ledger
+        // class keyed by their match set.
+        {
+            let mut d = g(
+                "MatchRecord",
+                Some("ledger"),
+                Some("Object"),
+                false,
+                vec![
+                    field("match_set", "text", true),
+                    field("left", "json", true),
+                    field("right", "json", true),
+                    field("rule", "text", false),
+                    field("rule_ref", "text", false),
+                    field("actor", "text", true),
+                    field("unmatches", "text", false),
+                    field("reason", "text", false),
+                ],
+            );
+            d["ledger"] = json!({"key": ["match_set"], "amounts": [], "double_entry": false});
+            d
+        },
         // STD-TIME-021 (BPA 1.0-rc9, DEC-098): projections are Definition objects below
         // ConfigAsset.
         g(
@@ -425,6 +447,7 @@ pub fn is_genesis(name: &str) -> bool {
             | "LedgerAccount"
             | "Projection"
             | "CloseArtefact"
+            | "MatchRecord"
     )
 }
 

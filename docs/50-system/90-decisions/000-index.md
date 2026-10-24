@@ -25,6 +25,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-099 | PH-2 step 3b: currencies, FX rates and accounts in the kernel — ISO 4217 table and added codes, `Currency`, `FxRate` and `LedgerAccount` checks, `fx_convert` and `convert` against a branch with the rates journaled, adapter operations `currency` and `fx_rate`; the conformance test claims STD-FND-028, -029 and STD-KIND-029 of BPA 1.0-rc9 | Accepted |
 | DEC-100 | PH-2 step 3c: projections in the kernel — `Projection` declarations, reads with watermark, `at_least`, `group`, `asof` and roll-up, `read.projection`, rows per commit, group and valid time in `projection_delta` (migration 0017) with a mark per branch, atomic rebuild; checkpoints with the benchmarks of step 18; the SDK error registries regenerated for `QRY.WATERMARK_TIMEOUT` | Accepted |
 | DEC-101 | PH-2 step 3d: periods, close and reopen in the kernel — period transitions checked at commit, `close_period` with the `CloseArtefact` System object and the signed tag `close-<slug>-<n>`, `reopen_period` with a reason; STD-KIND-025, -026 and STD-VER-055 claimed; the approval of reopening with step 4 | Accepted |
+| DEC-102 | PH-2 step 3e: matching, match records and statement lines in the kernel — `match` with the three rule kinds, tolerances, windows and breaks, `MatchRecord` entries with derived ids appended by `match` and `unmatch` only, statement-line ids derived at commit and `ingest_statement`; STD-KIND-027, -028 and -030 claimed | Accepted |
 
 ---
 
@@ -425,4 +426,26 @@ DEC-090 on follow.
   - Closing through two commits (the period, then the artefact) was rejected: STD-KIND-026 requires one commit, and the artefact's `as_of` must be the commit the close extends.
   - A separate flag on the transaction for the period operations was rejected: a scoped thread-local value set only while the operation's commit runs keeps the commit signature unchanged.
 - **Affects:** STD-KIND-025, STD-KIND-026, STD-KIND-040, STD-VER-055, DSN-DVM-443, DSN-DVM-444, FR-LEDG-061, FR-LEDG-062, FR-LEDG-063, DEC-098
+
+### DEC-102 — Matching, match records and statement lines in the kernel (PH-2 step 3, part 3e)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** Part 3e of PH-2 step 3 (DEC-098) implements STD-KIND-027 and STD-KIND-028 of BPA 1.0-rc8 and STD-KIND-030 of BPA 1.0-rc9 in the kernel (DSN-DVM-445, -446). Before the part, their 28 vectors failed: `match`, `unmatch`, `ingest_statement` and the class `MatchRecord` were missing, and statement lines took any entry id. The owner confirmed the part with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Matching.** `crates/ubos-dvm/src/matching.rs` applies the rules in priority order, as the reference model does.
+     - **Rules.** Each rule is checked for an id, a kind, the amount fields, `equal` pairs, a tolerance that is not negative and a non-negative window.
+     - **Candidates.** The entries of each side (class and optional ledger key) not referenced by an active record of the set, ordered by `valid_at` and `entry_id`.
+     - **Kinds.** One-to-one takes the first right entry that satisfies the rule. One-to-many and many-to-one group the unmatched entries with equal fields within the window and match when the sum per currency is within the tolerance, `negate` applied.
+     - **Result.** The matches with `rule_ref` (the content ID of the rule) in the order made, and the breaks of each side.
+  2. **Match records.** `MatchRecord` is a genesis ledger class keyed by `match_set`. A committed run appends one record per match with the actor (the process initiator, or the adapter's principal), under an id derived from `["ubos.match.v1", body]`. `unmatch` appends a record naming the one it undoes; an unknown record fails with `IAM.NOT_FOUND` and one that is not active with `MODEL.CONSTRAINT_VIOLATED`. Other commits that append match records fail with `LOGIC.FORBIDDEN_TARGET`.
+  3. **Statement lines.** For classes with `ledger.statement`, the commit checks that the id of every appended line (not a reversal or adjustment) is derived from `["ubos.statement.v1", [source, account, statement, line]]`, otherwise `MODEL.INVALID_VALUE`.
+     - **Ingestion.** `ingest_statement` compares each line, validated against the class, with the stored or earlier line of the same id by content ID. It skips duplicates, fails a changed line with `TXN.IDEMPOTENCY_MISMATCH` before anything is committed, and appends the new lines in one commit.
+  4. **Claim.** The conformance test claims STD-KIND-027, -028 and -030.
+- **Consequences:**
+  - The 28 vectors pass in memory and on PostgreSQL 16, and the conformance test passes with 2,131 vectors.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+  - The bank file parsers (DSN-NOD-305) produce these lines in PH-2 step 12.
+- **Alternatives considered:**
+  - Matching by searching subsets of entries whose sum equals the amount was rejected: STD-KIND-027 forms groups from equal fields only, so the cost grows with the number of entries.
+  - Ingesting with one commit per line was rejected: a statement is appended in one commit, so a failed ingestion leaves nothing behind.
+- **Affects:** STD-KIND-027, STD-KIND-028, STD-KIND-030, DSN-DVM-445, DSN-DVM-446, FR-LEDG-071, FR-LEDG-072, FR-LEDG-073, FR-LEDG-074, DEC-098
 

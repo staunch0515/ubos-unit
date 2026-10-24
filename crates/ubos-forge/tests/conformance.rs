@@ -82,6 +82,10 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-KIND-025",
     "STD-KIND-026",
     "STD-VER-055",
+    // BPA 1.0-rc8/rc9 (PH-2 step 3e, DEC-102): matching, match records, statement lines
+    "STD-KIND-027",
+    "STD-KIND-028",
+    "STD-KIND-030",
 ];
 
 /// The clauses a vector verifies.

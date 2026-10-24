@@ -140,7 +140,28 @@ pub(crate) fn check(
         }
     }
     let appended: Vec<Entry> = tx.appended.clone();
+    crate::matching::check_appended(&appended)?;
     for e in &appended {
+        // STD-KIND-030 (1.0-rc9): the id of a statement line is derived from the line
+        let statement = repo
+            .reg
+            .class(&e.class)?
+            .ledger
+            .as_ref()
+            .and_then(|l| l.get("statement"))
+            .and_then(Value::as_object)
+            .cloned();
+        if let Some(spec) = statement
+            && e.corrects.is_none()
+        {
+            let derived = crate::matching::statement_id(&spec, &e.body)?;
+            if e.entry_id != derived {
+                return Err(BpaError::with_details(
+                    "MODEL.INVALID_VALUE",
+                    json!({"entry_id": e.entry_id, "derived": derived}),
+                ));
+            }
+        }
         let field = repo
             .reg
             .class(&e.class)?
