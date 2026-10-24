@@ -908,6 +908,7 @@ class Run:
         if 'LogicAsset' not in self.s._cls(st['objects'][oid]['class'])['linearization']:
             raise BpaError('MODEL.REFERENCE_INVALID', 'not a logic asset')
         vh = self.pinned.setdefault(oid, self._logic_version(st['objects'][oid]))
+        self.s._q_check(vh)        # STD-CTX-031 (1.0-rc8)
         body = self.s.versions[vh]['body']
         self.check_asset(body)
         if vh not in self.logic:
@@ -1000,6 +1001,7 @@ class Exec:
                     continue
                 outcome = {'LOGIC.LIMIT_EXCEEDED': 'limit', 'LOGIC.CANCELLED': 'cancelled'}.get(e.code, 'error')
                 self._finish(run, i, p, None, None, outcome, attempt)
+                self._q_failure(run, e.code, outcome)       # STD-CTX-031 (1.0-rc8)
                 raise
             return self._finish(run, i, p, result, cid, 'ok', attempt)
 

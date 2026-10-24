@@ -45,6 +45,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-089 | PH-2 step 1 opened: BPA 1.0-rc8 scoped by a phase rule (`{base: 1.0-rc7, phase: PH-2}`, six profiles): 224 clauses, 23 added, MUST coverage 168/186 at the opening; the step in parts 1a–1h by clause area, standard and reference model only, each part's clarifications in its own decision; the kernel keeps claiming 1.0-rc1 plus the clauses it implements | Accepted |
 | DEC-090 | PH-2 step 1b: money and periods in BPA 1.0-rc8 — period transitions (open ↔ closing by update, `close_period`/`reopen_period` for closed), close artefacts with a signed tag (STD-KIND-026), deterministic matching and match records (STD-KIND-027, -028), restatement on a correction branch with re-evaluation modes (STD-TIME-041, -042); VER-CONF-1528 superseded | Accepted |
 | DEC-091 | PH-2 step 1c: approvals and rules in BPA 1.0-rc8 — deferred commits with `defer` (STD-TXN-060), decision tables with hit policies and an authoring check (STD-LGS-040, STD-ISA-053), approval requirements, separation of duties and approval evidence (STD-LGS-041…043), simulation of rule changes (STD-LGS-044) | Accepted |
+| DEC-092 | PH-2 step 1d: workflows, sagas, quarantine, lenses and upstream changes in BPA 1.0-rc8 — workflow definitions, instances, events, timers, tasks and migration (STD-TXN-090…092), sagas (STD-TXN-080), quarantine (STD-CTX-031), computed change classification, lenses and their application and totality check (STD-CLS-050, -060…062), upstream change detection (STD-VER-082) | Accepted |
 
 ---
 
@@ -708,3 +709,46 @@ the records from DEC-060 on follow.
   - Analysing arbitrary conditions symbolically was rejected: sampling at the compared literals finds the gaps and overlaps of range and enumerable inputs, and other inputs are reported as unchecked rather than guessed.
   - Simulating by replaying journals with substituted rules was rejected for 1.0-rc8: the journal pins the original reads and rule bindings, so the candidate rules would not be evaluated. Re-running on a sandbox as of the original snapshot evaluates them.
 - **Affects:** STD-TXN-060, STD-LGS-011, STD-LGS-031, STD-LGS-040, STD-LGS-041, STD-LGS-042, STD-LGS-043, STD-LGS-044, STD-ISA-053, STD-VER-021, STD-TIME-040, STD-CONF-005, FR-FLOW-041, FR-FLOW-042, FR-FLOW-043, FR-FLOW-044, FR-FLOW-045, FR-FLOW-046, FR-RULE-041, FR-RULE-042, FR-RULE-071, FR-RULE-072, FR-RULE-073, DSN-DVM-740, DSN-DVM-742, DSN-DVM-760, DSN-DVM-761, DSN-DVM-762, DEC-089
+
+### DEC-092 — Workflows, sagas, quarantine, lenses and upstream changes in BPA 1.0-rc8 (PH-2 step 1, part 1d)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** Part 1d of PH-2 step 1 (DEC-089) writes the clauses and vectors of long-running processes and schema evolution.
+  - STD-TXN-080 (sagas), STD-CTX-031 (quarantine), STD-CLS-050, -060…062 (change classification and lenses) and STD-VER-082 (upstream changes) existed without vectors or the detail an implementation needs.
+  - FR-FLOW-061, -062, -064 and DSN-DVM-750…753 (workflows) had no clause.
+  - STD-TXN-051 (pre-commit external calls) moves to part 1f with `call.connector`.
+
+  The owner confirmed the semantic choices with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Workflows (STD-TXN-090…092, new).**
+     - **Definitions.** A definition is a versioned object of the genesis class `WorkflowDefinition` with typed variables, a start step and steps of the eight types of FR-FLOW-061. Conditions, parameters and keys are L1 expressions over the variables.
+     - **Instances.** An instance is an object of the genesis System class `WorkflowInstance`, pinned to the definition version current at its start and advanced only by the workflow operations. Each step is one committed state change.
+     - **Idempotency.** An action's port call is idempotent by `(instance, step, visit, attempt)`; the visit counts entries into a step, so loops keep distinct identities. A join fires once, when the last branch of its parallel step arrives.
+     - **Events.** An event wakes at most one step waiting for its type and correlation key, the one waiting longest; an unmatched event is buffered and delivered to a step that starts waiting within its declared `buffer` window (FR-FLOW-064). A repeated event ID returns the first result.
+     - **Timers and tasks.** Timers fire when the clock reaches their due time. A human task is completed by its assignee; completing the same `(instance, step, visit)` again returns the first result.
+     - **Migration.** A running instance continues on its pinned version. Moving it to another version maps every waiting step and every join not yet fired to a step of the same type; a missing mapping fails with `MODEL.MIGRATION_REQUIRED`.
+  2. **Sagas (STD-TXN-080).** A saga is an object of the genesis class `Saga`; its state members are written by its execution only (`FLOW.STATE_DIRECT_WRITE`).
+     - **Steps.** Each step is a port call run as its own process and commit, linked by `saga`. A limit termination is a timeout.
+     - **Recovery.** Backward recovery compensates the completed steps in reverse order; forward recovery retries a step up to `max_attempts` and then ends the saga `failed`.
+     - **Durability.** Every state transition is committed; a resumed saga does not run again a step whose process committed. Crashes are simulated by `interrupt_after`.
+  3. **Quarantine (STD-CTX-031).** A per-VAE policy `{threshold, window, releasers}` counts the failures and limit terminations of a process's entry asset version in the trailing window. Reaching the threshold creates a `Quarantine` System object and releases an `AssetQuarantined` effect; calls of the version then fail fast with `LOGIC.ASSET_QUARANTINED`. A listed principal releases it with a reason (`QuarantineRelease`).
+  4. **Change classification (STD-CLS-050).** The kernel computes the classification of a class change made by `change_class` from the effective fields, the ports and the stored current versions. A lens-required change needs a total lens (`MODEL.LENS_REQUIRED`), and a breaking change is refused (`MODEL.MIGRATION_REQUIRED`). Loading genesis declarations is not a class change.
+  5. **Lenses (STD-CLS-060…062).**
+     - **Operations.** The nine operations are defined in both directions; expressions are L1 over the body. `drop_with_archive` keeps values in `_archived`. L2 residual functions are not available in 1.0-rc8.
+     - **Reads.** Reads return the current schema version by default and lens along the chain of schema versions; the result is not stored.
+     - **Writes.** A change in an older schema version is lensed forward; an update's patch applies to its base seen in that version. Merges align base, source and target to the current version.
+     - **Totality check.** Round trips and target conformance are checked over generated values of the touched fields and the stored current versions (at most 10,000), with up to ten failures reported.
+  6. **Upstream changes (STD-VER-082).** The first own version of an inherited object records the parent version it was based on. An override whose parent-line head differs is reported with the versions before and after. A resolution by acknowledgement or by a three-way merge (STD-VER-050) records the parent head as the new base.
+  7. **Adapter operations.** `start_workflow`, `deliver_event`, `complete_task`, `migrate_workflow`, `run_saga`, `quarantine_policy`, `release_quarantine`, `change_class`, `classify_change`, `apply_lens`, `check_lens`, `upstream_changes` and `resolve_upstream`. `read` and `commit` take `schema_version` (STD-CONF-005).
+     - **Reference model.** `standard/tools/bpa/workflows.py` and `lenses.py`.
+     - **Cases.** `standard/tools/cases/workflows.py` and `evolution.py`.
+- **Consequences:**
+  - 1.0-rc8 has 235 clauses and 1,922 vectors.
+  - Part 1d adds 122 Core vectors.
+  - MUST coverage is 189/197.
+  - No released vector changed. `crates/` is unchanged; the kernel takes up these clauses in PH-2 steps 4 and 5.
+- **Alternatives considered:**
+  - New error codes for a task that does not wait and an incomplete migration were rejected: `FLOW.TRANSITION_NOT_ALLOWED` and `MODEL.MIGRATION_REQUIRED` state the conditions, and the error registry and the SDKs stay unchanged.
+  - Classifying changes as declared by the author was rejected: STD-CLS-050 requires a computed classification.
+  - Treating `load_genesis` as a class change was rejected: released vectors reload declarations freely.
+  - Lensing reads only on request was rejected: a body in an older schema version does not conform to the current class.
+- **Affects:** STD-TXN-080, STD-TXN-090, STD-TXN-091, STD-TXN-092, STD-CTX-031, STD-CLS-050, STD-CLS-060, STD-CLS-061, STD-CLS-062, STD-VER-082, STD-CONF-005, FR-FLOW-061, FR-FLOW-062, FR-FLOW-064, FR-TXN-061, FR-TXN-062, FR-TXN-063, FR-LOGIC-064, FR-MODEL-081, FR-MODEL-082, FR-MODEL-083, FR-MODEL-084, FR-MODEL-085, FR-MODEL-086, FR-VER-086, DSN-DVM-750, DSN-DVM-751, DSN-DVM-752, DSN-DVM-753, DEC-089

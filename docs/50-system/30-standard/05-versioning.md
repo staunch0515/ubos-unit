@@ -406,7 +406,10 @@ DAT-Resolution:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1650…1659
 - **Satisfies:** FR-VER-086
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-092):
+  - **Override.** An object of the parent line becomes an override when X first commits its own version; the parent version it was based on is recorded.
+  - **Mark.** `upstream_changes` lists the overrides whose parent-line head differs from the recorded version, with `before` and `after` (`after` is null when the parent line no longer has the object, for example when it hides it). A parent version that ends the object can only be acknowledged; a merge fails with `MODEL.CONSTRAINT_VIOLATED`.
+  - **Resolution.** `resolve_upstream` resolves one by `acknowledge`, or by `merge`. A merge compares the recorded version as base, the parent head as source and X's version as target (STD-VER-050); it takes resolutions as a merge does and fails with `VER.MERGE_CONFLICT` otherwise. A merged result that differs from X's version is committed on X. Both modes record the parent head as the new base, which clears the mark.
 
 ## 9. Points in history
 

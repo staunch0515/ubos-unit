@@ -282,4 +282,8 @@ DAT-VerificationRecord:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4355…4364
 - **Satisfies:** FR-LOGIC-064
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-092):
+  - **Policy.** The threshold is configured per VAE as `{threshold, window, releasers}` (adapter operation `quarantine_policy`); without a policy nothing is quarantined. The rate is the number of failures and limit terminations of a process's entry asset version within the trailing `window`; reaching `threshold` quarantines the version. Cancellations, conflicts (`TXN.*`) and calls refused by a quarantine do not count.
+  - **Quarantine.** It is a `Quarantine` object (System kind) on the branch of the failing process, with the counts, the window and the last error. Its commit releases an effect `AssetQuarantined` to the outbox (STD-TXN-050), which alerting consumes.
+  - **Fail fast.** While the version is quarantined, every process that resolves it fails with `LOGIC.ASSET_QUARANTINED` before running.
+  - **Release.** A principal listed in `releasers` releases the quarantine with a reason (adapter operation `release_quarantine`); the release is a `QuarantineRelease` object and the counts restart. Other principals fail with `IAM.DENIED`.

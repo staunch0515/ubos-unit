@@ -1,0 +1,29 @@
+{
+  "$id": "DAT-WorkflowDefinition",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "name": {
+      "description": "name",
+      "type": "string"
+    },
+    "start": {
+      "description": "the first step",
+      "type": "string"
+    },
+    "steps": {
+      "description": "step name -> DAT-WorkflowStep",
+      "type": "object"
+    },
+    "variables": {
+      "description": "{name, type, constraints, default} items",
+      "type": "array"
+    }
+  },
+  "required": [
+    "name",
+    "start",
+    "steps"
+  ],
+  "title": "DAT-WorkflowDefinition",
+  "type": "object"
+}

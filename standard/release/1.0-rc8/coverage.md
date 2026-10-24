@@ -6,13 +6,13 @@
 
 | Profile | MUST clauses with a range | Covered | Coverage | Vectors | Prototype vectors |
 |---|---|---|---|---|---|
-| Core | 137 | 123 | 90% | 1166 | 355 |
+| Core | 140 | 133 | 95% | 1288 | 355 |
 | Bitemporal | 12 | 12 | 100% | 69 | 30 |
 | Ledger | 12 | 12 | 100% | 92 | 52 |
 | Proof | 9 | 9 | 100% | 73 | 16 |
 | Governance | 15 | 15 | 100% | 259 | 0 |
 | Protocol | 9 | 8 | 89% | 141 | 0 |
-| **All** | **194** | **179** | **92%** | **1800** | **453** |
+| **All** | **197** | **189** | **96%** | **1922** | **453** |
 
 ## Clauses
 
@@ -61,10 +61,10 @@
 | STD-CLS-031 | Core | yes | 10 (VER-CONF-0800…VER-CONF-0809) |
 | STD-CLS-040 | Core | yes | 18 (VER-CONF-0810…VER-CONF-0827) |
 | STD-CLS-041 | Core | yes | 13 (VER-CONF-0840…VER-CONF-0852) |
-| STD-CLS-050 | Core | yes | **none** |
-| STD-CLS-060 | Core | yes | **none** |
-| STD-CLS-061 | Core | yes | **none** |
-| STD-CLS-062 | Core | yes | **none** |
+| STD-CLS-050 | Core | yes | 13 (VER-CONF-0860…VER-CONF-0872) |
+| STD-CLS-060 | Core | yes | 21 (VER-CONF-0880…VER-CONF-0900) |
+| STD-CLS-061 | Core | yes | 11 (VER-CONF-0920…VER-CONF-0930) |
+| STD-CLS-062 | Core | yes | 6 (VER-CONF-0940…VER-CONF-0945) |
 | STD-KIND-001 | Core | yes | 4 (VER-CONF-1000…VER-CONF-1003) |
 | STD-KIND-020 | Ledger | yes | 13 (VER-CONF-1020…VER-CONF-1032) |
 | STD-KIND-021 | Ledger | yes | 4 (VER-CONF-1040…VER-CONF-1043) |
@@ -105,7 +105,7 @@
 | STD-VER-071 | Core | yes | 5 (VER-CONF-1605…VER-CONF-1609) |
 | STD-VER-080 | Core | yes | 14 (VER-CONF-1615…VER-CONF-1628) |
 | STD-VER-081 | Core | yes | 4 (VER-CONF-1645…VER-CONF-1648) |
-| STD-VER-082 | Core | yes | **none** |
+| STD-VER-082 | Core | yes | 10 (VER-CONF-1650…VER-CONF-1659) |
 | STD-VER-090 | Core | yes | 9 (VER-CONF-1660…VER-CONF-1668) |
 | STD-TIME-001 | Bitemporal | yes | 3 (VER-CONF-1700…VER-CONF-1702) |
 | STD-TIME-010 | Bitemporal | no | 3 (VER-CONF-1715…VER-CONF-1717) |
@@ -137,7 +137,10 @@
 | STD-TXN-051 | Core | yes | **none** |
 | STD-TXN-060 | Governance | yes | 9 (VER-CONF-2190…VER-CONF-5167) |
 | STD-TXN-070 | Core | yes | 6 (VER-CONF-2215…VER-CONF-2220) |
-| STD-TXN-080 | Core | yes | **none** |
+| STD-TXN-080 | Core | yes | 13 (VER-CONF-2225…VER-CONF-2237) |
+| STD-TXN-090 | Core | yes | 18 (VER-CONF-2245…VER-CONF-2262) |
+| STD-TXN-091 | Core | yes | 14 (VER-CONF-2265…VER-CONF-2278) |
+| STD-TXN-092 | Core | yes | 6 (VER-CONF-2285…VER-CONF-2290) |
 | STD-PROOF-001 | Proof | yes | 11 (VER-CONF-2300…VER-CONF-2310) |
 | STD-PROOF-002 | Proof | yes | 3 (VER-CONF-2340…VER-CONF-2342) |
 | STD-PROOF-003 | Proof | yes | 2 (VER-CONF-2350…VER-CONF-2351) |
@@ -202,7 +205,7 @@
 | STD-CTX-023 | Core | yes | 8 (VER-CONF-4285…VER-CONF-4292) |
 | STD-CTX-024 | Core | yes | 8 (VER-CONF-4305…VER-CONF-4312) |
 | STD-CTX-030 | Core | yes | 2 (VER-CONF-4345…VER-CONF-4346) |
-| STD-CTX-031 | Core | yes | **none** |
+| STD-CTX-031 | Core | yes | 10 (VER-CONF-4355…VER-CONF-4364) |
 | STD-EXPR-001 | Core | yes | 23 (VER-CONF-4400…VER-CONF-4422) |
 | STD-EXPR-002 | Core | yes | 21 (VER-CONF-4460…VER-CONF-4480) |
 | STD-EXPR-003 | Core | yes | 16 (VER-CONF-4500…VER-CONF-4515) |

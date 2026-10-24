@@ -1,18 +1,18 @@
 {
-  "clauses": 232,
-  "content_id": "sha256:c7618a84db2b89765bf6fd7c7a641afd78940e941f9b4de014e9d00b5aebd939",
+  "clauses": 235,
+  "content_id": "sha256:e9a7c60720cb3ef88b18d15ce65c949d2688a309f838777984bbca510c390249",
   "files": [
     {
       "path": "release/1.0-rc8/coverage.md",
-      "sha256": "ee1e9a847ab9468a01ce44186101a7c254cf95d5680f26a0ca9196b7227489ed"
+      "sha256": "bd9e2e573c2d0769a93cd7a29d401cc502ac07b61408931da662b5ec0a177408"
     },
     {
       "path": "release/1.0-rc8/notes.md",
-      "sha256": "23f7e4db976c7ba001834973e369fa484682afbec076e481d7a450c3d27ab038"
+      "sha256": "f68d849088cdfa3022cd5feff7829bdbac2d5ae71ababa38a6ee691e3da64b98"
     },
     {
       "path": "release/1.0-rc8/scope.json",
-      "sha256": "7d1a4a259f8f2b26943282e4536ecddfae8b2f71baf906797e3d4dde8201af4e"
+      "sha256": "459c735aacf671a565957b578d2c2f2f3a98e3c1c04047f08957d46e4b94cb2b"
     },
     {
       "path": "spec/01-foundations.md",
@@ -24,7 +24,7 @@
     },
     {
       "path": "spec/03-class-system.md",
-      "sha256": "cb9b4f2058eb7b6f728463bfcc9d54832870cdf01918659a46d138a38262e0d7"
+      "sha256": "89f6d2f101eeb22317fb466e4173fefbe52544179632e9583d876005d60474fd"
     },
     {
       "path": "spec/04-state-kinds.md",
@@ -32,7 +32,7 @@
     },
     {
       "path": "spec/05-versioning.md",
-      "sha256": "d57052e3ed60597b1736e12dc5fd84f284152732211809e1e1f5c92c9b1b8cc2"
+      "sha256": "717b56a13fabda949b26e52107057d8dd300f5cb89a3a64d845d684e45aac6e0"
     },
     {
       "path": "spec/06-bitemporal.md",
@@ -40,7 +40,7 @@
     },
     {
       "path": "spec/07-transactions.md",
-      "sha256": "fff7e2721949bfbb1a856509fac8f26dbae22dad039ebe67954fd355a0dc69a6"
+      "sha256": "ba1faa312d6e989dd146ff71141b5c8b3309b829481b4947e7fe3c6e7385b614"
     },
     {
       "path": "spec/08-proofs.md",
@@ -68,7 +68,7 @@
     },
     {
       "path": "spec/11-execution.md",
-      "sha256": "5a11b5b4fb65bcc36e4e722cfe4c8424d4ed0cb9a1bfffc6759439dbfec93296"
+      "sha256": "d9ebeaeac7ece796e7167c56d7321e77af59ab86b0830d319aa5cb0effb02c1e"
     },
     {
       "path": "spec/12-expressions.md",
@@ -92,7 +92,7 @@
     },
     {
       "path": "spec/18-conformance.md",
-      "sha256": "514f6749b307c56897be9e17ede8252eeadb58ff47754c9f5583397f583a38ad"
+      "sha256": "1c6e55df70658e1750a8e1b5246a373e16d8afbc90d8fe75f42ed3fbe14b583d"
     },
     {
       "path": "spec/schemas/DAT-AdapterChange.schema.json",
@@ -255,6 +255,10 @@
       "sha256": "30d6211618e5c4088b9f8127397df3f22bfaeb3e85bf9789fd7d0b193a6384fb"
     },
     {
+      "path": "spec/schemas/DAT-Saga.schema.json",
+      "sha256": "ab5f74be08f8370fc8122200b1c9c3ab4fe0c74ef830c8a1edc170fec7a0320e"
+    },
+    {
       "path": "spec/schemas/DAT-Sheet.schema.json",
       "sha256": "d94455505b52b833f110f38293ff26a8d019fd0d000268082d95e50b61df4b38"
     },
@@ -281,6 +285,10 @@
     {
       "path": "spec/schemas/DAT-VerificationRecord.schema.json",
       "sha256": "5236bb3d0e2f75ed363bf8ae551af3300db5e4b4d05ae39dc91a5b09d43111db"
+    },
+    {
+      "path": "spec/schemas/DAT-WorkflowDefinition.schema.json",
+      "sha256": "1fee5113987690ad8a5b458da2b1df78b4eefd7885d80dbd8601539bb74ba6d0"
     },
     {
       "path": "vectors/bitemporal/VER-CONF-1700.json",
@@ -2519,6 +2527,210 @@
       "sha256": "542d642437a3ea3bda52261db276189026063d4509c307e127d89d5c17987808"
     },
     {
+      "path": "vectors/core/VER-CONF-0860.json",
+      "sha256": "4a92288c87aaeb73faba1e08a6e7cafc440af203b6944734885b6532cec5fafb"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0861.json",
+      "sha256": "3606a513ea731fdcdbe2c5e159b90e0b36e89d40bfd61dca49d4073f415f5dcd"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0862.json",
+      "sha256": "2230fceb243c8a721b792220d7bc068bd566333dcca12300544e0d4e750e430c"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0863.json",
+      "sha256": "b49d3fd9b45f53f593dee93337c1ba8d5be461844ea3cb11eb0f7cd77cbba655"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0864.json",
+      "sha256": "0c94f95b6c32675236d959f7f324ba6729a6f32e0acebfeb8ab6baec8727ca91"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0865.json",
+      "sha256": "86740ffecfe4c4d28caa2c136935347b47c2df5c4a9b062229c530c4c687c388"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0866.json",
+      "sha256": "4cffc70e3b48b327207fa5134ceed062a8c9cb19d73ffea9099d63e0a98f291f"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0867.json",
+      "sha256": "ed95c1dcc5f3c0dc939ce33409332d53737ea9710ec8106a4fcaab235d2345dc"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0868.json",
+      "sha256": "38a9ab2391379f2a4c61185f71d30504daee9461faff114edeaae8e77ad425a2"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0869.json",
+      "sha256": "29ffdf6b0c0c8772455b96e1a6d6848fb2111c4406fd2fbce87a1b7c81d06a36"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0870.json",
+      "sha256": "4fcfab81457ee63379b68483bb8aba21e67c2ac4f1426e58214037546771b627"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0871.json",
+      "sha256": "036da65571cb0ffbd3f66a60b8c8fd93431590d2184225fb02e8d747ddc70200"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0872.json",
+      "sha256": "edd423c211ebd7870b086ad4b10f1c32bba1b2a6cd2699645481236e4647cf7f"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0880.json",
+      "sha256": "f07ae027718b3aa3bc78b44d10ff31cb0c6c1e21ff8f40c3beadef929703a626"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0881.json",
+      "sha256": "e377afdddcd2d0f1145256651aacf49859835a221a2d1acffb24ae6344ecb204"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0882.json",
+      "sha256": "50df7559ee1fee514ae21afd96eb78ceace545e50312d92b0a83213b3149c59a"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0883.json",
+      "sha256": "6ab49282e30e18351f7d264f169f31d4332d24df4c9a3ae2afd9d9d4bcd3aaf6"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0884.json",
+      "sha256": "46c06db8588dc1ed2fc458e5fb6769710a8e7f09e9d3df1e52cf35a1abc37cfa"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0885.json",
+      "sha256": "6ab3b2cb3e915dfc2ca7f01f46724abe3175bb15fcf1e380de5fc65a40de5e40"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0886.json",
+      "sha256": "866d52e84052273f658b7645b7dba6a0cce9823262d6bbda6162cff9544d75d5"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0887.json",
+      "sha256": "08f641e9e1266fa3340510d77913a0d538819d1301366d5aac59fa30301ded65"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0888.json",
+      "sha256": "d961c6045f35a8d781b5a37936a3c741ba5a01ec731386d704fa8ac0bbc4366e"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0889.json",
+      "sha256": "ed2ddc80631c5fcc63226a53948f2d054dbe656fcdd7002f8382a3af36a7f3df"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0890.json",
+      "sha256": "6c294e72717a30c05ebac656028368d38590e68d26002f83e94b7d4cf6da2a35"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0891.json",
+      "sha256": "14cacdfafb0054468789c29434d644ff0f9c810087fbd484422a1e49c960b325"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0892.json",
+      "sha256": "516fee50a29f2c0ee0abc662b119d9331af672a07c64f84541ab04ce7c4925fb"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0893.json",
+      "sha256": "82dcad392aafbccea9799e2dd0f213f182b2268091a181633a9f445c2718e442"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0894.json",
+      "sha256": "b167a019a85cc1fa47e38aa41095031b61a40bfef3881a60b6461918ce957a47"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0895.json",
+      "sha256": "f39449293d4196d32a1b0f356d8c0219923075993e2891ffab7c7a12e1669267"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0896.json",
+      "sha256": "41bc4a060f34fcf6f69582147723c6429333e5e42531fff8a72d21405b91ccf8"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0897.json",
+      "sha256": "f30b60a4e175c4d523706e5cd6f2e14e0198971f709fae04c5fc1b116d815860"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0898.json",
+      "sha256": "c4761858ed3bd8a306c65bb9268bb105ba8664456fef6ddffec5af01d21459b9"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0899.json",
+      "sha256": "b00e7e60530a7d4574e1e2ba6ccd4e0261fa580bf9d3a7881d45d3190b45ec9d"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0900.json",
+      "sha256": "600c92c93c2c3a681d45126182090c30e8c67cfa9769d4bc8700d4e47d4a0fa6"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0920.json",
+      "sha256": "af616388ed2b73357986f2745be1c3ce726aa76bb688d4591f1e1b48bdf98390"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0921.json",
+      "sha256": "2369ce64b40aa053e8a6650b7b68c69043887e38d36bfd126e636dc4e785046d"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0922.json",
+      "sha256": "b32f32f10e9bc98c20f7254753ee6561387d41ce5358414642092d4558b66914"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0923.json",
+      "sha256": "27d490d88df5903a5b394e1072b62bd69dde763f745f8fa910273084a8769205"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0924.json",
+      "sha256": "2b0c342ef971d986435cfaf88bde4c38092c7d7a36315a20e534d99e314a3e79"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0925.json",
+      "sha256": "7f2e31dff52d8aa91f672716ad946999e91f25d99bfd06f22d29a7a23705d434"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0926.json",
+      "sha256": "a346c95838b91f9b3ff80095cf2fe88827b4cda82152e7a5fe9f061975c9758b"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0927.json",
+      "sha256": "e9ed95be9df15c9cd0fac2925e0b18db10b95e34e769d82acacbaf186ceb64e1"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0928.json",
+      "sha256": "13c83ac65d5d04d3cda33795891fe6642546ebce3b02272fed5743771e36f666"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0929.json",
+      "sha256": "22a011625f7c8c6e7a9b3b0ab93f515c8f239d10600766ea7d55f63a234ef2c7"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0930.json",
+      "sha256": "297791fce6cf90cf6877f1d4f8cc2d0afa700fbdcdca9ad8a1791a136b9c887e"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0940.json",
+      "sha256": "ec6a54cd23e3c3b95a9e3305a3d8d0e608d9bd15c7e2c9a5c7da4eb2edaffaf0"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0941.json",
+      "sha256": "e86e0f6c485f6cccb0da9a8adba04667123bdc1ec74a6dbaaa194b76508475b4"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0942.json",
+      "sha256": "a9d702063086f9e891f4c0eb50333c06d61f0db1589064763fe041b22f4a4354"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0943.json",
+      "sha256": "7fbd1d699c3ac6f16b29cff65b2fe01a1065f9f831a8dcf06a69a0a6d30f620d"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0944.json",
+      "sha256": "60d6f4baaa8ac9ed272e7b8b02b8fd373d1744eda499b1575207937df98250c5"
+    },
+    {
+      "path": "vectors/core/VER-CONF-0945.json",
+      "sha256": "0edc9bfaab265d6e5fe70a313ae7615f2616f089cfbced2fcedd45b9aa0902c0"
+    },
+    {
       "path": "vectors/core/VER-CONF-1000.json",
       "sha256": "4181dfb55be716c6d0bbb826b4d57ceff33f7132ee7add90748199efc2684509"
     },
@@ -3311,6 +3523,46 @@
       "sha256": "9ce7efd7d30c8df197516acc91d9d6135344fce75ede16ea9c8bdda375d9b0c3"
     },
     {
+      "path": "vectors/core/VER-CONF-1650.json",
+      "sha256": "897e3076ee2be059dcb6eb00960acf6f9ff343f11ede5aad02f9ef478e751656"
+    },
+    {
+      "path": "vectors/core/VER-CONF-1651.json",
+      "sha256": "eea0a9cdd91719dd7270b89b9340629b6112934125fab51da97a9f3e95091e8f"
+    },
+    {
+      "path": "vectors/core/VER-CONF-1652.json",
+      "sha256": "27a32510291405797b31bfb96267426d4120a6dfd084aaf0f7f46521ba9cb2a4"
+    },
+    {
+      "path": "vectors/core/VER-CONF-1653.json",
+      "sha256": "0e7799aec592d0e515e61bf1fcaa205ccb543e1930292120382ae90a1205ead3"
+    },
+    {
+      "path": "vectors/core/VER-CONF-1654.json",
+      "sha256": "2af09e8b2858ecd36729595081a102f4e58191b6057da3e97c2f5b15834e9188"
+    },
+    {
+      "path": "vectors/core/VER-CONF-1655.json",
+      "sha256": "d69eeab509904cc246f0f24f876dbcd61c82c7485860abb3aa528cf5457d0ef6"
+    },
+    {
+      "path": "vectors/core/VER-CONF-1656.json",
+      "sha256": "97828670e0074b8f9b4a9a439e97078bd5f1e49506133bae75064cda9c82aa02"
+    },
+    {
+      "path": "vectors/core/VER-CONF-1657.json",
+      "sha256": "cd88c21fbab78bb33006d271670a0947f1813b5d4708921a2f61f0a7ed18bcd8"
+    },
+    {
+      "path": "vectors/core/VER-CONF-1658.json",
+      "sha256": "91278d71d7ebeb18437cca6357d438df570f8a64fa408d7b5286b9325ab55d2a"
+    },
+    {
+      "path": "vectors/core/VER-CONF-1659.json",
+      "sha256": "7dfb01055c3247753c6e6e8d1cf2e6b56315a40953c4c9f0324fa0464b128051"
+    },
+    {
       "path": "vectors/core/VER-CONF-1660.json",
       "sha256": "4a85db1ae7d87ce508accf814fcb013bec334eb9af9cacb8fff17934c70d5a20"
     },
@@ -3573,6 +3825,210 @@
     {
       "path": "vectors/core/VER-CONF-2220.json",
       "sha256": "afc02c4996b305c738ef48cfbe0f5fe3fc982c6ff87a401ba8d4fea942e67971"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2225.json",
+      "sha256": "ea1d0f35d2857ed3a4bbb1fced1fa3db446744b8f39031b7c7f6024e51330513"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2226.json",
+      "sha256": "7d2b2fe65d7c739b6d4a10157f6804f12578467d5b3ec441a8c8753401e3f384"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2227.json",
+      "sha256": "13e4a092fd96e3ce5cd7ff5e5921ddf647660368105a1d5df4053f2849401a2f"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2228.json",
+      "sha256": "00f5554631d84118b6463fd54ff4e779b1bb95443f3a4c11cc6c3907307c2177"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2229.json",
+      "sha256": "68a5ed75d06a7fab71703ea86bf6a17d8d9889fb992d66a5dc615362eef603dc"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2230.json",
+      "sha256": "82cfb9c9fdae284bebfdfa9c5f9f01d11cf97c384206a2ba624bb50e93e3d592"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2231.json",
+      "sha256": "895812ca0f90118eea97192228836975f18e8bc10723c9a3baaadf016dedde3f"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2232.json",
+      "sha256": "061ef602344c1d486841a87ec53b6189756c4e4262215d81df87b8686cdaea91"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2233.json",
+      "sha256": "9a27a22d577d7e00d17c532657c506f18a1fd22cd4fc3a3c6f905b69b2e82c77"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2234.json",
+      "sha256": "df4a346740ba7d322bbb762affb297b1325281ad16162306c9298ba559f849b8"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2235.json",
+      "sha256": "40ad7480204bb77dad39b4525d81a9ebbbf3938e4e7652ed035bbd21b90efc3f"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2236.json",
+      "sha256": "633b8416fa07bea9952c8c45d9758eed04b7dfeec9f39e072d6b4dc80bafd792"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2237.json",
+      "sha256": "7ce1df53a8e88ee11fafe068c31bb16c35d638f4da22929ce6df1996fe1f4461"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2245.json",
+      "sha256": "317fbc19653d57c8c88add9f22ea5587680e5e156f57281f46f79206e1dd0df5"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2246.json",
+      "sha256": "35b33f66a2bc81c9a958cf355545506d462a20c474dae8d888b21e75f5ff1673"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2247.json",
+      "sha256": "94b8fd7dc9175a413cede76ec7eae5d4a2bb4cf5ca27e877d6a46531e61baae3"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2248.json",
+      "sha256": "576fcb47ac3852a808a6f660d8f296876b72eab4dfab498524502d7f3d530c2f"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2249.json",
+      "sha256": "d3b7874e3f4598a4e650bd0494d1926fd5259b80bd941e1e426a84527a7d80da"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2250.json",
+      "sha256": "5993128f18f370385faf58ea32dad5e79f29f01137bfa542fdf4eb28babb5800"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2251.json",
+      "sha256": "4e682dc504a01dcc0fca8c6ec6995a31576cf2892bc0e81c6e9583492f0e8dcf"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2252.json",
+      "sha256": "0639153dcc224160e8c3dc951afe3e69ccb9e76559fc953825a272200a5886fb"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2253.json",
+      "sha256": "0acf449b62b0e0b05382200f35f081fee4cc69620fb92b692d96b3d82b030d26"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2254.json",
+      "sha256": "98601779abcc8ef3bf0f406c034c486d0c1d067dbe6b86371de3520236a7b638"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2255.json",
+      "sha256": "46627c159b42af141f53e1c71f1e92d3a44bb7773b84b05450300761a9b34a1d"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2256.json",
+      "sha256": "045927eb53e332437bb53b3d039563d2038effd54b5874dc1be7f79d4375abb8"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2257.json",
+      "sha256": "17306a72e1f356734ad106c5d2784a3bec1a01fa26ec5c0a19499037345ca7ec"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2258.json",
+      "sha256": "c080c0112f0aafd9bb282ba803b0ec6fef8fa4f5d9c999b4c0a7974279b8ba9d"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2259.json",
+      "sha256": "cadfcc744a5bb7922bd8a460f67ee87eaa93126a0755221573e7c3b6c91f8f1d"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2260.json",
+      "sha256": "a013ab55529d00afb8a57f92f72ca532491ef5be431e8715e60ca30c09b16329"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2261.json",
+      "sha256": "6efa2ede971f0d7bf4101fcf1e31813f8ed1fc05eb254ea980523782adeab97f"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2262.json",
+      "sha256": "9eeb3d2bfa31fbd651e50e9095c1d4d11de279d77a720be9429c7cec66bd7383"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2265.json",
+      "sha256": "f764b34f0dbca954555aee32ae1816cae5ddd0ba66ac3026cd65f3d52bae5fad"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2266.json",
+      "sha256": "8846684af996cc373c28e6d6f340ddd7985ae4746288361b1b8120956d3f13cc"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2267.json",
+      "sha256": "661dd08b29e804ec4794aa5e90016472f9fbde30b3d44d9401e0848168479b9e"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2268.json",
+      "sha256": "e4d4f0fd621c93182bef83b89febb1a129b42f250935757ac37481f7f37ec4bf"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2269.json",
+      "sha256": "e07b520e81c9510d4d3e380d490abc80e3d78baebdf43cb10f2e8b22b4515c66"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2270.json",
+      "sha256": "5d7fc8329033c0df61b257afab61081d79de828a93ce33d33940f4dafe005d2d"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2271.json",
+      "sha256": "1f9fb3305f239252c895081715b3c26be224590c0874c5ea6781dac4c60ed9f6"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2272.json",
+      "sha256": "c9fef2c2ba584b0566f0dd76a0333d0914aa5e0dbd0e6475d6b8250da133e9f1"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2273.json",
+      "sha256": "4aabab228b49c08cd3e3a8d3aa0de2b40ad2483e92fea3c8a2f386fb9dc2968e"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2274.json",
+      "sha256": "55c19008322f9e6e83a4d0b1625a37d43b8d814a59b22af5756d0d60d61e86f0"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2275.json",
+      "sha256": "66f27f59a11efe27acdcea6be6012d62384f714cf92da2d7448c4e50802404ad"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2276.json",
+      "sha256": "c404e4c1d54445388588516ac9c39c2e8e773b00f2a3502a3f70e837aaeea8c7"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2277.json",
+      "sha256": "801424b51e552f828222855a3d287a57cf7602c225ebee0812fca26e52068a15"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2278.json",
+      "sha256": "1df4148c587b5579ee86a9045e912ae4fca3bd4c625dacbb082babd4ea75fba8"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2285.json",
+      "sha256": "4dab6addc46d3e85cc9f3b18b4f3858a5392b2d14d46dcbad6532393d26358c0"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2286.json",
+      "sha256": "2790e48bdeb25622f112cca3071c082fb9955da53ff2c2edd671375af05860a1"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2287.json",
+      "sha256": "c7b80b3c6b11850a18f5f58c5489457fc0188e950fc51059e893a6327c85b906"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2288.json",
+      "sha256": "ac26a688fcac50118aa90feda4d6cf7211c8d2bfba91786e6fd37000df7f9d25"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2289.json",
+      "sha256": "b3dc4ee1a4115b836d3ac86def6631b85c6be103f3055831fbee38834565bdf5"
+    },
+    {
+      "path": "vectors/core/VER-CONF-2290.json",
+      "sha256": "c23e2ce012b871125f021cac70383bb25bcdac67957ca9087ee322bdc8823206"
     },
     {
       "path": "vectors/core/VER-CONF-2600.json",
@@ -4421,6 +4877,46 @@
     {
       "path": "vectors/core/VER-CONF-4346.json",
       "sha256": "92936725f17b8d1f168a31b21488fe76ca024884c7360a121881923ebb2672ed"
+    },
+    {
+      "path": "vectors/core/VER-CONF-4355.json",
+      "sha256": "bba4fe54cb237e0fdba93feb2300a53794ba3486734691c875d038d0ba92e325"
+    },
+    {
+      "path": "vectors/core/VER-CONF-4356.json",
+      "sha256": "ffd1475e4beeddb75360fd60686699cf5145442d577d1bbc1f992fc3d16cc159"
+    },
+    {
+      "path": "vectors/core/VER-CONF-4357.json",
+      "sha256": "be7040b5ed129c83e9dc158a0117ce19a681964505ff4c3e76a8a9ad246b145c"
+    },
+    {
+      "path": "vectors/core/VER-CONF-4358.json",
+      "sha256": "b2e6b9d621d7f0391949ffdeea7b30a7f40b7aca6b50b4e8b9f2a2a7b1e80294"
+    },
+    {
+      "path": "vectors/core/VER-CONF-4359.json",
+      "sha256": "1b25dcf5ea9ef937b23d4b8f83d25b3ddda6e17b8b238000c01b938517cd8396"
+    },
+    {
+      "path": "vectors/core/VER-CONF-4360.json",
+      "sha256": "f120b178114988eb09deb803bbf209008dcd374f223f049f945c712147d1ed4f"
+    },
+    {
+      "path": "vectors/core/VER-CONF-4361.json",
+      "sha256": "e3b9af5bcb05e03e3331d00b31ba663d0acd39a699ffc292e3042cd96639b466"
+    },
+    {
+      "path": "vectors/core/VER-CONF-4362.json",
+      "sha256": "3b1fa5c92206a39772ddeaf8522d6f4125448a656a7e95180950d17ae525ebba"
+    },
+    {
+      "path": "vectors/core/VER-CONF-4363.json",
+      "sha256": "6ba9ec87a90ede488a018554a62757d5848abd36601df3c189b290abc3916c99"
+    },
+    {
+      "path": "vectors/core/VER-CONF-4364.json",
+      "sha256": "1f258fca9560f7db6ad0b51d65d0a4a573a1277a2ca4df5c86a1fb7a332cf640"
     },
     {
       "path": "vectors/core/VER-CONF-4400.json",
@@ -7496,6 +7992,6 @@
     "Protocol"
   ],
   "standard": "BPA",
-  "vectors": 1800,
+  "vectors": 1922,
   "version": "1.0.0-rc8"
 }

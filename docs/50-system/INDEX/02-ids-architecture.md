@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (91)
+## DEC (92)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -185,4 +185,5 @@ depends_on: [UBS-IDX-00]
 | DEC-089 | BPA 1.0-rc8 opened: scope by phase for PH-2 (PH-2 step 1, part 1a) | `90-decisions/000-index.md` |
 | DEC-090 | Money and periods in BPA 1.0-rc8 (PH-2 step 1, part 1b) | `90-decisions/000-index.md` |
 | DEC-091 | Approvals and rules in BPA 1.0-rc8 (PH-2 step 1, part 1c) | `90-decisions/000-index.md` |
+| DEC-092 | Workflows, sagas, quarantine, lenses and upstream changes in BPA 1.0-rc8 (PH-2 step 1, part 1d) | `90-decisions/000-index.md` |
 

@@ -29,6 +29,8 @@ from .ubtp import Ubtp
 from .periods import Periods
 from .tables import Tables
 from .approvals import Approvals
+from .workflows import Workflows
+from .lenses import Lenses
 from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
@@ -125,7 +127,7 @@ def tl_at(tl, asof):
     return None
 
 
-class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Tables, Approvals):
+class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Tables, Approvals, Workflows, Lenses):
     def __init__(self):
         self.reset()
 
@@ -161,6 +163,8 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         self._cseq = 0
         self._exec_init()
         self._node_init()
+        self._orch_init()
+        self._lens_init()
         root = self._new_commit('main', [], {'objects': {}, 'ledger': {}}, 0, tx=False)
         self.branches['main'] = {'head': root, 'kind': 'main', 'created_at': self.now, 'active_at': self.now,
                                  'parent_line': None, 'created_from': root}
@@ -169,6 +173,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
     def set_now(self, now):
         self.now = now
         self._tick()
+        self._wf_timers()       # STD-TXN-091 (1.0-rc8)
         return True
 
     def set_limits(self, max_body_bytes=None, max_derivation_inputs=None, max_violations=None):
@@ -222,7 +227,9 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
             decls[d['name']] = d
         eff = {}
         for n in list(decls) + ['ChangeSet', 'Release', 'Logic', 'GovernanceSheet', 'PropertyDecl', 'Lifecycle', 'Policy',
-                                'CloseArtefact', 'MatchRecord', 'DecisionTable', 'SimulationRun']:
+                                'CloseArtefact', 'MatchRecord', 'DecisionTable', 'SimulationRun',
+                                'WorkflowDefinition', 'WorkflowInstance', 'Saga', 'Quarantine', 'QuarantineRelease',
+                                'Lens']:
             eff[n] = effective_class(list(decls.values()), n)
         for n, e in eff.items():
             old = self.classes.get(n)
@@ -387,6 +394,11 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         out = {}
         for k, v in body.items():
             if k not in eff['fields']:
+                # STD-CLS-060 (1.0-rc8): values a lens archived by drop_with_archive
+                if k == '_archived' and isinstance(v, dict):
+                    out[k] = v
+                    canonical(v)
+                    continue
                 if eff['kind'] == 'raw_document':
                     out[k] = v
                     canonical(v)
@@ -535,7 +547,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
             rec = {'process_id': p['process_id'], 'kind': p['kind'], 'initiator': p['initiator'],
                    'trigger': p['trigger'], 'state': state, 'commits': [], 'effects': 0,
                    'explicit': p['explicit']}
-            for k in ('parent_process', 'bulk', 'idempotency_key'):
+            for k in ('parent_process', 'bulk', 'idempotency_key', 'workflow', 'saga', 'saga_step'):
                 if p.get(k) is not None:
                     rec[k] = p[k]
             self.processes[p['process_id']] = rec
@@ -644,6 +656,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
             self._eff_cache = {}
             self._cur_branch = self._cur_p = None
         own = {oid: o for oid, o in st['objects'].items() if oid not in inh or (o['head'], o['timeline']) != inh[oid]}
+        self._note_overrides(branch, own, inh)          # STD-VER-082 (1.0-rc8)
         state = {'objects': own, 'ledger': st['ledger']}
         cid = self._new_commit(branch, [br['head']], state, cseq, ops=self._ops, hidden=sorted(self._inherit['hidden']),
                                process_id=p['process_id'] if p['explicit'] else None, rule_binding=binding,
@@ -682,6 +695,8 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
             raise BpaError('TXN.HEAD_MOVED', {'objects': sorted(stale)})
         for ch in changes:
             op = ch.get('op')
+            if op in ('create', 'update') and 'schema_version' in ch:
+                ch = self._lens_change(st, ch)          # STD-CLS-061 (1.0-rc8)
             if op == 'create':
                 self._create(st, ch, result)
             elif op in ('update', 'end'):
@@ -785,7 +800,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         # STD-KIND-026 (1.0-rc8): close artefacts are written by close_period only
         if (eff['kind'] == 'system' or eff['kind'] == 'ledger') and not (
                 cls == 'CloseArtefact' and getattr(self, '_period_op', None) == ('closing', 'closed')) and not (
-                cls == 'SimulationRun' and getattr(self, '_sim_op', False)):
+                cls == 'SimulationRun' and getattr(self, '_sim_op', False)) and cls not in self._sys_ok:
             raise BpaError('LOGIC.FORBIDDEN_TARGET')
         if oid in st['objects'] or self._entry_owner(st, oid)[1]:
             raise BpaError('TXN.ALREADY_EXISTS')
@@ -798,8 +813,10 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         if 'state' in ch or (lc and isinstance(body, dict) and 'state' in body):
             raise BpaError('FLOW.STATE_DIRECT_WRITE', 'the lifecycle state changes by transitions only')
         state = (self._flow.get('transitions') or {}).get(oid, {}).get('to', lc[0]['initial']) if lc else None
+        self._kernel_fields(cls, body)
         body = self._apply_defaults(st, cls, oid, body)
         body = self._check_body(cls, body)
+        self._check_special(cls, body)
         valid = ch.get('valid') or {}
         a = valid.get('from') or self._default_valid(cls)
         rid = self._derivation(ch)
@@ -819,8 +836,9 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
             if self._entry_owner(st, oid)[1]:
                 raise BpaError('LEDG.IMMUTABLE_ENTRY')
             raise BpaError('IAM.NOT_FOUND', 'unknown object')
-        if o['kind'] == 'system':
+        if o['kind'] == 'system' and o['class'] not in self._sys_ok:
             raise BpaError('LOGIC.FORBIDDEN_TARGET')
+        self._kernel_fields(o['class'], ch.get('body'))
         if ch.get('base') is None:
             raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'updates name their base (STD-TXN-020)')
         base = self.versions[o['head']]
@@ -847,13 +865,14 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
             if d < self._default_valid(o['class']):
                 result['retroactive'].append({'object_id': oid, 'from': d, 'to': None})
         else:
-            body = dict(base['body'])
+            body = dict(self._current_body(base))       # STD-CLS-061 (1.0-rc8)
             body.update(self._check_body(o['class'], ch.get('body', {}), partial=True))
             if o['class'] == 'GovernanceSheet':
                 if 'source' in ch.get('body', {}) and 'ast' not in ch['body']:
                     body.pop('ast', None)
                 body = self._sheet_body(body)
             self._check_body(o['class'], body)
+            self._check_special(o['class'], body)
             # STD-KIND-025 (1.0-rc8): period transitions
             self._check_period_transition(o['class'], base['body'].get('state'), body.get('state'))
             slug = ch.get('slug', o['slug'])
@@ -1257,7 +1276,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         seg = tl_at(o['timeline'], a)
         if seg is None:
             raise BpaError('QRY.NOT_FOUND_AT_TIME')
-        out = self._segment(seg)
+        out = self._lens_read(self._segment(seg), self.versions[seg[2]], sel)
         out['evaluated_at'] = ev
         if sel.get('provenance'):
             b, c = prov[object_id]
@@ -1444,8 +1463,9 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         return out, conflicts
 
     def _merge_body(self, oid, vb, vs, vt, virtual):
-        B = self.versions[vb]['body'] if vb else {}
-        S, T = self.versions[vs]['body'], self.versions[vt]['body']
+        # STD-CLS-061 (1.0-rc8): base, source and target in the current schema version
+        B = self._current_body(self.versions[vb]) if vb else {}
+        S, T = self._current_body(self.versions[vs]), self._current_body(self.versions[vt])
         absent = object()
         out, conflicts = {}, []
         for k in sorted(set(B) | set(S) | set(T)):

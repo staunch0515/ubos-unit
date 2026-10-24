@@ -9,9 +9,9 @@ with the owner's signed tag `bpa-v1.0.0-rc8`. BPA 1.0-rc7 stays frozen as tagged
 | Item | Value |
 |---|---|
 | Profiles | Core, Bitemporal, Ledger, Proof, Governance, Protocol |
-| Clauses | 232 (scope by phase, `scope.json`): the 201 clauses of BPA 1.0-rc7, 23 that satisfy PH-2 requirements, and 8 written in parts 1b and 1c |
-| MUST clauses with a vector range | 194, 179 covered (`coverage.md`) |
-| Vectors | 1,800: those of BPA 1.0-rc7 without VER-CONF-1528 (superseded), 45 of part 1b and 53 of part 1c |
+| Clauses | 235 (scope by phase, `scope.json`): the 201 clauses of BPA 1.0-rc7, 23 that satisfy PH-2 requirements, and 11 written in parts 1b–1d |
+| MUST clauses with a vector range | 197, 189 covered (`coverage.md`) |
+| Vectors | 1,922: those of BPA 1.0-rc7 without VER-CONF-1528 (superseded), 45 of part 1b, 53 of part 1c and 122 of part 1d |
 
 ## Changes since BPA 1.0-rc7
 
@@ -39,3 +39,11 @@ with the owner's signed tag `bpa-v1.0.0-rc8`. BPA 1.0-rc7 stays frozen as tagged
   - **Decision tables** with hit policies and an authoring check (STD-LGS-040, STD-ISA-053).
   - **Simulation of rule changes** (STD-LGS-044, new).
   - **Adapter operations** `decide_table`, `check_table`, `pending_change`, `approve` and `simulate`.
+- Part 1d (DEC-092), long-running work and models:
+  - **Workflows** (STD-TXN-090…092, new): versioned definitions with eight step types, System-kind instances pinned to their definition version, idempotent steps, a join that fires once, events matched by type and correlation key with a buffer window, timers, human tasks and explicit migration.
+  - **Sagas** (STD-TXN-080): steps as linked processes, backward or forward recovery, committed state transitions and resumption without repeated steps.
+  - **Quarantine** (STD-CTX-031): a per-VAE threshold of failures and limit terminations, fail-fast calls, an alert effect and release by an authorised principal.
+  - **Schema evolution** (STD-CLS-050, -060…062): computed classification of class changes, the nine lens operations, lensed reads, writes and merges, and the totality check.
+  - **Upstream changes** (STD-VER-082): overrides marked when the parent line changes them, resolved by acknowledgement or three-way merge.
+  - **Adapter operations** `start_workflow`, `deliver_event`, `complete_task`, `migrate_workflow`, `run_saga`, `quarantine_policy`, `release_quarantine`, `change_class`, `classify_change`, `apply_lens`, `check_lens`, `upstream_changes` and `resolve_upstream`; `read` and `commit` take `schema_version`.
+  - **Moved:** STD-TXN-051 (pre-commit external calls) is written in part 1f with `call.connector`.

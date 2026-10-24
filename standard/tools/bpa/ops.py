@@ -1,5 +1,6 @@
 """Adapter operations (STD-CONF-005) and a vector runner."""
 from . import tables as _tables
+from . import lenses as _lenses
 from . import BpaError
 from . import values
 from .canon import canonical, content_id, nfc
@@ -106,6 +107,10 @@ PURE.update(sheets.sheet_ops())
 PURE['parse_query'] = lambda i: lang_parse_query(i['text'])
 # BPA 1.0-rc8, PH-2 step 1c (DEC-091)
 PURE['check_table'] = lambda i: _tables.check_table(i['table'])
+# BPA 1.0-rc8, PH-2 step 1d (DEC-092)
+PURE['classify_change'] = lambda i: _lenses.classify_change(i)
+PURE['apply_lens'] = lambda i: _lenses.apply_lens(i)
+PURE['check_lens'] = lambda i: _lenses.lens_check(i)
 
 STATEFUL = {
     'reset': lambda s, i: s.reset(),
@@ -190,6 +195,17 @@ STATEFUL = {
     'pending_change': lambda s, i: s.pending_change(i),
     'approve': lambda s, i: s.approve(i),
     'simulate': lambda s, i: s.simulate(i),
+    # BPA 1.0-rc8, PH-2 step 1d (DEC-092): workflows, sagas, quarantine, class changes, upstream changes
+    'start_workflow': lambda s, i: s.start_workflow(i),
+    'deliver_event': lambda s, i: s.deliver_event(i),
+    'complete_task': lambda s, i: s.complete_task(i),
+    'migrate_workflow': lambda s, i: s.migrate_workflow(i),
+    'run_saga': lambda s, i: s.run_saga(i),
+    'quarantine_policy': lambda s, i: s.quarantine_policy(i),
+    'release_quarantine': lambda s, i: s.release_quarantine(i),
+    'change_class': lambda s, i: s.change_class(i),
+    'upstream_changes': lambda s, i: s.upstream_changes(i),
+    'resolve_upstream': lambda s, i: s.resolve_upstream(i),
 }
 
 # Members of `ubtp` frames an implementation assigns (process identifiers), stripped like the

@@ -20,8 +20,8 @@ depends_on: [UBS-IDX-00]
 | CR | 54 |
 | CST | 18 |
 | CTR | 36 |
-| DAT | 69 |
-| DEC | 91 |
+| DAT | 72 |
+| DEC | 92 |
 | DSN | 699 |
 | ENV | 7 |
 | EXIT | 85 |
@@ -36,7 +36,7 @@ depends_on: [UBS-IDX-00]
 | PER | 33 |
 | RSK | 40 |
 | SCN | 67 |
-| STD | 252 |
+| STD | 255 |
 | SUITE | 78 |
 | VER | 95 |
 

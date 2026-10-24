@@ -114,6 +114,45 @@ GENESIS = {
                                  _f('budget', 'json', True), _f('rule_versions', 'json', True),
                                  _f('coverage', 'json', True), _f('results', 'json', True),
                                  _f('changed', 'integer', True), _f('change_set', 'text')]},
+    # STD-TXN-090 (BPA 1.0-rc8, DEC-092): workflow definitions are Definition objects below
+    # ConfigAsset; instances are System objects advanced by the workflow operations only.
+    'WorkflowDefinition': {'name': 'WorkflowDefinition', 'kind': 'definition', 'parent': 'ConfigAsset',
+                           'abstract': False,
+                           'fields': [_f('name', 'text', True), _f('variables', 'json'), _f('start', 'text', True),
+                                      _f('steps', 'json', True), _f('description', 'text', True)]},
+    'WorkflowInstance': {'name': 'WorkflowInstance', 'kind': 'system', 'parent': 'SystemObject', 'abstract': False,
+                         'fields': [_f('definition', 'text', True), _f('definition_version', 'text', True),
+                                    _f('status', 'enum', True, constraints={'allowed_values': [
+                                        'running', 'completed', 'failed']}),
+                                    _f('variables', 'json', True), _f('tokens', 'json', True), _f('forks', 'json'),
+                                    _f('visits', 'json'), _f('done', 'json'), _f('log', 'json'),
+                                    _f('next_token', 'integer'), _f('seq', 'integer'), _f('initiator', 'text'),
+                                    _f('parent', 'json'), _f('error', 'json'), _f('migrations', 'json')]},
+    # STD-TXN-080 (BPA 1.0-rc8, DEC-092): a saga lists its steps and holds its state, which only
+    # the saga's execution writes.
+    'Saga': {'name': 'Saga', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
+             'fields': [_f('name', 'text', True), _f('steps', 'json', True),
+                        _f('recovery', 'enum', constraints={'allowed_values': ['backward', 'forward']}),
+                        _f('max_attempts', 'integer'),
+                        _f('status', 'enum', constraints={'allowed_values': [
+                            'pending', 'running', 'compensating', 'completed', 'compensated', 'failed']}),
+                        _f('completed', 'json'), _f('compensated', 'json'), _f('current', 'json'),
+                        _f('error', 'json'), _f('log', 'json')]},
+    # STD-CTX-031 (BPA 1.0-rc8, DEC-092): quarantines and their releases are System objects.
+    'Quarantine': {'name': 'Quarantine', 'kind': 'system', 'parent': 'SystemObject', 'abstract': False,
+                   'fields': [_f('asset', 'text', True), _f('asset_version', 'text', True),
+                              _f('failures', 'integer', True), _f('limit_terminations', 'integer', True),
+                              _f('window', 'text', True), _f('threshold', 'integer', True),
+                              _f('since', 'instant', True), _f('last_error', 'text')]},
+    'QuarantineRelease': {'name': 'QuarantineRelease', 'kind': 'system', 'parent': 'SystemObject', 'abstract': False,
+                          'fields': [_f('quarantine', 'text', True), _f('asset_version', 'text', True),
+                                     _f('principal', 'text', True), _f('reason', 'text', True),
+                                     _f('released_at', 'instant', True)]},
+    # STD-CLS-060 (BPA 1.0-rc8, DEC-092): lenses are Definition objects below ConfigAsset.
+    'Lens': {'name': 'Lens', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
+             'fields': [_f('class', 'text', True), _f('from', 'integer', True), _f('to', 'integer', True),
+                        _f('ops', 'json', True), _f('residual_forward', 'text'), _f('residual_backward', 'text'),
+                        _f('one_way', 'boolean'), _f('one_way_reason', 'text')]},
     'Release': {'name': 'Release', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
                 'fields': [_f('version', 'text', True), _f('tag', 'text', True), _f('notes', 'text'),
                            _f('change_sets', 'json'), _f('approvals', 'json')]},
