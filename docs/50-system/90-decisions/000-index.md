@@ -27,6 +27,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-101 | PH-2 step 3d: periods, close and reopen in the kernel — period transitions checked at commit, `close_period` with the `CloseArtefact` System object and the signed tag `close-<slug>-<n>`, `reopen_period` with a reason; STD-KIND-025, -026 and STD-VER-055 claimed; the approval of reopening with step 4 | Accepted |
 | DEC-102 | PH-2 step 3e: matching, match records and statement lines in the kernel — `match` with the three rule kinds, tolerances, windows and breaks, `MatchRecord` entries with derived ids appended by `match` and `unmatch` only, statement-line ids derived at commit and `ingest_statement`; STD-KIND-027, -028 and -030 claimed | Accepted |
 | DEC-103 | PH-2 step 3f: re-evaluation, restatement and compensation proposals in the kernel — the logic version of the mode during a re-run, `restate` on a correction branch with old and new bodies and materiality, restated postings captured instead of committed, proposals per ledger key and currency; STD-TIME-041, -042 and -043 claimed; DSN-DVM-331 mode names aligned | Accepted |
+| DEC-104 | PH-2 step 3 closed: money and periods (parts 3a–3f, DEC-098…103) — BPA 1.0-rc9, currencies and rates, projections, period close and reopen, matching and statement lines, restatement and proposals in the kernel; 122 step-3 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 
 ---
 
@@ -480,3 +481,35 @@ DEC-090 on follow.
   - Re-running under the original process ID was rejected: the original keeps its record, and the re-run is a new process on the correction branch, as in the reference model.
 - **Affects:** STD-TIME-031, STD-TIME-041, STD-TIME-042, STD-TIME-043, DSN-DVM-322, DSN-DVM-323, DSN-DVM-331, FR-TIME-043, FR-TIME-044, FR-TIME-045, FR-TIME-063, FR-TIME-064, DEC-098
 
+### DEC-104 — PH-2 step 3 closed: money and periods (PH-2 step 3, part 3g)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** PH-2 step 3 (DEC-098) was split into parts 3a–3g. Parts 3a–3f are recorded in DEC-098…103. Part 3g closes the step: it records what the step delivered and lists, in one place, what the parts deferred to later steps. The owner confirmed the part with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Delivered.**
+     - **3a (DEC-098).** BPA 1.0-rc9: 245 clauses, 2,125 vectors, MUST coverage 207/207, VER-INSP-9007; seven clauses added (STD-FND-028, -029, STD-KIND-029, -030, STD-TIME-021, -043, STD-ISA-037).
+     - **3b (DEC-099).** Currencies, exchange rates, `fx_convert` and ledger accounts in the kernel.
+     - **3c (DEC-100).** Declarative projections, `read.projection`, `projection_delta` rows with marks, atomic rebuild.
+     - **3d (DEC-101).** Period transitions, `close_period` with close artefact and signed tag, `reopen_period` with a reason.
+     - **3e (DEC-102).** Matching, match records and idempotent ingestion of statement lines.
+     - **3f (DEC-103).** Re-evaluation modes, restatement on a correction branch, captured postings and compensation proposals.
+  2. **Verification.** The 122 current vectors of the step-3 clauses (STD-FND-028, -029, STD-KIND-025…030, STD-TIME-021, -041, -042, -043, STD-ISA-037) pass in one run in memory and on PostgreSQL 16. The kernel conformance test claims these clauses against BPA 1.0-rc9.
+  3. **Deferred.** Each item keeps its ID and moves to the step named:
+
+     | Item | Source | Target |
+     |---|---|---|
+     | Checkpoint rows of projections (DSN-DVM-420) | DEC-100 | step 18 (benchmarks) |
+     | Asynchronous projection maintenance by a job; the `timeout_ms` wait of `read.projection` | DEC-100 | step 6 |
+     | Projections over Definition versions (DSN-DVM-422) | DEC-100 | after BPA 1.0-rc9 |
+     | Approval and change set for reopening a period (DSN-DVM-444) | DEC-101 | step 4 |
+     | Bank file parsers producing statement lines (DSN-NOD-305) | DEC-102 | step 12 |
+     | Loading accounts per posting in the leaf check | DEC-099 | step 18, if the benchmarks need it |
+     | Cross rates, valid-time validation of currencies, captured reversals and adjustments | DEC-098, DEC-103 | after BPA 1.0-rc9 |
+
+  4. **Owner actions.** Merging the branch, then signing the tags `bpa-v1.0.0-rc8` and `bpa-v1.0.0-rc9`.
+  5. **Next.** Step 4 (approvals and work: deferred commits under `require`, approval and separation of duties, tasks and work queues, SLA and escalation, delegation). Its plan goes to the owner first.
+- **Consequences:**
+  - The status table in `docs/reports/ph2-plan-zh.md` marks step 3 as done.
+  - The deferred items are picked up by the steps named in the table above. Each target step's plan cites this decision.
+- **Alternatives considered:**
+  - Leaving the deferred items spread over DEC-098…103 was rejected: the later step plans would have to search six records.
+- **Affects:** DEC-098, DEC-099, DEC-100, DEC-101, DEC-102, DEC-103, DSN-DVM-420, DSN-DVM-422, DSN-DVM-444, DSN-NOD-305

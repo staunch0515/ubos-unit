@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (103)
+## DEC (104)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -197,4 +197,5 @@ depends_on: [UBS-IDX-00]
 | DEC-101 | Periods, close and reopen in the kernel (PH-2 step 3, part 3d) | `90-decisions/000-index.md` |
 | DEC-102 | Matching, match records and statement lines in the kernel (PH-2 step 3, part 3e) | `90-decisions/000-index.md` |
 | DEC-103 | Re-evaluation, restatement and proposals in the kernel (PH-2 step 3, part 3f) | `90-decisions/000-index.md` |
+| DEC-104 | PH-2 step 3 closed: money and periods (PH-2 step 3, part 3g) | `90-decisions/000-index.md` |
 
