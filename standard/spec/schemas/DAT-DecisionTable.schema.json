@@ -1,0 +1,50 @@
+{
+  "$id": "DAT-DecisionTable",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "aggregator": {
+      "description": "sum | min | max | count (collect only)",
+      "type": "string"
+    },
+    "description": {
+      "description": "description",
+      "type": "string"
+    },
+    "hit_policy": {
+      "description": "unique | first | priority | collect",
+      "enum": [
+        "unique",
+        "first",
+        "priority",
+        "collect"
+      ],
+      "type": "string"
+    },
+    "inputs": {
+      "description": "{name, type, constraints} items",
+      "type": "array"
+    },
+    "name": {
+      "description": "table name",
+      "type": "string"
+    },
+    "outputs": {
+      "description": "{name, type, constraints} items",
+      "type": "array"
+    },
+    "rows": {
+      "description": "{when: {input: L1 condition | -}, then: {output: value}, priority?} items",
+      "type": "array"
+    }
+  },
+  "required": [
+    "name",
+    "inputs",
+    "outputs",
+    "rows",
+    "hit_policy",
+    "description"
+  ],
+  "title": "DAT-DecisionTable",
+  "type": "object"
+}

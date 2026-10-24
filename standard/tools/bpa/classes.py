@@ -89,6 +89,85 @@ GENESIS = {
     'Policy': {'name': 'Policy', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
                'fields': [_f('name', 'text', True), _f('source', 'text', True), _f('enabled', 'boolean'),
                           _f('description', 'text', True)]},
+    # STD-KIND-026 (BPA 1.0-rc8, DEC-090): close artefacts are System objects written by
+    # close_period; STD-KIND-028: match records are entries of a genesis ledger class.
+    'CloseArtefact': {'name': 'CloseArtefact', 'kind': 'system', 'parent': 'SystemObject', 'abstract': False,
+                      'fields': [_f('period', 'text', True), _f('period_slug', 'text', True),
+                                 _f('sequence', 'integer', True), _f('start', 'date', True), _f('end', 'date', True),
+                                 _f('tag', 'text', True), _f('as_of', 'json', True), _f('balances', 'json', True)]},
+    'MatchRecord': {'name': 'MatchRecord', 'kind': 'ledger', 'parent': 'Object', 'abstract': False,
+                    'fields': [_f('match_set', 'text', True), _f('left', 'json', True), _f('right', 'json', True),
+                               _f('rule', 'text'), _f('rule_ref', 'text'), _f('actor', 'text', True),
+                               _f('unmatches', 'text'), _f('reason', 'text')],
+                    'ledger': {'key': ['match_set'], 'amounts': [], 'double_entry': False}},
+    # STD-LGS-040 (BPA 1.0-rc8, DEC-091): decision tables are Definition objects below
+    # ConfigAsset; STD-LGS-044: simulation runs are System objects written by simulate.
+    'DecisionTable': {'name': 'DecisionTable', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
+                      'fields': [_f('name', 'text', True), _f('inputs', 'json', True), _f('outputs', 'json', True),
+                                 _f('rows', 'json', True),
+                                 _f('hit_policy', 'enum', True, constraints={'allowed_values': [
+                                     'unique', 'first', 'priority', 'collect']}),
+                                 _f('aggregator', 'enum', constraints={'allowed_values': ['sum', 'min', 'max', 'count']}),
+                                 _f('description', 'text', True)]},
+    'SimulationRun': {'name': 'SimulationRun', 'kind': 'system', 'parent': 'SystemObject', 'abstract': False,
+                      'fields': [_f('source', 'text', True), _f('target', 'text', True), _f('window', 'json', True),
+                                 _f('budget', 'json', True), _f('rule_versions', 'json', True),
+                                 _f('coverage', 'json', True), _f('results', 'json', True),
+                                 _f('changed', 'integer', True), _f('change_set', 'text')]},
+    # STD-TXN-090 (BPA 1.0-rc8, DEC-092): workflow definitions are Definition objects below
+    # ConfigAsset; instances are System objects advanced by the workflow operations only.
+    'WorkflowDefinition': {'name': 'WorkflowDefinition', 'kind': 'definition', 'parent': 'ConfigAsset',
+                           'abstract': False,
+                           'fields': [_f('name', 'text', True), _f('variables', 'json'), _f('start', 'text', True),
+                                      _f('steps', 'json', True), _f('description', 'text', True)]},
+    'WorkflowInstance': {'name': 'WorkflowInstance', 'kind': 'system', 'parent': 'SystemObject', 'abstract': False,
+                         'fields': [_f('definition', 'text', True), _f('definition_version', 'text', True),
+                                    _f('status', 'enum', True, constraints={'allowed_values': [
+                                        'running', 'completed', 'failed']}),
+                                    _f('variables', 'json', True), _f('tokens', 'json', True), _f('forks', 'json'),
+                                    _f('visits', 'json'), _f('done', 'json'), _f('log', 'json'),
+                                    _f('next_token', 'integer'), _f('seq', 'integer'), _f('initiator', 'text'),
+                                    _f('parent', 'json'), _f('error', 'json'), _f('migrations', 'json')]},
+    # STD-TXN-080 (BPA 1.0-rc8, DEC-092): a saga lists its steps and holds its state, which only
+    # the saga's execution writes.
+    'Saga': {'name': 'Saga', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
+             'fields': [_f('name', 'text', True), _f('steps', 'json', True),
+                        _f('recovery', 'enum', constraints={'allowed_values': ['backward', 'forward']}),
+                        _f('max_attempts', 'integer'),
+                        _f('status', 'enum', constraints={'allowed_values': [
+                            'pending', 'running', 'compensating', 'completed', 'compensated', 'failed']}),
+                        _f('completed', 'json'), _f('compensated', 'json'), _f('current', 'json'),
+                        _f('error', 'json'), _f('log', 'json')]},
+    # STD-CTX-031 (BPA 1.0-rc8, DEC-092): quarantines and their releases are System objects.
+    'Quarantine': {'name': 'Quarantine', 'kind': 'system', 'parent': 'SystemObject', 'abstract': False,
+                   'fields': [_f('asset', 'text', True), _f('asset_version', 'text', True),
+                              _f('failures', 'integer', True), _f('limit_terminations', 'integer', True),
+                              _f('window', 'text', True), _f('threshold', 'integer', True),
+                              _f('since', 'instant', True), _f('last_error', 'text')]},
+    'QuarantineRelease': {'name': 'QuarantineRelease', 'kind': 'system', 'parent': 'SystemObject', 'abstract': False,
+                          'fields': [_f('quarantine', 'text', True), _f('asset_version', 'text', True),
+                                     _f('principal', 'text', True), _f('reason', 'text', True),
+                                     _f('released_at', 'instant', True)]},
+    # STD-CLS-060 (BPA 1.0-rc8, DEC-092): lenses are Definition objects below ConfigAsset.
+    'Lens': {'name': 'Lens', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
+             'fields': [_f('class', 'text', True), _f('from', 'integer', True), _f('to', 'integer', True),
+                        _f('ops', 'json', True), _f('residual_forward', 'text'), _f('residual_backward', 'text'),
+                        _f('one_way', 'boolean'), _f('one_way_reason', 'text')]},
+    # STD-ISA-090, -071 (BPA 1.0-rc8, DEC-094): connectors and notification templates are
+    # Definition objects below ConfigAsset.
+    'Connector': {'name': 'Connector', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
+                  'fields': [_f('name', 'text', True), _f('endpoint', 'json', True), _f('auth', 'json'),
+                             _f('operations', 'json', True), _f('timeout_ms', 'integer'), _f('rate_limit', 'json'),
+                             _f('retry', 'json'), _f('breaker', 'json'), _f('allowed_classifications', 'json'),
+                             _f('description', 'text', True)]},
+    'NotificationTemplate': {'name': 'NotificationTemplate', 'kind': 'definition', 'parent': 'ConfigAsset',
+                             'abstract': False,
+                             'fields': [_f('name', 'text', True), _f('title', 'text', True), _f('body', 'text', True),
+                                        _f('description', 'text', True)]},
+    # STD-CLS-023 (BPA 1.0-rc8, DEC-095): views are Definition objects below ViewAsset.
+    'View': {'name': 'View', 'kind': 'definition', 'parent': 'ViewAsset', 'abstract': False,
+             'fields': [_f('name', 'text', True), _f('mode', 'text'), _f('layout', 'json'),
+                        _f('description', 'text', True)]},
     'Release': {'name': 'Release', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
                 'fields': [_f('version', 'text', True), _f('tag', 'text', True), _f('notes', 'text'),
                            _f('change_sets', 'json'), _f('approvals', 'json')]},
@@ -124,6 +203,12 @@ def check_field(f):
     rel = f.get('relationship')
     if rel is not None:
         check_relationship(f, rel)
+    # STD-LGS-050 (1.0-rc8): an authorization relation is named on a reference field
+    if 'authz_relation' in f:
+        if not isinstance(f['authz_relation'], str) or not GRAMMARS['member-name'].match(f['authz_relation']):
+            raise BpaError('MODEL.INVALID_NAME', 'authz_relation')
+        if f['type'] != 'reference' and not is_reference_list(f):
+            raise BpaError('MODEL.INVALID_VALUE', 'an authorization relation is a reference or a list of references')
 
 
 def is_reference_list(f):
@@ -246,6 +331,15 @@ def check_decl(d):
     if 'validations' in d:
         check_validations(d['validations'])
     check_overlay_policy(d)
+    # STD-OBJ-010, STD-LGS-050 (1.0-rc8): the subject key and the principal field name fields
+    fields = {f['name']: f for f in d['fields']}
+    sk = d.get('subject_key')
+    if sk is not None and sk != 'self' and (sk not in fields or fields[sk]['type'] not in ('text', 'reference')
+                                            or fields[sk].get('classification') in ('personal', 'sensitive_personal')):
+        raise BpaError('MODEL.INVALID_VALUE', 'subject_key is self or an unprotected text or reference field')
+    pf = d.get('principal_field')
+    if pf is not None and (pf not in fields or fields[pf]['type'] != 'text'):
+        raise BpaError('MODEL.INVALID_VALUE', 'principal_field names a text field')
     # STD-CLS-004 (1.0-rc3): the lifecycle is a URI; a class with a lifecycle has no field state
     if 'lifecycle' in d:
         if not isinstance(d['lifecycle'], str) or not d['lifecycle']:

@@ -130,7 +130,34 @@ DAT-RuleBinding:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-1885…1899
 - **Satisfies:** FR-TIME-063, FR-TIME-064
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-090):
+  - **Version per mode.** For a logic asset the versions are those of the asset object:
+    - `as_effective` takes the version whose timeline segment covers d;
+    - `as_originally` takes the version the original process ran (its journal's logic versions);
+    - `current` takes the head.
+  - **Recording.** The mode is recorded in the derivation records of the results (STD-TXN-030).
+  - **Valid date.** d is the `asof` of the original process.
+
+### STD-TIME-042 — Restatement on a correction branch
+- **Clause:** A restatement takes a correcting commit on a branch. It MUST:
+  - compute the impact set of that commit (STD-TIME-031);
+  - create a branch of kind `correction` from the branch head;
+  - re-run, on the correction branch, each process that produced an impacted result, in the order of the processes' first commits, with its recorded invocation and `asof` and the logic versions of the chosen mode (STD-TIME-041, default `as_effective`).
+
+  The results MUST keep the valid times the logic gives them; the source branch is unchanged. The restatement MUST report:
+  - the processes re-run;
+  - the processes it cannot re-run (results written by direct input with a derivation);
+  - for every object the correction branch changed, its old body on the source branch and its new body.
+
+  When the request gives a materiality expression (an L1 boolean over `this`, the new body, and `old`), each change MUST carry its result as `material`.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-1910…1929
+- **Satisfies:** FR-TIME-043, DSN-DVM-322
+- **Notes:**
+  - The correction branch is merged into the source branch through the ordinary merge (STD-VER-050) once the restatement is accepted.
+  - A branch name outside the kind `correction` fails with `MODEL.INVALID_VALUE`.
+  - A correction branch is protected (STD-VER-012), so the logic it runs is verified.
+  - Since 1.0-rc8 (DEC-090).
 
 ## 6. Became-effective events
 

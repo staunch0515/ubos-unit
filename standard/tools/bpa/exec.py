@@ -40,7 +40,13 @@ IMPLEMENTED = ('commit.create', 'commit.update', 'commit.end', 'commit.move', 'c
                # BPA 1.0-rc2, PH-1 step 10c (DEC-067)
                'read.explain', 'run.validate', 'search.query',
                # BPA 1.0-rc3, PH-1 step 12a (DEC-071)
-               'commit.transition', 'read.actions')
+               'commit.transition', 'read.actions',
+               # BPA 1.0-rc8, PH-2 step 1c (DEC-091)
+               'run.decision',
+               # BPA 1.0-rc8, PH-2 step 1f (DEC-094)
+               'call.connector', 'emit.notify',
+               # BPA 1.0-rc8, PH-2 step 1g (DEC-095)
+               'search.aggregate', 'search.traverse', 'search.text')
 SYSTEM = {'sys.uuid': 'pure', 'sys.random_bytes': 'pure', 'adapter.observe': 'journaled'}
 READ_ACTIONS = ('read', 'read_history', 'reflect', 'explain')
 L2_FORBIDDEN = ('eval', 'print', 'debug', 'import', 'export', 'Fn', 'call', 'curry', 'is_def_fn', 'is_def_var',
@@ -98,6 +104,10 @@ class Run:
         self.frames = []
         # STD-ISA-017 (1.0-rc3): the transitions of this process by object and the guards passed
         self.transitions, self.guards = {}, []
+        self.tables = []                        # STD-ISA-053 (1.0-rc8): decision table versions
+        self.connector_calls = []               # STD-TXN-051 (1.0-rc8): pre-commit calls made
+        self.connector_n = 0                    # STD-ISA-090 (1.0-rc8): calls counted by metering
+        self.notifications = []                 # STD-ISA-071 (1.0-rc8): notifications requested
         self.cancel_after = i.get('cancel_after_units')
         self.context = self._context()
 
@@ -152,7 +162,7 @@ class Run:
     def metering(self, outcome):
         return {'process_id': self.p['process_id'], 'asset': self.logic[0] if self.logic else None,
                 'units': self.units, 'cpu_us': 0, 'peak_memory': 0, 'wall_us': 0,
-                'instructions': dict(sorted(self.families.items())), 'connector_calls': 0, 'outcome': outcome}
+                'instructions': dict(sorted(self.families.items())), 'connector_calls': self.connector_n, 'outcome': outcome}
 
     # ---- entropy (STD-CTX-010) ----
 
@@ -279,8 +289,9 @@ class Run:
             raise BpaError('LOGIC.LIMIT_EXCEEDED', 'changes per commit')
         f = self.frames[-1]
         if change['op'] in ('create', 'update', 'append'):
+            lm = getattr(self.s, '_logic_mode', None)
             change['derivation'] = {'logic': [f.vh], 'inputs': [dict(t) for t in self.triples],
-                                    'mode': 'as_effective'}
+                                    'mode': lm['mode'] if lm else 'as_effective'}
         self.uow.append(change)
 
     # ---- program execution ----
@@ -669,6 +680,10 @@ class Run:
             if tr and state not in tr['from']:
                 raise BpaError('FLOW.PORT_UNAVAILABLE', {'port': a['port'], 'state': state})
         self.authorize(port.get('permission', 'none'), cls)
+        # STD-LGS-051 (1.0-rc8): the access rules of the object for the port
+        if not self.s._access(self.state(), self.branch, oid, self.context['principal'], a['port'],
+                              self.decision_ctx())[0]:
+            raise BpaError('IAM.DENIED', {'port': a['port'], 'access': 'no rule allows the principal'})
         if oid not in self.pending:
             # STD-LGS-031: the decisions of a command port run before it (DSN-DVM-720)
             self.s._check_decision(self.state(), self.branch, oid, a['port'], a.get('params') or {},
@@ -772,6 +787,23 @@ class Run:
         return self.run_function(Frame(asset, vh, fname, this=body, cls=cls, port=port, impl_class=found['class'],
                                        oid=oid), params)
 
+    def i_run_decision(self, a, d):
+        """STD-ISA-053 (1.0-rc8): evaluate a decision table at the process `asof` (or `asof`);
+        the table version is recorded in the rule binding."""
+        from .tables import evaluate, TABLE_CLASS
+        from .store import tl_at
+        st = self.state()
+        oid, o = self.s._table(st, self.target_id(a['table']) if not str(a['table']).startswith('ubos://') else a['table'])
+        self.authorize(d['authorization'], TABLE_CLASS)
+        seg = tl_at(o['timeline'], a.get('asof') or self.context['asof'])
+        if seg is None:
+            raise BpaError('QRY.NOT_FOUND_AT_TIME', 'no version of the table at asof')
+        body = self.s.versions[seg[2]]['body']
+        self.per_item(d, len(body.get('rows') or []))
+        if seg[2] not in self.tables:
+            self.tables.append(seg[2])
+        return evaluate(body, a['inputs'])['outputs']
+
     def i_run_validate(self, a, d):
         """STD-ISA-054: the validation preview of proposed changes or of the unit of work on
         a target."""
@@ -830,6 +862,41 @@ class Run:
             out['cursor'] = r['cursor']
         return out
 
+    def i_search_aggregate(self, a, d):
+        """STD-ISA-081 (1.0-rc8): grouped aggregates over the rows the principal may read."""
+        self.state()
+        q = a['query'] if isinstance(a['query'], dict) else {'text': a['query']}
+        self.authorize(d['authorization'], q.get('from') if isinstance(q.get('from'), str) else '')
+        r = self.s.aggregate(self.branch, {'commit': self.pins[self.branch]}, a,
+                             self.s._viewer_of(self.context['principal']))
+        self.per_item(d, sum(g['rows'] for g in r['groups']))
+        return r
+
+    def i_search_traverse(self, a, d):
+        """STD-ISA-082 (1.0-rc8): a traversal along references, authorised per node."""
+        self.state()
+        r = self.s.traverse_graph(self.branch, {'commit': self.pins[self.branch]}, a,
+                                  self.s._viewer_of(self.context['principal']))
+        self.per_item(d, len(r['nodes']))
+        return r
+
+    def i_search_text(self, a, d):
+        """STD-ISA-083 (1.0-rc8): ranked full-text search; the result is journaled because the
+        index is outside the snapshot."""
+        self.authorize(d['authorization'], '')
+        rec = {'instruction': 'search.text', 'args_hash': content_id('ubos.chunk.v1', a)}
+        seq = len(self.records) + 1
+        if self.replay is not None:
+            recs = self.replay['records']
+            if seq > len(recs):
+                raise BpaError('LOGIC.REPLAY_INPUT_MISSING', 'no journal record %d' % seq)
+            val = recs[seq - 1]['result']
+        else:
+            val = self.s.text_search(self.branch, a, self.s._viewer_of(self.context['principal']))
+        self.records.append(dict(rec, seq=seq, result_ref=content_id('ubos.chunk.v1', val), result=val))
+        self.per_item(d, len(val['items']))
+        return val
+
     def i_run_super(self, a, d):
         f = self.frames[-1]
         if f.port is None:
@@ -872,6 +939,85 @@ class Run:
         n = self.s.processes.get(self.p['process_id'], {}).get('effects', 0) + len(self.effects)
         return {'event_id': '%s/%d' % (self.p['process_id'], n)}
 
+    # ---- integration (STD-ISA-071, -090, 1.0-rc8) ----
+
+    def i_call_connector(self, a, d):
+        from .integration import CONNECTOR, DEFAULT_ALLOWED, _fields, _validate
+        st = self.state()
+        oid, c = self.s._connector(st, a['connector'])
+        uri = 'ubos://%s/%s/%s' % (self.s.TENANT, CONNECTOR, st['objects'][oid]['slug'])
+        # FR-LOGIC-102: the asset names the connector among its capabilities as connector:<uri>
+        caps = self.frames[-1].asset.get('capabilities') or []
+        if 'connector:' + uri not in caps:
+            raise BpaError('LOGIC.FORBIDDEN_CAPABILITY', 'the asset does not list the connector')
+        self.authorize(d['authorization'], CONNECTOR)
+        op = c['operations'].get(a['operation'])
+        if op is None:
+            raise BpaError('MODEL.INVALID_VALUE', 'unknown operation %s' % a['operation'])
+        if a['when'] not in ('now', 'after_commit'):
+            raise BpaError('MODEL.INVALID_VALUE', 'when is now or after_commit')
+        req = a['request']
+        _validate(op.get('request'), req, 'the request')
+        levels = c.get('allowed_classifications', DEFAULT_ALLOWED)
+        fields = _fields(op.get('request'))
+        out = sorted(k for k in req if fields[k].get('classification', 'internal') not in levels)
+        if out:
+            raise BpaError('LOGIC.CLASSIFICATION_EGRESS_DENIED', {'fields': out})
+        self.s._check_egress(c)
+        if a['when'] == 'after_commit':
+            payload = {'operation': a['operation'], 'request': req}
+            if a.get('idempotency_key') is not None:
+                payload['idempotency_key'] = a['idempotency_key']
+            self.effects.append({'type': 'connector.call', 'object_id': oid, 'payload': payload})
+            n = self.s.processes.get(self.p['process_id'], {}).get('effects', 0) + len(self.effects)
+            return {'effect_id': '%s/%d' % (self.p['process_id'], n)}
+        if not op.get('now'):
+            raise BpaError('LOGIC.FORBIDDEN_CAPABILITY', 'the operation is not declared for calls before commit')
+        self.connector_n += 1
+        if self.connector_n > self.limits['connector_calls']:
+            raise BpaError('LOGIC.LIMIT_EXCEEDED', 'connector calls')
+        rec = {'instruction': 'call.connector', 'args_hash': content_id('ubos.chunk.v1', a)}
+        seq = len(self.records) + 1
+        if self.replay is not None:
+            recs = self.replay['records']
+            if seq > len(recs):
+                raise BpaError('LOGIC.REPLAY_INPUT_MISSING', 'no journal record %d' % seq)
+            val = recs[seq - 1]['result']
+        else:
+            res = self.s._exchange(oid, c, a['operation'], req, 'call', self.p['process_id'], a.get('idempotency_key'))
+            val = res[1] if res[0] == 'ok' else {'error': res[1], 'details': res[2]}
+        self.records.append(dict(rec, seq=seq, result_ref=content_id('ubos.chunk.v1', val), result=val))
+        if isinstance(val, dict) and set(val) == {'error', 'details'}:
+            raise BpaError(val['error'], val['details'])
+        self.connector_calls.append({'connector': oid, 'body': c, 'operation': a['operation'], 'request': req,
+                                     'compensation': op.get('compensation'), 'seq': seq})
+        return val
+
+    def i_emit_notify(self, a, d):
+        from .integration import TEMPLATE, PRIORITIES
+        oid = self.target_id(a['subject'])
+        self.authorize(d['authorization'], self.class_of(oid))
+        tid, t = self.s._ref_oid(self.state(), a['template'], TEMPLATE)
+        recipients = a['recipients']
+        if not isinstance(recipients, list) or not recipients or not all(
+                isinstance(r, str) and (r.startswith('did:') or r.startswith('role:') or r.startswith('relation:'))
+                for r in recipients):
+            raise BpaError('MODEL.INVALID_VALUE', 'recipients are DIDs, role:<name> or relation:<name>')
+        channels = a.get('channels') or ['in_app']
+        if not isinstance(channels, list) or not all(isinstance(c, str) for c in channels):
+            raise BpaError('MODEL.INVALID_VALUE', 'channels is a list')
+        prio = a.get('priority') or 'normal'
+        if prio not in PRIORITIES:
+            raise BpaError('MODEL.INVALID_VALUE', 'priority is low, normal or high')
+        self.per_item(d, len(recipients))
+        nid = '%s/n%d' % (self.p['process_id'], len(self.notifications) + 1)
+        n = {'id': nid, 'template': self.s.versions[t['head']]['body'], 'subject': oid, 'recipients': recipients,
+             'channels': channels, 'priority': prio}
+        if a.get('action') is not None:
+            n['action'] = a['action']
+        self.notifications.append(n)
+        return {'notification_id': nid}
+
     # ---- assets (STD-CTX-022, -023, -030) ----
 
     def asset(self, key):
@@ -886,12 +1032,30 @@ class Run:
         oid = cands[0]
         if 'LogicAsset' not in self.s._cls(st['objects'][oid]['class'])['linearization']:
             raise BpaError('MODEL.REFERENCE_INVALID', 'not a logic asset')
-        vh = self.pinned.setdefault(oid, st['objects'][oid]['head'])
+        vh = self.pinned.setdefault(oid, self._logic_version(st['objects'][oid]))
+        self.s._q_check(vh)        # STD-CTX-031 (1.0-rc8)
         body = self.s.versions[vh]['body']
         self.check_asset(body)
         if vh not in self.logic:
             self.logic.append(vh)
         return body, vh
+
+    def _logic_version(self, o):
+        """The version of a logic asset a process runs (STD-TIME-041, 1.0-rc8): the head, or
+        under a restatement the version of its mode — the version whose timeline covers the
+        recomputed date (`as_effective`), the version the original process ran
+        (`as_originally`) or the head (`current`)."""
+        lm = getattr(self.s, '_logic_mode', None)
+        if not lm or lm['mode'] == 'current':
+            return o['head']
+        if lm['mode'] == 'as_originally':
+            for vh in lm['original']:
+                if any(s[2] == vh for s in o['timeline']) or vh == o['head']:
+                    return vh
+            return o['head']
+        from .store import tl_at
+        seg = tl_at(o['timeline'], lm['date'])
+        return seg[2] if seg else o['head']
 
     def check_asset(self, body):
         major, minor = _abi(body.get('abi'))
@@ -936,26 +1100,39 @@ class Exec:
             seed = seed0 if attempt == 1 else hashlib.sha256(seed0 + attempt.to_bytes(4, 'big')).digest()
             run = Run(self, i, p, seed, replay)
             retryable = False
+            # STD-TXN-060 (1.0-rc8): with `defer`, a require outcome stores a pending change
+            self._deferring = [] if i.get('defer') and replay is None else None
             try:
                 result, retryable = self._start(run, i)
                 if replay is not None:
                     return self._compare(run, result, replay)
+                if self._deferring:
+                    deferred, self._deferring = self._deferring, None
+                    return self._defer(run, i, p, result, attempt, deferred)
+                self._deferring = None
                 if attempt in interfere:
                     self.commit(branch, interfere[attempt])
                 cid = None
                 if run.uow:
                     p['serializable'] = i.get('serializable', False)
                     p['reads'] = dict(run.reads)
-                    _, cid = self._do_commit(branch, run.uow, p, flow={'transitions': run.transitions, 'guards': run.guards})
+                    _, cid = self._do_commit(branch, run.uow, p, flow={'transitions': run.transitions, 'guards': run.guards,
+                                                                       'tables': run.tables})
             except BpaError as e:
+                self._deferring = None
                 if replay is not None:
                     raise
                 if e.code in RETRY_CODES and retryable and attempt < max_attempts:
+                    self._compensate(run, p)                # STD-TXN-051 (1.0-rc8)
                     continue
                 outcome = {'LOGIC.LIMIT_EXCEEDED': 'limit', 'LOGIC.CANCELLED': 'cancelled'}.get(e.code, 'error')
                 self._finish(run, i, p, None, None, outcome, attempt)
+                self._compensate(run, p)                    # STD-TXN-051 (1.0-rc8)
+                self._q_failure(run, e.code, outcome)       # STD-CTX-031 (1.0-rc8)
                 raise
-            return self._finish(run, i, p, result, cid, 'ok', attempt)
+            out = self._finish(run, i, p, result, cid, 'ok', attempt)
+            self._notify(run, cid)                          # STD-ISA-071 (1.0-rc8)
+            return out
 
     def _start(self, run, i):
         if i.get('port') is not None:

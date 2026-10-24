@@ -264,7 +264,7 @@ Gate 2a — the standard, the kernel and the finance core on a single node:
 
 | Step | Content | Exits |
 |---|---|---|
-| 1 | BPA 1.0 release candidates for the PH-2 kernel: schema evolution and lenses, decision tables (STD-LGS-040), approvals and deferred commits, workflows and sagas, relationship authorization, masking and crypto-shredding, simulation, periods and close, matching, the REST facade (STD-PROTO-021); standard before code, split by clause area | EXIT-2-01 (candidates) |
+| 1 | BPA 1.0 release candidates for the PH-2 kernel: schema evolution and lenses, decision tables (STD-LGS-040), approvals and deferred commits, workflows and sagas, relationship authorization, masking and crypto-shredding, simulation, periods and close, matching, the REST facade (STD-PROTO-021); standard before code, split by clause area (DEC-089: BPA 1.0-rc8, parts 1a–1h) | EXIT-2-01 (candidates) |
 | 2 | extended formal models: approvals, sagas | EXIT-2-02 |
 | 3 | money and periods: currencies and rates, business calendars, double entry, period close, retroactive correction and restatement, reconciliation and matching (CAP-LOC-02, -04, CAP-LEDG-05, -06, -07, CAP-TIME-04, -06); declared balance projections and their rebuild (FR-LEDG-031, FR-LEDG-033, FR-ANL-021, DEC-087) | — |
 | 4 | approvals and work: deferred commits for `require` decisions, approvals and segregation of duties, tasks and work queues, SLAs and escalation, delegation (CAP-FLOW-04, -05, -08, -09) | — |

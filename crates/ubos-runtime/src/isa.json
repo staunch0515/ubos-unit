@@ -1238,7 +1238,28 @@
     "MODEL.CURRENCY_MISMATCH"
    ],
    "name": "search.aggregate",
-   "params": [],
+   "params": [
+    {
+     "name": "query",
+     "optional": false,
+     "type": "query-object"
+    },
+    {
+     "name": "group_by",
+     "optional": true,
+     "type": "list"
+    },
+    {
+     "name": "aggregates",
+     "optional": false,
+     "type": "list"
+    },
+    {
+     "name": "convert",
+     "optional": true,
+     "type": "map"
+    }
+   ],
    "profiles": [
     "agent",
     "batch",
@@ -1258,9 +1279,43 @@
     "per_item": 2
    },
    "determinism": "snapshot",
-   "errors": [],
+   "errors": [
+    "MODEL.INVALID_VALUE",
+    "IAM.NOT_FOUND"
+   ],
    "name": "search.traverse",
-   "params": [],
+   "params": [
+    {
+     "name": "start",
+     "optional": false,
+     "type": "uri"
+    },
+    {
+     "name": "fields",
+     "optional": true,
+     "type": "list"
+    },
+    {
+     "name": "direction",
+     "optional": true,
+     "type": "enum"
+    },
+    {
+     "name": "depth",
+     "optional": true,
+     "type": "integer"
+    },
+    {
+     "name": "classes",
+     "optional": true,
+     "type": "list"
+    },
+    {
+     "name": "limit",
+     "optional": true,
+     "type": "integer"
+    }
+   ],
    "profiles": [
     "agent",
     "batch",
@@ -1268,7 +1323,7 @@
     "standard",
     "strict"
    ],
-   "result": "none",
+   "result": "{nodes, truncated, evaluated_at}",
    "since": "1.0"
   },
   {
@@ -1280,9 +1335,27 @@
     "per_item": 1
    },
    "determinism": "journaled",
-   "errors": [],
+   "errors": [
+    "MODEL.INVALID_VALUE"
+   ],
    "name": "search.text",
-   "params": [],
+   "params": [
+    {
+     "name": "text",
+     "optional": false,
+     "type": "text"
+    },
+    {
+     "name": "classes",
+     "optional": true,
+     "type": "list"
+    },
+    {
+     "name": "limit",
+     "optional": true,
+     "type": "integer"
+    }
+   ],
    "profiles": [
     "agent",
     "batch",
@@ -1290,7 +1363,7 @@
     "standard",
     "strict"
    ],
-   "result": "none",
+   "result": "{items, watermark, lagging}",
    "since": "1.0"
   },
   {

@@ -1,0 +1,52 @@
+{
+  "$id": "DAT-Connector",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "allowed_classifications": {
+      "description": "levels that may leave (default public, internal)",
+      "type": "array"
+    },
+    "auth": {
+      "description": "{method, credential}; credential is a handle secret://...",
+      "type": "object"
+    },
+    "breaker": {
+      "description": "{failures, open_for}",
+      "type": "object"
+    },
+    "endpoint": {
+      "description": "{protocol: https | sftp | smtp | amqp | kafka, host, path}",
+      "type": "object"
+    },
+    "name": {
+      "description": "name",
+      "type": "string"
+    },
+    "operations": {
+      "description": "name -> {request, response, now, compensation, compensation_reason, redact}",
+      "type": "object"
+    },
+    "rate_limit": {
+      "description": "{per: second | minute | hour | day, count}",
+      "type": "object"
+    },
+    "retry": {
+      "description": "{max_attempts}",
+      "type": "object"
+    },
+    "timeout_ms": {
+      "description": "timeout of one attempt",
+      "type": [
+        "integer",
+        "string"
+      ]
+    }
+  },
+  "required": [
+    "name",
+    "endpoint",
+    "operations"
+  ],
+  "title": "DAT-Connector",
+  "type": "object"
+}

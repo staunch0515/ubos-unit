@@ -1,0 +1,51 @@
+{
+  "$id": "DAT-Saga",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "compensated": {
+      "description": "names of the compensated steps (written by the execution)",
+      "type": "array"
+    },
+    "completed": {
+      "description": "names of the completed steps (written by the execution)",
+      "type": "array"
+    },
+    "current": {
+      "description": "{step, attempt, phase} of the step in progress (written by the execution)",
+      "type": "object"
+    },
+    "error": {
+      "description": "the failed step and error code (written by the execution)",
+      "type": "object"
+    },
+    "max_attempts": {
+      "description": "attempts per step under forward recovery (default 1)",
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "name": {
+      "description": "name",
+      "type": "string"
+    },
+    "recovery": {
+      "description": "backward (default) | forward",
+      "type": "string"
+    },
+    "status": {
+      "description": "pending | running | compensating | completed | compensated | failed (written by the execution)",
+      "type": "string"
+    },
+    "steps": {
+      "description": "{name, process, compensation} items; process and compensation are {target, port, params}",
+      "type": "array"
+    }
+  },
+  "required": [
+    "name",
+    "steps"
+  ],
+  "title": "DAT-Saga",
+  "type": "object"
+}

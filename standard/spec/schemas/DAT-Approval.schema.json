@@ -1,0 +1,52 @@
+{
+  "$id": "DAT-Approval",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "approver": {
+      "description": "principal DID",
+      "type": "string"
+    },
+    "at": {
+      "description": "time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "type": "string"
+    },
+    "auth_level": {
+      "description": "authentication assurance at decision",
+      "type": "string"
+    },
+    "comment": {
+      "description": "comment",
+      "type": "string"
+    },
+    "decision": {
+      "description": "approve | reject",
+      "enum": [
+        "approve",
+        "reject"
+      ],
+      "type": "string"
+    },
+    "on_behalf_of": {
+      "description": "delegator DID",
+      "type": "string"
+    },
+    "preview": {
+      "description": "content-id of the preview approved",
+      "type": "string"
+    },
+    "signature": {
+      "description": "DAT-Signature when strong approval is required",
+      "type": "object"
+    }
+  },
+  "required": [
+    "approver",
+    "decision",
+    "preview",
+    "at",
+    "auth_level"
+  ],
+  "title": "DAT-Approval",
+  "type": "object"
+}

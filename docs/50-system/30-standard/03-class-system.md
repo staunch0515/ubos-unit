@@ -225,7 +225,11 @@ DAT-Transition:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0770…0779
 - **Satisfies:** FR-MODEL-036, FR-UX-012, FR-UX-015
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-095):
+  - **Declarations.** Views are declared as `views: [{mode, view, variants: [{device, role, locale, view}]}]`; extensions of a class may add or override them (STD-CLS-030, overlay policy). A view is an object below `ViewAsset`, such as the genesis class `View`; a view that does not resolve fails with `MODEL.REFERENCE_INVALID`.
+  - **Variants.** The variant whose keys all match the context and that has the most keys wins; the first declared wins ties.
+  - **Generated views.** A generated view lists the visible fields with type, label, classification, `required` and `read_only`, taking `field_visibility` (STD-LGS-011) and the field rules of the lifecycle state into account; display modes are read-only. It also lists the ports available in the state and the state.
+  - **Operation.** The adapter operation `resolve_view {branch, object_id or class, mode, ctx}` returns `{source: declared, class, mode, view, view_id, variant}` or `{source: generated, class, mode, generated}`. The modes are `view`, `edit`, `create`, `list`, `card` and `print`.
 
 ## 4. Extensions
 
@@ -298,6 +302,17 @@ DAT-ClassExtension:
 - **Satisfies:** FR-MODEL-081
 - **Notes:** Narrowing a constraint that current data violates is `breaking` until the data is migrated.
 
+  Since 1.0-rc8 (DEC-092):
+  - **Changes.** A class change is made by the adapter operation `change_class`, which takes the new declaration with `schema_version` incremented by one and optionally a lens. Loading genesis declarations is not a class change.
+  - **Computation.** The classification compares the effective fields and the ports of both versions and reports each change with its own classification:
+    - `additive`: a new optional field, or a new required field with a default; a new port; a label or description; a constraint change that all stored current versions satisfy;
+    - `lens_required`: a new required field without a default, a removed field, or a changed type; a constraint change that stored current versions violate but satisfy once the lens maps them (renamed enum values, for example);
+    - `breaking`: a constraint change that stored current versions violate, mapped by the lens if one is given (with their count); a removed or changed port; a changed kind, parent, namespace or abstractness; another changed member; and any change whose lens fails the totality check (STD-CLS-062).
+
+    The change is classified by its highest item.
+  - **Outcome.** An `additive` change takes effect. A `lens_required` change takes effect with a total lens and fails with `MODEL.LENS_REQUIRED` without one. A `breaking` change fails with `MODEL.MIGRATION_REQUIRED`, reporting its items.
+  - **Pure form.** `classify_change {from, to, stored, lens}` computes the classification over the classes' own fields.
+
 ### STD-CLS-060 — Lens language
 - **Clause:** A lens MUST be an object of class `Lens` with a `from` and `to` schema version and an ordered list of operations from the table below, plus an optional L2 residual function for each direction. Each operation defines a forward and a backward mapping. Operations marked one-way make the lens one-way.
 
@@ -317,6 +332,16 @@ DAT-ClassExtension:
 - **Satisfies:** FR-MODEL-082, FR-MODEL-083
 - **Notes:** `drop_with_archive` keeps round trips total.
 
+  Since 1.0-rc8 (DEC-092):
+  - **Parameters.**
+    - `split` has `forward`, one L1 expression per part, and `backward`, one expression that joins them.
+    - `join` has `forward`, one expression, and `backward`, one expression per part.
+    - Expressions read the body as `params`, typed by the source schema version forward and by the target version backward.
+  - **Archive.** `drop_with_archive` keeps the value in the body member `_archived`, which every class accepts.
+  - **One-way lenses.** A `map_enum` mapping that is not injective requires `one_way` with `one_way_reason`.
+  - **Scope.** L2 residual functions are not available in 1.0-rc8 (`LOGIC.NOT_AVAILABLE`).
+  - **Pure form.** `apply_lens {lens, from, to, body, direction}` applies one lens.
+
 ```yaml
 DAT-Lens:
   class: { type: reference, required: true, description: "class URI" }
@@ -334,11 +359,18 @@ DAT-Lens:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0920…0939
 - **Satisfies:** FR-MODEL-083, FR-MODEL-084, FR-MODEL-085
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-092):
+  - **Reads.** A read returns the body in the class's current schema version unless `schema_version` names another. A step of the chain made by an additive change has no lens: forward it keeps the body, backward it drops the fields the older version does not declare. Backward through a one-way lens fails with `MODEL.LENS_REQUIRED`.
+  - **Writes.** A change with `schema_version` older than the current one is lensed forward before it is stored. An update's patch applies to its base seen in that version, which needs the backward lenses.
+  - **Updates and merges.** An update applies to its base in the current version. A merge aligns base, source and target to the current version before it compares them.
 
 ### STD-CLS-062 — Lens totality check
 - **Clause:** Before a class change with a lens becomes effective on a protected branch, the implementation MUST verify round trips `backward(forward(x)) = x` for generated values of every affected field type, and for a sample of stored current versions (at least the lesser of 10,000 and all). It MUST report failures with sample values.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-0940…0949
 - **Satisfies:** FR-MODEL-086
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-092):
+  - **Values.** The generated values vary each field the lens touches over values of its type that its constraints allow; the other required fields take their first value. Stored current versions are sampled in object order.
+  - **Checks.** Each value must map forward to a body that conforms to the target version and, unless the lens is one-way, map back to itself.
+  - **Report.** It has `total`, the numbers of generated and stored values, and up to ten failures with the value, the reason (`forward_invalid`, `round_trip` or `error`) and the mapped bodies. `change_class` runs the check for every change with a lens, whatever the branch, and a failure makes the change `breaking`.
+  - **Pure form.** `check_lens {lens, from, to, stored}` runs the check.

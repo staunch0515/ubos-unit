@@ -19,6 +19,16 @@ depends_on: [UBS-VER-01, UBS-PH-2]
 - **Evidence:** signed runner reports, release manifest.
 - **Supports:** EXIT-2-01
 
+### VER-INSP-9006 — BPA 1.0-rc8 coverage
+- **Verifies:** FR-STD-022, DSN-BPA-003
+- **Suite:** SUITE-BPA-COVERAGE · **Phase:** PH-2
+- **Environment:** release pipeline
+- **Procedure:**
+  1. Compute MUST-clause coverage per profile for the rc8 profiles (Core, Bitemporal, Ledger, Proof, Governance, Protocol), excluding the superseded vectors (STD-CONF-030).
+- **Pass criterion:** 100% coverage.
+- **Evidence:** coverage report and release manifest `standard/release/1.0-rc8/` (PH-2 step 1h, DEC-096: 200 of 200 MUST clauses, 2,053 vectors); tag `bpa-v1.0.0-rc8`.
+- **Supports:** EXIT-2-01
+
 ### VER-FORM-0100 — Approvals and deferred commits model
 - **Verifies:** STD-TXN-060, STD-VER-021, DSN-DVM-550, DSN-DVM-551, DSN-DVM-746, FR-FLOW-043, FR-FLOW-045
 - **Suite:** SUITE-DVM-FORM · **Phase:** PH-2

@@ -73,7 +73,7 @@ depends_on: [UBS-STD-10]
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3450…3469
 - **Satisfies:** FR-RULE-041, FR-RULE-043
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-091): the table is evaluated as in STD-LGS-040, in its version valid at `asof`, and the result is its `outputs`; the versions of the tables a process evaluated are listed in the `tables` member of the rule binding of its commit (STD-TIME-040). An unknown table is `IAM.NOT_FOUND`.
 
 ### STD-ISA-054 — `run.validate`
 - **Clause:** Evaluates validations, invariants and commit-point declarations for proposed changes without committing, and returns all findings (the validation preview).
@@ -138,4 +138,8 @@ depends_on: [UBS-STD-10]
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3515…3524
 - **Satisfies:** FR-NTF-011, FR-OFFICE-061
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-094):
+  - **Templates.** A template is an object of the genesis class `NotificationTemplate` with `title` and `body`; `{{this.<field>}}` placeholders take the subject's values.
+  - **Recipients.** Recipients are DIDs, `role:<name>` (the principals of the adapter's directory with that role, operation `principal`) or `relation:<name>` (the principals the subject's relation reaches, STD-LGS-050); other forms fail with `MODEL.INVALID_VALUE`.
+  - **Rendering.** After commit, each recipient and channel gets an effect `notification` with `{notification_id, recipient, channel, priority, title, body, action}`, rendered with the recipient's clearances and masks (STD-LGS-052); hidden fields render empty. A process that fails sends nothing.
+  - **Defaults.** `channels` defaults to `in_app`, and `priority` to `normal` (`low`, `normal`, `high`).

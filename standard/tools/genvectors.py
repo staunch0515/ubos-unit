@@ -24,7 +24,8 @@ from bpa.store import Store                              # noqa: E402
 
 OUT = os.path.join(REPO, 'standard', 'vectors')
 AREAS = ['fnd', 'obj', 'cls', 'kind', 'ver', 'time', 'txn', 'proof', 'err', 'model', 'history', 'proofs', 'language', 'execution',
-         'sheets', 'rules', 'core1b', 'ubtp', 'flow']
+         'sheets', 'rules', 'core1b', 'ubtp', 'flow', 'periods', 'approvals', 'workflows', 'evolution',
+         'protection', 'integration', 'search']
 # Stateful operations whose expected results are stripped of implementation-dependent members
 # and compared as subsets by default (STD-CONF-005, rule 6); the operations of step 1b keep
 # exact matching.
@@ -33,7 +34,17 @@ STRIPPED = ('commit', 'read', 'read_ledger', 'actions', 'merge', 'diff', 'export
             'tag', 'tag_info', 'release', 'revert', 'process_info', 'lineage', 'derivation', 'impact', 'outbox',
             'bulk', 'commit_record', 'prove', 'consistency_proof', 'tenant_root', 'export_archive',
             'import_archive', 'resolve', 'query', 'execute', 'journal', 'metering', 'metering_total', 'replay',
-            'verify_asset', 'bpu_descriptor', 'bpu_state', 'verify_bpu', 'cascade', 'explain_cascade', 'decide', 'ubtp')
+            'verify_asset', 'bpu_descriptor', 'bpu_state', 'verify_bpu', 'cascade', 'explain_cascade', 'decide', 'ubtp',
+            'close_period', 'reopen_period', 'match', 'unmatch', 'restate',  # 1.0-rc8 (DEC-090)
+            'decide_table', 'pending_change', 'approve', 'simulate',       # 1.0-rc8 (DEC-091)
+            'start_workflow', 'deliver_event', 'complete_task', 'migrate_workflow', 'run_saga',
+            'quarantine_policy', 'release_quarantine', 'change_class', 'upstream_changes',
+            'resolve_upstream',                                             # 1.0-rc8 (DEC-092)
+            'subject_key', 'key_availability', 'erase_subject', 'stored_form', 'disclose', 'lookup_key',
+            'relations', 'check_access',                                    # 1.0-rc8 (DEC-093)
+            'egress_allow', 'connector_stub', 'exchanges', 'principal', 'resolve_path',
+            'rest',                                                         # 1.0-rc8 (DEC-094)
+            'resolve_view', 'index_lag')                                    # 1.0-rc8 (DEC-095)
 
 
 # The time-zone vectors use only transitions that are stable in every tz database release
@@ -101,7 +112,7 @@ class Gen:
                     step['expect'] = {'same_as': s['same_as']}
                 elif phase == 'steps' and s.get('check', True):
                     stateful = s['op'] in STRIPPED
-                    res = strip(out[1], UBTP_STRIPPED if s['op'] == 'ubtp' else ()) if stateful else out[1]
+                    res = strip(out[1], UBTP_STRIPPED if s['op'] in ('ubtp', 'rest', 'exchanges') else ()) if stateful else out[1]
                     step['expect'] = {'result': res, 'match': s.get('match', 'subset' if stateful else 'exact')}
                 vec[phase].append(step)
         last = vec['steps'][-1].get('expect', {})

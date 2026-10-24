@@ -160,7 +160,11 @@ DAT-Derivation:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2180…2189
 - **Satisfies:** FR-TXN-053
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-094):
+  - **When it runs.** When a process with successful `now` calls fails (including an attempt that is retried), each call's compensation operation is invoked with the call's request, last call first.
+  - **Records.** Each compensation is made under the idempotency key `comp:<process>:<seq>` and recorded in the process record (`compensations`, with `outcome`) and in the exchanges.
+  - **At least once.** A compensation that cannot be made now is released as an effect `connector.compensation` for retry.
+  - **Exceptions.** An operation declared `compensation: none` is recorded as such. Compensations are not rate-limited.
 
 ## 6. Deferred commits (approvals)
 
@@ -173,7 +177,12 @@ DAT-Derivation:
 - **Grammar / Schema:** `DAT-PendingChange`
 - **Conformance vectors:** VER-CONF-2190…2214
 - **Satisfies:** FR-FLOW-042, FR-FLOW-044
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-091):
+  - **Request.** A port call made with `defer` stores a pending change when its decisions require steps; without `defer` it fails with `RULE.DECISION_REQUIRES` as before.
+  - **Identity.** The pending change is identified by the process that requested it, and `preview` is the content ID of `{branch, changes}`. The requirements are those of STD-LGS-041. `expires_at` is the request time plus the shortest `expires_in`.
+  - **States.** At each read or approval, an expired pending change becomes `expired`, and one whose bases are no longer the heads becomes `invalidated`, listing the changed objects with their approved and current bodies (`changed_since`) and keeping the voided approvals.
+  - **Application.** The final approval commits the stored changes in a new process with the requester as initiator. A failure of that commit invalidates the pending change with the error code (`invalid_reason`).
+  - **Ending.** A rejection ends it as `rejected`; a decision on a pending change that is no longer `pending` returns its state.
 
 ```yaml
 DAT-PendingChange:
@@ -206,7 +215,94 @@ DAT-Approval:
 
 ### STD-TXN-080 — Sagas
 - **Clause:** A saga MUST be a Definition object that lists steps (a process spec and an optional compensation) and the saga state. Each step is a process linked by `saga`. On step failure or timeout, compensations of completed steps MUST run in reverse order, unless the saga declares forward recovery. Saga state transitions MUST be committed, so that execution resumes after crashes without repeating completed steps.
-- **Grammar / Schema:** —
+- **Grammar / Schema:** `DAT-Saga`
 - **Conformance vectors:** VER-CONF-2225…2244
 - **Satisfies:** FR-TXN-061, FR-TXN-062, FR-TXN-063
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-092):
+  - **Objects.** A saga is an object of the genesis class `Saga`. Its author writes `name`, `steps`, `recovery` and `max_attempts`. The state members (`status`, `completed`, `compensated`, `current`, `error`, `log`) are written only by the saga's execution; a change that writes them fails with `FLOW.STATE_DIRECT_WRITE`.
+  - **Steps.** A step's process and compensation are port calls `{target, port, params}`. Each runs as its own process and commit, and its process record carries `saga` and `saga_step` (`step`, `attempt`, `phase`).
+  - **States.** A saga moves from `pending` to `running`, then ends `completed`; on a failure under backward recovery it moves to `compensating` and ends `compensated`. A failed compensation, or forward recovery that has used `max_attempts` attempts, ends it `failed`. A step without a compensation counts as compensated.
+  - **Timeouts.** A step whose process ends by a limit termination (`LOGIC.LIMIT_EXCEEDED`) has timed out.
+  - **Commits.** Every state transition is one commit, before and after each step process. On resumption, a step whose process committed is not run again; its recorded outcome is used. The adapter operation `run_saga` runs or resumes a saga; with `interrupt_after: n` it stops after n commits, as a crash would.
+
+```yaml
+DAT-Saga:
+  name: { type: text, required: true, description: "name" }
+  steps: { type: list, required: true, description: "{name, process, compensation} items; process and compensation are {target, port, params}" }
+  recovery: { type: enum, required: false, description: "backward (default) | forward" }
+  max_attempts: { type: integer, required: false, description: "attempts per step under forward recovery (default 1)" }
+  status: { type: enum, required: false, description: "pending | running | compensating | completed | compensated | failed (written by the execution)" }
+  completed: { type: list, required: false, description: "names of the completed steps (written by the execution)" }
+  compensated: { type: list, required: false, description: "names of the compensated steps (written by the execution)" }
+  current: { type: composite, required: false, description: "{step, attempt, phase} of the step in progress (written by the execution)" }
+  error: { type: composite, required: false, description: "the failed step and error code (written by the execution)" }
+```
+
+## 8. Workflows
+
+### STD-TXN-090 — Workflow definitions and instances
+- **Clause:** A workflow definition MUST be a versioned Definition object (`DAT-WorkflowDefinition`) with typed variables, a start step and steps of the types `action`, `wait_event`, `timer`, `human_task`, `decision`, `parallel` with `join`, `sub_workflow` and `end`. A workflow instance MUST be a System-kind object, pinned to the definition version current when it started, whose state advances only through the workflow operations. Every step MUST be one committed state change, and an action's port call MUST be idempotent by `(instance, step, visit, attempt)`. A `join` MUST fire once, when all branches of its `parallel` step have arrived.
+- **Grammar / Schema:** `DAT-WorkflowDefinition`
+- **Conformance vectors:** VER-CONF-2245…2264
+- **Satisfies:** FR-FLOW-061, FR-FLOW-062
+- **Notes:** Since 1.0-rc8 (DEC-092):
+  - **Expressions.** Conditions, parameters, correlation keys and sub-workflow inputs are L1 expressions over the variables as `params`.
+  - **Steps.**
+    - `action` calls a port as a process linked by `workflow` (`instance`, `step`, `visit`, `attempt`) and stores the result in `result`. A failure retries the step up to `retries` times, then follows `on_error`, or else the instance ends `failed`.
+    - `decision` follows the first case whose `when` is true, or the branch of a decision table's `output` value; otherwise `default`.
+    - `parallel` starts a token per branch; `join` continues once, after the last branch arrives.
+    - `sub_workflow` starts a child instance with `inputs` and waits for it to end; `outputs` copy child variables into the parent. A child that fails fails the parent.
+    - `end` ends the instance `completed` or `failed`.
+  - **Steps of an instance.** A visit counts how often an instance entered a step, so steps in loops keep distinct identities.
+  - **Instances.** The adapter operation `start_workflow` creates an instance and advances it until every token waits or it ends. A change that writes a `WorkflowInstance` fails with `LOGIC.FORBIDDEN_TARGET`.
+
+```yaml
+DAT-WorkflowDefinition:
+  name: { type: text, required: true, description: "name" }
+  variables: { type: list, required: false, description: "{name, type, constraints, default} items" }
+  start: { type: text, required: true, description: "the first step" }
+  steps: { type: composite, required: true, description: "step name -> DAT-WorkflowStep" }
+DAT-WorkflowStep:
+  type: { type: enum, required: true, description: "action | wait_event | timer | human_task | decision | parallel | join | sub_workflow | end" }
+  next: { type: text, required: false, description: "the following step (all types except decision, parallel and end)" }
+  target: { type: text, required: false, description: "action: the object URI" }
+  port: { type: text, required: false, description: "action: the port" }
+  params: { type: composite, required: false, description: "action: parameter -> L1 expression" }
+  retries: { type: integer, required: false, description: "action: retries after a failure (default 0)" }
+  on_error: { type: text, required: false, description: "action: the step after the last failed attempt" }
+  result: { type: text, required: false, description: "the variable that receives the result, event payload or task data" }
+  event_type: { type: text, required: false, description: "wait_event: the event type" }
+  correlation: { type: text, required: false, description: "wait_event: L1 expression of the correlation key" }
+  buffer: { type: duration, required: false, description: "wait_event: how long an earlier event stays deliverable" }
+  after: { type: duration, required: false, description: "timer: the delay from entering the step" }
+  assignee: { type: text, required: false, description: "human_task: the principal who completes it" }
+  cases: { type: list, required: false, description: "decision: {when, next} items" }
+  default: { type: text, required: false, description: "decision: the step when no case applies" }
+  table: { type: text, required: false, description: "decision: a decision table (object ID or URI)" }
+  inputs: { type: composite, required: false, description: "decision with a table, sub_workflow: name -> L1 expression" }
+  output: { type: text, required: false, description: "decision with a table: the output that selects the branch" }
+  branches: { type: list, required: false, description: "parallel: the first steps of the branches; decision with a table: output value -> step" }
+  join: { type: text, required: false, description: "parallel: the join step" }
+  definition: { type: text, required: false, description: "sub_workflow: the child definition (object ID or URI)" }
+  outputs: { type: composite, required: false, description: "sub_workflow: parent variable -> child variable" }
+  outcome: { type: enum, required: false, description: "end: completed (default) | failed" }
+```
+
+### STD-TXN-091 — Workflow events, timers and tasks
+- **Clause:** An event MUST be matched to waiting steps by `(event type, correlation key)` and MUST wake at most one of them: the one that has waited longest. An event that matches no waiting step MUST be buffered and delivered to a step that starts waiting within that step's declared `buffer` window. A timer MUST fire when the clock reaches its due time. A human task MUST be completed only by its assignee, and completing the same `(instance, step, visit)` again MUST return the first result. An event delivered again under its event ID MUST return the first result.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-2265…2284
+- **Satisfies:** FR-FLOW-064
+- **Notes:** Since 1.0-rc8 (DEC-092):
+  - **Operations.**
+    - `deliver_event {event_type, key, payload, event_id}` returns the woken step or `buffered`.
+    - `complete_task {instance, step, principal, data}` continues a human task. A step that does not wait fails with `FLOW.TRANSITION_NOT_ALLOWED`, another principal with `IAM.DENIED`, and other data under the same identity with `TXN.IDEMPOTENCY_MISMATCH`.
+    - Timers fire when `set_now` advances the clock, in the order of their due times.
+  - **Order of waiting.** Steps that wait for the same type and key are ordered by the sequence number of the commit that made them wait, then by instance and token.
+
+### STD-TXN-092 — Workflow migration
+- **Clause:** A running instance MUST continue on its pinned definition version after the definition changes. Moving it to another version MUST be an explicit migration that maps every active step (every waiting step and every join not yet fired) to a step of the same type; a migration that leaves a step unmapped MUST fail with `MODEL.MIGRATION_REQUIRED`. The migration MUST be recorded on the instance.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-2285…2294
+- **Satisfies:** FR-FLOW-062
+- **Notes:** Since 1.0-rc8 (DEC-092): the adapter operation `migrate_workflow {instance, version, step_map}` migrates to `version` (default: the definition's head). A step mapped to a missing step or a step of another type fails with `MODEL.INVALID_VALUE`; an instance that has ended fails with `MODEL.CONSTRAINT_VIOLATED`. `migrations` records the versions and the step map.

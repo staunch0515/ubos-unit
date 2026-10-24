@@ -215,5 +215,9 @@ class Rules:
         if r['outcome'] == 'deny':
             raise BpaError('RULE.DECISION_DENIED', r)
         if r['outcome'] == 'require':
+            deferring = getattr(self, '_deferring', None)
+            if deferring is not None:
+                deferring.append((oid, port, r))          # STD-TXN-060 (1.0-rc8)
+                return r
             raise BpaError('RULE.DECISION_REQUIRES', r)
         return r

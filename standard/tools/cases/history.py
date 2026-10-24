@@ -8,6 +8,8 @@ became-effective events (STD-TIME-050), derivation records, trigger lineage, ide
 the outbox and bulk processes (STD-TXN-030, -031, -040, -050, -070). Not required of the PH-0
 prototype."""
 from .common import CLASSES, cls, field, uid, commit, create, base, usd, gl, stock, NOW, PERIOD, CUSTOMER
+# BPA 1.0-rc8 (DEC-090): a period is closed by close_period, not by an update (STD-KIND-025)
+FROZEN_CLOSE = 'periods are closed by close_period since BPA 1.0-rc8 (STD-KIND-025, DEC-090)'
 
 TAX = cls('TaxRule', [field('rate', 'decimal', True), field('note', 'text')], parent='ConfigAsset')
 BUDGET = cls('BudgetLine', [field('account', 'text', True), field('amount', 'decimal', True)], kind='ledger',
@@ -288,8 +290,8 @@ def ver(S, c1, c2, t1):
     S('STD-VER-055', 'entries merged into a period closed on the target fail', [
         commit([per], label='m'), br('feature/a'),
         commit([gl(uid(11), '1000', '10.00'), gl(uid(12), '4000', '-10.00')], branch='feature/a'),
-        commit([upd(uid(20), 'm', {'state': 'closed'})]),
-        op('merge', error='LEDG.PERIOD_CLOSED', source='feature/a', target='main')])
+        dict(commit([upd(uid(20), 'm', {'state': 'closed'})]), frozen=FROZEN_CLOSE),
+        dict(op('merge', error='LEDG.PERIOD_CLOSED', source='feature/a', target='main'), frozen=FROZEN_CLOSE)])
     S('STD-VER-055', 'balanced entries merge into an open period', [
         commit([per]), br('feature/a'),
         commit([gl(uid(11), '1000', '10.00'), gl(uid(12), '4000', '-10.00')], branch='feature/a'),

@@ -26,6 +26,14 @@ from .sheets import Sheets
 from .rules import Rules, DryRun
 from .flow import Flow
 from .ubtp import Ubtp
+from .periods import Periods
+from .tables import Tables
+from .approvals import Approvals
+from .workflows import Workflows
+from .lenses import Lenses
+from .protection import Protection, is_marker
+from .integration import Integration
+from .search import Search
 from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
 
@@ -122,7 +130,8 @@ def tl_at(tl, asof):
     return None
 
 
-class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
+class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Tables, Approvals, Workflows, Lenses, Protection, Integration,
+            Search):
     def __init__(self):
         self.reset()
 
@@ -158,6 +167,11 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         self._cseq = 0
         self._exec_init()
         self._node_init()
+        self._orch_init()
+        self._lens_init()
+        self._prot_init()
+        self._int_init()
+        self._search_init()
         root = self._new_commit('main', [], {'objects': {}, 'ledger': {}}, 0, tx=False)
         self.branches['main'] = {'head': root, 'kind': 'main', 'created_at': self.now, 'active_at': self.now,
                                  'parent_line': None, 'created_from': root}
@@ -166,6 +180,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
     def set_now(self, now):
         self.now = now
         self._tick()
+        self._wf_timers()       # STD-TXN-091 (1.0-rc8)
         return True
 
     def set_limits(self, max_body_bytes=None, max_derivation_inputs=None, max_violations=None):
@@ -218,7 +233,10 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         for d in classes:
             decls[d['name']] = d
         eff = {}
-        for n in list(decls) + ['ChangeSet', 'Release', 'Logic', 'GovernanceSheet', 'PropertyDecl', 'Lifecycle', 'Policy']:
+        for n in list(decls) + ['ChangeSet', 'Release', 'Logic', 'GovernanceSheet', 'PropertyDecl', 'Lifecycle', 'Policy',
+                                'CloseArtefact', 'MatchRecord', 'DecisionTable', 'SimulationRun',
+                                'WorkflowDefinition', 'WorkflowInstance', 'Saga', 'Quarantine', 'QuarantineRelease',
+                                'Lens', 'Connector', 'NotificationTemplate', 'View']:
             eff[n] = effective_class(list(decls.values()), n)
         for n, e in eff.items():
             old = self.classes.get(n)
@@ -382,7 +400,16 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
             raise BpaError('MODEL.INVALID_VALUE', 'body is an object')
         out = {}
         for k, v in body.items():
+            # STD-OBJ-011 (1.0-rc8): an erased field is kept as it is stored
+            if is_marker(v) and v['commitment'] in self.erased_store:
+                out[k] = v
+                continue
             if k not in eff['fields']:
+                # STD-CLS-060 (1.0-rc8): values a lens archived by drop_with_archive
+                if k == '_archived' and isinstance(v, dict):
+                    out[k] = v
+                    canonical(v)
+                    continue
                 if eff['kind'] == 'raw_document':
                     out[k] = v
                     canonical(v)
@@ -402,9 +429,12 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         return out
 
     def _version(self, oid, cls, slug, body, valid, predecessor=None, tombstone=False, provenance=None, state=None):
+        stored = self._protect(oid, cls, body)
         env = {'object_id': oid, 'class': cls, 'class_version': content_id('ubos.chunk.v1', self._decl(cls)),
                'schema_version': self._decl(cls).get('schema_version', 1), 'kind': self._cls(cls)['kind'],
-               'slug': slug, 'valid': valid, 'body_ref': content_id('ubos.chunk.v1', body)}
+               'slug': slug, 'valid': valid,
+               # STD-OBJ-010 (1.0-rc8): hashes cover the stored form of protected fields
+               'body_ref': content_id('ubos.chunk.v1', stored)}
         if state is not None:
             env['state'] = state
         if predecessor:
@@ -417,6 +447,10 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         old = self.versions.get(vh)
         self.versions[vh] = {'object_id': oid, 'class': cls, 'slug': slug, 'body': body, 'valid': valid,
                              'tombstone': tombstone, 'cseq': old['cseq'] if old else self._cseq, 'envelope': env}
+        if stored is not body:
+            self.versions[vh]['stored'] = stored
+            if old is not None:
+                self.versions[vh]['body'] = old['body']     # an erased version stays erased
         if provenance:
             self.versions[vh]['provenance_ref'] = provenance
         if state is not None:
@@ -531,7 +565,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
             rec = {'process_id': p['process_id'], 'kind': p['kind'], 'initiator': p['initiator'],
                    'trigger': p['trigger'], 'state': state, 'commits': [], 'effects': 0,
                    'explicit': p['explicit']}
-            for k in ('parent_process', 'bulk', 'idempotency_key'):
+            for k in ('parent_process', 'bulk', 'idempotency_key', 'workflow', 'saga', 'saga_step', 'compensations'):
                 if p.get(k) is not None:
                     rec[k] = p[k]
             self.processes[p['process_id']] = rec
@@ -638,8 +672,9 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         finally:
             self._exts = None
             self._eff_cache = {}
-            self._cur_branch = self._cur_p = None
+            self._cur_branch = self._cur_p = self._cur_st = None
         own = {oid: o for oid, o in st['objects'].items() if oid not in inh or (o['head'], o['timeline']) != inh[oid]}
+        self._note_overrides(branch, own, inh)          # STD-VER-082 (1.0-rc8)
         state = {'objects': own, 'ledger': st['ledger']}
         cid = self._new_commit(branch, [br['head']], state, cseq, ops=self._ops, hidden=sorted(self._inherit['hidden']),
                                process_id=p['process_id'] if p['explicit'] else None, rule_binding=binding,
@@ -651,6 +686,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         return result, cid
 
     def _begin(self, st, p):
+        self._cur_st = st                               # STD-OBJ-010 (1.0-rc8): subjects by reference
         self._exts = self._extensions(st)
         self._eff_cache = {}
         self._written, self._ended, self._ops, self._derived = [], [], {}, []
@@ -678,6 +714,8 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
             raise BpaError('TXN.HEAD_MOVED', {'objects': sorted(stale)})
         for ch in changes:
             op = ch.get('op')
+            if op in ('create', 'update') and 'schema_version' in ch:
+                ch = self._lens_change(st, ch)          # STD-CLS-061 (1.0-rc8)
             if op == 'create':
                 self._create(st, ch, result)
             elif op in ('update', 'end'):
@@ -752,6 +790,10 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         lg = sorted(set(logic) | {x for d in self._derived for x in self.derivations[d[3]]['logic']})
         if lg:
             out['logic'] = lg
+        # STD-TIME-040, STD-ISA-053 (1.0-rc8): the decision table versions a process evaluated
+        tables = (getattr(self, '_flow', None) or {}).get('tables') or []
+        if tables:
+            out['tables'] = sorted(tables)
         guards = (getattr(self, '_flow', None) or {}).get('guards') or []
         if guards:
             out['guards'] = list(guards)
@@ -774,7 +816,10 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
             raise BpaError('MODEL.INVALID_VALUE', 'object_id is a UUID')
         if self.decls.get(cls, {}).get('abstract'):
             raise BpaError('MODEL.ABSTRACT_INSTANTIATION')
-        if eff['kind'] == 'system' or eff['kind'] == 'ledger':
+        # STD-KIND-026 (1.0-rc8): close artefacts are written by close_period only
+        if (eff['kind'] == 'system' or eff['kind'] == 'ledger') and not (
+                cls == 'CloseArtefact' and getattr(self, '_period_op', None) == ('closing', 'closed')) and not (
+                cls == 'SimulationRun' and getattr(self, '_sim_op', False)) and cls not in self._sys_ok:
             raise BpaError('LOGIC.FORBIDDEN_TARGET')
         if oid in st['objects'] or self._entry_owner(st, oid)[1]:
             raise BpaError('TXN.ALREADY_EXISTS')
@@ -787,8 +832,10 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         if 'state' in ch or (lc and isinstance(body, dict) and 'state' in body):
             raise BpaError('FLOW.STATE_DIRECT_WRITE', 'the lifecycle state changes by transitions only')
         state = (self._flow.get('transitions') or {}).get(oid, {}).get('to', lc[0]['initial']) if lc else None
+        self._kernel_fields(cls, body)
         body = self._apply_defaults(st, cls, oid, body)
         body = self._check_body(cls, body)
+        self._check_special(cls, body)
         valid = ch.get('valid') or {}
         a = valid.get('from') or self._default_valid(cls)
         rid = self._derivation(ch)
@@ -808,8 +855,9 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
             if self._entry_owner(st, oid)[1]:
                 raise BpaError('LEDG.IMMUTABLE_ENTRY')
             raise BpaError('IAM.NOT_FOUND', 'unknown object')
-        if o['kind'] == 'system':
+        if o['kind'] == 'system' and o['class'] not in self._sys_ok:
             raise BpaError('LOGIC.FORBIDDEN_TARGET')
+        self._kernel_fields(o['class'], ch.get('body'))
         if ch.get('base') is None:
             raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'updates name their base (STD-TXN-020)')
         base = self.versions[o['head']]
@@ -836,13 +884,16 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
             if d < self._default_valid(o['class']):
                 result['retroactive'].append({'object_id': oid, 'from': d, 'to': None})
         else:
-            body = dict(base['body'])
+            body = dict(self._current_body(base))       # STD-CLS-061 (1.0-rc8)
             body.update(self._check_body(o['class'], ch.get('body', {}), partial=True))
             if o['class'] == 'GovernanceSheet':
                 if 'source' in ch.get('body', {}) and 'ast' not in ch['body']:
                     body.pop('ast', None)
                 body = self._sheet_body(body)
             self._check_body(o['class'], body)
+            self._check_special(o['class'], body)
+            # STD-KIND-025 (1.0-rc8): period transitions
+            self._check_period_transition(o['class'], base['body'].get('state'), body.get('state'))
             slug = ch.get('slug', o['slug'])
             check_name('slug', slug)
             kind = valid.get('kind', 'supersede_from')
@@ -865,7 +916,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         result['versions'][oid] = vh
 
     def _amounts(self, cls):
-        return self.decls[cls].get('ledger', {}).get('amounts', [])
+        return self._decl(cls).get('ledger', {}).get('amounts', [])
 
     def _append(self, st, ch, result, op, cseq):
         if op == 'append':
@@ -873,7 +924,10 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
             eff = self._cls(cls)
             if eff['kind'] != 'ledger':
                 raise BpaError('LOGIC.FORBIDDEN_TARGET')
-            spec = self.decls[cls]['ledger']
+            # STD-KIND-028 (1.0-rc8): match records are appended by match and unmatch only
+            if cls == 'MatchRecord' and not getattr(self, '_match_op', False):
+                raise BpaError('LOGIC.FORBIDDEN_TARGET')
+            spec = self._decl(cls)['ledger']
             lk = ch['ledger_key']
             if sorted(lk) != sorted(spec['key']):
                 raise BpaError('MODEL.INVALID_VALUE', 'ledger key fields')
@@ -925,7 +979,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         rid = self._derivation(ch)
         if rid:
             entry['provenance_ref'] = rid
-        entry['class_version'] = content_id('ubos.chunk.v1', self.decls[entry['class']])
+        entry['class_version'] = content_id('ubos.chunk.v1', self._decl(entry['class']))
         entry['entry_hash'] = self.entry_hash(entry)
         if rid:
             self._derived.append(('entry', entry['entry_id'], entry['entry_hash'], rid))
@@ -943,12 +997,12 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
     def entry_hash(self, e):
         rec = {k: e[k] for k in ('entry_id', 'class', 'ledger_key', 'valid_at', 'corrects', 'correction_type',
                                  'posting_group', 'provenance_ref', 'source_refs') if k in e}
-        rec['class_version'] = e.get('class_version') or content_id('ubos.chunk.v1', self.decls[e['class']])
+        rec['class_version'] = e.get('class_version') or content_id('ubos.chunk.v1', self._decl(e['class']))
         rec['body_ref'] = content_id('ubos.chunk.v1', e['body'])
         return content_id('ubos.entry.v1', rec)
 
     def _check_period(self, st, cls):
-        scope = self.decls[cls].get('ledger', {}).get('period_scope')
+        scope = self._decl(cls).get('ledger', {}).get('period_scope')
         if not scope:
             return
         day = self._today()
@@ -963,7 +1017,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
     def _check_double_entry(self, appended):
         groups = {}
         for e in appended:
-            if not self.decls[e['class']].get('ledger', {}).get('double_entry'):
+            if not self._decl(e['class']).get('ledger', {}).get('double_entry'):
                 continue
             g = groups.setdefault((e['class'], e.get('posting_group', e['entry_id'])), {})
             for a in self._amounts(e['class']):
@@ -1241,7 +1295,9 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         seg = tl_at(o['timeline'], a)
         if seg is None:
             raise BpaError('QRY.NOT_FOUND_AT_TIME')
-        out = self._segment(seg)
+        self._check_keys(self.versions[seg[2]])         # DSN-DVM-834 (1.0-rc8)
+        out = self._lens_read(self._segment(seg), self.versions[seg[2]], sel)
+        out = self._view_read(st, branch, object_id, out, sel)     # STD-LGS-051, -052 (1.0-rc8)
         out['evaluated_at'] = ev
         if sel.get('provenance'):
             b, c = prov[object_id]
@@ -1428,8 +1484,9 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow):
         return out, conflicts
 
     def _merge_body(self, oid, vb, vs, vt, virtual):
-        B = self.versions[vb]['body'] if vb else {}
-        S, T = self.versions[vs]['body'], self.versions[vt]['body']
+        # STD-CLS-061 (1.0-rc8): base, source and target in the current schema version
+        B = self._current_body(self.versions[vb]) if vb else {}
+        S, T = self._current_body(self.versions[vs]), self._current_body(self.versions[vt])
         absent = object()
         out, conflicts = {}, []
         for k in sorted(set(B) | set(S) | set(T)):

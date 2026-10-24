@@ -122,6 +122,10 @@ class Lang:
         return {v['slug'] for v in self.versions.values() if v['object_id'] == oid}
 
     def resolve(self, uri):
+        # STD-ADDR-003 (1.0-rc8): short forms and VFS paths are normalised first
+        if isinstance(uri, str) and not uri.startswith('ubos://'):
+            q = dict(x.partition('=')[::2] for x in uri.partition('?')[2].split('&') if x)
+            uri = self._canonical_ref(self._state(q.get('branch', 'main'))[0], uri)
         p = addr.parse_uri(uri)
         if p['tenant'] != self.TENANT or 'vae' in p:
             raise BpaError('IAM.NOT_FOUND', 'unknown authority')
@@ -251,6 +255,10 @@ class Lang:
             orders.append((ast, o.get('dir', 'asc')))
         asof = spec['asof']
         reader = self._typed_reader(st, asof)
+        # STD-LGS-051, -052 (1.0-rc8): a query made as a viewer filters rows inside the query
+        # and refuses fields masked for the viewer
+        viewer = self._viewer(i.get('as'))
+        names = self._this_members([where] + [a for a, _ in orders], set()) if viewer else set()
         from .store import tl_at
         rows = []
         for oid in sorted(st['objects']):
@@ -260,6 +268,8 @@ class Lang:
                 continue
             seg = tl_at(o['timeline'], asof or self._default_valid(o['class']))
             if seg is None or self.versions[seg[2]]['tombstone']:
+                continue
+            if viewer is not None and not self._view_filter(st, branch, [oid], viewer, names, asof):
                 continue
             this = expr.from_json(this_t, {k: v for k, v in self.versions[seg[2]]['body'].items()
                                            if k in this_t[1]})

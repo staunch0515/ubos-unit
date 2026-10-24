@@ -183,9 +183,14 @@ class Workflow:
                                     'payload': {'valid_from': f}})
         self.schedule = keep
 
-    def outbox_list(self):
+    def outbox_list(self, viewer=None):
         self._tick()
-        return {'effects': [e for e in self.outbox if e['effect_id'] not in self.acked]}
+        out = [e for e in self.outbox if e['effect_id'] not in self.acked]
+        # STD-LGS-052 (1.0-rc8): payloads as a subscriber sees them
+        viewer = self._viewer(viewer)
+        if viewer is not None:
+            out = [self._view_effect(e, viewer) for e in out]
+        return {'effects': out}
 
     def ack(self, effect_ids):
         known = {e['effect_id'] for e in self.outbox}

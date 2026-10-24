@@ -619,5 +619,61 @@ tests_file('tests/keys.yaml', [
         step('commit', commit({'op': 'end', 'object_id': S1, 'base': {'$ref': 'v1/version_hash'}}), subset({})),
         step('commit', commit(supplier(S5, 's-5', tax_id='T1')), subset({})),
     ]),
-], 'Unique keys at commit — STD-CLS-001 `keys`, STD-ISA-010 (DSN-DVM-111; PH-2 step 0b-3)')
+    # slugs (PH-2 step 0b-4, FR-MODEL-013): unique per class and branch, ended objects included
+    test('SLUG-1: a second object of the class with the same slug is refused; another class may use it', [
+        step('commit', commit(supplier(S1, 's-1')), subset({})),
+        step('commit', commit(supplier(S2, 's-1')),
+             err('MODEL.KEY_CONFLICT', {'class': 'Supplier', 'slug': 's-1'})),
+        step('commit', commit(create(S2, 'Customer', 's-1', {'name': 'c'})), subset({})),
+        step('commit', commit(supplier(S3, 's-1', 'PreferredSupplier')), subset({})),
+    ]),
+    test('SLUG-2: a slug change onto a taken slug is refused; onto a free one it commits', [
+        step('commit', commit(supplier(S1, 's-1'), supplier(S2, 's-2')), subset({})),
+        step('read', {'branch': 'main', 'object_id': S2}, subset({}), label='v2'),
+        step('commit', commit({'op': 'update', 'object_id': S2, 'base': {'$ref': 'v2/version_hash'}, 'slug': 's-1',
+                               'body': {'name': 's-2'}}), err('MODEL.KEY_CONFLICT', {'slug': 's-1'})),
+        step('commit', commit({'op': 'update', 'object_id': S2, 'base': {'$ref': 'v2/version_hash'}, 'slug': 's-9',
+                               'body': {'name': 's-2'}}), subset({})),
+    ]),
+    test('SLUG-3: two objects of one commit with the same slug are refused; an ended object keeps its slug', [
+        step('commit', commit(supplier(S1, 's-1'), supplier(S2, 's-1')), err('MODEL.KEY_CONFLICT')),
+        step('commit', commit(supplier(S1, 's-1')), subset({})),
+        step('read', {'branch': 'main', 'object_id': S1}, subset({}), label='v1'),
+        step('commit', commit({'op': 'end', 'object_id': S1, 'base': {'$ref': 'v1/version_hash'}}), subset({})),
+        step('commit', commit(supplier(S2, 's-1')), err('MODEL.KEY_CONFLICT', {'slug': 's-1'})),
+    ]),
+    # merges (PH-2 step 0b-4, STD-VER-050, FR-MODEL-013 acceptance 2)
+    test('MKEY-1: the same key on two draft branches commits on each; the second merge is a key conflict', [
+        step('create_branch', {'name': 'draft/a', 'from': 'main'}, subset({})),
+        step('create_branch', {'name': 'draft/b', 'from': 'main'}, subset({})),
+        step('commit', {'branch': 'draft/a', 'changes': [supplier(S1, 's-a', tax_id='T1')]}, subset({})),
+        step('commit', {'branch': 'draft/b', 'changes': [supplier(S2, 's-b', tax_id='T1')]}, subset({})),
+        step('merge', {'source': 'draft/a', 'target': 'main'}, subset({'merged': True})),
+        step('merge_preview', {'source': 'draft/b', 'target': 'main'},
+             subset({'conflicts': [{'kind': 'key', 'object_id': S2, 'with': S1, 'class': 'Supplier', 'fields': ['tax_id']}]})),
+        step('merge', {'source': 'draft/b', 'target': 'main'},
+             err('VER.MERGE_CONFLICT', {'conflicts': [{'kind': 'key', 'object_id': S2, 'with': S1}]})),
+        step('read', {'branch': 'main', 'object_id': S2}, err('IAM.NOT_FOUND')),
+    ]),
+    test('MKEY-2: the same slug created on two branches is a key conflict at the second merge', [
+        step('create_branch', {'name': 'draft/a', 'from': 'main'}, subset({})),
+        step('create_branch', {'name': 'draft/b', 'from': 'main'}, subset({})),
+        step('commit', {'branch': 'draft/a', 'changes': [supplier(S1, 's-x')]}, subset({})),
+        step('commit', {'branch': 'draft/b', 'changes': [supplier(S2, 's-x')]}, subset({})),
+        step('merge', {'source': 'draft/a', 'target': 'main'}, subset({'merged': True})),
+        step('merge', {'source': 'draft/b', 'target': 'main'},
+             err('VER.MERGE_CONFLICT', {'conflicts': [{'kind': 'key', 'object_id': S2, 'with': S1, 'slug': 's-x'}]})),
+    ]),
+    test('MKEY-3: after the key is changed on the draft, the merge commits', [
+        step('create_branch', {'name': 'draft/a', 'from': 'main'}, subset({})),
+        step('create_branch', {'name': 'draft/b', 'from': 'main'}, subset({})),
+        step('commit', {'branch': 'draft/a', 'changes': [supplier(S1, 's-a', tax_id='T1')]}, subset({})),
+        step('commit', {'branch': 'draft/b', 'changes': [supplier(S2, 's-b', tax_id='T1')]}, subset({})),
+        step('merge', {'source': 'draft/a', 'target': 'main'}, subset({'merged': True})),
+        step('read', {'branch': 'draft/b', 'object_id': S2}, subset({}), label='vb'),
+        step('commit', {'branch': 'draft/b', 'changes': [{'op': 'update', 'object_id': S2, 'base': {'$ref': 'vb/version_hash'},
+                                                           'body': {'tax_id': 'T2'}}]}, subset({})),
+        step('merge', {'source': 'draft/b', 'target': 'main'}, subset({'merged': True})),
+    ]),
+], 'Unique keys and slugs at commit and at merge — STD-CLS-001 `keys`, STD-ISA-010, STD-VER-050 (DSN-DVM-111, FR-MODEL-013; PH-2 steps 0b-3, 0b-4)')
 print('scenarios written')

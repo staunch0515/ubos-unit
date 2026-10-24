@@ -104,6 +104,7 @@ DAT-PropertyDecl:
   | `validations` | list of `{name, rule, severity, message}` | commit | union | validations of the matched objects (STD-LGS-030); since 1.0-rc2 |
   | `invariants` | list of `{name, scope, rule, severity, message}` | commit | union | invariants over the objects of the scope classes (STD-LGS-030); since 1.0-rc2 |
   | `decisions` | list of `{name, when, outcome, steps, message}` | action | union | decisions before a command port (STD-LGS-031); since 1.0-rc2 |
+  | `access` | list of `{action, allow_if}` | action | union | relation-based access rules (STD-LGS-051); since 1.0-rc8 |
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4880…4939
 - **Satisfies:** FR-RULE-013, SCN-009, SCN-012
@@ -196,7 +197,134 @@ DAT-DecisionResult:
 
 ### STD-LGS-040 — Decision tables
 - **Clause:** Decision tables MUST declare typed inputs, outputs, rows (L1 conditions per input column, or `-` for any) and a hit policy (`unique`, `first`, `priority`, `collect` with an aggregator). Authoring MUST report gaps and hit-policy overlaps for enumerable and range inputs (FR-RULE-042).
-- **Grammar / Schema:** —
+- **Grammar / Schema:** `DAT-DecisionTable`
 - **Conformance vectors:** VER-CONF-5090…5129
 - **Satisfies:** FR-RULE-041, FR-RULE-042
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-091):
+  - **Storage.** A decision table is an object of the genesis Definition class `DecisionTable` below `ConfigAsset`; it is evaluated in its version valid at `asof`.
+  - **Conditions.** A condition cell is an L1 boolean over `params`, the inputs, which are validated against their declared types (`MODEL.INVALID_VALUE`). A missing cell or `-` matches any value. Every row gives every output.
+  - **Hit policies.**
+    - `unique`: exactly one row matches; none fails with `RULE.NO_MATCH`, several with `RULE.MULTIPLE_MATCH`.
+    - `first`: the first matching row in row order.
+    - `priority`: the matching row with the highest `priority`; the first of equal priorities.
+    - `collect`: the outputs of every matching row, in row order. The aggregator `sum`, `min` or `max` reduces each numeric output, and `count` gives `{count}`. An aggregator with another policy is `MODEL.INVALID_VALUE`.
+  - **Result.** `{outputs, rows}`, where `rows` lists the indexes of the rows that decided.
+  - **Authoring check.** It evaluates the rows on the representative values of each input:
+    - for `boolean` and `enum` inputs, the domain;
+    - for `integer`, `decimal` and `date` inputs, every literal the conditions compare the input with, the values one unit (1, 0.01 or one day) below and above it, and the midpoints between them.
+
+    It reports, for at most 10,000 combinations:
+    - `gaps`: combinations no row matches (not for `collect`);
+    - `overlaps`: combinations several rows match for `unique`, or several rows of the top priority match for `priority`.
+
+    Other inputs, or more combinations, are reported as `unchecked`.
+
+```yaml
+DAT-DecisionTable:
+  name: { type: text, required: true, description: "table name" }
+  inputs: { type: list, required: true, description: "{name, type, constraints} items" }
+  outputs: { type: list, required: true, description: "{name, type, constraints} items" }
+  rows: { type: list, required: true, description: "{when: {input: L1 condition | -}, then: {output: value}, priority?} items" }
+  hit_policy: { type: enum, required: true, description: "unique | first | priority | collect" }
+  aggregator: { type: enum, required: false, description: "sum | min | max | count (collect only)" }
+  description: { type: text, required: true, description: "description" }
+```
+
+### STD-LGS-041 — Approval requirements
+- **Clause:** The steps of a `require` outcome (STD-LGS-031) MUST become the requirements of the pending change (STD-TXN-060). The kernel property `approvals` specifies the approval step:
+  - `count`, the number of approvals;
+  - `roles` or `principals`, the eligible approvers;
+  - `order`: `any`, or `sequence`, in which the named principals approve in their listed order;
+  - `incompatible` duties (STD-LGS-042);
+  - `expires_in`, a duration after which the pending change expires.
+
+  An `approval` step of a decision without the property requires one approval. Eligibility:
+  - an approver who is neither a named principal nor holds an eligible role is denied (`IAM.DENIED`, details `{approval: not_eligible}`);
+  - an approver out of sequence is denied (details `{approval: out_of_sequence}`).
+
+  The change is applied when every step is met:
+  - `approval` by `count` approvals;
+  - `second_person` by one approval;
+  - `signature` by one approval that carries a signature.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5130…5149
+- **Satisfies:** FR-FLOW-041, DSN-DVM-740
+- **Notes:** Each requirement is `{step, object_id, port}` with `count`, `order`, `roles`, `principals`, `incompatible` and `expires_in` for `approval`. Since 1.0-rc8 (DEC-091).
+
+### STD-LGS-042 — Separation of duties
+- **Clause:** An approval MUST be denied (`IAM.DENIED` with `details.sod`) when one of these holds for the approver or the principal named in `on_behalf_of`:
+  - it initiated the pending change (`maker_checker`);
+  - it already decided on the pending change (`one_decision_per_principal`);
+  - it initiated a committed call of a port the requirement lists as `incompatible` on the same object (`incompatible_duty`, with the `duty`).
+
+  These checks apply to every approval of the chain, and through delegations.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5150…5164
+- **Satisfies:** FR-FLOW-043
+- **Notes:** The incompatible-duty matrix is declared per action through `approvals.incompatible`; organisation-wide matrices are sheets that set it on the classes concerned. Since 1.0-rc8 (DEC-091).
+
+### STD-LGS-043 — Approval evidence
+- **Clause:** Every approval or rejection MUST be recorded as a `DAT-Approval` item with:
+  - the approver, `on_behalf_of` when delegated, and the decision;
+  - the preview it decided on, the time and the authentication level;
+  - the comment and the signature when given.
+
+  Change-set approvals (STD-VER-021) and pending-change approvals MUST use the same item. A pending change's approvals become void when it is invalidated (STD-TXN-060), and the voided items stay visible. The commit that applies a pending change MUST reference the pending change, its preview and the approvers.
+- **Grammar / Schema:** `DAT-Approval`
+- **Conformance vectors:** VER-CONF-5165…5179
+- **Satisfies:** FR-FLOW-044, FR-FLOW-045, FR-FLOW-046, DSN-DVM-742
+- **Notes:** The default authentication level of the adapter is `basic`. A pending-change approval also records its `step`. Change-set approvals record `auth_level` and `comment` when given. Since 1.0-rc8 (DEC-091).
+
+### STD-LGS-044 — Simulation of rule changes
+- **Clause:** A simulation MUST:
+  - select the historical port calls of a target branch in a window and by an optional port, in commit order;
+  - re-run each, up to a budget of processes, in the `simulation` profile on a sandbox branch created from the target as of just before the call's commit, with the candidate rules of the source branch: the objects of `GovernanceSheet`, `PropertyDecl` and `DecisionTable` on it;
+  - compare each simulated outcome (`committed` with the result hash, or `failed` with the error code) with the actual one;
+  - report `changed` per call.
+
+  Effects of the re-runs MUST NOT be released. When the budget ends before the selection, the result MUST state the coverage: the calls covered, those selected, `complete` and the dates covered. Every run MUST be stored as an object of the genesis System class `SimulationRun` with:
+  - the source, the target and the window;
+  - the budget, the coverage and the results;
+  - the versions of the candidate rules.
+
+  A run given a change set MUST be linked from the change set's `simulations`.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5180…5199
+- **Satisfies:** FR-RULE-071, FR-RULE-072, FR-RULE-073, DSN-DVM-760, DSN-DVM-761, DSN-DVM-762
+- **Notes:** The budget counts processes; CPU and time budgets are the node's (DSN-DVM-762). The sandbox branches stay as evidence. Since 1.0-rc8 (DEC-091).
+
+## 6. Relations, access and masking
+
+### STD-LGS-050 — Authorization relations
+- **Clause:** A reference field, or a list of references, MAY declare `authz_relation: <name>`. The authorization relations of an object MUST be derived from its version at the snapshot of the request, with one tuple `(object, relation, target)` per referenced object; they MUST NOT be kept in a separate store, so a commit that changes a reference changes the relation at that commit. A class MAY declare `principal_field`, a text field holding the DID of the principal an object stands for.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5310…5329
+- **Satisfies:** FR-IAM-051, DSN-DVM-810
+- **Notes:** Since 1.0-rc8 (DEC-093):
+  - **Declarations.** `authz_relation` on another type fails with `MODEL.INVALID_VALUE`, and so does a `principal_field` that names no text field.
+  - **Operation.** The adapter operation `relations {branch, object_id}` returns `{object_id, relations, principal}`, with the targets of each relation as object IDs in field and list order. It takes the snapshot selectors.
+
+### STD-LGS-051 — Relation-based access rules
+- **Clause:** The kernel property `access` MUST hold rules `{action, allow_if}` where `allow_if` is a relation path `principal in this(.relation)*` of at most four relations; a longer or malformed path MUST fail with `RULE.PARSE_ERROR` when the sheet is committed. When rules for an action (or `*`) apply to an object, the action MUST be allowed only if a rule's path, followed from the object at the snapshot of the request, reaches an object whose `principal_field` holds the principal. A refused read MUST fail with `IAM.NOT_FOUND`, and a refused port call with `IAM.DENIED`. Actions without rules are not restricted by relations.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5330…5354
+- **Satisfies:** FR-IAM-052, FR-IAM-053, FR-IAM-062, DSN-DVM-811, DSN-DVM-812
+- **Notes:** Since 1.0-rc8 (DEC-093):
+  - **Actions.** The action of a read is `read`; the action of a port call is the port name.
+  - **Combination.** `access` combines by union across the cascade, so a rule of any matching sheet can allow.
+  - **Operations.** `check_access {branch, object_id, principal, action, ctx}` returns `{allowed, rule}` with the rule that allowed. A `read` or `query` given `as: {principal, clearances, ctx}` is made as that principal: the read is refused when no rule allows it, and a query leaves out, inside its execution, the objects the principal may not read, so pages and counts agree (FR-IAM-062).
+  - **Consistency.** The rules and the relations are evaluated at the snapshot of the request, so a selector of an earlier commit sees the relations of that commit (FR-IAM-053).
+
+### STD-LGS-052 — Field masking
+- **Clause:** Reads made as a viewer MUST pass every body through masking after authorization:
+  - a field with a declared `mask` (STD-LGS-011) is shown in its mode: `hide` removes it, `partial` keeps the last four characters of a text and replaces the others with `*`, `hash` gives `hmac-sha256:` and the keyed hash of STD-OBJ-012 under the tenant lookup key;
+  - a field whose classification the viewer's clearances do not cover (STD-FND-027) is hidden unless a mask declares another mode.
+
+  The same masking MUST apply to query results, to event payloads delivered to the viewer and to every other output that carries bodies. A query made as a viewer that filters or sorts on a field masked for the viewer MUST fail with `QRY.INVALID_QUERY`.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5355…5384
+- **Satisfies:** FR-IAM-061, FR-IAM-063, DSN-DVM-821, DSN-DVM-822
+- **Notes:** Since 1.0-rc8 (DEC-093):
+  - **Viewer.** A viewer is `{principal, clearances, ctx}`; clearances default to `internal`, and `ctx` selects masks with context qualifiers. A read without a viewer is the adapter's system read and is not masked.
+  - **Modes.** `partial` on a value that is not a text hides it, and so does `hash` without a tenant lookup key (adapter operation `lookup_key`). An erased marker (STD-OBJ-011) is masked like a value.
+  - **Events.** `outbox` given `as` masks each payload by the masks and classifications of the effect's object.
