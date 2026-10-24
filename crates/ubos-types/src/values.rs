@@ -64,14 +64,64 @@ pub const LEVELS: &[&str] = &[
     "sensitive_personal",
 ];
 
-/// ISO 4217 minor units of the currencies used by release 0.1.
-pub fn minor_unit(currency: &str) -> Option<u32> {
+/// The ISO 4217 codes of list one with a minor unit, as current on 2026-01-01
+/// (STD-FND-028, BPA 1.0-rc9).
+pub const ISO_4217: &[&str] = &[
+    "AED", "AFN", "ALL", "AMD", "AOA", "ARS", "AUD", "AWG", "AZN", "BAM", "BBD", "BDT", "BGN",
+    "BHD", "BIF", "BMD", "BND", "BOB", "BOV", "BRL", "BSD", "BTN", "BWP", "BYN", "BZD", "CAD",
+    "CDF", "CHE", "CHF", "CHW", "CLF", "CLP", "CNY", "COP", "COU", "CRC", "CUP", "CVE", "CZK",
+    "DJF", "DKK", "DOP", "DZD", "EGP", "ERN", "ETB", "EUR", "FJD", "FKP", "GBP", "GEL", "GHS",
+    "GIP", "GMD", "GNF", "GTQ", "GYD", "HKD", "HNL", "HTG", "HUF", "IDR", "ILS", "INR", "IQD",
+    "IRR", "ISK", "JMD", "JOD", "JPY", "KES", "KGS", "KHR", "KMF", "KPW", "KRW", "KWD", "KYD",
+    "KZT", "LAK", "LBP", "LKR", "LRD", "LSL", "LYD", "MAD", "MDL", "MGA", "MKD", "MMK", "MNT",
+    "MOP", "MRU", "MUR", "MVR", "MWK", "MXN", "MXV", "MYR", "MZN", "NAD", "NGN", "NIO", "NOK",
+    "NPR", "NZD", "OMR", "PAB", "PEN", "PGK", "PHP", "PKR", "PLN", "PYG", "QAR", "RON", "RSD",
+    "RUB", "RWF", "SAR", "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE", "SOS", "SRD", "SSP",
+    "STN", "SVC", "SYP", "SZL", "THB", "TJS", "TMT", "TND", "TOP", "TRY", "TTD", "TWD", "TZS",
+    "UAH", "UGX", "USD", "USN", "UYI", "UYU", "UYW", "UZS", "VED", "VES", "VND", "VUV", "WST",
+    "XAF", "XCD", "XCG", "XOF", "XPF", "YER", "ZAR", "ZMW", "ZWG",
+];
+
+/// The minor units of a code of the ISO 4217 table (STD-FND-028), or `None`.
+pub fn table_unit(currency: &str) -> Option<u32> {
+    if ISO_4217.binary_search(&currency).is_err() {
+        return None;
+    }
     Some(match currency {
-        "USD" | "EUR" | "GBP" | "CHF" | "CAD" | "CNY" => 2,
-        "JPY" | "KRW" => 0,
-        "BHD" | "KWD" => 3,
-        _ => return None,
+        "BIF" | "CLP" | "DJF" | "GNF" | "ISK" | "JPY" | "KMF" | "KRW" | "PYG" | "RWF" | "UGX"
+        | "UYI" | "VND" | "VUV" | "XAF" | "XOF" | "XPF" => 0,
+        "BHD" | "IQD" | "JOD" | "KWD" | "LYD" | "OMR" | "TND" => 3,
+        "CLF" | "UYW" => 4,
+        _ => 2,
     })
+}
+
+thread_local! {
+    /// The codes added by `Currency` objects on the branch of the commit being made
+    /// (STD-FND-028): set by the engine for the duration of a commit.
+    static ADDED: std::cell::RefCell<std::collections::BTreeMap<String, u32>> =
+        const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
+}
+
+/// Restores the codes added before [`added_currencies`] when dropped.
+pub struct AddedGuard(std::collections::BTreeMap<String, u32>);
+
+impl Drop for AddedGuard {
+    fn drop(&mut self) {
+        let prev = std::mem::take(&mut self.0);
+        ADDED.with(|a| *a.borrow_mut() = prev);
+    }
+}
+
+/// Make the codes added on a branch valid until the guard is dropped (STD-FND-028).
+pub fn added_currencies(codes: std::collections::BTreeMap<String, u32>) -> AddedGuard {
+    AddedGuard(ADDED.with(|a| std::mem::replace(&mut *a.borrow_mut(), codes)))
+}
+
+/// The minor units of a currency: the ISO 4217 table, then the codes added on the branch
+/// of the current commit (STD-FND-023, -028).
+pub fn minor_unit(currency: &str) -> Option<u32> {
+    table_unit(currency).or_else(|| ADDED.with(|a| a.borrow().get(currency).copied()))
 }
 
 fn full_match(pattern: &str, text: &str) -> Result<bool, BpaError> {

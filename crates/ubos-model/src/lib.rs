@@ -297,6 +297,54 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("description", "text", true),
             ],
         ),
+        // STD-FND-028, -029, STD-KIND-029 (BPA 1.0-rc9, DEC-098): currencies, FX rates and
+        // accounts are Definition objects.
+        g(
+            "Currency",
+            Some("definition"),
+            Some("Object"),
+            false,
+            vec![
+                field("code", "text", true),
+                field("numeric", "text", false),
+                field("name", "text", true),
+                field("minor_units", "integer", true),
+            ],
+        ),
+        g(
+            "FxRate",
+            Some("definition"),
+            Some("Object"),
+            false,
+            vec![
+                field("source", "text", true),
+                field("base", "text", true),
+                field("quote", "text", true),
+                field("rate_type", "text", true),
+                field("rate", "decimal", true),
+                field("fixed_at", "instant", false),
+            ],
+        ),
+        g(
+            "LedgerAccount",
+            Some("definition"),
+            Some("Object"),
+            false,
+            vec![
+                field("number", "text", true),
+                field("name", "text", true),
+                enum_field(
+                    "type",
+                    &["asset", "liability", "equity", "income", "expense"],
+                ),
+                field("currency", "text", false),
+                {
+                    let mut f = field("parent", "reference", false);
+                    f["constraints"] = json!({"target_class": "LedgerAccount"});
+                    f
+                },
+            ],
+        ),
         g(
             "Release",
             Some("definition"),
@@ -334,6 +382,9 @@ pub fn is_genesis(name: &str) -> bool {
             | "Lifecycle"
             | "Policy"
             | "Release"
+            | "Currency"
+            | "FxRate"
+            | "LedgerAccount"
     )
 }
 

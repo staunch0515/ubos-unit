@@ -23,10 +23,85 @@ pub const MAX_ITEMS: usize = 65_536;
 /// `ref()` and `exists()` are charged as `read.get` (STD-ISA-030).
 pub const REF_COST: u64 = 10;
 
+/// The rate a conversion applies (STD-FND-029): multiply by a rate, or divide by the rate
+/// of the opposite key.
+#[derive(Debug, Clone)]
+pub enum FxRate {
+    /// The rate of the key.
+    Mul(Decimal),
+    /// The rate of the opposite key, applied as its inverse.
+    Div(Decimal),
+}
+
 /// Resolves a canonical object URI to a typed run-time value.
 pub trait Resolver {
     /// The object at `uri`, or `None`.
     fn resolve(&self, uri: &str) -> Result<Option<Val>, BpaError>;
+    /// The rate of `(source, base, quote, rate_type)` at the evaluation date (STD-FND-029,
+    /// BPA 1.0-rc9); `None` when the evaluation has no FX rates.
+    fn fx_rate(
+        &self,
+        _base: &str,
+        _quote: &str,
+        _rate_type: &str,
+        _source: Option<&str>,
+    ) -> Result<Option<FxRate>, BpaError> {
+        Ok(None)
+    }
+    /// The `FxRate` object a rate reference names, as `{from, to, rate}` (STD-FND-029).
+    fn rate_object(&self, _rate_ref: &str) -> Result<Option<Value>, BpaError> {
+        Ok(None)
+    }
+}
+
+/// STD-FND-029 (BPA 1.0-rc9): the rate of a key in a list of `{source, base, quote,
+/// rate_type, rate}` (the `fx_rates` of `eval_expr`), with the rules of `FxRate` objects.
+pub fn fx_in_list(
+    list: &[Value],
+    base: &str,
+    quote: &str,
+    rate_type: &str,
+    source: Option<&str>,
+) -> Result<FxRate, BpaError> {
+    let mut cands: Vec<(Option<&str>, bool, &Value)> = Vec::new();
+    for r in list {
+        let g = |k: &str| r.get(k).and_then(Value::as_str);
+        if g("rate_type") != Some(rate_type) || source.is_some_and(|x| g("source") != Some(x)) {
+            continue;
+        }
+        if (g("base"), g("quote")) == (Some(base), Some(quote)) {
+            cands.push((g("source"), false, r));
+        } else if (g("base"), g("quote")) == (Some(quote), Some(base)) {
+            cands.push((g("source"), true, r));
+        }
+    }
+    pick_rate(&cands, base, quote, rate_type)
+}
+
+/// The rate among candidates `(source, inverse, {rate})`: one source, the direct key first.
+pub fn pick_rate(
+    cands: &[(Option<&str>, bool, &Value)],
+    base: &str,
+    quote: &str,
+    rate_type: &str,
+) -> Result<FxRate, BpaError> {
+    if cands.is_empty() {
+        return Err(BpaError::with_details(
+            "MODEL.CURRENCY_MISMATCH",
+            serde_json::json!({"base": base, "quote": quote, "rate_type": rate_type}),
+        ));
+    }
+    let first = cands[0].0;
+    if cands.iter().any(|c| c.0 != first) {
+        return Err(invalid("several sources have the rate; name one"));
+    }
+    let (_, inverse, r) = cands.iter().find(|c| !c.1).unwrap_or(&cands[0]);
+    let rate = Decimal::parse(r.get("rate").and_then(Value::as_str).unwrap_or("0"))?;
+    Ok(if *inverse {
+        FxRate::Div(rate)
+    } else {
+        FxRate::Mul(rate)
+    })
 }
 
 /// Ordering key of a value: the category (variant order) then the value.
@@ -100,6 +175,8 @@ pub struct Evaluator<'a> {
     pub calendars: Map<String, Value>,
     /// Exchange rates by reference (`{from, to, rate}`).
     pub rates: Map<String, Value>,
+    /// FX rates by key (`eval_expr` input `fx_rates`, STD-FND-029).
+    pub fx_rates: Option<Vec<Value>>,
     /// Operation budget.
     pub max_units: u64,
     /// Maximum number of list items.
@@ -128,6 +205,7 @@ impl<'a> Evaluator<'a> {
             objects: Map::new(),
             calendars: Map::new(),
             rates: Map::new(),
+            fx_rates: None,
             max_units: MAX_UNITS,
             max_items: MAX_ITEMS,
             tz: "UTC".into(),
@@ -888,13 +966,24 @@ impl<'a> Evaluator<'a> {
                 if minor_unit(cur).is_none() {
                     return Err(invalid("unknown ISO 4217 currency"));
                 }
-                Val::Money(dec(0)?, cur.to_string())
+                // a dynamically typed amount may be a decimal string (STD-FND-022), as the
+                // canonical JSON of parameters carries decimals
+                let amount = match &a[0] {
+                    Val::Text(t) => Decimal::parse(t).map_err(|_| bad())?,
+                    _ => dec(0)?,
+                };
+                Val::Money(amount, cur.to_string())
             }
             "convert" => {
                 let (x, from) = money(0)?;
                 let cur = text(1)?;
                 let rate_ref = text(2)?;
-                let Some(r) = self.rates.get(rate_ref) else {
+                // against a branch the reference names an FxRate object (STD-FND-029)
+                let object = match (self.rates.get(rate_ref), self.resolver) {
+                    (None, Some(r)) => r.rate_object(rate_ref)?,
+                    _ => None,
+                };
+                let Some(r) = self.rates.get(rate_ref).or(object.as_ref()) else {
                     return Err(BpaError::new(
                         "MODEL.REFERENCE_INVALID",
                         format!("unknown rate {rate_ref}"),
@@ -914,6 +1003,44 @@ impl<'a> Evaluator<'a> {
                     _ => return Err(invalid("a rate is a decimal")),
                 };
                 Val::Money(x.mul(&rate), cur.to_string())
+            }
+            "fx_convert" => {
+                let (x, from) = money(0)?;
+                let quote = text(1)?.to_string();
+                let rate_type = text(2)?.to_string();
+                let source = if a.len() > 3 {
+                    Some(text(3)?.to_string())
+                } else {
+                    None
+                };
+                let Some(unit) = minor_unit(&quote) else {
+                    return Err(invalid("unknown ISO 4217 currency"));
+                };
+                if from == quote {
+                    return Ok(Val::Money(x, quote));
+                }
+                let rate = match (&self.fx_rates, self.resolver) {
+                    (Some(list), _) => Some(fx_in_list(
+                        list,
+                        &from,
+                        &quote,
+                        &rate_type,
+                        source.as_deref(),
+                    )?),
+                    (None, Some(r)) => r.fx_rate(&from, &quote, &rate_type, source.as_deref())?,
+                    _ => None,
+                };
+                let amount = match rate {
+                    Some(FxRate::Mul(r)) => x.mul(&r),
+                    Some(FxRate::Div(r)) => x.div(&r, 60, Rounding::HalfEven)?,
+                    None => {
+                        return Err(BpaError::with_details(
+                            "MODEL.CURRENCY_MISMATCH",
+                            serde_json::json!({"base": from, "quote": quote, "rate_type": rate_type}),
+                        ));
+                    }
+                };
+                Val::Money(amount.round(unit, Rounding::HalfEven), quote)
             }
             "allocate" => {
                 let (x, cur) = money(0)?;

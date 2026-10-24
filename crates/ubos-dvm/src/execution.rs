@@ -492,6 +492,34 @@ impl<'a> EngineHost<'a> {
         out
     }
 
+    /// The objects of a class at the pinned snapshot.
+    fn snapshot_class(
+        &mut self,
+        core: &mut Core,
+        class: &str,
+    ) -> Result<Vec<(String, ObjectState)>, BpaError> {
+        self.state(core)?;
+        if self.full {
+            return Ok(self
+                .view
+                .as_ref()
+                .map(|v| {
+                    v.objects
+                        .iter()
+                        .filter(|(_, o)| o.class == class)
+                        .map(|(id, o)| (id.clone(), o.clone()))
+                        .collect()
+                })
+                .unwrap_or_default());
+        }
+        let (branch, cseq) = self.coord.clone().expect("coordinate");
+        Ok(self
+            .repo()
+            .objects_in(&branch, cseq, Some(class))?
+            .into_iter()
+            .collect())
+    }
+
     /// An object of the pinned snapshot, read from the index on its first use.
     fn object(&mut self, core: &mut Core, oid: &str) -> Result<Option<ObjectState>, BpaError> {
         self.state(core)?;
@@ -1707,6 +1735,54 @@ impl Host for EngineHost<'_> {
     fn class_type(&mut self, class: &str) -> Result<Ty, BpaError> {
         ubos_expr::class_type(&self.e.registry, class)
     }
+
+    fn fx_rate(
+        &mut self,
+        core: &mut Core,
+        base: &str,
+        quote: &str,
+        rate_type: &str,
+        source: Option<&str>,
+    ) -> Result<Option<ubos_expr::eval::FxRate>, BpaError> {
+        let objects = self.snapshot_class(core, "FxRate")?;
+        let rows = crate::finance::rates_at(&mut self.repo(), &objects, &core.asof())?;
+        let u = crate::finance::pick_rate(&rows, base, quote, rate_type, source)?;
+        use_rate(core, &u.object_id, &u.version_hash);
+        Ok(Some(u.rate))
+    }
+
+    fn rate_object(&mut self, core: &mut Core, rate_ref: &str) -> Result<Option<Value>, BpaError> {
+        let oid = if rate_ref.starts_with("ubos://") {
+            match self.target_id(core, &json!(rate_ref), true)? {
+                Some(o) => o,
+                None => return Ok(None),
+            }
+        } else {
+            rate_ref.to_string()
+        };
+        let Some(o) = self.object(core, &oid)? else {
+            return Ok(None);
+        };
+        if o.class != "FxRate" {
+            return Ok(None);
+        }
+        let rows = crate::finance::rates_at(&mut self.repo(), &[(oid.clone(), o)], &core.asof())?;
+        let Some((_, vh, b)) = rows.into_iter().next() else {
+            return Ok(None);
+        };
+        use_rate(core, &oid, &vh);
+        Ok(Some(
+            json!({"from": b["base"], "to": b["quote"], "rate": b["rate"]}),
+        ))
+    }
+}
+
+/// Record the rate version an evaluation used, once, in order (STD-FND-029).
+fn use_rate(core: &mut Core, oid: &str, vh: &str) {
+    let rec = json!({"object_id": oid, "version_hash": vh});
+    if !core.rates.contains(&rec) {
+        core.rates.push(rec);
+    }
 }
 
 impl EngineHost<'_> {
@@ -2087,6 +2163,9 @@ impl Engine {
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
         let mut journal = journal;
+        if !core.rates.is_empty() {
+            journal["rates"] = json!(core.rates); // STD-FND-029 (BPA 1.0-rc9)
+        }
         journal["invocation"] = Value::Object(invocation);
         let journal_id = self.store.put_record(&journal)?;
         let metering_id = self.store.put_record(&m)?;

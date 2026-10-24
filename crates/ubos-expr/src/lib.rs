@@ -157,6 +157,7 @@ pub fn eval_expr(i: &Value, resolver: Option<&dyn Resolver>) -> Result<Value, Bp
         .and_then(Value::as_object)
         .cloned()
         .unwrap_or_default();
+    ev.fx_rates = i.get("fx_rates").and_then(Value::as_array).cloned();
     if let Some(n) = i.get("max_units").and_then(Value::as_u64) {
         ev.max_units = n;
     }

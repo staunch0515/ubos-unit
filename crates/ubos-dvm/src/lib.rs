@@ -11,6 +11,7 @@ pub mod audit;
 pub mod authz;
 pub mod execution;
 pub mod expressions;
+pub mod finance;
 pub mod flow;
 pub mod host;
 pub mod keys;

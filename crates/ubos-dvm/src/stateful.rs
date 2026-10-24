@@ -1448,6 +1448,8 @@ pub(crate) fn commit_on(
         repo.begin(&branch)?
     };
     tx.now = Some(now_.to_string());
+    // STD-FND-028 (BPA 1.0-rc9): the codes Currency objects add on the branch
+    let _added = crate::finance::currencies_for(&mut repo, &mut tx, &changes)?;
     if full && !has_parent_line {
         if refs_indexed && !ext_relationships {
             // the governance objects the checks and the enforcement read as a set
@@ -1655,6 +1657,18 @@ pub(crate) fn commit_on(
         }
     }
     repo.check_double_entry(&tx)?;
+    // STD-FND-028, -029, STD-KIND-029 (BPA 1.0-rc9): currencies, rates and accounts
+    {
+        let written: Vec<(String, String)> = result["versions"]
+            .as_object()
+            .map(|m| {
+                m.iter()
+                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or_default().to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        crate::finance::check(&mut repo, &mut tx, &written)?;
+    }
     // STD-CLS-004: the shape and the extension rule of the lifecycle objects written
     {
         let written: Vec<(String, String)> = result["versions"]

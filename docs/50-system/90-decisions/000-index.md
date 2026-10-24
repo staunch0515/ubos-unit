@@ -22,6 +22,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-096 | PH-2 step 1h: release of BPA 1.0-rc8 — notes finalised, VER-INSP-9006, the owner's signed tag `bpa-v1.0.0-rc8`, freeze; the candidate part of EXIT-2-01 | Accepted |
 | DEC-097 | PH-2 step 2: extended formal models — approvals and deferred commits (`approvals.tla`, VER-FORM-0100) and sagas (`saga.tla`, VER-FORM-0101) with bounds and mutation checks; terminal state `failed` in DSN-DVM-566 and VER-FORM-0101, saga object wording in DSN-DVM-564; EXIT-2-02 | Accepted |
 | DEC-098 | PH-2 step 3 opened in parts 3a–3g; part 3a: BPA 1.0-rc9 — currency reference data (STD-FND-028), FX rates and `fx_convert` (STD-FND-029), chart of accounts (STD-KIND-029), statement lines (STD-KIND-030), projections (STD-TIME-021), `read.projection` (STD-ISA-037), compensation proposals (STD-TIME-043); VER-CONF-3003 superseded, VER-INSP-9007, the owner's signed tag `bpa-v1.0.0-rc9` | Accepted |
+| DEC-099 | PH-2 step 3b: currencies, FX rates and accounts in the kernel — ISO 4217 table and added codes, `Currency`, `FxRate` and `LedgerAccount` checks, `fx_convert` and `convert` against a branch with the rates journaled, adapter operations `currency` and `fx_rate`; the conformance test claims STD-FND-028, -029 and STD-KIND-029 of BPA 1.0-rc9 | Accepted |
 
 ---
 
@@ -339,4 +340,34 @@ DEC-090 on follow.
   - Committing the restated appends on the correction branch was rejected: entries are immutable, and the originals would be counted twice on merge.
   - Detecting a changed statement line by a new entry id (content hash in the identifier) was rejected: a corrected redelivery would silently add a second line.
 - **Affects:** STD-FND-023, STD-FND-028, STD-FND-029, STD-KIND-029, STD-KIND-030, STD-TIME-021, STD-TIME-042, STD-TIME-043, STD-ISA-001, STD-ISA-037, STD-EXPR-005, STD-CTX-011, STD-ERR-002, STD-CONF-005, DSN-DVM-323, DSN-DVM-409, DSN-DVM-410, DSN-DVM-420, DSN-DVM-422, DSN-DVM-441, DSN-DVM-446, FR-LOC-021, FR-LOC-022, FR-LEDG-031, FR-LEDG-033, FR-LEDG-052, FR-LEDG-053, FR-LEDG-074, FR-ANL-021, FR-ANL-023, FR-TIME-045, VER-INSP-9007, DEC-045, DEC-089
+
+### DEC-099 — Currencies, FX rates and accounts in the kernel (PH-2 step 3, part 3b)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** Part 3b of PH-2 step 3 (DEC-098) implements STD-FND-028, STD-FND-029 and STD-KIND-029 of BPA 1.0-rc9 in the kernel. Before the part, the 28 vectors of these clauses failed on the kernel except one: the genesis classes, the table, the checks and the conversion were missing. The owner confirmed the part with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Table and added codes.** `ubos-types` holds the ISO 4217 table of STD-FND-028 (`ISO_4217`, `table_unit`). `minor_unit` reads the table first, then the codes added on the branch of the commit being made. Those codes are set for the duration of the commit, with a guard that restores the previous set. The engine loads the live `Currency` objects only when the changes carry a money value outside the table or write a currency, rate or account, so other commits pay nothing.
+  2. **Genesis classes.** `ubos-model` declares `Currency`, `FxRate` and `LedgerAccount` as Definition classes below `Object`, as the reference model does.
+  3. **Commit checks.** `crates/ubos-dvm/src/finance.rs` runs after the double-entry check and before the relationship and integrity checks, in the order of the reference model. It covers:
+     - the code, numeric code, minor units and uniqueness of a `Currency`;
+     - the currencies, base and quote, positive rate and unique key of an `FxRate`;
+     - the currency and parent cycle of a `LedgerAccount`;
+     - for entries of classes with `ledger.account`, an account that is live, a leaf and in the entry's currency at its valid time.
+
+     The error details name the reason, as in the vectors.
+  4. **Conversion.**
+     - **`ubos-expr`.** `fx_convert` and the rate lookup are added: the key's rate, or the opposite key's rate applied as a division at 60 digits, then rounded half-even to the quote's minor units.
+     - **Rate sources.** The evaluator asks its resolver for FX rates and for the `FxRate` object of a `convert` reference; `eval_expr` takes `fx_rates`.
+     - **Runtime and engine.** The runtime's `Host` gains `fx_rate` and `rate_object`. The engine host reads the `FxRate` objects at the process snapshot and `asof`, and records each rate version once in `Core.rates`; the journal carries them as `rates` when any was used.
+  5. **Decimal strings in `money`.** `money(amount, cur)` accepts a decimal string where the amount is dynamically typed: decimals are strings in canonical JSON (STD-FND-022), and the reference model accepts them.
+  6. **Adapter operations.** `currency` and `fx_rate`.
+  7. **Claim.** The kernel's conformance test reads the vectors of BPA 1.0-rc9 (`NEXT_RELEASE`) and claims STD-FND-028, -029 and STD-KIND-029. No other vector changed outcome when the release in implementation moved from 1.0-rc7 to 1.0-rc9.
+- **Consequences:**
+  - The 28 vectors pass in memory and on PostgreSQL 16; the conformance test passes with 2,131 vectors, 401 outside the claim.
+  - The prototype vectors on PostgreSQL, the `ubos-forge`, `ubos-dvm` and `ubos-node` tests, fmt, clippy and the dependency check pass.
+  - **Known limit.** The leaf check loads the accounts of the branch for each commit that posts to a class with `ledger.account`. That is fine for charts of thousands of accounts; a referrer lookup replaces it if the benchmarks of step 18 show a cost.
+- **Alternatives considered:**
+  - Passing the added codes as a parameter through every value check was rejected: it would change the signatures of the value, model and expression crates for a set that is empty in almost every commit.
+  - Computing the inverse rate as `1 / rate` before multiplying was rejected: dividing the amount by the stored rate gives the same rounded result with one division.
+  - Accepting decimal strings in every numeric function was rejected: only `money` needs it to match the reference model, and wider coercion would change the errors of released vectors.
+- **Affects:** STD-FND-022, STD-FND-028, STD-FND-029, STD-KIND-029, DSN-DVM-409, DSN-DVM-410, DSN-DVM-441, EXIT-2-01, VER-CONF-8405, DEC-098
 

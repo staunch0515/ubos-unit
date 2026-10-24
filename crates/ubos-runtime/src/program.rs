@@ -122,6 +122,9 @@ pub struct Replay {
 /// The state of one attempt of one process.
 #[derive(Debug)]
 pub struct Core {
+    /// FX rate versions used, `{object_id, version_hash}` in order of first use (STD-FND-029,
+    /// BPA 1.0-rc9).
+    pub rates: Vec<Value>,
     /// Branch.
     pub branch: String,
     /// Profile.
@@ -186,6 +189,26 @@ pub trait Host {
     fn typed_ref(&mut self, core: &mut Core, uri: &str) -> Result<Option<Val>, BpaError>;
     /// The static type of a class (custom value types as their base).
     fn class_type(&mut self, class: &str) -> Result<Ty, BpaError>;
+    /// The rate of a key at the process's `asof` (STD-FND-029, BPA 1.0-rc9); `None` when the
+    /// host has no FX rates.
+    fn fx_rate(
+        &mut self,
+        _core: &mut Core,
+        _base: &str,
+        _quote: &str,
+        _rate_type: &str,
+        _source: Option<&str>,
+    ) -> Result<Option<ubos_expr::eval::FxRate>, BpaError> {
+        Ok(None)
+    }
+    /// The `FxRate` object a rate reference names, as `{from, to, rate}` (STD-FND-029).
+    fn rate_object(
+        &mut self,
+        _core: &mut Core,
+        _rate_ref: &str,
+    ) -> Result<Option<Value>, BpaError> {
+        Ok(None)
+    }
     /// Whether the host implements an instruction outside `IMPLEMENTED` (the connector and
     /// model instructions of a node host with services, CTR-002).
     fn implements(&self, _name: &str) -> bool {
@@ -252,6 +275,7 @@ impl Core {
             reads: BTreeMap::new(),
             triples: Vec::new(),
             effects: Vec::new(),
+            rates: Vec::new(),
             records: Vec::new(),
             pins: BTreeMap::new(),
             pinned: BTreeMap::new(),
@@ -447,6 +471,24 @@ impl Resolver for RefResolver<'_> {
         let mut b = self.inner.borrow_mut();
         let (core, host) = &mut *b;
         host.typed_ref(core, uri)
+    }
+
+    fn fx_rate(
+        &self,
+        base: &str,
+        quote: &str,
+        rate_type: &str,
+        source: Option<&str>,
+    ) -> Result<Option<ubos_expr::eval::FxRate>, BpaError> {
+        let mut b = self.inner.borrow_mut();
+        let (core, host) = &mut *b;
+        host.fx_rate(core, base, quote, rate_type, source)
+    }
+
+    fn rate_object(&self, rate_ref: &str) -> Result<Option<Value>, BpaError> {
+        let mut b = self.inner.borrow_mut();
+        let (core, host) = &mut *b;
+        host.rate_object(core, rate_ref)
     }
 }
 

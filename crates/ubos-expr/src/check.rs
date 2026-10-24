@@ -288,6 +288,14 @@ fn call_type(name: &str, ts: &[Ty], pos: usize) -> Result<Ty, BpaError> {
         "currency" => fixed(&[M], Ty::Text),
         "money" => fixed(&[NUM, T], Ty::Money),
         "convert" => fixed(&[M, T, T], Ty::Money),
+        // STD-FND-029 (BPA 1.0-rc9): conversion by rate key
+        "fx_convert" => {
+            if ts.len() == 3 {
+                fixed(&[M, T, T], Ty::Money)
+            } else {
+                fixed(&[M, T, T, T], Ty::Money)
+            }
+        }
         "allocate" => {
             let ok = ts.len() == 2
                 && one_of(&ts[0], M)
