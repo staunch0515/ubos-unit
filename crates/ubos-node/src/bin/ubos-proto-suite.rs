@@ -747,10 +747,39 @@ struct Suite {
     identical: Vec<Value>,
 }
 
+/// The release whose Protocol vectors the suite replays: the kernel claims it (DEC-089 item
+/// 4). Vectors of a release in development join when the kernel implements their clauses.
+const CLAIMED_RELEASE: &str = "1.0-rc7";
+
+/// Vector identifiers listed in the manifest of a release (`standard/release/<v>/`).
+fn released(dir: &std::path::Path, version: &str) -> Result<Vec<String>, BpaError> {
+    let text = std::fs::read_to_string(
+        dir.join("../../release")
+            .join(version)
+            .join("manifest.json"),
+    )
+    .map_err(err)?;
+    let m: Value = serde_json::from_str(&text).map_err(err)?;
+    Ok(m["files"]
+        .as_array()
+        .map(|a| a.as_slice())
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|f| f["path"].as_str())
+        .filter(|p| p.starts_with("vectors/") && p.ends_with(".json"))
+        .filter_map(|p| {
+            p.rsplit('/')
+                .next()
+                .map(|n| n.trim_end_matches(".json").to_string())
+        })
+        .collect())
+}
+
 fn load_vectors(dir: &std::path::Path) -> Result<Vec<Value>, BpaError> {
     let superseded: Vec<String> = std::fs::read_to_string(dir.join("../superseded.txt"))
         .map(|t| t.split_whitespace().map(str::to_string).collect())
         .unwrap_or_default();
+    let claimed = released(dir, CLAIMED_RELEASE)?;
     let mut paths: Vec<_> = std::fs::read_dir(dir)
         .map_err(err)?
         .filter_map(|e| e.ok().map(|e| e.path()))
@@ -762,6 +791,7 @@ fn load_vectors(dir: &std::path::Path) -> Result<Vec<Value>, BpaError> {
         let v: Value =
             serde_json::from_str(&std::fs::read_to_string(&p).map_err(err)?).map_err(err)?;
         if v["profile"] == "Protocol"
+            && claimed.iter().any(|c| Some(c.as_str()) == v["id"].as_str())
             && !superseded
                 .iter()
                 .any(|s| Some(s.as_str()) == v["id"].as_str())
