@@ -28,6 +28,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-102 | PH-2 step 3e: matching, match records and statement lines in the kernel — `match` with the three rule kinds, tolerances, windows and breaks, `MatchRecord` entries with derived ids appended by `match` and `unmatch` only, statement-line ids derived at commit and `ingest_statement`; STD-KIND-027, -028 and -030 claimed | Accepted |
 | DEC-103 | PH-2 step 3f: re-evaluation, restatement and compensation proposals in the kernel — the logic version of the mode during a re-run, `restate` on a correction branch with old and new bodies and materiality, restated postings captured instead of committed, proposals per ledger key and currency; STD-TIME-041, -042 and -043 claimed; DSN-DVM-331 mode names aligned | Accepted |
 | DEC-104 | PH-2 step 3 closed: money and periods (parts 3a–3f, DEC-098…103) — BPA 1.0-rc9, currencies and rates, projections, period close and reopen, matching and statement lines, restatement and proposals in the kernel; 122 step-3 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
+| DEC-105 | PH-2 step 4 opened in parts 4a–4g; part 4a: BPA 1.0-rc10 — delegations (STD-LGS-060), tasks (STD-LGS-061), work queues, assignment and inbox (STD-LGS-062), due dates and escalation (STD-LGS-063), service-level report (STD-LGS-064), governed reopening of periods; 250 clauses, 2,181 vectors, MUST coverage 212/212 | Accepted |
 
 ---
 
@@ -513,3 +514,53 @@ DEC-090 on follow.
 - **Alternatives considered:**
   - Leaving the deferred items spread over DEC-098…103 was rejected: the later step plans would have to search six records.
 - **Affects:** DEC-098, DEC-099, DEC-100, DEC-101, DEC-102, DEC-103, DSN-DVM-420, DSN-DVM-422, DSN-DVM-444, DSN-NOD-305
+
+### DEC-105 — Approvals and work, part 4a: BPA 1.0-rc10 (PH-2 step 4)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** PH-2 step 4 (UBS-PH-2 §11) implements approvals and human work in the kernel: deferred commits under `require` decisions, approvals and separation of duties, tasks and work queues, due dates and escalation, and delegation (FR-FLOW-041…046, -051…054, -081…083, -091…093), with the governed reopening of periods deferred from step 3 (DSN-DVM-444, DEC-104).
+  - **Baseline.** On the kernel, 19 of the 22 Governance vectors of STD-TXN-060 and STD-LGS-041…043 (BPA 1.0-rc8) fail, and one is not applicable: a `require` outcome always fails with `RULE.DECISION_REQUIRES`, and pending changes are missing. The change-set approvals of STD-VER-021 pass.
+  - **Gap in the standard.** Tasks, work queues, due dates, escalation and delegation objects have no clauses; only the context's `on_behalf_of` and the error code `IAM.DELEGATION_EXPIRED` exist. The standard precedes the code (AR-033).
+  - **Confirmation.** The owner confirmed the plan of step 4 with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Parts.** Step 4 is done in parts, one pull request each:
+     - 4a writes BPA 1.0-rc10 (standard only);
+     - 4b: deferred commits and pending changes in the kernel (STD-TXN-060, STD-LGS-041);
+     - 4c: separation of duties, approval evidence and the governed reopening (STD-LGS-042, -043, STD-KIND-025);
+     - 4d: delegations (STD-LGS-060);
+     - 4e: tasks, work queues and the inbox (STD-LGS-061, -062);
+     - 4f: due dates, escalation and the service-level report, with the node's due-date job (STD-LGS-063, -064, DSN-NOD-231);
+     - 4g closes the step.
+
+     Approvals and tasks inside workflow steps stay in step 6, the delivery of notifications over channels in step 13, and the inbox and approval screens in step 14.
+  2. **Release.** BPA 1.0-rc10 is opened with the scope rule of DEC-089 on base 1.0-rc9 (`standard/release/1.0-rc10/scope.json`). It is released at the end of part 4a with the owner's signed tag `bpa-v1.0.0-rc10`, and is then frozen like the earlier candidates (DEC-045 item 3). 1.0-rc9 stays frozen as built.
+  3. **Clauses.** A new section 7 of the governance standard (Governance profile):
+     - **STD-LGS-060.** The genesis System class `Delegation` with delegator, delegate, roles, scope (`ports`, `classes`, `task_types`, `limit`) and validity `[valid_from, valid_to)`.
+       - **Authority.** The delegated roles are roles the delegator holds (`IAM.DENIED`, `exceeds_authority`).
+       - **Use.** An ended delegation fails with `IAM.DELEGATION_EXPIRED`; a revoked, not yet valid, foreign or out-of-scope one with `IAM.DENIED`.
+       - **Acting.** Eligibility is judged for the delegator; separation of duties holds for both principals; the action records both.
+       - **Operations.** `delegate`, `revoke_delegation` and `delegations` (with the state for access reviews).
+     - **STD-LGS-061.** The genesis System class `Task`, with the states `open`, `claimed`, `completed` and `cancelled`.
+       - **Operation.** `task` with the actions `create`, `claim`, `release`, `reassign`, `complete` and `cancel`, each one commit of a kernel-written process.
+       - **Rules.** Eligibility per action; `base` for optimistic concurrency (`TXN.HEAD_MOVED`); a log of every change.
+     - **STD-LGS-062.** The genesis Definition class `WorkQueue`, with members, managers and the assignment rules `manual`, `round_robin`, `least_loaded` and `skill`. The `inbox` of a principal combines assigned, queue, role and delegated tasks and the pending changes they may decide, ordered by due time and priority, with counts.
+     - **STD-LGS-063.** Due rules are L1 expressions over the queue's business calendars; a date gives the due instant at the start of the next day. Escalation chains (`notify`, `reassign`, `raise_priority`) are applied as the clock advances, once per task and step, recorded on the task and emitted as `task.escalated`.
+     - **STD-LGS-064.** The service-level report `sla_report`: on time, late, attainment (half-even, 4 places) and open overdue tasks per type and queue, with a total.
+  4. **Changes to released clauses (notes only).**
+     - STD-KIND-025 and STD-TXN-060: when a period's class declares a command port `reopen`, its decisions govern `reopen_period`, and with `defer` a reopening that requires approval waits as a pending change (DSN-DVM-444). Without the port, reopening is unchanged.
+     - STD-LGS-043 and `DAT-Approval`: the optional member `delegation`.
+     - STD-CONF-005: the adapter operations of the new clauses.
+
+     Two vectors of the governed reopening are written in the range of STD-TXN-060, because the range of STD-KIND-025 has one free number.
+  5. **Reference model.**
+     - **Code.** `standard/tools/bpa/work.py` and changes to `approvals.py` (delegated approvals, the process of an applied pending change), `periods.py` (governed reopening), `classes.py`, `store.py`, `workflows.py` and `ops.py`.
+     - **Cases.** `standard/tools/cases/work.py`.
+- **Consequences:**
+  - BPA 1.0-rc10 has 250 clauses and 2,181 vectors (56 added, none superseded). MUST coverage is 212/212, and VER-INSP-9008 records it.
+  - No released vector changed.
+  - Parts 4b–4g implement 1.0-rc10 and the approval clauses of 1.0-rc8 in the kernel.
+- **Alternatives considered:**
+  - Tasks as user-declared Data classes were rejected: eligibility, the log and the escalation state are kernel guarantees that a direct commit could bypass.
+  - One operation per task action was rejected: `complete_task` is already the workflow operation of STD-TXN-091, and one operation with an `action` keeps the catalogue small.
+  - A stored round-robin counter was rejected: counting the tasks the rule assigned gives the same result and keeps no extra state.
+  - Governing every reopening by the period class's decisions was rejected: the port `reopen` makes the governance an explicit declaration and leaves the released reopening vectors unchanged.
+- **Affects:** STD-LGS-043, STD-LGS-060, STD-LGS-061, STD-LGS-062, STD-LGS-063, STD-LGS-064, STD-KIND-025, STD-TXN-060, STD-CONF-005, DSN-DVM-444, DSN-DVM-743, DSN-DVM-744, DSN-DVM-745, DSN-DVM-754, DSN-NOD-231, FR-FLOW-041, FR-FLOW-051, FR-FLOW-052, FR-FLOW-053, FR-FLOW-054, FR-FLOW-081, FR-FLOW-082, FR-FLOW-083, FR-FLOW-091, FR-FLOW-092, FR-FLOW-093, VER-INSP-9008, DEC-045, DEC-089, DEC-104

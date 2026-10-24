@@ -273,7 +273,7 @@ DAT-DecisionTable:
 - **Grammar / Schema:** `DAT-Approval`
 - **Conformance vectors:** VER-CONF-5165…5179
 - **Satisfies:** FR-FLOW-044, FR-FLOW-045, FR-FLOW-046, DSN-DVM-742
-- **Notes:** The default authentication level of the adapter is `basic`. A pending-change approval also records its `step`. Change-set approvals record `auth_level` and `comment` when given. Since 1.0-rc8 (DEC-091).
+- **Notes:** The default authentication level of the adapter is `basic`. A pending-change approval also records its `step`. Change-set approvals record `auth_level` and `comment` when given. Since 1.0-rc8 (DEC-091). Since 1.0-rc10 (DEC-105), an approval through a delegation records `delegation` (STD-LGS-060).
 
 ### STD-LGS-044 — Simulation of rule changes
 - **Clause:** A simulation MUST:
@@ -328,3 +328,109 @@ DAT-DecisionTable:
   - **Viewer.** A viewer is `{principal, clearances, ctx}`; clearances default to `internal`, and `ctx` selects masks with context qualifiers. A read without a viewer is the adapter's system read and is not masked.
   - **Modes.** `partial` on a value that is not a text hides it, and so does `hash` without a tenant lookup key (adapter operation `lookup_key`). An erased marker (STD-OBJ-011) is masked like a value.
   - **Events.** `outbox` given `as` masks each payload by the masks and classifications of the effect's object.
+
+## 7. Delegation, tasks and service levels
+
+### STD-LGS-060 — Delegations
+- **Clause:** A principal MAY delegate approval and task authority to another principal for a period and a scope. A delegation MUST be an object of the genesis System class `Delegation` with:
+  - the `delegator` and the `delegate`, two different principals;
+  - the `roles` delegated, which MUST be roles the delegator holds when the delegation is made (`IAM.DENIED`, details `{delegation: exceeds_authority}`);
+  - the `scope`, with at least one of `ports`, `classes`, `task_types` and `limit` (`{param, max}`), each restricting what the delegation covers;
+  - the validity `[valid_from, valid_to)`, two instants.
+
+  An action taken through a delegation MUST name it. It MUST be refused when:
+  - the delegation has ended (`IAM.DELEGATION_EXPIRED`);
+  - it is revoked, not yet valid, held by another delegate or out of scope (`IAM.DENIED`, details `{delegation: revoked | not_yet_valid | not_delegate | out_of_scope}`).
+
+  The delegate acts on behalf of the delegator with the delegated roles: eligibility is judged for the delegator, and separation of duties (STD-LGS-042) for both principals. Every delegated action MUST record both principals and the delegation.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5885…5904
+- **Satisfies:** FR-FLOW-091, FR-FLOW-092, FR-FLOW-093, DSN-DVM-745
+- **Notes:** Since 1.0-rc10 (DEC-105):
+  - **Roles.** The roles a principal holds are those of the adapter's directory (adapter operation `principal`).
+  - **Operations.**
+    - `delegate {branch, delegation_id, delegator, delegate, roles, scope, valid_from, valid_to}` creates the delegation. A delegation to oneself fails with `MODEL.CONSTRAINT_VIOLATED`, an empty scope with `MODEL.DECLARATION_INCOMPLETE`, and `valid_from` not before `valid_to` with `MODEL.INVALID_VALUE`.
+    - `revoke_delegation {branch, delegation_id, principal, reason}` revokes it; only the delegator revokes (`IAM.DENIED`).
+    - `delegations {branch, principal}` lists the delegations the principal gives or holds for access reviews (FR-FLOW-093), each with its state at the current time: `scheduled`, `active`, `expired` or `revoked`.
+  - **Scope.** `ports` and `classes` are matched against the port and the class of the object of an approval requirement; `task_types` against the type of a task; `limit` against the parameter `param` of the port call a pending change stores, which MUST NOT exceed `max`.
+  - **Approvals.** `approve` takes `delegation`; the approval records `on_behalf_of` (the delegator) and `delegation`. An approval given `on_behalf_of` without `delegation` keeps the meaning of 1.0-rc8.
+  - **Chains.** A delegate does not delegate further: the context's chain `on_behalf_of` has one principal.
+
+### STD-LGS-061 — Tasks
+- **Clause:** Human work items MUST be objects of the genesis System class `Task` with:
+  - a `type`, an optional `subject` object, a `queue` or an `assignee` (`{principal}` or `{role}`);
+  - a `priority` (integer, default 0) and an optional `due` instant;
+  - a `state`: `open`, `claimed`, `completed` or `cancelled`.
+
+  Tasks change only through the task operations:
+  - `claim` moves an `open` task to `claimed`, owned by the claimant, who MUST be eligible: the assigned principal, a holder of the assigned role, or a member of the queue of an unassigned task;
+  - `release` returns a claimed task to `open`; only its owner releases;
+  - `reassign` sets a new assignee or queue and returns the task to `open`; only a principal holding a role in the queue's `managers` reassigns;
+  - `complete` moves a claimed task to `completed` with its outcome; only its owner completes;
+  - `cancel` moves an open or claimed task to `cancelled`; only its creator or a manager cancels.
+
+  A transition from another state MUST fail with `FLOW.TRANSITION_NOT_ALLOWED` and a principal who may not act with `IAM.DENIED`. Every change MUST be recorded in the task's `log` with the action, the principal, the delegator when delegated, and the time.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5905…5929
+- **Satisfies:** FR-FLOW-051, FR-FLOW-053, DSN-DVM-743
+- **Notes:** Since 1.0-rc10 (DEC-105):
+  - **Operation.** `task {branch, action, task_id, principal, ...}` with `action` one of `create`, `claim`, `release`, `reassign`, `complete` and `cancel` returns the task: its body with `task_id`.
+    - `create` takes `type`, `subject`, `queue`, `assignee`, `priority`, `due`, `skills` and `data`. A task without a queue or an assignee fails with `MODEL.DECLARATION_INCOMPLETE`, an unknown queue with `IAM.NOT_FOUND`.
+    - `reassign` takes `to` (`{principal}`, `{role}` or `{queue}`) and `reason`; `complete` takes `outcome`; `cancel` takes `reason`.
+  - **Concurrency.** An action may name `base`, the version the principal saw; when the task has changed since, it fails with `TXN.HEAD_MOVED` (FR-FLOW-053). Of two claims of an open task, the second finds it `claimed` and fails.
+  - **Delegation.** `claim`, `release` and `complete` take `delegation` (STD-LGS-060); the delegate is then eligible as the delegator for task types in the delegation's scope.
+  - **Writes.** Each action is one commit of a kernel-written process with the principal as initiator; a commit of a change to a `Task` fails with `LOGIC.FORBIDDEN_TARGET`.
+  - **Workflow tasks.** The human tasks of workflows (STD-TXN-091) keep their own operation `complete_task`.
+
+### STD-LGS-062 — Work queues, assignment and inbox
+- **Clause:** A work queue MUST be an object of the genesis Definition class `WorkQueue` with its `members` (principals), its `managers` (roles) and its `assignment` rule, applied when a task is created in the queue without an assignee:
+  - `manual`: the task stays unassigned in the queue, to be claimed by a member;
+  - `round_robin`: the n-th task the rule assigns in the queue goes to the member at position n modulo the number of members, in the order of `members`;
+  - `least_loaded`: the member with the fewest open or claimed tasks assigned to or owned by them, the first in `members` on a tie;
+  - `skill`: among the members whose skills (`skills`, a map from member to skills) include every skill of the task, the least loaded; the task stays unassigned when no member qualifies.
+
+  The inbox of a principal MUST combine, at the current state of the branch:
+  - the open and claimed tasks assigned to the principal or owned by them;
+  - the unassigned open tasks of the queues they are a member of;
+  - the open tasks assigned to a role they hold;
+  - the tasks they may take through an active delegation;
+  - the pending changes (STD-TXN-060) still `pending` on which they are eligible to decide.
+
+  Tasks MUST be ordered by due time (tasks without one last), then by priority (highest first), then by task ID, and the inbox MUST give the counts of tasks, overdue tasks and approvals.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5930…5949
+- **Satisfies:** FR-FLOW-052, FR-FLOW-054
+- **Notes:** Since 1.0-rc10 (DEC-105):
+  - **Operation.** `inbox {branch, principal, sort}` returns `{tasks, approvals, counts}`; `sort: priority` orders by priority first, then due time. Each task delegated to the principal carries `on_behalf_of`. Each approval is `{pending_change_id, requirements, preview}`.
+  - **Record.** A task assigned by a rule records `assigned_by`, the rule's name.
+  - **Overdue.** A task is overdue when it is open or claimed and the current time is at or after its `due`.
+  - **Eligibility of approvals.** A principal is eligible on a pending change when the checks of STD-LGS-041 and STD-LGS-042 for an approval by them would pass.
+
+### STD-LGS-063 — Due dates and escalation
+- **Clause:** A task created without a `due` in a queue that declares a `due_rule` MUST take its due date from that rule: an L1 expression (STD-EXPR-001) over `params.created` (the creation date), `params.created_at`, `params.type` and `params.priority`, evaluated with the queue's `calendars`. A date result `d` gives the due instant at the start of the next day (UTC) and is recorded as `due_date`; an instant result is the due instant.
+
+  A queue MAY declare an `escalation` chain: steps `{after, action}` with `after` a duration counted from the due instant and `action` one of:
+  - `notify`, with `to` (`{principal}` or `{role}`);
+  - `reassign`, with `to` (`{principal}`, `{role}` or `{queue}`), which returns the task to `open`;
+  - `raise_priority`, with `priority`.
+
+  When the clock reaches the time of a step, the step MUST be applied to every open or claimed task of the queue, in the order of the chain, once per task. Each applied step MUST be recorded in the task's `escalations` and `log` and MUST emit the effect `task.escalated` (STD-TXN-050).
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5950…5969
+- **Satisfies:** FR-FLOW-081, FR-FLOW-082, DSN-DVM-744
+- **Notes:** Since 1.0-rc10 (DEC-105):
+  - **Clock.** As timers (STD-TXN-091), escalation steps are applied when `set_now` advances the clock, in the order of their times, then of branch and task ID.
+  - **Effect.** The payload is `{task_id, step, action, to}`; the effect ID is `task-escalation/<task_id>/<step>`. Delivery to people is a notification channel's (STD-ISA-071).
+  - **Checks.** A due rule whose result is not a date or an instant fails the creation of the task with `MODEL.INVALID_VALUE`; a queue with an escalation step of another action is not committed (`MODEL.INVALID_VALUE`).
+
+### STD-LGS-064 — Service-level report
+- **Clause:** The service-level report of a branch for a window `[from, to)` of dates MUST give, per task type and queue:
+  - the tasks with a due instant completed in the window (by the date of completion), split into `on_time` (completed at or before the due instant) and `late`;
+  - the attainment, `on_time / (on_time + late)` as a decimal rounded half-even to 4 places, or null without completed tasks;
+  - `open_overdue`, the open or claimed tasks that are overdue at the current time.
+
+  Rows MUST be ordered by type, then queue, and a `total` row MUST sum them.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-5970…5979
+- **Satisfies:** FR-FLOW-083, DSN-DVM-754
+- **Notes:** Since 1.0-rc10 (DEC-105): the adapter operation `sla_report {branch, from, to}` returns `{from, to, rows, total}`; each row is `{type, queue, completed, on_time, late, attainment, open_overdue}`, with `queue` null for tasks without one.

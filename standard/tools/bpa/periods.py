@@ -167,13 +167,48 @@ class Periods:
         if body.get('state') != 'closed':
             raise BpaError('MODEL.CONSTRAINT_VIOLATED', {'period_transition': [body.get('state'), 'open']})
         process = dict(i.get('process') or {}, reason=reason)
+        change = {'op': 'update', 'object_id': i['period'], 'base': o['head'], 'body': {'state': 'open'}}
+        pend = self._governed_reopen(st, branch, i, o, reason, process, change)
+        if pend is not None:
+            return pend
         self._period_op = ('closed', 'open')
         try:
-            res = self.commit(branch, [{'op': 'update', 'object_id': i['period'], 'base': o['head'],
-                                        'body': {'state': 'open'}}], process)
+            res = self.commit(branch, [change], process)
         finally:
             self._period_op = None
         return {'cseq': res['cseq'], 'commit_id': res['commit_id'], 'state': 'open', 'reason': reason}
+
+    def _governed_reopen(self, st, branch, i, o, reason, process, change):
+        """STD-KIND-025 (1.0-rc10): with a command port `reopen` on the period's class, its
+        decisions govern the reopening; `require` with `defer` stores a pending change
+        (STD-TXN-060). None when the reopening goes ahead."""
+        port = (self._cls(o['class']).get('_ports') or self._cls(o['class']).get('ports') or {}).get('reopen')
+        if port is None or port.get('kind') == 'query':
+            return None
+        r = self._decide_in(st, branch, i['period'], 'reopen', {'reason': reason}, i.get('ctx'))
+        if r['outcome'] == 'deny':
+            raise BpaError('RULE.DECISION_DENIED', r)
+        if r['outcome'] != 'require':
+            return None
+        if not i.get('defer'):
+            raise BpaError('RULE.DECISION_REQUIRES', r)
+        pid = process.get('process_id')
+        if not isinstance(pid, str) or not isinstance(process.get('initiator'), str):
+            raise BpaError('MODEL.DECLARATION_INCOMPLETE', 'a deferred reopening names its process and initiator')
+        from .approvals import requirements, _plus
+        from .canon import content_id
+        if not hasattr(self, 'pending_changes'):
+            self.pending_changes = {}
+        reqs = requirements([(i['period'], 'reopen', r)])
+        rec = {'pending_change_id': pid, 'target_branch': branch, 'changes': [change],
+               'preview': content_id('ubos.chunk.v1', {'branch': branch, 'changes': [change]}),
+               'requirements': reqs, 'approvals': [], 'state': 'pending', 'initiator': process['initiator'],
+               'process_id': pid, 'process': {'reason': reason}, 'period_op': ('closed', 'open')}
+        exp = [q['expires_in'] for q in reqs if q.get('expires_in')]
+        if exp:
+            rec['expires_at'] = min(_plus(self.now, e) for e in exp)
+        self.pending_changes[pid] = rec
+        return {'state': 'closed', 'reason': reason, 'pending': self._pc_view(rec)}
 
     # ---- matching (STD-KIND-027, -028) ----
 

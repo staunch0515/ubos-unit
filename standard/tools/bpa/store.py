@@ -35,6 +35,7 @@ from .protection import Protection, is_marker
 from .integration import Integration
 from .search import Search
 from .finance import Finance
+from .work import Work
 from . import values as _values
 from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
@@ -133,7 +134,7 @@ def tl_at(tl, asof):
 
 
 class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Tables, Approvals, Workflows, Lenses, Protection, Integration,
-            Search, Finance):
+            Search, Finance, Work):
     def __init__(self):
         self.reset()
 
@@ -175,6 +176,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         self._int_init()
         self._search_init()
         self._fin_init()
+        self.work_branches = []                # STD-LGS-063 (1.0-rc10)
         root = self._new_commit('main', [], {'objects': {}, 'ledger': {}}, 0, tx=False)
         self.branches['main'] = {'head': root, 'kind': 'main', 'created_at': self.now, 'active_at': self.now,
                                  'parent_line': None, 'created_from': root}
@@ -184,6 +186,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         self.now = now
         self._tick()
         self._wf_timers()       # STD-TXN-091 (1.0-rc8)
+        self._task_escalations()  # STD-LGS-063 (1.0-rc10)
         return True
 
     def set_limits(self, max_body_bytes=None, max_derivation_inputs=None, max_violations=None):
@@ -240,7 +243,8 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
                                 'CloseArtefact', 'MatchRecord', 'DecisionTable', 'SimulationRun',
                                 'WorkflowDefinition', 'WorkflowInstance', 'Saga', 'Quarantine', 'QuarantineRelease',
                                 'Lens', 'Connector', 'NotificationTemplate', 'View',
-                                'Currency', 'FxRate', 'LedgerAccount', 'Projection']:
+                                'Currency', 'FxRate', 'LedgerAccount', 'Projection',
+                                'Delegation', 'Task', 'WorkQueue']:
             eff[n] = effective_class(list(decls.values()), n)
         for n, e in eff.items():
             old = self.classes.get(n)

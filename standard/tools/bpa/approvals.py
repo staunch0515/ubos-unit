@@ -106,7 +106,9 @@ class Approvals:
         return self._pc_view(self._pc(i.get('pending_change_id')))
 
     def _eligible(self, rec, req, i, approver):
-        """STD-LGS-041 eligibility and STD-LGS-042 separation of duties."""
+        """STD-LGS-041 eligibility and STD-LGS-042 separation of duties; through a delegation
+        (STD-LGS-060, 1.0-rc10) eligibility is judged for the delegator."""
+        who = i['on_behalf_of'] if i.get('delegation') is not None else approver
         actors = [approver] + ([i['on_behalf_of']] if i.get('on_behalf_of') else [])
         if rec['initiator'] in actors:
             raise BpaError('IAM.DENIED', {'sod': 'maker_checker', 'principal': rec['initiator']})
@@ -123,13 +125,13 @@ class Approvals:
                     raise BpaError('IAM.DENIED', {'sod': 'incompatible_duty', 'duty': port,
                                                   'principal': prec['initiator']})
         if req.get('principals') or req.get('roles'):
-            ok = approver in (req.get('principals') or []) or \
+            ok = who in (req.get('principals') or []) or \
                 bool(set(i.get('roles') or []) & set(req.get('roles') or []))
             if not ok:
                 raise BpaError('IAM.DENIED', {'approval': 'not_eligible', 'principal': approver})
         if req.get('order') == 'sequence' and req.get('principals'):
             n = sum(1 for a in rec['approvals'] if a.get('step') == 'approval')
-            if req['principals'][n:n + 1] != [approver]:
+            if req['principals'][n:n + 1] != [who]:
                 raise BpaError('IAM.DENIED', {'approval': 'out_of_sequence', 'principal': approver})
 
     def _target_oid(self, inv):
@@ -166,10 +168,13 @@ class Approvals:
         step = 'approval' if any(r['step'] == 'approval' for r in rec['requirements']) else \
             rec['requirements'][0]['step'] if rec['requirements'] else 'approval'
         req = next((r for r in rec['requirements'] if r['step'] == step), {'step': step, 'object_id': None})
+        if i.get('delegation') is not None:
+            behalf, roles = self._approval_delegation(rec, req, i, approver)
+            i = dict(i, on_behalf_of=behalf, roles=roles)
         self._eligible(rec, req, i, approver)
         a = {'approver': approver, 'decision': decision, 'preview': rec['preview'], 'at': self.now,
              'auth_level': i.get('auth_level', 'basic'), 'step': step}
-        for k in ('on_behalf_of', 'comment', 'signature'):
+        for k in ('on_behalf_of', 'delegation', 'comment', 'signature'):
             if i.get(k) is not None:
                 a[k] = i[k]
         rec['approvals'].append(a)
@@ -183,9 +188,10 @@ class Approvals:
     def _apply(self, rec):
         """Final approval: a new process re-validates and commits the changes with the
         approvals referenced, or the pending change becomes invalidated."""
+        process = dict(rec.get('process') or {}, kind='action', initiator=rec['initiator'])
+        self._period_op = rec.get('period_op')        # STD-KIND-025 (1.0-rc10): a governed reopening
         try:
-            res = self.commit(rec['target_branch'], copy.deepcopy(rec['changes']),
-                              {'kind': 'action', 'initiator': rec['initiator']})
+            res = self.commit(rec['target_branch'], copy.deepcopy(rec['changes']), process)
         except BpaError as e:
             rec['state'] = 'invalidated'
             rec['invalid_reason'] = e.code
@@ -193,6 +199,8 @@ class Approvals:
                 self._pc_refresh(rec)
                 rec['state'] = 'invalidated'
             return
+        finally:
+            self._period_op = None
         cid = self.branches[rec['target_branch']]['head']
         self.commits[cid]['approvals'] = [{'pending_change_id': rec['pending_change_id'],
                                            'preview': rec['preview'], 'approvers': [a['approver'] for a in rec['approvals']]}]

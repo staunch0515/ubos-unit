@@ -235,6 +235,13 @@ STATEFUL = {
     'read_projection': lambda s, i: s.read_projection(i),
     'projection_lag': lambda s, i: s.projection_lag(i),
     'rebuild_projection': lambda s, i: s.rebuild_projection(i),
+    # BPA 1.0-rc10, PH-2 step 4a (DEC-105): delegations, tasks, inbox, service levels
+    'delegate': lambda s, i: s.delegate(i),
+    'revoke_delegation': lambda s, i: s.revoke_delegation(i),
+    'delegations': lambda s, i: s.delegations(i),
+    'task': lambda s, i: s.task(i),
+    'inbox': lambda s, i: s.inbox(i),
+    'sla_report': lambda s, i: s.sla_report(i),
 }
 
 # Members of `ubtp` frames an implementation assigns (process identifiers), stripped like the

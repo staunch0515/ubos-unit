@@ -88,6 +88,7 @@ DAT-LedgerEntry:
   - **Transitions.** A period object may be created in any state. An update moves its `state` only between `open` and `closing`, otherwise `MODEL.CONSTRAINT_VIOLATED`. `closing` is a soft close: appends still commit, and governance sheets may restrict who appends.
   - **Closing and reopening.** A period enters `closed` only through `close_period` (STD-KIND-026). It leaves `closed` only through `reopen_period`, which states a reason (`MODEL.DECLARATION_INCOMPLETE` without one) recorded with the commit's process, and returns the period to `open`. Its close artefacts stay.
   - **Corrections.** A correction of an entry of a closed period is appended with a posting date in an open period; the correcting entry keeps the `valid_at` of the original (STD-KIND-023).
+  - **Governed reopening.** Since 1.0-rc10 (DEC-105), when the period's class declares a command port `reopen`, `reopen_period` first evaluates the decisions of that port with the parameter `reason` (STD-LGS-031): `deny` fails with `RULE.DECISION_DENIED`; `require` fails with `RULE.DECISION_REQUIRES`, or with `defer` stores the reopening as a pending change that the final approval applies (STD-TXN-060). Without the port, reopening is as in 1.0-rc8.
 
 ### STD-KIND-026 — Close artefacts
 - **Clause:** Closing a period in `closing` MUST be one commit that:

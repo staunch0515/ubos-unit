@@ -196,6 +196,9 @@ class Workflows:
         elif cls == 'NotificationTemplate':
             from .integration import check_template
             check_template(body)
+        elif cls == 'WorkQueue':        # STD-LGS-062 (1.0-rc10)
+            from .work import check_queue
+            check_queue(body)
 
     def _ref_oid(self, st, ref, cls):
         oid = ref

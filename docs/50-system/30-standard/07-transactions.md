@@ -183,6 +183,7 @@ DAT-Derivation:
   - **States.** At each read or approval, an expired pending change becomes `expired`, and one whose bases are no longer the heads becomes `invalidated`, listing the changed objects with their approved and current bodies (`changed_since`) and keeping the voided approvals.
   - **Application.** The final approval commits the stored changes in a new process with the requester as initiator. A failure of that commit invalidates the pending change with the error code (`invalid_reason`).
   - **Ending.** A rejection ends it as `rejected`; a decision on a pending change that is no longer `pending` returns its state.
+  - **Reopening a period.** Since 1.0-rc10 (DEC-105), `reopen_period` given `defer` and a `process` with its `process_id` stores the reopening as a pending change when the decisions of the period's port `reopen` require steps (STD-KIND-025). The final approval reopens the period with the reason.
 
 ```yaml
 DAT-PendingChange:
@@ -196,6 +197,7 @@ DAT-PendingChange:
 DAT-Approval:
   approver: { type: text, required: true, description: "principal DID" }
   on_behalf_of: { type: text, required: false, description: "delegator DID" }
+  delegation: { type: text, required: false, description: "the Delegation object acted through (since 1.0-rc10)" }
   decision: { type: enum, required: true, description: "approve | reject" }
   preview: { type: text, required: true, description: "content-id of the preview approved" }
   at: { type: instant, required: true, description: "time" }

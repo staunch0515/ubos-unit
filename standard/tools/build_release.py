@@ -92,7 +92,7 @@ def write(path, text):
 
 
 def main():
-    version = sys.argv[1] if len(sys.argv) > 1 else '1.0-rc9'
+    version = sys.argv[1] if len(sys.argv) > 1 else '1.0-rc10'
     rel = os.path.join(STD, 'release', version)
     scope_doc = json.load(open(os.path.join(rel, 'scope.json')))
     cat = clauses()

@@ -10,7 +10,7 @@ and, for comparison, on the owner's separate Java system.
 
 | Path | Content |
 |---|---|
-| `docs/50-system/` | the authoritative system specification (requirements, architecture, BPA standard, 13 systems, phases PH-0…PH-5, verification, decisions DEC-001…104) — start at `docs/50-system/README.md` and `docs/50-system/00-meta/05-ai-reading-guide.md` |
+| `docs/50-system/` | the authoritative system specification (requirements, architecture, BPA standard, 13 systems, phases PH-0…PH-5, verification, decisions DEC-001…105) — start at `docs/50-system/README.md` and `docs/50-system/00-meta/05-ai-reading-guide.md` |
 | `docs/finance-requirements/` | implementation-neutral US Basic Finance requirements (FIN-*), sample company dataset, expected results, acceptance scenarios, comparison protocol; self-contained with its own `tools/`, frozen at version 1.0 (`fin-req-v1.0`, DEC-029) |
 | `docs/tools/` | generators and checkers of the system volume (`regen_all.sh` runs all, including the finance folder's `tools/regen.sh`) |
 | `docs/reports/` | reports to the owner, in Chinese |
