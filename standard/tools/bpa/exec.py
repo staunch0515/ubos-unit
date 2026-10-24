@@ -42,7 +42,9 @@ IMPLEMENTED = ('commit.create', 'commit.update', 'commit.end', 'commit.move', 'c
                # BPA 1.0-rc3, PH-1 step 12a (DEC-071)
                'commit.transition', 'read.actions',
                # BPA 1.0-rc8, PH-2 step 1c (DEC-091)
-               'run.decision')
+               'run.decision',
+               # BPA 1.0-rc8, PH-2 step 1f (DEC-094)
+               'call.connector', 'emit.notify')
 SYSTEM = {'sys.uuid': 'pure', 'sys.random_bytes': 'pure', 'adapter.observe': 'journaled'}
 READ_ACTIONS = ('read', 'read_history', 'reflect', 'explain')
 L2_FORBIDDEN = ('eval', 'print', 'debug', 'import', 'export', 'Fn', 'call', 'curry', 'is_def_fn', 'is_def_var',
@@ -101,6 +103,9 @@ class Run:
         # STD-ISA-017 (1.0-rc3): the transitions of this process by object and the guards passed
         self.transitions, self.guards = {}, []
         self.tables = []                        # STD-ISA-053 (1.0-rc8): decision table versions
+        self.connector_calls = []               # STD-TXN-051 (1.0-rc8): pre-commit calls made
+        self.connector_n = 0                    # STD-ISA-090 (1.0-rc8): calls counted by metering
+        self.notifications = []                 # STD-ISA-071 (1.0-rc8): notifications requested
         self.cancel_after = i.get('cancel_after_units')
         self.context = self._context()
 
@@ -155,7 +160,7 @@ class Run:
     def metering(self, outcome):
         return {'process_id': self.p['process_id'], 'asset': self.logic[0] if self.logic else None,
                 'units': self.units, 'cpu_us': 0, 'peak_memory': 0, 'wall_us': 0,
-                'instructions': dict(sorted(self.families.items())), 'connector_calls': 0, 'outcome': outcome}
+                'instructions': dict(sorted(self.families.items())), 'connector_calls': self.connector_n, 'outcome': outcome}
 
     # ---- entropy (STD-CTX-010) ----
 
@@ -897,6 +902,85 @@ class Run:
         n = self.s.processes.get(self.p['process_id'], {}).get('effects', 0) + len(self.effects)
         return {'event_id': '%s/%d' % (self.p['process_id'], n)}
 
+    # ---- integration (STD-ISA-071, -090, 1.0-rc8) ----
+
+    def i_call_connector(self, a, d):
+        from .integration import CONNECTOR, DEFAULT_ALLOWED, _fields, _validate
+        st = self.state()
+        oid, c = self.s._connector(st, a['connector'])
+        uri = 'ubos://%s/%s/%s' % (self.s.TENANT, CONNECTOR, st['objects'][oid]['slug'])
+        # FR-LOGIC-102: the asset names the connector among its capabilities as connector:<uri>
+        caps = self.frames[-1].asset.get('capabilities') or []
+        if 'connector:' + uri not in caps:
+            raise BpaError('LOGIC.FORBIDDEN_CAPABILITY', 'the asset does not list the connector')
+        self.authorize(d['authorization'], CONNECTOR)
+        op = c['operations'].get(a['operation'])
+        if op is None:
+            raise BpaError('MODEL.INVALID_VALUE', 'unknown operation %s' % a['operation'])
+        if a['when'] not in ('now', 'after_commit'):
+            raise BpaError('MODEL.INVALID_VALUE', 'when is now or after_commit')
+        req = a['request']
+        _validate(op.get('request'), req, 'the request')
+        levels = c.get('allowed_classifications', DEFAULT_ALLOWED)
+        fields = _fields(op.get('request'))
+        out = sorted(k for k in req if fields[k].get('classification', 'internal') not in levels)
+        if out:
+            raise BpaError('LOGIC.CLASSIFICATION_EGRESS_DENIED', {'fields': out})
+        self.s._check_egress(c)
+        if a['when'] == 'after_commit':
+            payload = {'operation': a['operation'], 'request': req}
+            if a.get('idempotency_key') is not None:
+                payload['idempotency_key'] = a['idempotency_key']
+            self.effects.append({'type': 'connector.call', 'object_id': oid, 'payload': payload})
+            n = self.s.processes.get(self.p['process_id'], {}).get('effects', 0) + len(self.effects)
+            return {'effect_id': '%s/%d' % (self.p['process_id'], n)}
+        if not op.get('now'):
+            raise BpaError('LOGIC.FORBIDDEN_CAPABILITY', 'the operation is not declared for calls before commit')
+        self.connector_n += 1
+        if self.connector_n > self.limits['connector_calls']:
+            raise BpaError('LOGIC.LIMIT_EXCEEDED', 'connector calls')
+        rec = {'instruction': 'call.connector', 'args_hash': content_id('ubos.chunk.v1', a)}
+        seq = len(self.records) + 1
+        if self.replay is not None:
+            recs = self.replay['records']
+            if seq > len(recs):
+                raise BpaError('LOGIC.REPLAY_INPUT_MISSING', 'no journal record %d' % seq)
+            val = recs[seq - 1]['result']
+        else:
+            res = self.s._exchange(oid, c, a['operation'], req, 'call', self.p['process_id'], a.get('idempotency_key'))
+            val = res[1] if res[0] == 'ok' else {'error': res[1], 'details': res[2]}
+        self.records.append(dict(rec, seq=seq, result_ref=content_id('ubos.chunk.v1', val), result=val))
+        if isinstance(val, dict) and set(val) == {'error', 'details'}:
+            raise BpaError(val['error'], val['details'])
+        self.connector_calls.append({'connector': oid, 'body': c, 'operation': a['operation'], 'request': req,
+                                     'compensation': op.get('compensation'), 'seq': seq})
+        return val
+
+    def i_emit_notify(self, a, d):
+        from .integration import TEMPLATE, PRIORITIES
+        oid = self.target_id(a['subject'])
+        self.authorize(d['authorization'], self.class_of(oid))
+        tid, t = self.s._ref_oid(self.state(), a['template'], TEMPLATE)
+        recipients = a['recipients']
+        if not isinstance(recipients, list) or not recipients or not all(
+                isinstance(r, str) and (r.startswith('did:') or r.startswith('role:') or r.startswith('relation:'))
+                for r in recipients):
+            raise BpaError('MODEL.INVALID_VALUE', 'recipients are DIDs, role:<name> or relation:<name>')
+        channels = a.get('channels') or ['in_app']
+        if not isinstance(channels, list) or not all(isinstance(c, str) for c in channels):
+            raise BpaError('MODEL.INVALID_VALUE', 'channels is a list')
+        prio = a.get('priority') or 'normal'
+        if prio not in PRIORITIES:
+            raise BpaError('MODEL.INVALID_VALUE', 'priority is low, normal or high')
+        self.per_item(d, len(recipients))
+        nid = '%s/n%d' % (self.p['process_id'], len(self.notifications) + 1)
+        n = {'id': nid, 'template': self.s.versions[t['head']]['body'], 'subject': oid, 'recipients': recipients,
+             'channels': channels, 'priority': prio}
+        if a.get('action') is not None:
+            n['action'] = a['action']
+        self.notifications.append(n)
+        return {'notification_id': nid}
+
     # ---- assets (STD-CTX-022, -023, -030) ----
 
     def asset(self, key):
@@ -1002,12 +1086,16 @@ class Exec:
                 if replay is not None:
                     raise
                 if e.code in RETRY_CODES and retryable and attempt < max_attempts:
+                    self._compensate(run, p)                # STD-TXN-051 (1.0-rc8)
                     continue
                 outcome = {'LOGIC.LIMIT_EXCEEDED': 'limit', 'LOGIC.CANCELLED': 'cancelled'}.get(e.code, 'error')
                 self._finish(run, i, p, None, None, outcome, attempt)
+                self._compensate(run, p)                    # STD-TXN-051 (1.0-rc8)
                 self._q_failure(run, e.code, outcome)       # STD-CTX-031 (1.0-rc8)
                 raise
-            return self._finish(run, i, p, result, cid, 'ok', attempt)
+            out = self._finish(run, i, p, result, cid, 'ok', attempt)
+            self._notify(run, cid)                          # STD-ISA-071 (1.0-rc8)
+            return out
 
     def _start(self, run, i):
         if i.get('port') is not None:

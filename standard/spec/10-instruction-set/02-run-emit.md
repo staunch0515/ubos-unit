@@ -128,4 +128,8 @@
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-3515…3524
 - **Satisfies:** FR-NTF-011, FR-OFFICE-061
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-094):
+  - **Templates.** A template is an object of the genesis class `NotificationTemplate` with `title` and `body`; `{{this.<field>}}` placeholders take the subject's values.
+  - **Recipients.** Recipients are DIDs, `role:<name>` (the principals of the adapter's directory with that role, operation `principal`) or `relation:<name>` (the principals the subject's relation reaches, STD-LGS-050); other forms fail with `MODEL.INVALID_VALUE`.
+  - **Rendering.** After commit, each recipient and channel gets an effect `notification` with `{notification_id, recipient, channel, priority, title, body, action}`, rendered with the recipient's clearances and masks (STD-LGS-052); hidden fields render empty. A process that fails sends nothing.
+  - **Defaults.** `channels` defaults to `in_app`, and `priority` to `normal` (`low`, `normal`, `high`).

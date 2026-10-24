@@ -9,7 +9,7 @@ depends_on: [UBS-DEC-000]
 # Decision Records DEC-001 … DEC-029
 
 The table rows and records of the decisions taken before PH-0 execution (DEC-030). The
-decisions DEC-030 … DEC-059 are in `02-records-dec-030-059.md`, those from DEC-060 on in
+decisions DEC-030 … DEC-059 are in `02-records-dec-030-059.md`, those of DEC-060 … DEC-089 in `03-records-dec-060-089.md`, those from DEC-090 on in
 `000-index.md`. Moved here unchanged on 2026-10-03 when the
 log passed 800 lines (the checker's size warning); IDs are permanent.
 

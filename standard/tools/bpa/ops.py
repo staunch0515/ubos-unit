@@ -218,6 +218,13 @@ STATEFUL = {
     'lookup_key': lambda s, i: s.lookup_key(i),
     'relations': lambda s, i: s.relations(i),
     'check_access': lambda s, i: s.check_access(i),
+    # BPA 1.0-rc8, PH-2 step 1f (DEC-094): connectors, notifications, addressing, REST facade
+    'egress_allow': lambda s, i: s.egress_allow(i),
+    'connector_stub': lambda s, i: s.connector_stub(i),
+    'exchanges': lambda s, i: s.exchange_log(i),
+    'principal': lambda s, i: s.principal(i),
+    'resolve_path': lambda s, i: s.resolve_path(i),
+    'rest': lambda s, i: s.rest(i),
 }
 
 # Members of `ubtp` frames an implementation assigns (process identifiers), stripped like the

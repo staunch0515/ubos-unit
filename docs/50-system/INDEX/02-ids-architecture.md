@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (93)
+## DEC (94)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -153,38 +153,39 @@ depends_on: [UBS-IDX-00]
 | DEC-057 | Verification gate, replay and BPU views (PH-1 step 5, part 5c) | `90-decisions/02-records-dec-030-059.md` |
 | DEC-058 | L2 host at production quality (PH-1 step 5, part 5d) | `90-decisions/02-records-dec-030-059.md` |
 | DEC-059 | Proofs: signed commit records, node key history and the pure verification primitives (PH-1 step 6, part 6a) | `90-decisions/02-records-dec-030-059.md` |
-| DEC-060 | In-process host and host services on PostgreSQL (PH-1 step 7, part 7a) | `90-decisions/000-index.md` |
-| DEC-061 | Verification close-out of gate 1a (PH-1 step 8, parts 8a–8c) | `90-decisions/000-index.md` |
-| DEC-062 | Gate-1a acceptance (PH-1 step 9, part 9a) | `90-decisions/000-index.md` |
-| DEC-063 | Gate-1b step plan (PH-1 step 9, part 9c) | `90-decisions/000-index.md` |
-| DEC-064 | BPA 1.0-rc2 opened: scope by rule for gate 1b (step 10, part 10a) | `90-decisions/000-index.md` |
-| DEC-065 | Policy-engine library: the `cedar-policy` crate in `ubos-authz` (step 10, part 10a) | `90-decisions/000-index.md` |
-| DEC-066 | BPA 1.0-rc2 governance sheets: grammar, objects, registry, matching and cascade (step 10, part 10b) | `90-decisions/000-index.md` |
-| DEC-067 | BPA 1.0-rc2 validations, decisions and the Core clauses of gate 1b (step 10, part 10c) | `90-decisions/000-index.md` |
-| DEC-068 | BPA 1.0-rc2 UBTP: envelope, handshake, mutate, query, subscriptions, flow control and bindings (step 10, part 10d) | `90-decisions/000-index.md` |
-| DEC-069 | Release of BPA 1.0-rc2 (step 10, part 10e) | `90-decisions/000-index.md` |
-| DEC-070 | PH-1 step 11: governance sheets and rules in the kernel, parts 11a–11d | `90-decisions/000-index.md` |
-| DEC-071 | BPA 1.0-rc3 opened; PH-1 step 12: lifecycles, ports and guards, parts 12a–12c | `90-decisions/000-index.md` |
-| DEC-072 | Release of BPA 1.0-rc3 (step 12, part 12c) | `90-decisions/000-index.md` |
-| DEC-073 | PH-1 step 13: authorization and queries, parts 13a–13d | `90-decisions/000-index.md` |
-| DEC-074 | Row filters for list queries: residual post-filter with the order-by pushdown (step 13, part 13d) | `90-decisions/000-index.md` |
-| DEC-075 | PH-1 step 14: single-node Server and local identity, parts 14a–14d | `90-decisions/000-index.md` |
-| DEC-076 | PH-1 step 15: events, jobs and schedules, parts 15a–15e | `90-decisions/000-index.md` |
-| DEC-077 | PH-1 step 16: operations and configuration, parts 16a–16f | `90-decisions/000-index.md` |
-| DEC-078 | PH-1 step 17: SDKs, `forge dev` and the engineering UI, parts 17a–17f | `90-decisions/000-index.md` |
-| DEC-079 | PH-1 step 18: the thirteen PH-1 scenarios over UBTP, parts 18a–18d | `90-decisions/000-index.md` |
-| DEC-080 | The content-addressed build cache of `forge` after PH-1 | `90-decisions/000-index.md` |
-| DEC-081 | UBOS design system 1.0 for the PH-2 Web workspace | `90-decisions/000-index.md` |
-| DEC-082 | PH-1 step 18d: the scenarios over UBTP, parts 18d-1…18d-3, BPA 1.0-rc5 | `90-decisions/000-index.md` |
-| DEC-083 | BPA 1.0-rc6: revert resolutions and timer effects of events subscriptions | `90-decisions/000-index.md` |
-| DEC-084 | BPA 1.0-rc7: sheet checks at merge, sheets in the rule binding | `90-decisions/000-index.md` |
-| DEC-085 | PH-1 close-out, the frozen line `release/ph1`, and the PH-2 step plan | `90-decisions/000-index.md` |
-| DEC-086 | Privacy by default in the PH-1 scope (PH-1 step 19b) | `90-decisions/000-index.md` |
-| DEC-087 | PH-1 close-out with carry-overs and the start of PH-2 | `90-decisions/000-index.md` |
-| DEC-088 | Commit checks of references and relationships on indexes (PH-2 step 0b-1b) | `90-decisions/000-index.md` |
-| DEC-089 | BPA 1.0-rc8 opened: scope by phase for PH-2 (PH-2 step 1, part 1a) | `90-decisions/000-index.md` |
+| DEC-060 | In-process host and host services on PostgreSQL (PH-1 step 7, part 7a) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-061 | Verification close-out of gate 1a (PH-1 step 8, parts 8a–8c) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-062 | Gate-1a acceptance (PH-1 step 9, part 9a) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-063 | Gate-1b step plan (PH-1 step 9, part 9c) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-064 | BPA 1.0-rc2 opened: scope by rule for gate 1b (step 10, part 10a) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-065 | Policy-engine library: the `cedar-policy` crate in `ubos-authz` (step 10, part 10a) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-066 | BPA 1.0-rc2 governance sheets: grammar, objects, registry, matching and cascade (step 10, part 10b) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-067 | BPA 1.0-rc2 validations, decisions and the Core clauses of gate 1b (step 10, part 10c) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-068 | BPA 1.0-rc2 UBTP: envelope, handshake, mutate, query, subscriptions, flow control and bindings (step 10, part 10d) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-069 | Release of BPA 1.0-rc2 (step 10, part 10e) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-070 | PH-1 step 11: governance sheets and rules in the kernel, parts 11a–11d | `90-decisions/03-records-dec-060-089.md` |
+| DEC-071 | BPA 1.0-rc3 opened; PH-1 step 12: lifecycles, ports and guards, parts 12a–12c | `90-decisions/03-records-dec-060-089.md` |
+| DEC-072 | Release of BPA 1.0-rc3 (step 12, part 12c) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-073 | PH-1 step 13: authorization and queries, parts 13a–13d | `90-decisions/03-records-dec-060-089.md` |
+| DEC-074 | Row filters for list queries: residual post-filter with the order-by pushdown (step 13, part 13d) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-075 | PH-1 step 14: single-node Server and local identity, parts 14a–14d | `90-decisions/03-records-dec-060-089.md` |
+| DEC-076 | PH-1 step 15: events, jobs and schedules, parts 15a–15e | `90-decisions/03-records-dec-060-089.md` |
+| DEC-077 | PH-1 step 16: operations and configuration, parts 16a–16f | `90-decisions/03-records-dec-060-089.md` |
+| DEC-078 | PH-1 step 17: SDKs, `forge dev` and the engineering UI, parts 17a–17f | `90-decisions/03-records-dec-060-089.md` |
+| DEC-079 | PH-1 step 18: the thirteen PH-1 scenarios over UBTP, parts 18a–18d | `90-decisions/03-records-dec-060-089.md` |
+| DEC-080 | The content-addressed build cache of `forge` after PH-1 | `90-decisions/03-records-dec-060-089.md` |
+| DEC-081 | UBOS design system 1.0 for the PH-2 Web workspace | `90-decisions/03-records-dec-060-089.md` |
+| DEC-082 | PH-1 step 18d: the scenarios over UBTP, parts 18d-1…18d-3, BPA 1.0-rc5 | `90-decisions/03-records-dec-060-089.md` |
+| DEC-083 | BPA 1.0-rc6: revert resolutions and timer effects of events subscriptions | `90-decisions/03-records-dec-060-089.md` |
+| DEC-084 | BPA 1.0-rc7: sheet checks at merge, sheets in the rule binding | `90-decisions/03-records-dec-060-089.md` |
+| DEC-085 | PH-1 close-out, the frozen line `release/ph1`, and the PH-2 step plan | `90-decisions/03-records-dec-060-089.md` |
+| DEC-086 | Privacy by default in the PH-1 scope (PH-1 step 19b) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-087 | PH-1 close-out with carry-overs and the start of PH-2 | `90-decisions/03-records-dec-060-089.md` |
+| DEC-088 | Commit checks of references and relationships on indexes (PH-2 step 0b-1b) | `90-decisions/03-records-dec-060-089.md` |
+| DEC-089 | BPA 1.0-rc8 opened: scope by phase for PH-2 (PH-2 step 1, part 1a) | `90-decisions/03-records-dec-060-089.md` |
 | DEC-090 | Money and periods in BPA 1.0-rc8 (PH-2 step 1, part 1b) | `90-decisions/000-index.md` |
 | DEC-091 | Approvals and rules in BPA 1.0-rc8 (PH-2 step 1, part 1c) | `90-decisions/000-index.md` |
 | DEC-092 | Workflows, sagas, quarantine, lenses and upstream changes in BPA 1.0-rc8 (PH-2 step 1, part 1d) | `90-decisions/000-index.md` |
 | DEC-093 | Protection in BPA 1.0-rc8 (PH-2 step 1, part 1e) | `90-decisions/000-index.md` |
+| DEC-094 | Integration and addressing in BPA 1.0-rc8 (PH-2 step 1, part 1f) | `90-decisions/000-index.md` |
 

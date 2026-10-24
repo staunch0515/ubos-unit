@@ -160,7 +160,11 @@ DAT-Derivation:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-2180…2189
 - **Satisfies:** FR-TXN-053
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-094):
+  - **When it runs.** When a process with successful `now` calls fails (including an attempt that is retried), each call's compensation operation is invoked with the call's request, last call first.
+  - **Records.** Each compensation is made under the idempotency key `comp:<process>:<seq>` and recorded in the process record (`compensations`, with `outcome`) and in the exchanges.
+  - **At least once.** A compensation that cannot be made now is released as an effect `connector.compensation` for retry.
+  - **Exceptions.** An operation declared `compensation: none` is recorded as such. Compensations are not rate-limited.
 
 ## 6. Deferred commits (approvals)
 

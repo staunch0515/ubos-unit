@@ -150,6 +150,10 @@ DAT-ConformanceReport:
   | `stored_form`, `disclose`, `verify_disclosure` | `{branch, object_id}` and a selector; `{branch, object_id, field}`; `{commitment, salt, value}` | `{body}` as stored; `{field, value, salt, commitment}`; `true` or `false` (STD-OBJ-010). Since 1.0-rc8. |
   | `lookup_key` | `{key}` | `true`; sets the tenant lookup key (STD-OBJ-012, STD-LGS-052). Since 1.0-rc8. |
   | `relations`, `check_access` | `{branch, object_id}` and a selector; `{branch, object_id, principal, action, ctx}` and a selector | `{object_id, relations, principal}`; `{allowed, rule}` (STD-LGS-050, -051). Since 1.0-rc8. |
+  | `egress_allow`, `connector_stub`, `exchanges` | `{hosts}`; `{branch, connector, operation, responses}`; `{}` | `{hosts}`; `{connector, operation, scripted}`; `{exchanges}`, each `{connector, operation, kind, process_id, request, response, attempts, outcome, idempotency_key, at}` with redactions (STD-ISA-090, STD-TXN-051). Since 1.0-rc8. |
+  | `principal` | `{did, clearances, roles}` | the directory entry `{did, clearances, roles}` (STD-ISA-071). Since 1.0-rc8. |
+  | `resolve_path` | `{branch, path}` and a selector | `{uri, object_id}` (STD-ADDR-003, -004). Since 1.0-rc8. |
+  | `rest` | `{method, path, query, headers, body, principal}` | `{status, headers, body}` (STD-PROTO-021); `process_id` members are stripped like those of `ubtp`. Since 1.0-rc8. |
   | `read_range` | `{branch, object_id, from, to}` and a selector | `{segments, evaluated_at}`, each segment as `read` clipped to `[from, to)` (STD-TIME-014). Since 1.0-rc1. |
   | `history` | `{branch, object_id, from, to}` | `{commits, evaluated_at}`, each `{cseq, commit_id, tx_time, ops}` for the first-parent commits with `from ≤ tx_time < to` that changed the object; `ops` are `{kind, from, to}` (STD-TIME-014). Since 1.0-rc1. |
   | `tree_diff` | `{from, to}`, each a branch with a selector | `{keys}`, the state-tree keys whose entries differ (STD-VER-031). Since 1.0-rc1. |

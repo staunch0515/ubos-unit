@@ -6,13 +6,13 @@
 
 | Profile | MUST clauses with a range | Covered | Coverage | Vectors | Prototype vectors |
 |---|---|---|---|---|---|
-| Core | 140 | 135 | 96% | 1303 | 355 |
+| Core | 140 | 138 | 99% | 1344 | 355 |
 | Bitemporal | 12 | 12 | 100% | 69 | 30 |
 | Ledger | 12 | 12 | 100% | 92 | 52 |
 | Proof | 9 | 9 | 100% | 73 | 16 |
 | Governance | 18 | 18 | 100% | 287 | 0 |
-| Protocol | 9 | 8 | 89% | 141 | 0 |
-| **All** | **200** | **194** | **97%** | **1965** | **453** |
+| Protocol | 9 | 9 | 100% | 151 | 0 |
+| **All** | **200** | **198** | **99%** | **2016** | **453** |
 
 ## Clauses
 
@@ -134,7 +134,7 @@
 | STD-TXN-031 | Core | yes | 7 (VER-CONF-2135…VER-CONF-2141) |
 | STD-TXN-040 | Core | yes | 6 (VER-CONF-2150…VER-CONF-2155) |
 | STD-TXN-050 | Core | yes | 7 (VER-CONF-2165…VER-CONF-2171) |
-| STD-TXN-051 | Core | yes | **none** |
+| STD-TXN-051 | Core | yes | 5 (VER-CONF-2180…VER-CONF-2184) |
 | STD-TXN-060 | Governance | yes | 9 (VER-CONF-2190…VER-CONF-5167) |
 | STD-TXN-070 | Core | yes | 6 (VER-CONF-2215…VER-CONF-2220) |
 | STD-TXN-080 | Core | yes | 13 (VER-CONF-2225…VER-CONF-2237) |
@@ -185,12 +185,12 @@
 | STD-ISA-054 | Core | no | 3 (VER-CONF-3470…VER-CONF-3472) |
 | STD-ISA-055 | Core | no | 1 (VER-CONF-3480…VER-CONF-3480) |
 | STD-ISA-070 | Core | no | **none** |
-| STD-ISA-071 | Core | no | **none** |
+| STD-ISA-071 | Core | no | 4 (VER-CONF-3515…VER-CONF-3518) |
 | STD-ISA-080 | Core | no | 6 (VER-CONF-3600…VER-CONF-3605) |
 | STD-ISA-081 | Core | no | **none** |
 | STD-ISA-082 | Core | no | **none** |
 | STD-ISA-083 | Core | yes | **none** |
-| STD-ISA-090 | Core | no | **none** |
+| STD-ISA-090 | Core | no | 18 (VER-CONF-3700…VER-CONF-3717) |
 | STD-CTX-001 | Core | yes | 6 (VER-CONF-4000…VER-CONF-4005) |
 | STD-CTX-002 | Core | no | 3 (VER-CONF-4020…VER-CONF-4022) |
 | STD-CTX-003 | Core | yes | 6 (VER-CONF-4030…VER-CONF-4035) |
@@ -215,8 +215,8 @@
 | STD-EXPR-011 | Core | yes | 11 (VER-CONF-4750…VER-CONF-4760) |
 | STD-ADDR-001 | Core | yes | 16 (VER-CONF-5200…VER-CONF-5215) |
 | STD-ADDR-002 | Core | yes | 7 (VER-CONF-5240…VER-CONF-5246) |
-| STD-ADDR-003 | Core | yes | **none** |
-| STD-ADDR-004 | Core | yes | **none** |
+| STD-ADDR-003 | Core | yes | 5 (VER-CONF-5255…VER-CONF-5259) |
+| STD-ADDR-004 | Core | yes | 9 (VER-CONF-5265…VER-CONF-5273) |
 | STD-ADDR-010 | Core | yes | 11 (VER-CONF-5280…VER-CONF-5290) |
 | STD-ERR-001 | Core | yes | 2 (VER-CONF-6000…VER-CONF-6001) |
 | STD-ERR-002 | Core | yes | 8 (VER-CONF-6010…VER-CONF-6017) |
@@ -255,4 +255,4 @@
 | STD-PROTO-014 | Protocol | yes | 31 (VER-CONF-5600…VER-CONF-5630) |
 | STD-PROTO-015 | Protocol | yes | 17 (VER-CONF-5650…VER-CONF-5666) |
 | STD-PROTO-020 | Protocol | yes | 5 (VER-CONF-5545…VER-CONF-5549) |
-| STD-PROTO-021 | Protocol | yes | **none** |
+| STD-PROTO-021 | Protocol | yes | 10 (VER-CONF-5580…VER-CONF-5589) |

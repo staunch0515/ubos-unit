@@ -93,10 +93,41 @@ depends_on: [UBS-STD-10]
   | Determinism | `journaled` (`now`) or `deferred` (`after_commit`) |
   | Cost | 100 |
   | Authorization | `invoke` on the connector operation |
-- **Grammar / Schema:** —
+- **Grammar / Schema:** `DAT-Connector`
 - **Conformance vectors:** VER-CONF-3700…3739
 - **Satisfies:** FR-LOGIC-101 … FR-LOGIC-105, FR-TXN-053
 - **Notes:** In replay, `now` calls return the journaled response and make no network call (FR-LOGIC-103).
+
+  Since 1.0-rc8 (DEC-094):
+  - **Connectors.** A connector is an object of the genesis class `Connector` (`DAT-Connector`). Its endpoint host must be on the VAE's egress allow-list when it is committed and when it is called (`LOGIC.EGRESS_NOT_ALLOWED`). Its credential is a handle `secret://…`, never the secret (`MODEL.INVALID_VALUE`). An operation marked `now` declares a `compensation` operation, or `none` with `compensation_reason` (`MODEL.DECLARATION_INCOMPLETE`).
+  - **Checks of a call.** In order:
+    - the asset names the connector among its capabilities as `connector:<uri>` (`LOGIC.FORBIDDEN_CAPABILITY`, FR-LOGIC-102);
+    - the principal holds `invoke` on `Connector`;
+    - the operation exists and the request conforms to its schema (`MODEL.INVALID_VALUE`);
+    - request fields whose classification the connector does not allow are refused (`LOGIC.CLASSIFICATION_EGRESS_DENIED`, `details.fields`);
+    - the host is allowed;
+    - a `now` call needs an operation marked `now` (`LOGIC.FORBIDDEN_CAPABILITY`).
+  - **Resilience.**
+    - An open breaker fails fast with `LOGIC.CONNECTOR_UNAVAILABLE` (`details.breaker`), and so does a call beyond the rate limit per window (`details.rate_limited`).
+    - An unavailable endpoint is retried up to `retry.max_attempts`.
+    - An error status fails with `LOGIC.CONNECTOR_ERROR` and `details.status`, and so does a response outside the operation schema (`details.invalid_response`).
+    - `breaker.failures` consecutive failures open the breaker for `breaker.open_for`.
+  - **Records.** Each exchange is recorded with the declared `redact` fields replaced by `"[redacted]"`. `now` calls count toward the profile's `connector_calls` and its metering.
+  - **After commit.** An `after_commit` call releases an effect `connector.call` with the operation, the request and the idempotency key.
+  - **Conformance.** Adapters simulate the outside world by `connector_stub`, which scripts responses `{status, body}` or `{unavailable: true}`, and set the allow-list by `egress_allow`; `exchanges` returns the records.
+
+```yaml
+DAT-Connector:
+  name: { type: text, required: true, description: "name" }
+  endpoint: { type: composite, required: true, description: "{protocol: https | sftp | smtp | amqp | kafka, host, path}" }
+  auth: { type: composite, required: false, description: "{method, credential}; credential is a handle secret://..." }
+  operations: { type: composite, required: true, description: "name -> {request, response, now, compensation, compensation_reason, redact}" }
+  timeout_ms: { type: integer, required: false, description: "timeout of one attempt" }
+  rate_limit: { type: composite, required: false, description: "{per: second | minute | hour | day, count}" }
+  retry: { type: composite, required: false, description: "{max_attempts}" }
+  breaker: { type: composite, required: false, description: "{failures, open_for}" }
+  allowed_classifications: { type: list, required: false, description: "levels that may leave (default public, internal)" }
+```
 
 ## 3. `ask.*`
 

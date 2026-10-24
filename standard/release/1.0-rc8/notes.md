@@ -10,8 +10,8 @@ with the owner's signed tag `bpa-v1.0.0-rc8`. BPA 1.0-rc7 stays frozen as tagged
 |---|---|
 | Profiles | Core, Bitemporal, Ledger, Proof, Governance, Protocol |
 | Clauses | 238 (scope by phase, `scope.json`): the 201 clauses of BPA 1.0-rc7, 23 that satisfy PH-2 requirements, and 14 written in parts 1b–1e |
-| MUST clauses with a vector range | 200, 194 covered (`coverage.md`) |
-| Vectors | 1,965: those of BPA 1.0-rc7 without VER-CONF-1528 (superseded), 45 of part 1b, 53 of part 1c, 122 of part 1d and 43 of part 1e |
+| MUST clauses with a vector range | 200, 198 covered (`coverage.md`) |
+| Vectors | 2,016: those of BPA 1.0-rc7 without VER-CONF-1528 (superseded), 45 of part 1b, 53 of part 1c, 122 of part 1d, 43 of part 1e and 51 of part 1f |
 
 ## Changes since BPA 1.0-rc7
 
@@ -53,3 +53,10 @@ with the owner's signed tag `bpa-v1.0.0-rc8`. BPA 1.0-rc7 stays frozen as tagged
   - **Authorization relations** (STD-LGS-050, new), **relation-based access rules** with the kernel property `access` (STD-LGS-051, new) and **field masking** for viewers (STD-LGS-052, new).
   - **Adapter operations** `subject_key`, `key_availability`, `erase_subject`, `stored_form`, `disclose`, `verify_disclosure`, `lookup_key`, `relations` and `check_access`; `read`, `query` and `outbox` take `as`.
   - **Rule 6 of STD-CONF-005:** `nonce`, `ct`, `salt` and `commitment` are implementation-dependent members.
+- Part 1f (DEC-094), integration and addressing:
+  - **Connectors** (STD-ISA-090): `Connector` objects with an egress allow-list, credential handles, schemas, classification checks, retry, breaker and rate limit, redacted records and journaled responses; `after_commit` calls through the outbox. Assets list their connectors in `connectors`.
+  - **Compensation of pre-commit calls** (STD-TXN-051): reverse order, idempotency keys, at least once through the outbox.
+  - **Notifications** (STD-ISA-071): `NotificationTemplate` objects; recipients by DID, role and relation, rendered per recipient with masking.
+  - **Short forms and VFS paths** (STD-ADDR-003, -004) in `resolve` and `resolve_path`.
+  - **REST facade** (STD-PROTO-021) over the UBTP session, with `Idempotency-Key` and RFC 9457 problems.
+  - **Adapter operations** `egress_allow`, `connector_stub`, `exchanges`, `principal`, `resolve_path` and `rest`.

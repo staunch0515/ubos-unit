@@ -189,6 +189,13 @@ class Workflows:
         elif cls == 'Lens':
             from .lenses import check_lens
             check_lens(body)
+        elif cls == 'Connector':        # STD-ISA-090 (1.0-rc8)
+            from .integration import check_connector
+            check_connector(body)
+            self._check_egress(body)
+        elif cls == 'NotificationTemplate':
+            from .integration import check_template
+            check_template(body)
 
     def _ref_oid(self, st, ref, cls):
         oid = ref

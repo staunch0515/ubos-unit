@@ -153,6 +153,17 @@ GENESIS = {
              'fields': [_f('class', 'text', True), _f('from', 'integer', True), _f('to', 'integer', True),
                         _f('ops', 'json', True), _f('residual_forward', 'text'), _f('residual_backward', 'text'),
                         _f('one_way', 'boolean'), _f('one_way_reason', 'text')]},
+    # STD-ISA-090, -071 (BPA 1.0-rc8, DEC-094): connectors and notification templates are
+    # Definition objects below ConfigAsset.
+    'Connector': {'name': 'Connector', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
+                  'fields': [_f('name', 'text', True), _f('endpoint', 'json', True), _f('auth', 'json'),
+                             _f('operations', 'json', True), _f('timeout_ms', 'integer'), _f('rate_limit', 'json'),
+                             _f('retry', 'json'), _f('breaker', 'json'), _f('allowed_classifications', 'json'),
+                             _f('description', 'text', True)]},
+    'NotificationTemplate': {'name': 'NotificationTemplate', 'kind': 'definition', 'parent': 'ConfigAsset',
+                             'abstract': False,
+                             'fields': [_f('name', 'text', True), _f('title', 'text', True), _f('body', 'text', True),
+                                        _f('description', 'text', True)]},
     'Release': {'name': 'Release', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
                 'fields': [_f('version', 'text', True), _f('tag', 'text', True), _f('notes', 'text'),
                            _f('change_sets', 'json'), _f('approvals', 'json')]},

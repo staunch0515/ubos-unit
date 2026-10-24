@@ -127,4 +127,13 @@ DAT-UbtpEnvelope:
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-5580…5599
 - **Satisfies:** FR-INT-021, FR-INT-023
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-094):
+  - **Requests.** The adapter operation `rest {method, path, query, headers, body, principal}` maps a request onto the caller's UBTP session:
+    - a GET of an object is a `read` and returns the item;
+    - a GET of a class is a `query` whose `q` is the `where` expression, with `limit` and `cursor`;
+    - a POST to a port is a `mutate` of the port with the body as parameters;
+    - a POST to a class creates `{object_id, slug, fields}` (201).
+
+    `branch` is a query parameter; authentication is the node's.
+  - **Results.** A result is `{status, headers, body}`. `Idempotency-Key` becomes the mutate's idempotency key, so a repeated request returns the first response.
+  - **Errors.** An error is `application/problem+json` `{type, title, status, code, explanation}` with the status of the code in STD-ERR-002. Unmapped methods give 405 with `INT.PROTOCOL_ERROR`, and unknown routes 404 with `IAM.NOT_FOUND`.

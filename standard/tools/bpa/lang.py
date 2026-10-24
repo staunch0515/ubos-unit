@@ -122,6 +122,10 @@ class Lang:
         return {v['slug'] for v in self.versions.values() if v['object_id'] == oid}
 
     def resolve(self, uri):
+        # STD-ADDR-003 (1.0-rc8): short forms and VFS paths are normalised first
+        if isinstance(uri, str) and not uri.startswith('ubos://'):
+            q = dict(x.partition('=')[::2] for x in uri.partition('?')[2].split('&') if x)
+            uri = self._canonical_ref(self._state(q.get('branch', 'main'))[0], uri)
         p = addr.parse_uri(uri)
         if p['tenant'] != self.TENANT or 'vae' in p:
             raise BpaError('IAM.NOT_FOUND', 'unknown authority')

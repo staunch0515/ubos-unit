@@ -273,7 +273,7 @@ depends_on: [UBS-IDX-00]
 | STD-VER-082 | Upstream change detection | `30-standard/05-versioning.md` |
 | STD-VER-090 | Snapshot selection | `30-standard/05-versioning.md` |
 
-## DAT (72)
+## DAT (73)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -298,6 +298,7 @@ depends_on: [UBS-IDX-00]
 | DAT-CommitWriteSummary | data structure | `40-systems/01-dvm/04-data.md` |
 | DAT-ConformanceReport | data structure | `30-standard/18-conformance.md` |
 | DAT-ConformanceVector | data structure | `30-standard/18-conformance.md` |
+| DAT-Connector | data structure | `30-standard/10-instruction-set/03-search-call-ask.md` |
 | DAT-CtlOperation | data structure | `40-systems/03-ctl/04-data.md` |
 | DAT-DecisionResult | data structure | `30-standard/13-governance-sheets.md` |
 | DAT-DecisionTable | data structure | `30-standard/13-governance-sheets.md` |

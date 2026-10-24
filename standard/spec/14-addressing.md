@@ -33,7 +33,10 @@
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-5255…5264
 - **Satisfies:** FR-FILE-041
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-094):
+  - **Where.** `resolve` and `resolve_path {branch, path}` accept `Class/slug` (with URI selectors) and VFS paths, and `resolve_path` returns `{uri, object_id}`.
+  - **Changes.** A reference value of a change stays canonical-only (`MODEL.INVALID_VALUE`, released behaviour).
+  - **Errors.** Text that is no short form fails with `MODEL.INVALID_VALUE`, and a form that names no object with `IAM.NOT_FOUND`.
 
 ### STD-ADDR-004 — VFS alias mapping
 - **Clause:** VFS paths MUST map to canonical URIs as follows:
@@ -48,7 +51,10 @@
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-5265…5279
 - **Satisfies:** FR-FILE-041, EXT-TRI
-- **Notes:** —
+- **Notes:** Since 1.0-rc8 (DEC-094):
+  - **Data paths.** A `/data` path needs a class of that namespace below `DataObject`.
+  - **Asset paths.** The other roots name the live object below `LogicAsset` (`/usr/logic`, `/lib`), `ConfigAsset` (`/etc`) or `ViewAsset` (`/view`) whose `name` is `<namespace>.<name>`, the first in object order.
+  - **Errors.** Other roots and shapes fail with `MODEL.INVALID_VALUE`, and paths that name nothing with `IAM.NOT_FOUND`.
 
 ### STD-ADDR-010 — The `did:ubos` method
 - **Clause:** Principal identifiers MUST use the DID method `ubos` in one of two forms:
