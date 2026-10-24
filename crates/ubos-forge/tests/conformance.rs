@@ -78,6 +78,10 @@ const RC2_CLAUSES: &[&str] = &[
     // BPA 1.0-rc9 (PH-2 step 3c, DEC-100): projections and read.projection
     "STD-TIME-021",
     "STD-ISA-037",
+    // BPA 1.0-rc8 (PH-2 step 3d, DEC-101): periods, close and reopen, close artefacts
+    "STD-KIND-025",
+    "STD-KIND-026",
+    "STD-VER-055",
 ];
 
 /// The clauses a vector verifies.

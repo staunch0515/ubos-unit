@@ -345,6 +345,24 @@ fn genesis() -> BTreeMap<String, Value> {
                 },
             ],
         ),
+        // STD-KIND-026 (BPA 1.0-rc8, DEC-090): close artefacts are System objects written by
+        // close_period.
+        g(
+            "CloseArtefact",
+            Some("system"),
+            Some("SystemObject"),
+            false,
+            vec![
+                field("period", "text", true),
+                field("period_slug", "text", true),
+                field("sequence", "integer", true),
+                field("start", "date", true),
+                field("end", "date", true),
+                field("tag", "text", true),
+                field("as_of", "json", true),
+                field("balances", "json", true),
+            ],
+        ),
         // STD-TIME-021 (BPA 1.0-rc9, DEC-098): projections are Definition objects below
         // ConfigAsset.
         g(
@@ -406,6 +424,7 @@ pub fn is_genesis(name: &str) -> bool {
             | "FxRate"
             | "LedgerAccount"
             | "Projection"
+            | "CloseArtefact"
     )
 }
 

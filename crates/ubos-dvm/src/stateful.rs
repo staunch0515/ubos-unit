@@ -1670,6 +1670,8 @@ pub(crate) fn commit_on(
         crate::finance::check(&mut repo, &mut tx, &written)?;
         // DSN-DVM-420 (PH-2 step 3c): the projection rows of the commit
         crate::projections::maintain(&mut repo, &mut tx, &written)?;
+        // STD-KIND-025 (BPA 1.0-rc8, PH-2 step 3d): the transitions of period objects
+        crate::periods::check_transitions(&mut repo, &mut tx, &written)?;
     }
     // STD-CLS-004: the shape and the extension rule of the lifecycle objects written
     {

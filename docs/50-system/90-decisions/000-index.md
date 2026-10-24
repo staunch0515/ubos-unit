@@ -24,6 +24,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-098 | PH-2 step 3 opened in parts 3a–3g; part 3a: BPA 1.0-rc9 — currency reference data (STD-FND-028), FX rates and `fx_convert` (STD-FND-029), chart of accounts (STD-KIND-029), statement lines (STD-KIND-030), projections (STD-TIME-021), `read.projection` (STD-ISA-037), compensation proposals (STD-TIME-043); VER-CONF-3003 superseded, VER-INSP-9007, the owner's signed tag `bpa-v1.0.0-rc9` | Accepted |
 | DEC-099 | PH-2 step 3b: currencies, FX rates and accounts in the kernel — ISO 4217 table and added codes, `Currency`, `FxRate` and `LedgerAccount` checks, `fx_convert` and `convert` against a branch with the rates journaled, adapter operations `currency` and `fx_rate`; the conformance test claims STD-FND-028, -029 and STD-KIND-029 of BPA 1.0-rc9 | Accepted |
 | DEC-100 | PH-2 step 3c: projections in the kernel — `Projection` declarations, reads with watermark, `at_least`, `group`, `asof` and roll-up, `read.projection`, rows per commit, group and valid time in `projection_delta` (migration 0017) with a mark per branch, atomic rebuild; checkpoints with the benchmarks of step 18; the SDK error registries regenerated for `QRY.WATERMARK_TIMEOUT` | Accepted |
+| DEC-101 | PH-2 step 3d: periods, close and reopen in the kernel — period transitions checked at commit, `close_period` with the `CloseArtefact` System object and the signed tag `close-<slug>-<n>`, `reopen_period` with a reason; STD-KIND-025, -026 and STD-VER-055 claimed; the approval of reopening with step 4 | Accepted |
 
 ---
 
@@ -402,4 +403,26 @@ DEC-090 on follow.
   - Requiring the mark to equal the previous commit before maintaining was rejected: commits without entries of the source class would stop the maintenance. Folding the entries after the mark keeps every read exact without that condition.
   - A separate table for marks was rejected: `kernel_meta` is written in the same storage transaction as the rows.
 - **Affects:** STD-TIME-021, STD-ISA-037, STD-ERR-002, DSN-DVM-420, DSN-DVM-422, DSN-DVM-441, FR-LEDG-031, FR-LEDG-033, FR-ANL-021, FR-ANL-023, DSN-SDK-007, DEC-098
+
+### DEC-101 — Periods, close and reopen in the kernel (PH-2 step 3, part 3d)
+- **Date:** 2026-10-24 · **Status:** Accepted
+- **Context:** Part 3d of PH-2 step 3 (DEC-098) implements STD-KIND-025 and STD-KIND-026 of BPA 1.0-rc8 in the kernel (DSN-DVM-443, -444). Before the part, 14 of their vectors failed: updates could close a period, and `close_period`, `reopen_period` and the class `CloseArtefact` were missing. The owner confirmed the part with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Transitions.** `crates/ubos-dvm/src/periods.rs` checks, after the account and projection work of the commit, every written object of a period class (a class some ledger class names as `period_scope`). An update moves `state` only between `open` and `closing`, otherwise `MODEL.CONSTRAINT_VIOLATED` with the transition in the details. `closing → closed` and `closed → open` are allowed only while `close_period` or `reopen_period` runs. A created period may have any state.
+  2. **Close.** `close_period` checks that the period is a live object of a period class in `closing`. One commit, with the platform's mark on the artefact (the commit path of `system_commit`), then does two things:
+     - it sets the period to `closed`;
+     - it creates the System object `CloseArtefact`.
+
+     The artefact holds the period, its slug and dates, the sequence `n`, the tag, `as_of` (`cseq`, commit ID and root of the head the close extends) and the balances. The balances are per class and canonical ledger key of the scoped classes: the number of entries and the sum per amount field, money per currency at its minor units, over the entries whose posting date is before the end. The posting date is the date of their commit's transaction time. The tag `close-<slug>-<n>` is then signed on the closing commit; an existing name fails with `VER.TAG_IMMUTABLE`.
+  3. **Reopen.** `reopen_period` needs a reason (`MODEL.DECLARATION_INCOMPLETE`) and a closed period (`MODEL.CONSTRAINT_VIOLATED`). It commits the state `open` with the reason in the commit's process; the close artefacts stay.
+  4. **Genesis class.** `CloseArtefact` (System kind, below `SystemObject`); ordinary commits to it fail with `LOGIC.FORBIDDEN_TARGET` as for every System-kind class.
+  5. **Claim.** The conformance test claims STD-KIND-025, STD-KIND-026 and STD-VER-055, so that VER-CONF-1108 (a merge into a period closed by `close_period`) runs as well.
+  6. **Governed reopen.** DSN-DVM-444 requires an approved change set for a reopening. The approval belongs to the deferred commits and approvals of PH-2 step 4; DSN-DVM-444 carries a phase note.
+- **Consequences:**
+  - The 22 vectors of STD-KIND-025 and -026 pass in memory and on PostgreSQL 16, and the conformance test passes with 2,131 vectors.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - Closing through two commits (the period, then the artefact) was rejected: STD-KIND-026 requires one commit, and the artefact's `as_of` must be the commit the close extends.
+  - A separate flag on the transaction for the period operations was rejected: a scoped thread-local value set only while the operation's commit runs keeps the commit signature unchanged.
+- **Affects:** STD-KIND-025, STD-KIND-026, STD-KIND-040, STD-VER-055, DSN-DVM-443, DSN-DVM-444, FR-LEDG-061, FR-LEDG-062, FR-LEDG-063, DEC-098
 

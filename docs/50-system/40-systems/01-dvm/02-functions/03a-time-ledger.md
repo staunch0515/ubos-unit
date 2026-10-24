@@ -434,6 +434,7 @@ This file designs the crates `ubos-time` and `ubos-ledger`; `ubos-txn` is in `03
   1. Given a reopen without approval, when flushed, then it fails with `VER.CHANGE_SET_REQUIRED`.
 - **Verification:** CONF
 - **Origin:** FR-LEDG-063, CR-SOX-005
+- **Phase note:** DEC-101: PH-2 step 3d implements the reopening of STD-KIND-025 (a reason recorded with the commit's process; the close artefacts stay); the approval of the reopen decision, with its deferred commit and change set, is built with the approvals of PH-2 step 4.
 
 ### DSN-DVM-445 — Matching engine
 - **Statement:** The DVM MUST provide a deterministic matching operator: given two entry sets and a matching rule (keys, tolerances, date windows, many-to-one allowed), it produces match records and breaks. Match records MUST be immutable objects (FR-LEDG-073); un-matching MUST create a new record that supersedes the old one.
