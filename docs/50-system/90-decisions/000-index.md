@@ -34,6 +34,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-108 | PH-2 step 4d: delegations in the kernel — `Delegation` System objects, `delegate`, `revoke_delegation`, `delegations`, approvals through a delegation; STD-LGS-060 claimed; slugs of kernel-written delegations and tasks corrected in BPA 1.0-rc10 before its tag | Accepted |
 | DEC-109 | PH-2 step 4e: tasks, work queues and the inbox in the kernel — `Task` and `WorkQueue`, the task actions with eligibility, `base` and log, the assignment rules, due rules at creation, tasks through a delegation, the inbox with pending changes; STD-LGS-061 and -062 claimed | Accepted |
 | DEC-110 | PH-2 step 4f: escalation, the service-level report and the node's sweeps — escalation steps applied by the kernel's tick, `sla_report`, the leader loop's sweep of pending changes with the default expiry and `pending_change.expired`; STD-LGS-063 and -064 claimed, every clause of BPA 1.0-rc10 implemented | Accepted |
+| DEC-111 | PH-2 step 4 closed: approvals and work (parts 4a–4f, DEC-105…110) — BPA 1.0-rc10, deferred commits and approvals, governed reopening, delegations, tasks and work queues, inbox, escalation and service levels in the kernel; 92 step-4 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 
 ---
 
@@ -702,3 +703,37 @@ DEC-090 on follow.
   - An index of escalation due times per branch was deferred: the tick reads the tasks of the work branches. The benchmarks of step 18 show whether the index is needed.
   - Emitting `pending_change.expired` when a read finds a pending change expired was rejected: the adapter's operations would emit effects that STD-TXN-060 does not state.
 - **Affects:** STD-LGS-063, STD-LGS-064, STD-TXN-060, DSN-DVM-552, DSN-DVM-744, DSN-DVM-754, DSN-NOD-208, DSN-NOD-231, FR-FLOW-081, FR-FLOW-082, FR-FLOW-083, DEC-105, DEC-106, DEC-109
+
+### DEC-111 — PH-2 step 4 closed: approvals and work (PH-2 step 4, part 4g)
+- **Date:** 2026-10-25 · **Status:** Accepted
+- **Context:** PH-2 step 4 (DEC-105) was split into parts 4a–4g. Parts 4a–4f are recorded in DEC-105…110. Part 4g closes the step: it records what the step delivered and lists, in one place, what the parts deferred to later steps. The owner asked to continue on 2026-10-25.
+- **Decision:**
+  1. **Delivered.**
+     - **4a (DEC-105).** BPA 1.0-rc10: 250 clauses, 2,181 vectors, MUST coverage 212/212, VER-INSP-9008. Five clauses were added (STD-LGS-060…064), with notes on STD-KIND-025, STD-TXN-060 and STD-LGS-043.
+     - **4b (DEC-106).** Deferred commits, requirements, expiry and invalidation, eligibility, separation of duties and approval evidence in the kernel.
+     - **4c (DEC-107).** The governed reopening of periods, the adapter's directory `principal`, and the conformance test on BPA 1.0-rc10.
+     - **4d (DEC-108).** Delegations and approvals through a delegation. BPA 1.0-rc10 was corrected before its tag (slugs of kernel-written objects).
+     - **4e (DEC-109).** Tasks, work queues, assignment rules, due rules at creation and the inbox.
+     - **4f (DEC-110).** Escalation by the kernel's tick, the service-level report, and the node's sweep of pending changes.
+  2. **Verification.** The 92 current vectors of the step-4 clauses (STD-TXN-060, STD-LGS-041…043, STD-LGS-060…064, STD-KIND-025) pass in one run in memory and on PostgreSQL 16. The kernel conformance test claims every clause of BPA 1.0-rc10.
+  3. **Deferred.** Each item keeps its ID and moves to the step named:
+
+     | Item | Source | Target |
+     |---|---|---|
+     | Approvals and human tasks inside workflow steps; escalation driven by workflow timers (DSN-DVM-744, -751) | DEC-105, DEC-110 | step 6 |
+     | Delivery of escalation reminders and other notifications to people over channels | DEC-105, DEC-110 | step 13 |
+     | The inbox as a saved query over tasks (DSN-DVM-743) | DEC-109 | step 13 |
+     | Time in state and a maintained SLA projection over lifecycle history (DSN-DVM-754) | DEC-110 | step 13 |
+     | Inbox and approval screens | DEC-105 | step 14 |
+     | Re-running the original process of an invalidated pending change for a new preview (DSN-DVM-551) | DEC-106 | after BPA 1.0-rc10, if the standard takes it |
+     | Delegation chains longer than one principal; queue membership by role | DEC-105 | after BPA 1.0-rc10 |
+     | Indexes for the load of `least_loaded` and for escalation due times | DEC-109, DEC-110 | step 18, if the benchmarks need them |
+
+  4. **Owner actions.** Merge the branch, then sign the tags `bpa-v1.0.0-rc8`, `bpa-v1.0.0-rc9` and `bpa-v1.0.0-rc10`.
+  5. **Next.** Step 5 (decision tables and rule operations): decision tables, attaching and detaching rules with effective dates, simulation and impact analysis, rule tests, the simulator. Its plan goes to the owner first.
+- **Consequences:**
+  - The status table in `docs/reports/ph2-plan-zh.md` marks step 4 as done.
+  - The deferred items are picked up by the steps named in the table above, whose plans cite this decision.
+- **Alternatives considered:**
+  - Leaving the deferred items spread over DEC-105…110 was rejected, as in DEC-104.
+- **Affects:** DEC-105, DEC-106, DEC-107, DEC-108, DEC-109, DEC-110, DSN-DVM-551, DSN-DVM-743, DSN-DVM-744, DSN-DVM-751, DSN-DVM-754
