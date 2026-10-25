@@ -23,6 +23,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-117 | PH-2 step 5f: `forge simulate` — the Server's administrative simulation route, audited; the command with window, port, budget, logic and change-set options, text and JSON reports, exit status by changed outcomes | Accepted |
 | DEC-118 | PH-2 step 5 closed: decision tables and rule operations (parts 5a–5f, DEC-112…117) — BPA 1.0-rc11, decision tables, simulation of rule and logic changes, the end of attachments, live impact, rule tests and the merge gate in the kernel, `forge simulate`; 58 step-5 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 | DEC-119 | PH-2 step 6 opened in parts 6a–6g; part 6a: BPA 1.0-rc12 — saga timeouts, monitoring and intervention (STD-TXN-081), workflow tasks and approvals (STD-TXN-093), workflow timers, business calendars and timeouts (STD-TXN-094), `ask.input` (STD-ISA-101); 259 clauses, 2,275 vectors, MUST coverage 221/221 | Accepted |
+| DEC-120 | PH-2 step 6b: workflows in the kernel — `WorkflowDefinition` and `WorkflowInstance`, the step interpreter with idempotent actions, decisions, parallel branches and joins, sub-workflows, events with correlation and buffering, human tasks, timers fired by the tick, and migration; STD-TXN-090…092 claimed, conformance test on BPA 1.0-rc12 | Accepted |
 
 ---
 
@@ -320,3 +321,25 @@ follow.
   - A separate wall-clock watchdog for saga steps was rejected: the commit that starts a step records its start, so a resumed saga can judge the timeout deterministically.
   - Dialogues that keep a suspended process were rejected: re-running the deterministic process with the answers commits in one step and keeps nothing between the calls (FR-FLOW-071).
 - **Affects:** STD-TXN-080, STD-TXN-081, STD-TXN-090, STD-TXN-091, STD-TXN-092, STD-TXN-093, STD-TXN-094, STD-ISA-001, STD-ISA-101, STD-LGS-061, STD-ERR-002, STD-CONF-005, DSN-DVM-564, DSN-DVM-565, DSN-DVM-735, DSN-DVM-744, DSN-DVM-751, DSN-NOD-206, DSN-NOD-207, DSN-NOD-227, FR-TXN-063, FR-TXN-064, FR-FLOW-062, FR-FLOW-063, FR-FLOW-071, FR-FLOW-082, VER-INSP-9010, DEC-045, DEC-089, DEC-098, DEC-100, DEC-111
+
+### DEC-120 — Workflows in the kernel (PH-2 step 6, part 6b)
+- **Date:** 2026-10-25 · **Status:** Accepted
+- **Context:** Part 6b of PH-2 step 6 (DEC-119) implements the workflow clauses of BPA 1.0-rc8 in the kernel: STD-TXN-090, -091 and -092 (DSN-DVM-750…753). Before the part, their 38 vectors failed: the kernel had no workflow classes or operations. The vectors of definitions and migration also complete human tasks and deliver events, so the part takes STD-TXN-091 at the engine level too. The owner confirmed the part with the default suggestions on 2026-10-25.
+- **Decision:**
+  1. **Classes.** `WorkflowDefinition` (Definition, below `ConfigAsset`) and `WorkflowInstance` (System) join the genesis registry with the declarations of the reference model. A commit that writes a definition checks it, including the step members of BPA 1.0-rc12. An instance is written only by the kernel (`LOGIC.FORBIDDEN_TARGET`).
+  2. **Interpreter.** `crates/ubos-dvm/src/workflows.rs` follows the reference model: one kernel-written commit per step.
+     - **Actions.** An action runs as a `job` process linked by `workflow`. Its outcome is kept under `(instance, token, step, visit, attempt)`, so that a step is not run twice.
+     - **Branching.** Decisions use their cases or a decision table (`decide_table`). Parallel steps fork tokens, and a join fires once.
+     - **Sub-workflows.** A child instance has an ID derived from the parent's token and step.
+  3. **Events, tasks and timers.** `deliver_event` wakes the step that has waited longest for the type and key, or buffers the event for a later wait within its window. `complete_task` is idempotent per visit. The kernel's tick fires due timers in the order of their due times, after `BecameEffective` and before the escalation of tasks, as in the reference model.
+  4. **State.** The kernel's own workflow state is kept in `kernel_meta`: the instances in start order, action outcomes, delivered events and buffered events per branch. It works on both stores without a migration.
+  5. **Claim.** The conformance test claims STD-TXN-090, -091 and -092 and runs the vectors of BPA 1.0-rc12 (`NEXT_RELEASE`).
+  6. **Part 6c.** It now covers the timer rows written in the flush and claimed by the node's timer service (DSN-DVM-751, DSN-NOD-227), in place of the scan of running instances, and the advance of workflows on a Server.
+  7. **Design notes.** DSN-DVM-750, -751, -752 and -753 get phase notes.
+- **Consequences:**
+  - The 38 vectors pass in memory and on PostgreSQL 16, and the conformance test passes on BPA 1.0-rc12.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - Compiling definitions into a stored state graph was rejected for now: the checked definition version is immutable and pinned, so interpreting it gives the same behaviour without a second representation.
+  - An index of correlation keys was deferred to the benchmarks of PH-2 step 18 (DSN-DVM-752).
+- **Affects:** STD-TXN-090, STD-TXN-091, STD-TXN-092, DSN-DVM-750, DSN-DVM-751, DSN-DVM-752, DSN-DVM-753, DSN-NOD-227, DEC-119

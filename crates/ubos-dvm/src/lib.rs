@@ -50,6 +50,7 @@ pub mod verify;
 pub mod versioning;
 pub mod views;
 pub mod work;
+pub mod workflows;
 
 pub use adapter::{Adapter, STATEFUL_OPERATIONS};
 pub use stateful::Engine;

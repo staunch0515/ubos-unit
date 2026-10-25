@@ -1676,6 +1676,8 @@ pub(crate) fn commit_on(
         crate::work::check(&mut repo, &mut tx, &written)?;
         // STD-LGS-072 (BPA 1.0-rc11, PH-2 step 5e): the rule tests written
         crate::ruleops::check(&mut repo, &mut tx, &written)?;
+        // STD-TXN-090 (BPA 1.0-rc8, PH-2 step 6b): the workflow definitions written
+        crate::workflows::check(&mut repo, &mut tx, &written)?;
     }
     // STD-CLS-004: the shape and the extension rule of the lifecycle objects written
     {

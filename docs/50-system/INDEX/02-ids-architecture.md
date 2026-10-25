@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (119)
+## DEC (120)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -213,4 +213,5 @@ depends_on: [UBS-IDX-00]
 | DEC-117 | `forge simulate` (PH-2 step 5, part 5f) | `90-decisions/000-index.md` |
 | DEC-118 | PH-2 step 5 closed: decision tables and rule operations (PH-2 step 5, part 5g) | `90-decisions/000-index.md` |
 | DEC-119 | Durable work, part 6a: BPA 1.0-rc12 (PH-2 step 6) | `90-decisions/000-index.md` |
+| DEC-120 | Workflows in the kernel (PH-2 step 6, part 6b) | `90-decisions/000-index.md` |
 

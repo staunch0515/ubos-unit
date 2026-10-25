@@ -341,6 +341,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given a node crash mid-workflow, when restarted, then the instance continues from its last committed step.
 - **Verification:** FAULT
 - **Origin:** FR-FLOW-061, FR-FLOW-062
+- **Phase note:** DEC-120: built in PH-2 step 6b as BPA 1.0-rc8 states it (STD-TXN-090): the kernel interprets the checked definition version directly instead of compiling a state graph, and each action attempt is idempotent by `(instance, token, step, visit, attempt)` through its recorded outcome in `kernel_meta`. Resumption after a node crash (FAULT) is verified in PH-2 steps 11 and 20 (DEC-119).
 
 ### DSN-DVM-751 — Timers
 - **Statement:** Timers MUST be stored as rows `(due_at, instance, step)` written in the flush; the host scheduler claims due timers and starts processes. Business-calendar timers (FR-FLOW-063) MUST be resolved to instants at creation and recomputed if the calendar changes.
@@ -351,6 +352,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given a holiday added after timer creation, when the calendar commits, then affected timers move.
 - **Verification:** CONF
 - **Origin:** FR-FLOW-063
+- **Phase note:** DEC-120: in PH-2 step 6b, the kernel's tick finds due workflow timers by scanning the running instances; the timer rows written in the flush and claimed by the host scheduler (DSN-NOD-227) come in part 6c. Business calendars are declared on the timer step, so a changed calendar reaches running instances by migration (STD-TXN-094, DEC-119).
 
 ### DSN-DVM-752 — Event correlation
 - **Statement:** Waiting workflow steps MUST register correlation keys; incoming events MUST be matched by `(event type, correlation key)` through an index and deliver to at most one waiting step per key.
@@ -361,6 +363,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given 10,000 waiting instances, when one matching event arrives, then exactly one resumes.
 - **Verification:** CONF, BENCH
 - **Origin:** FR-FLOW-064
+- **Phase note:** DEC-120: built in PH-2 step 6b as STD-TXN-091 states it, matching events by scanning the waiting steps of the branch's running instances; an index of correlation keys comes with the benchmarks of PH-2 step 18 if they need it.
 
 ### DSN-DVM-753 — Workflow versioning
 - **Statement:** Instances MUST stay pinned to the definition version they started with, unless an explicit migration maps them to a new version.
@@ -371,6 +374,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given an instance on v1, when v2 is published, then it completes on v1.
 - **Verification:** CONF
 - **Origin:** FR-FLOW-061, STD-CTX-030
+- **Phase note:** DEC-120: built in PH-2 step 6b as STD-TXN-092 states it (`migrate_workflow` with an explicit step map).
 
 ### DSN-DVM-754 — SLA reporting
 - **Statement:** The DVM MUST derive SLA metrics (time in state, overdue counts) from lifecycle and task history through projections.

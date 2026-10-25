@@ -529,6 +529,44 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("description", "text", false),
             ],
         ),
+        // STD-TXN-090 (BPA 1.0-rc8, DEC-092): workflow definitions are Definition objects below
+        // ConfigAsset; instances are System objects advanced by the workflow operations only.
+        g(
+            "WorkflowDefinition",
+            Some("definition"),
+            Some("ConfigAsset"),
+            false,
+            vec![
+                field("name", "text", true),
+                ext_json("variables"),
+                field("start", "text", true),
+                field("steps", "json", true),
+                field("description", "text", true),
+            ],
+        ),
+        g(
+            "WorkflowInstance",
+            Some("system"),
+            Some("SystemObject"),
+            false,
+            vec![
+                field("definition", "text", true),
+                field("definition_version", "text", true),
+                enum_field("status", &["running", "completed", "failed"]),
+                field("variables", "json", true),
+                field("tokens", "json", true),
+                ext_json("forks"),
+                ext_json("visits"),
+                ext_json("done"),
+                ext_json("log"),
+                field("next_token", "integer", false),
+                field("seq", "integer", false),
+                field("initiator", "text", false),
+                ext_json("parent"),
+                ext_json("error"),
+                ext_json("migrations"),
+            ],
+        ),
         g(
             "Release",
             Some("definition"),
@@ -578,6 +616,8 @@ pub fn is_genesis(name: &str) -> bool {
             | "RuleTest"
             | "Task"
             | "WorkQueue"
+            | "WorkflowDefinition"
+            | "WorkflowInstance"
     )
 }
 

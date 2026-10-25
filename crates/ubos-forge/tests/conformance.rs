@@ -26,7 +26,7 @@ const CLAIMED_RELEASE: &str = "1.0-rc1";
 /// and the replay from the journal's snapshots of step 18d; DEC-083: the revert resolutions
 /// and the timer effects of events subscriptions of step 18d-3a; DEC-084: the sheet checks
 /// at merge and the sheets of the rule binding of step 18d-3b).
-const NEXT_RELEASE: &str = "1.0-rc11";
+const NEXT_RELEASE: &str = "1.0-rc12";
 const RC2_CLAUSES: &[&str] = &[
     "STD-LGS-001",
     "STD-LGS-002",
@@ -116,6 +116,11 @@ const RC2_CLAUSES: &[&str] = &[
     // BPA 1.0-rc11 (PH-2 step 5e, DEC-116): rule tests, coverage and the merge gate
     "STD-LGS-072",
     "STD-LGS-073",
+    // BPA 1.0-rc8 (PH-2 step 6b, DEC-120): workflow definitions, instances, events, timers,
+    // human tasks and migration
+    "STD-TXN-090",
+    "STD-TXN-091",
+    "STD-TXN-092",
 ];
 
 /// The clauses a vector verifies.
