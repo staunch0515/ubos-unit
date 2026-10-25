@@ -25,6 +25,7 @@ pub mod relations;
 pub mod restate;
 pub mod rules;
 pub mod sheets;
+pub mod simulation;
 pub mod stateful;
 pub mod transactions;
 pub mod ubtp;

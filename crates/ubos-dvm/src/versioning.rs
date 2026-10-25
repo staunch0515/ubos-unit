@@ -724,7 +724,10 @@ impl Engine {
 
     // ---- change sets (STD-VER-020, -021) ----
 
-    fn cs_body(&mut self, oid: &str) -> Result<(String, String, Map<String, Value>), BpaError> {
+    pub(crate) fn cs_body(
+        &mut self,
+        oid: &str,
+    ) -> Result<(String, String, Map<String, Value>), BpaError> {
         let cs = self
             .store
             .change_set_rec(oid)?
@@ -744,7 +747,11 @@ impl Engine {
         Ok((target, o.head, body))
     }
 
-    fn cs_write(&mut self, oid: &str, body: &Map<String, Value>) -> Result<(), BpaError> {
+    pub(crate) fn cs_write(
+        &mut self,
+        oid: &str,
+        body: &Map<String, Value>,
+    ) -> Result<(), BpaError> {
         let (target, head, _) = self.cs_body(oid)?;
         self.commit(&json!({"branch": target, "changes": [{"op": "update", "object_id": oid, "base": head, "body": body}]}))?;
         Ok(())

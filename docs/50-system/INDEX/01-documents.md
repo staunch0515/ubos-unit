@@ -259,4 +259,5 @@ depends_on: [UBS-IDX-00]
 | UBS-DEC-01 | Decision Records DEC-001 … DEC-029 | complete | ALL | `90-decisions/01-records-dec-001-029.md` |
 | UBS-DEC-02 | Decision Records DEC-030 … DEC-059 | complete | ALL | `90-decisions/02-records-dec-030-059.md` |
 | UBS-DEC-03 | Decision Records DEC-060 … DEC-089 | complete | ALL | `90-decisions/03-records-dec-060-089.md` |
+| UBS-DEC-04 | Decision Records DEC-090 … DEC-109 | complete | ALL | `90-decisions/04-records-dec-090-109.md` |
 | UBS-README | UBOS Business Processing Architecture — System Specification | draft | ALL | `README.md` |

@@ -393,6 +393,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given a simulation that emits notifications, when completed, then no notification is delivered.
 - **Verification:** CONF
 - **Origin:** FR-RULE-071, STD-CTX-004
+- **Phase note:** DEC-114: built in PH-2 step 5c (STD-LGS-044): a re-run's effects are dropped rather than captured, and connectors are not called; recorded connector responses come with the connectors of PH-2 step 12. The sandbox branches are kept as evidence.
 
 ### DSN-DVM-761 — Historical rule simulation
 - **Statement:** Rule-change simulation (FR-RULE-071) MUST replay a set of historical processes (selected by query and period) from their journals with the candidate sheets substituted, and report changed outcomes per process with diffs.
@@ -403,6 +404,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given a threshold change and 10,000 historical approvals, when simulated, then the processes whose outcome changes are listed.
 - **Verification:** CONF, BENCH
 - **Origin:** FR-RULE-071, FR-RULE-072, NR-PERF-017
+- **Phase note:** DEC-114: built in PH-2 step 5c as BPA 1.0-rc8 states it: a re-run executes the journaled invocation again with the candidates on a sandbox branch from just before the original commit, and the outcomes are compared by result hash; differences per object are not reported.
 
 ### DSN-DVM-762 — Simulation budgets and evidence
 - **Statement:** Simulations MUST run within a budget (processes, CPU, time) (FR-RULE-072) and produce a stored run record with inputs, budget used and results (FR-RULE-073).
@@ -413,6 +415,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given a budget exceeded mid-run, when stopped, then a partial record states coverage.
 - **Verification:** CONF
 - **Origin:** FR-RULE-072, FR-RULE-073
+- **Phase note:** DEC-114: PH-2 step 5c builds the budget of processes and the `SimulationRun` record of STD-LGS-044; CPU and time budgets stay the node's limits of the simulation profile.
 
 ### DSN-DVM-763 — Live impact count
 - **Statement:** While editing a rule, the DVM MUST return the number of current objects whose effective declaration would change, computed from the selector index over the current head.

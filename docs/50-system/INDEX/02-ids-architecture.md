@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (113)
+## DEC (114)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -183,28 +183,29 @@ depends_on: [UBS-IDX-00]
 | DEC-087 | PH-1 close-out with carry-overs and the start of PH-2 | `90-decisions/03-records-dec-060-089.md` |
 | DEC-088 | Commit checks of references and relationships on indexes (PH-2 step 0b-1b) | `90-decisions/03-records-dec-060-089.md` |
 | DEC-089 | BPA 1.0-rc8 opened: scope by phase for PH-2 (PH-2 step 1, part 1a) | `90-decisions/03-records-dec-060-089.md` |
-| DEC-090 | Money and periods in BPA 1.0-rc8 (PH-2 step 1, part 1b) | `90-decisions/000-index.md` |
-| DEC-091 | Approvals and rules in BPA 1.0-rc8 (PH-2 step 1, part 1c) | `90-decisions/000-index.md` |
-| DEC-092 | Workflows, sagas, quarantine, lenses and upstream changes in BPA 1.0-rc8 (PH-2 step 1, part 1d) | `90-decisions/000-index.md` |
-| DEC-093 | Protection in BPA 1.0-rc8 (PH-2 step 1, part 1e) | `90-decisions/000-index.md` |
-| DEC-094 | Integration and addressing in BPA 1.0-rc8 (PH-2 step 1, part 1f) | `90-decisions/000-index.md` |
-| DEC-095 | Search and views in BPA 1.0-rc8 (PH-2 step 1, part 1g) | `90-decisions/000-index.md` |
-| DEC-096 | Release of BPA 1.0-rc8 (PH-2 step 1, part 1h) | `90-decisions/000-index.md` |
-| DEC-097 | Extended formal models: approvals and sagas (PH-2 step 2) | `90-decisions/000-index.md` |
-| DEC-098 | Money and periods, part 3a: BPA 1.0-rc9 (PH-2 step 3) | `90-decisions/000-index.md` |
-| DEC-099 | Currencies, FX rates and accounts in the kernel (PH-2 step 3, part 3b) | `90-decisions/000-index.md` |
-| DEC-100 | Projections in the kernel (PH-2 step 3, part 3c) | `90-decisions/000-index.md` |
-| DEC-101 | Periods, close and reopen in the kernel (PH-2 step 3, part 3d) | `90-decisions/000-index.md` |
-| DEC-102 | Matching, match records and statement lines in the kernel (PH-2 step 3, part 3e) | `90-decisions/000-index.md` |
-| DEC-103 | Re-evaluation, restatement and proposals in the kernel (PH-2 step 3, part 3f) | `90-decisions/000-index.md` |
-| DEC-104 | PH-2 step 3 closed: money and periods (PH-2 step 3, part 3g) | `90-decisions/000-index.md` |
-| DEC-105 | Approvals and work, part 4a: BPA 1.0-rc10 (PH-2 step 4) | `90-decisions/000-index.md` |
-| DEC-106 | Deferred commits and approvals in the kernel (PH-2 step 4, part 4b) | `90-decisions/000-index.md` |
-| DEC-107 | Governed reopening of periods in the kernel (PH-2 step 4, part 4c) | `90-decisions/000-index.md` |
-| DEC-108 | Delegations in the kernel (PH-2 step 4, part 4d) | `90-decisions/000-index.md` |
-| DEC-109 | Tasks, work queues and the inbox in the kernel (PH-2 step 4, part 4e) | `90-decisions/000-index.md` |
+| DEC-090 | Money and periods in BPA 1.0-rc8 (PH-2 step 1, part 1b) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-091 | Approvals and rules in BPA 1.0-rc8 (PH-2 step 1, part 1c) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-092 | Workflows, sagas, quarantine, lenses and upstream changes in BPA 1.0-rc8 (PH-2 step 1, part 1d) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-093 | Protection in BPA 1.0-rc8 (PH-2 step 1, part 1e) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-094 | Integration and addressing in BPA 1.0-rc8 (PH-2 step 1, part 1f) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-095 | Search and views in BPA 1.0-rc8 (PH-2 step 1, part 1g) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-096 | Release of BPA 1.0-rc8 (PH-2 step 1, part 1h) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-097 | Extended formal models: approvals and sagas (PH-2 step 2) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-098 | Money and periods, part 3a: BPA 1.0-rc9 (PH-2 step 3) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-099 | Currencies, FX rates and accounts in the kernel (PH-2 step 3, part 3b) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-100 | Projections in the kernel (PH-2 step 3, part 3c) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-101 | Periods, close and reopen in the kernel (PH-2 step 3, part 3d) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-102 | Matching, match records and statement lines in the kernel (PH-2 step 3, part 3e) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-103 | Re-evaluation, restatement and proposals in the kernel (PH-2 step 3, part 3f) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-104 | PH-2 step 3 closed: money and periods (PH-2 step 3, part 3g) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-105 | Approvals and work, part 4a: BPA 1.0-rc10 (PH-2 step 4) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-106 | Deferred commits and approvals in the kernel (PH-2 step 4, part 4b) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-107 | Governed reopening of periods in the kernel (PH-2 step 4, part 4c) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-108 | Delegations in the kernel (PH-2 step 4, part 4d) | `90-decisions/04-records-dec-090-109.md` |
+| DEC-109 | Tasks, work queues and the inbox in the kernel (PH-2 step 4, part 4e) | `90-decisions/04-records-dec-090-109.md` |
 | DEC-110 | Escalation, service levels and the node's sweeps (PH-2 step 4, part 4f) | `90-decisions/000-index.md` |
 | DEC-111 | PH-2 step 4 closed: approvals and work (PH-2 step 4, part 4g) | `90-decisions/000-index.md` |
 | DEC-112 | Decision tables and rule operations, part 5a: BPA 1.0-rc11 (PH-2 step 5) | `90-decisions/000-index.md` |
 | DEC-113 | Decision tables in the kernel (PH-2 step 5, part 5b) | `90-decisions/000-index.md` |
+| DEC-114 | Simulation in the kernel (PH-2 step 5, part 5c) | `90-decisions/000-index.md` |
 

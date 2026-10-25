@@ -426,6 +426,25 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("description", "text", true),
             ],
         ),
+        // STD-LGS-044 (BPA 1.0-rc8, DEC-091): simulation runs are System objects written by
+        // simulate.
+        g(
+            "SimulationRun",
+            Some("system"),
+            Some("SystemObject"),
+            false,
+            vec![
+                field("source", "text", true),
+                field("target", "text", true),
+                field("window", "json", true),
+                field("budget", "json", true),
+                field("rule_versions", "json", true),
+                field("coverage", "json", true),
+                field("results", "json", true),
+                field("changed", "integer", true),
+                field("change_set", "text", false),
+            ],
+        ),
         // STD-LGS-060 (BPA 1.0-rc10, DEC-105): delegations are System objects written by
         // their operations.
         g(
@@ -539,6 +558,7 @@ pub fn is_genesis(name: &str) -> bool {
             | "MatchRecord"
             | "Delegation"
             | "DecisionTable"
+            | "SimulationRun"
             | "Task"
             | "WorkQueue"
     )

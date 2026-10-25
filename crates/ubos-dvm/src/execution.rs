@@ -2084,6 +2084,10 @@ impl Engine {
                 let started = start(&mut core, &mut host, i);
                 let deferred = crate::approvals::take();
                 let (result, rt) = started?;
+                // STD-LGS-044 (1.0-rc8): a simulated re-run releases no effects
+                if crate::simulation::active() {
+                    core.effects.clear();
+                }
                 if i.get("port").is_some() {
                     duty = Some(host.target(&mut core, i.get("target").unwrap_or(&Value::Null))?);
                 }
@@ -2191,7 +2195,9 @@ impl Engine {
                         return Engine::compare_replay(&core, &result, &j);
                     }
                     // STD-LGS-042: a committed port call is a duty of its initiator
-                    if let (Some(oid), Some(port)) = (&duty, s(i, "port")) {
+                    if let (Some(oid), Some(port)) = (&duty, s(i, "port"))
+                        && !crate::simulation::active()
+                    {
                         let initiator = s(&p.p, "initiator").unwrap_or_default().to_string();
                         self.record_duty(oid, port, &initiator)?;
                     }
@@ -2320,6 +2326,8 @@ impl Engine {
                 rec["metering"] = refs["metering"].clone();
                 self.store.put_process_rec(&pid, &rec)?;
             }
+            // a simulated re-run is not one of the VAE's processes (STD-LGS-044)
+            None if crate::simulation::active() => {}
             None => {
                 self.store.put_meta(&format!("run:{pid}"), &refs)?;
                 let mut runs = self

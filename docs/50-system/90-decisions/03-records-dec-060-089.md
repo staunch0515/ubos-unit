@@ -9,7 +9,7 @@ depends_on: [UBS-DEC-000]
 # Decision Records DEC-060 … DEC-089
 
 The table rows and records of the decisions DEC-060 … DEC-089 (PH-1 gates 1a and 1b, PH-1
-close-out and the opening of PH-2). The decisions from DEC-090 on are in `000-index.md`.
+close-out and the opening of PH-2). The decisions DEC-090 … DEC-109 are in `04-records-dec-090-109.md`, those from DEC-110 on in `000-index.md`.
 Moved here unchanged on 2026-10-24 when the log passed 800 lines (the checker's size
 warning); IDs are permanent.
 
