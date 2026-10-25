@@ -117,6 +117,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given a new fee rule effective 1 July, when a June-dated process evaluates, then the old rule applies.
 - **Verification:** CONF
 - **Origin:** FR-RULE-061, FR-RULE-062, FR-RULE-063
+- **Phase note:** DEC-115: the end of a time-boxed attachment and its `RuleDetached` event (STD-LGS-070, BPA 1.0-rc11) are built in PH-2 step 5d with the timers of the became-effective events; an attachment is the valid period of the sheet or table itself, not a separate object.
 
 ## Decisions and decision tables
 
@@ -426,6 +427,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given a selector change, when counted, then the count equals a full evaluation.
 - **Verification:** PROP
 - **Origin:** FR-RULE-074
+- **Phase note:** DEC-115: built in PH-2 step 5d as the operation `rule_impact` (STD-LGS-071), which re-evaluates the governed objects of the target over its state with the candidate rules rather than through the selector index; the count while a rule is edited in Studio follows with PH-2 step 16.
 
 ### DSN-DVM-764 — Rule tests and coverage
 - **Statement:** Sheets and decision tables MAY carry test cases (FR-RULE-081). Merging rule changes to protected branches MUST require all tests to pass (`RULE.TESTS_FAILED`). The engine MUST report rule coverage (rules and table rows hit by tests, FR-RULE-083).

@@ -46,7 +46,7 @@ pub(crate) fn rule_ctx(p: &Value, branch_kind: &str, vae: &str) -> Map<String, V
 /// Business objects only: the objects of `ConfigAsset` and `LogicAsset` classes (sheets,
 /// extensions, logic) are governed by write policy and change sets, not by the
 /// declarations they carry (STD-LGS-011 notes).
-fn governed(reg: &Registry, class: &str) -> bool {
+pub(crate) fn governed(reg: &Registry, class: &str) -> bool {
     reg.class(class).is_ok_and(|c| {
         c.kind.as_deref() == Some("definition")
             && !c

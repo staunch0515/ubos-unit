@@ -18,6 +18,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-112 | PH-2 step 5 opened in parts 5a–5g; part 5a: BPA 1.0-rc11 — the end of a rule's attachment (STD-LGS-070), live impact (STD-LGS-071), rule tests and coverage (STD-LGS-072), the test gate of merges (STD-LGS-073), simulation of logic changes (STD-LGS-074); 255 clauses, 2,208 vectors, MUST coverage 217/217 | Accepted |
 | DEC-113 | PH-2 step 5b: decision tables in the kernel — `DecisionTable`, evaluation under the hit policies with aggregators, the authoring check `check_table`, `decide_table` and `run.decision` with the table versions in the rule binding; STD-LGS-040 and STD-ISA-053 claimed | Accepted |
 | DEC-114 | PH-2 step 5c: simulation in the kernel — historical port calls re-run on sandbox branches with the candidate rules and, with `include: ["logic"]`, logic; effects dropped and re-runs kept out of the VAE's processes; `SimulationRun` records; STD-LGS-044 and -074 claimed, conformance test on BPA 1.0-rc11 | Accepted |
+| DEC-115 | PH-2 step 5d: the end of rule attachments and the live impact count in the kernel — detach timers with `RuleDetached`, `rule_impact` per class; STD-LGS-070 and -071 claimed | Accepted |
 
 ---
 
@@ -172,3 +173,24 @@ follow.
   - Re-running under the original process ID, as the reference model does before restoring its tables, was rejected: the kernel's process records are stored, and a re-run would overwrite the original's.
   - Capturing a re-run's effects on the run record was deferred: STD-LGS-044 requires only that they are not released.
 - **Affects:** STD-LGS-044, STD-LGS-074, DSN-DVM-653, DSN-DVM-760, DSN-DVM-761, DSN-DVM-762, FR-RULE-071, FR-RULE-072, FR-RULE-073, FR-DEV-041, FR-DEV-042, DEC-112
+
+### DEC-115 — The end of attachments and the live impact count in the kernel (PH-2 step 5, part 5d)
+- **Date:** 2026-10-25 · **Status:** Accepted
+- **Context:** Part 5d of PH-2 step 5 (DEC-112) implements the end of a rule's attachment of STD-LGS-070 and the live impact count of STD-LGS-071 (BPA 1.0-rc11, DSN-DVM-710, -763) in the kernel. Before the part, their 9 vectors were not applicable or failed. The owner confirmed the part with the default suggestions on 2026-10-25.
+- **Decision:**
+  1. **Detach timers.** A commit writing a sheet or a decision table adds a timer for every end of its timeline where no later segment starts and the business date has not reached it. The timer is written with the flush, like the timers of `BecameEffective` (STD-TIME-050), and its key carries `detach` in place of a version, which both stores keep.
+  2. **Event.** When the clock reaches the end and the object's timeline still ends there, the kernel's tick emits `RuleDetached` once, with the effect ID `rule-detached/<branch>/<object>/<date>` and the payload `{class, valid_to}`. An end moved before it is reached fires nothing at the old date. `due_effective` leaves detach timers out.
+  3. **Impact.** `rule_impact` in `crates/ubos-dvm/src/ruleops.rs` re-evaluates every governed object of the target: the live Definition objects that are not configuration or logic assets, optionally limited to classes.
+     - **Comparison.** Each object is evaluated over the target's state and over the same state with the source branch's sheets, property declarations and decision tables. Their effective declarations and failing validations are compared.
+     - **Output.** The objects that differ are counted per class.
+  4. **Claim.** The conformance test claims STD-LGS-070 and STD-LGS-071.
+  5. **Design notes.** DSN-DVM-710 and -763 get phase notes:
+     - an attachment is the rule's valid period;
+     - the impact is counted by re-evaluation rather than through the selector index, and the count while editing comes with step 16.
+- **Consequences:**
+  - The 9 vectors pass in memory and on PostgreSQL 16, and the conformance test passes.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - A separate detach schedule in `kernel_meta`, as the reference model keeps it, was rejected: the flush's timers already persist with the commit and are fired by the same tick.
+  - Counting the impact through the selector index (DSN-DVM-763) was deferred: re-evaluation is exact, and the benchmarks of step 18 show whether the index is needed for large VAEs.
+- **Affects:** STD-LGS-070, STD-LGS-071, STD-TIME-050, DSN-DVM-710, DSN-DVM-763, FR-RULE-062, FR-RULE-074, DEC-112

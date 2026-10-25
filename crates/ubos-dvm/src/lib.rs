@@ -23,6 +23,7 @@ pub mod projections;
 pub mod proofs;
 pub mod relations;
 pub mod restate;
+pub mod ruleops;
 pub mod rules;
 pub mod sheets;
 pub mod simulation;

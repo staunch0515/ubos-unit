@@ -306,6 +306,21 @@ fn due(reg: &Registry, now: &str, from: &str, class: &str) -> bool {
     from <= if instant { now } else { &now[..10] }
 }
 
+/// The classes whose attachment ends are announced (STD-LGS-070, BPA 1.0-rc11).
+const RULE_OBJECTS: &[&str] = &["GovernanceSheet", "DecisionTable"];
+
+/// The ends of a timeline's segments where no segment starts.
+fn gaps(tl: &[ubos_version::state::Segment]) -> Vec<String> {
+    let mut out: Vec<String> = tl
+        .iter()
+        .filter_map(|s| s.to.clone())
+        .filter(|t| !tl.iter().any(|s| s.from == *t))
+        .collect();
+    out.sort();
+    out.dedup();
+    out
+}
+
 /// Future segment starts of the written objects of classes that emit `BecameEffective`
 /// (STD-TIME-050): the timers the flush writes.
 pub fn pending_starts(
@@ -320,6 +335,15 @@ pub fn pending_starts(
         let Some(o) = st.objects.get(oid) else {
             continue;
         };
+        // STD-LGS-070 (BPA 1.0-rc11): the ends of a rule's attachment
+        if RULE_OBJECTS.contains(&o.class.as_str()) {
+            for t in gaps(&o.timeline) {
+                if !due(reg, now, &t, &o.class) {
+                    out.push(json!({"key": [branch, oid, t, "detach"], "class": o.class,
+                                    "instant": false, "detach": true}));
+                }
+            }
+        }
         if !emits(reg, &o.class) {
             continue;
         }
@@ -361,6 +385,24 @@ impl Engine {
             );
             let class = text_of(&item["class"]);
             if !due(&self.registry, &self.now, &from, &class) {
+                continue;
+            }
+            if vh == "detach" {
+                // STD-LGS-070 (BPA 1.0-rc11): the attachment still ends there; the key
+                // carries `detach` in place of a version, which every store keeps
+                fired.push(text_of(&item["id"]));
+                if !views.contains_key(&branch) {
+                    let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+                    let st = repo.view(&branch, &json!({})).ok().map(|(v, _)| v.state);
+                    views.insert(branch.clone(), st);
+                }
+                let id = format!("rule-detached/{branch}/{oid}/{from}");
+                let ends = matches!(views.get(&branch), Some(Some(state))
+                    if state.objects.get(&oid).is_some_and(|o| gaps(&o.timeline).contains(&from)));
+                if ends && !events.iter().any(|e: &Value| e["effect_id"] == json!(id)) {
+                    events.push(json!({"effect_id": id, "type": "RuleDetached", "branch": branch,
+                                       "object_id": oid, "payload": {"class": class, "valid_to": from}}));
+                }
                 continue;
             }
             fired.push(text_of(&item["id"]));
@@ -439,7 +481,8 @@ impl Engine {
                     text_of(&k[2]),
                     text_of(&k[3]),
                 );
-                let in_range = vf.as_str() >= from && vf.as_str() <= to;
+                // the ends of rule attachments (STD-LGS-070) are not segment starts
+                let in_range = vf.as_str() >= from && vf.as_str() <= to && vh != "detach";
                 (in_range && branch.is_none_or(|x| x == b)).then(
                     || json!({"branch": b, "object_id": oid, "version_id": vh, "valid_from": vf}),
                 )
