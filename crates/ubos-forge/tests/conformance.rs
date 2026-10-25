@@ -104,6 +104,9 @@ const RC2_CLAUSES: &[&str] = &[
     // BPA 1.0-rc10 (PH-2 step 4f, DEC-110): due dates, escalation and the service-level report
     "STD-LGS-063",
     "STD-LGS-064",
+    // BPA 1.0-rc8 (PH-2 step 5b, DEC-113): decision tables and run.decision
+    "STD-LGS-040",
+    "STD-ISA-053",
 ];
 
 /// The clauses a vector verifies.

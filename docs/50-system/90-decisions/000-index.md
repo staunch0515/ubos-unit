@@ -36,6 +36,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-110 | PH-2 step 4f: escalation, the service-level report and the node's sweeps — escalation steps applied by the kernel's tick, `sla_report`, the leader loop's sweep of pending changes with the default expiry and `pending_change.expired`; STD-LGS-063 and -064 claimed, every clause of BPA 1.0-rc10 implemented | Accepted |
 | DEC-111 | PH-2 step 4 closed: approvals and work (parts 4a–4f, DEC-105…110) — BPA 1.0-rc10, deferred commits and approvals, governed reopening, delegations, tasks and work queues, inbox, escalation and service levels in the kernel; 92 step-4 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 | DEC-112 | PH-2 step 5 opened in parts 5a–5g; part 5a: BPA 1.0-rc11 — the end of a rule's attachment (STD-LGS-070), live impact (STD-LGS-071), rule tests and coverage (STD-LGS-072), the test gate of merges (STD-LGS-073), simulation of logic changes (STD-LGS-074); 255 clauses, 2,208 vectors, MUST coverage 217/217 | Accepted |
+| DEC-113 | PH-2 step 5b: decision tables in the kernel — `DecisionTable`, evaluation under the hit policies with aggregators, the authoring check `check_table`, `decide_table` and `run.decision` with the table versions in the rule binding; STD-LGS-040 and STD-ISA-053 claimed | Accepted |
 
 ---
 
@@ -775,3 +776,24 @@ DEC-090 on follow.
   - Rule tests that commit their input objects on a sandbox branch were rejected: a provisional object gives the same evaluation without branches or commits.
   - Running every rule test of the branch at each merge was rejected: FR-RULE-082 asks for the tests the change affects, and the cost would grow with the test suite.
 - **Affects:** STD-LGS-002, STD-LGS-044, STD-LGS-070, STD-LGS-071, STD-LGS-072, STD-LGS-073, STD-LGS-074, STD-CONF-005, DSN-DVM-710, DSN-DVM-760, DSN-DVM-761, DSN-DVM-763, DSN-DVM-764, DSN-FRG-205, FR-RULE-062, FR-RULE-074, FR-RULE-081, FR-RULE-082, FR-RULE-083, FR-DEV-041, FR-DEV-042, VER-INSP-9009, DEC-045, DEC-089, DEC-111
+
+### DEC-113 — Decision tables in the kernel (PH-2 step 5, part 5b)
+- **Date:** 2026-10-25 · **Status:** Accepted
+- **Context:** Part 5b of PH-2 step 5 (DEC-112) implements the decision tables of STD-LGS-040 and the instruction `run.decision` of STD-ISA-053 (BPA 1.0-rc8, DSN-DVM-722, -723). Before the part, 19 of their 25 vectors failed and 6 were not applicable: the kernel had no `DecisionTable` class, no table operations and no `run.decision`. The owner confirmed the part with the default suggestions on 2026-10-25.
+- **Decision:**
+  1. **Tables.** `crates/ubos-rules/src/tables.rs` follows the reference model:
+     - **Declaration check.** Inputs, outputs, rows and hit policy; an aggregator only with `collect`, and `sum`, `min` and `max` over numeric outputs; every row gives every output, with values valid for the output's type; priorities in a `priority` table.
+     - **Evaluation.** The inputs are checked against their declarations. Each cell is an L1 boolean over `params` (`-` matches any value), cached per cell and inputs. The hit policies `unique` (`RULE.NO_MATCH`, `RULE.MULTIPLE_MATCH`), `first`, `priority` and `collect` apply, with the aggregators `sum`, `min`, `max` and `count` (money in one currency, `MODEL.CURRENCY_MISMATCH`).
+     - **Authoring check.** `check_table` evaluates the representative values of each input: the domain of booleans and enumerations, and for integers, decimals and dates the literals of the conditions with the values around and between them. It reports the gaps and the overlaps the hit policy forbids, up to 10,000 combinations; other inputs are listed as unchecked.
+  2. **Kernel.** `DecisionTable` joins the genesis registry as a Definition class below `ConfigAsset`.
+     - `decide_table` evaluates a table named by ID or URI at `asof` (default today).
+     - `run.decision` evaluates one at the process `asof`, after the `evaluate` permission. It charges one unit per row and records the table version in the rule binding of the commit (`tables`, STD-TIME-040).
+  3. **Claim.** The conformance test claims STD-LGS-040 and STD-ISA-053.
+  4. **DSN-DVM-722.** A phase note records row evaluation with a cache instead of a compiled tree, and the authoring check as an operation rather than a refusal at commit.
+- **Consequences:**
+  - The 25 vectors pass in memory and on PostgreSQL 16, and the conformance test passes.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - Refusing a table with gaps at commit was rejected: STD-LGS-040 makes the check an authoring aid, and a table with a deliberate gap under `collect` or a default row is valid.
+  - A compiled decision tree was deferred: the vectors' tables have a handful of rows, and the benchmarks of step 18 show whether one is needed.
+- **Affects:** STD-LGS-040, STD-ISA-053, STD-TIME-040, DSN-DVM-722, DSN-DVM-723, FR-RULE-041, FR-RULE-042, FR-RULE-043, DEC-112

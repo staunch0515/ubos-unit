@@ -1386,6 +1386,39 @@ impl<'a> EngineHost<'a> {
     }
 
     /// STD-ISA-037: a projection at the process snapshot (BPA 1.0-rc9, PH-2 step 3c).
+    /// STD-ISA-053 (BPA 1.0-rc8, PH-2 step 5b): evaluate a decision table at the process
+    /// `asof` (or `asof`); the table version is recorded in the rule binding.
+    fn run_decision(
+        &mut self,
+        core: &mut Core,
+        a: &Map<String, Value>,
+        d: &Instruction,
+    ) -> Result<Value, BpaError> {
+        let oid = self.target(core, a.get("table").unwrap_or(&Value::Null))?;
+        if self.class_of(core, &oid)? != "DecisionTable" {
+            return Err(not_found("unknown decision table"));
+        }
+        self.permit(core, &d.authorization, "DecisionTable", Some(&oid))?;
+        let asof = a
+            .get("asof")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .unwrap_or_else(|| core.asof());
+        let seg = self
+            .object(core, &oid)?
+            .and_then(|o| at(&o.timeline, &asof).cloned())
+            .ok_or_else(|| {
+                BpaError::new("QRY.NOT_FOUND_AT_TIME", "no version of the table at asof")
+            })?;
+        let body = self.version(&seg.version)?["body"].clone();
+        core.per_item(d, body["rows"].as_array().map_or(0, Vec::len) as u64)?;
+        if !self.flow.tables.contains(&seg.version) {
+            self.flow.tables.push(seg.version.clone());
+        }
+        let r = ubos_rules::tables::evaluate(&body, a.get("inputs").unwrap_or(&Value::Null))?;
+        Ok(r["outputs"].clone())
+    }
+
     fn read_projection(
         &mut self,
         core: &mut Core,
@@ -1772,6 +1805,7 @@ impl Host for EngineHost<'_> {
             "search.query" => self.search_query(core, a, d),
             "read.projection" => self.read_projection(core, a, d),
             "run.validate" => self.run_validate(core, a, d),
+            "run.decision" => self.run_decision(core, a, d),
             "run.port" => self.run_port(core, a),
             "run.super" => self.run_super(core),
             "run.logic" => self.run_logic(core, a, d),

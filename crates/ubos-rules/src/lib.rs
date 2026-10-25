@@ -12,6 +12,7 @@ pub mod check;
 pub mod compiled;
 pub mod parse;
 pub mod registry;
+pub mod tables;
 
 pub use ast::{Block, Declaration, Qualifier, Selector, Sheet, SheetValue};
 pub use cascade::{

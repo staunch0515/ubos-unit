@@ -150,6 +150,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given a table missing a range, when committed, then a gap with a concrete input tuple is reported.
 - **Verification:** CONF, PROP
 - **Origin:** FR-RULE-041, FR-RULE-042, STD-LGS-040
+- **Phase note:** DEC-113: built in PH-2 step 5b as BPA 1.0-rc8 states it (STD-LGS-040, STD-ISA-053): rows are evaluated in order with a cache of cell results instead of a compiled tree, and the completeness and overlap check is the authoring operation `check_table` over representative input values, not a commit-time refusal; a compiled tree follows the benchmarks of PH-2 step 18 if they need it.
 
 ### DSN-DVM-723 — No-match and multiple-match
 - **Statement:** Evaluation MUST raise `RULE.NO_MATCH` when no row matches and no default exists, and `RULE.MULTIPLE_MATCH` for a unique table with several matches.

@@ -405,6 +405,27 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("description", "text", false),
             ],
         ),
+        // STD-LGS-040 (BPA 1.0-rc8, DEC-091): decision tables are Definition objects below
+        // ConfigAsset.
+        g(
+            "DecisionTable",
+            Some("definition"),
+            Some("ConfigAsset"),
+            false,
+            vec![
+                field("name", "text", true),
+                field("inputs", "json", true),
+                field("outputs", "json", true),
+                field("rows", "json", true),
+                enum_field("hit_policy", &["unique", "first", "priority", "collect"]),
+                {
+                    let mut f = field("aggregator", "enum", false);
+                    f["constraints"] = json!({"allowed_values": ["sum", "min", "max", "count"]});
+                    f
+                },
+                field("description", "text", true),
+            ],
+        ),
         // STD-LGS-060 (BPA 1.0-rc10, DEC-105): delegations are System objects written by
         // their operations.
         g(
@@ -517,6 +538,7 @@ pub fn is_genesis(name: &str) -> bool {
             | "CloseArtefact"
             | "MatchRecord"
             | "Delegation"
+            | "DecisionTable"
             | "Task"
             | "WorkQueue"
     )

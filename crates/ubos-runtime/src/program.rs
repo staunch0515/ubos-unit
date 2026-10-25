@@ -43,6 +43,8 @@ pub const IMPLEMENTED: &[&str] = &[
     "read.explain",
     "run.port",
     "run.validate",
+    // BPA 1.0-rc8, PH-2 step 5b (DEC-113)
+    "run.decision",
     "run.super",
     "run.logic",
     "run.async",

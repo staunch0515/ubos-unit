@@ -1928,6 +1928,12 @@ fn rule_binding_of(
     if !logic.is_empty() {
         out["logic"] = json!(logic);
     }
+    // STD-TIME-040, STD-ISA-053 (1.0-rc8): the decision-table versions the process evaluated
+    if !flow.tables.is_empty() {
+        let mut t = flow.tables.clone();
+        t.sort();
+        out["tables"] = json!(t);
+    }
     if !flow.guards.is_empty() {
         out["guards"] = json!(flow.guards);
     }

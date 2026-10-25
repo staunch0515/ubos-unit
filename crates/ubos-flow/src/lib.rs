@@ -493,6 +493,8 @@ pub struct Flow {
     pub transitions: BTreeMap<String, Moved>,
     /// Guards evaluated, in order.
     pub guards: Vec<Value>,
+    /// The decision-table versions `run.decision` evaluated (STD-ISA-053, BPA 1.0-rc8).
+    pub tables: Vec<String>,
 }
 
 impl Flow {

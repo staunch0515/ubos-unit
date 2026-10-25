@@ -535,6 +535,56 @@ impl Engine {
         self.decide_in(&st, &branch, &oid, &port, &params, &ctx, None)
     }
 
+    /// Adapter operation `decide_table` (STD-LGS-040, BPA 1.0-rc8; PH-2 step 5b): evaluate a
+    /// decision table, named by object ID or URI, at `asof` (default today).
+    pub fn decide_table(&mut self, input: &Value) -> Result<Value, BpaError> {
+        let branch = input
+            .get("branch")
+            .and_then(Value::as_str)
+            .unwrap_or("main")
+            .to_string();
+        let r = input
+            .get("table")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        let unknown = || BpaError::new("IAM.NOT_FOUND", "unknown decision table");
+        let mut sel = json!({});
+        if let Some(t) = input.get("time").filter(|v| !v.is_null()) {
+            sel["time"] = t.clone();
+        }
+        let oid = if r.starts_with("ubos://") {
+            let u = ubos_types::addr::parse_uri(&json!(r))?;
+            let slug = u.get("slug").and_then(Value::as_str).unwrap_or_default();
+            let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+            let cseq = repo.ordinal(&branch, sel.get("time").and_then(Value::as_u64))?;
+            repo.object_by_slug(&branch, cseq, "DecisionTable", slug)?
+                .map(|(id, _)| id)
+                .ok_or_else(unknown)?
+        } else {
+            r
+        };
+        let o = match self.object_view(&branch, &sel, &oid) {
+            Ok((o, ..)) if o.class == "DecisionTable" => o,
+            Ok(_) => return Err(unknown()),
+            Err(e) if e.code == "IAM.NOT_FOUND" => return Err(unknown()),
+            Err(e) => return Err(e),
+        };
+        let asof = input
+            .get("asof")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .unwrap_or_else(|| self.now[..10].to_string());
+        let seg = ubos_version::state::at(&o.timeline, &asof)
+            .cloned()
+            .ok_or_else(|| {
+                BpaError::new("QRY.NOT_FOUND_AT_TIME", "no version of the table at asof")
+            })?;
+        let body =
+            Repo::new(self.store.as_mut(), &self.registry).version(&seg.version)?["body"].clone();
+        ubos_rules::tables::evaluate(&body, input.get("inputs").unwrap_or(&Value::Null))
+    }
+
     /// `validate` (STD-CONF-005, FR-RULE-035): the violations and warnings a commit of the
     /// changes would produce, without committing (DSN-DVM-709).
     pub fn validate(&mut self, input: &Value) -> Result<Value, BpaError> {
