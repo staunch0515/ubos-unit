@@ -245,6 +245,9 @@ STATEFUL = {
     # BPA 1.0-rc11, PH-2 step 5a (DEC-112): rule impact and rule tests
     'rule_impact': lambda s, i: s.rule_impact(i),
     'run_rule_tests': lambda s, i: s.run_rule_tests(i),
+    # BPA 1.0-rc12, PH-2 step 6a (DEC-119): saga monitoring and intervention
+    'sagas': lambda s, i: s.sagas(i),
+    'saga_action': lambda s, i: s.saga_action(i),
 }
 
 # Members of `ubtp` frames an implementation assigns (process identifiers), stripped like the

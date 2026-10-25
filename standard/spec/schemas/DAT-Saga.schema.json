@@ -11,7 +11,7 @@
       "type": "array"
     },
     "current": {
-      "description": "{step, attempt, phase} of the step in progress (written by the execution)",
+      "description": "{step, attempt, phase} of the step in progress, with started_at when the step declares a timeout (written by the execution)",
       "type": "object"
     },
     "error": {
@@ -29,16 +29,24 @@
       "description": "name",
       "type": "string"
     },
+    "operators": {
+      "description": "principals who may retry, skip or cancel (since 1.0-rc12)",
+      "type": "array"
+    },
     "recovery": {
       "description": "backward (default) | forward",
       "type": "string"
     },
+    "skipped": {
+      "description": "{step, principal, reason} of the skipped steps (written by the execution, since 1.0-rc12)",
+      "type": "array"
+    },
     "status": {
-      "description": "pending | running | compensating | completed | compensated | failed (written by the execution)",
+      "description": "pending | running | stuck | compensating | completed | compensated | failed (written by the execution; stuck since 1.0-rc12)",
       "type": "string"
     },
     "steps": {
-      "description": "{name, process, compensation} items; process and compensation are {target, port, params}",
+      "description": "{name, process, compensation, timeout, on_timeout} items; process and compensation are {target, port, params}; timeout is a duration and on_timeout recover | escalate (since 1.0-rc12)",
       "type": "array"
     }
   },

@@ -13,8 +13,10 @@
   "FLOW.EFFECT_FAILED": true,
   "FLOW.FIELD_RULE_VIOLATED": true,
   "FLOW.GUARD_FAILED": true,
+  "FLOW.INPUT_EXPIRED": true,
   "FLOW.PORT_UNAVAILABLE": true,
   "FLOW.STATE_DIRECT_WRITE": true,
+  "FLOW.TIMEOUT": true,
   "FLOW.TRANSITION_NOT_ALLOWED": true,
   "IAM.DELEGATION_EXPIRED": true,
   "IAM.DENIED": true,
@@ -1549,6 +1551,51 @@
     "standard"
    ],
    "result": "a value conforming to output_schema, plus {model, template_version, usage}",
+   "since": "1.0"
+  },
+  {
+   "authorization": "none",
+   "clause": "STD-ISA-101",
+   "cost": {
+    "base": 10,
+    "per_item": 0
+   },
+   "determinism": "journaled",
+   "errors": [
+    "FLOW.INPUT_EXPIRED",
+    "IAM.NOT_FOUND",
+    "MODEL.INVALID_VALUE"
+   ],
+   "name": "ask.input",
+   "params": [
+    {
+     "name": "request",
+     "optional": false,
+     "type": "text"
+    },
+    {
+     "name": "fields",
+     "optional": false,
+     "type": "list"
+    },
+    {
+     "name": "message",
+     "optional": false,
+     "type": "text"
+    },
+    {
+     "name": "timeout",
+     "optional": true,
+     "type": "duration"
+    }
+   ],
+   "profiles": [
+    "agent",
+    "batch",
+    "simulation",
+    "standard"
+   ],
+   "result": "map: the answers by field name",
    "since": "1.0"
   }
  ],

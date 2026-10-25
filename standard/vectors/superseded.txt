@@ -4,5 +4,6 @@ VER-CONF-1528 periods are closed by close_period since BPA 1.0-rc8 (STD-KIND-025
 VER-CONF-3000 the catalogue of ABI 1.0 grows in BPA 1.0-rc3 (STD-ISA-036, DEC-071)
 VER-CONF-3002 the search instructions declare their parameters in BPA 1.0-rc8 (STD-ISA-081…083, DEC-095)
 VER-CONF-3003 read.projection joins the catalogue in BPA 1.0-rc9 (STD-ISA-037, DEC-098)
+VER-CONF-3004 ask.input joins the catalogue in BPA 1.0-rc12 (STD-ISA-101, DEC-119)
 VER-CONF-3361 effective declarations are available since BPA 1.0-rc2 (DEC-067)
 VER-CONF-4036 search.query is available since BPA 1.0-rc2 (STD-ISA-080, DEC-067)

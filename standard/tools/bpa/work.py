@@ -329,6 +329,8 @@ class Work:
             body['log'].append(self._log_entry('cancel', principal, reason=i.get('reason')))
         self._kernel_write(branch, TASK, [{'op': 'update', 'object_id': tid, 'base': o['head'], 'body': body}],
                            principal)
+        if body.get('workflow') and body['state'] in ('completed', 'cancelled'):
+            self._wf_task_done(branch, tid, body)           # STD-TXN-093 (1.0-rc12)
         return self._task_view(tid, body)
 
     def _task_create(self, branch, st, tid, principal, i):
@@ -341,7 +343,7 @@ class Work:
             raise _invalid('a priority is an integer')
         body = {'type': i['type'], 'state': 'open', 'priority': prio, 'created_by': principal,
                 'created_at': self.now, 'escalations': [], 'log': [self._log_entry('create', principal)]}
-        for k in ('subject', 'data'):
+        for k in ('subject', 'data', 'workflow'):           # workflow: STD-TXN-093 (1.0-rc12)
             if i.get(k) is not None:
                 body[k] = i[k]
         if i.get('skills') is not None:

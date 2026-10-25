@@ -157,6 +157,35 @@ DAT-Connector:
 
 ## 3. `ask.*`
 
+### STD-ISA-101 — `ask.input`
+- **Clause:** Requests input from the caller. When the invocation carries no answer for the request, the process MUST end with the outcome `needs_input`, committing nothing and releasing no effect, and its result MUST carry the request: its ID, fields, message and expiry. When the caller repeats the invocation with `answers` for the request ID before the expiry, the instruction MUST return the answers, validated against the fields, and the process continues. Answers after the expiry MUST fail with `FLOW.INPUT_EXPIRED`.
+
+  | Aspect | Value |
+  |---|---|
+  | Params | `request: text`, `fields: list`, `message: text`, `timeout: duration?` |
+  | Result | `map`: the answers by field name |
+  | Errors | `FLOW.INPUT_EXPIRED`, `IAM.NOT_FOUND`, `MODEL.INVALID_VALUE` |
+  | Determinism | `journaled` |
+  | Cost | 10 |
+  | Authorization | none |
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-2880…2899
+- **Satisfies:** FR-FLOW-071
+- **Notes:** Since 1.0-rc12 (DEC-119):
+  - **Fields.** Each field is `{name, type, required, description}` with a value type of STD-FND-020. A field list that is not of this form fails with `MODEL.INVALID_VALUE`.
+  - **Request ID.** The ID is the content ID (`ubos.chunk.v1`) of `{invocation, request}`. The invocation is the `execute` input without `process`, `answers` and `max_attempts`, so a repeated call finds the same request.
+  - **Result of the process.** `execute` returns `{outcome: "needs_input", needs_input: {request_id, request, fields, message, expires_at}}` without `cseq`, and the process record ends `aborted`.
+    - `expires_at` is the time of the first request plus `timeout`, by default `PT15M`.
+    - Repeating the call without answers returns the same request and expiry.
+    - After the expiry, a call without answers starts the request again with a new expiry.
+  - **Answers.** `execute` takes `answers`, a map from request ID to `{field: value}`.
+    - A required field that is missing, a value of another type or an unknown field fails with `MODEL.INVALID_VALUE`.
+    - Answers for a request that was never made fail with `IAM.NOT_FOUND`.
+    - When the process commits, its answered requests are consumed, and answering them again fails with `IAM.NOT_FOUND`.
+  - **Several requests.** A process may ask several requests, each by its own name. The first request without an answer ends the process.
+  - **Replay.** The answers are journaled as the instruction's result (STD-CTX-012).
+  - **Agents.** The request is machine-readable, for agents to answer or pass to people (FR-FLOW-072, PH-3).
+
 ### STD-ISA-100 — `ask.model` `[available from PH-3]`
 - **Clause:** Calls the model gateway (CTR-020) on a named route with a prompt template, bound variables and an output schema. The output MUST be validated against the schema before it is returned. The call is journaled with the model and template versions.
 

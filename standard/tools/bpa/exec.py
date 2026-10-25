@@ -21,7 +21,7 @@ from . import BpaError, expr, isa, addr, crypto
 from .flow import guard_ok, eval_value, findings as flow_findings
 from .canon import canonical, content_id
 from .classes import dispatch, effective_class
-from .values import GRAMMARS
+from .values import GRAMMARS, validate_value
 
 TIERS = ('l2', 'l3', 'host')
 STATES = ('draft', 'committed', 'verified', 'deprecated', 'retired')
@@ -48,7 +48,9 @@ IMPLEMENTED = ('commit.create', 'commit.update', 'commit.end', 'commit.move', 'c
                # BPA 1.0-rc8, PH-2 step 1g (DEC-095)
                'search.aggregate', 'search.traverse', 'search.text',
                # BPA 1.0-rc9, PH-2 step 3a (DEC-098)
-               'read.projection')
+               'read.projection',
+               # BPA 1.0-rc12, PH-2 step 6a (DEC-119)
+               'ask.input')
 SYSTEM = {'sys.uuid': 'pure', 'sys.random_bytes': 'pure', 'adapter.observe': 'journaled'}
 READ_ACTIONS = ('read', 'read_history', 'reflect', 'explain')
 L2_FORBIDDEN = ('eval', 'print', 'debug', 'import', 'export', 'Fn', 'call', 'curry', 'is_def_fn', 'is_def_var',
@@ -73,6 +75,14 @@ class Frame:
     def __init__(self, asset, vh, fname, this=None, cls=None, port=None, impl_class=None, params=None, oid=None):
         self.asset, self.vh, self.fname, self.oid = asset, vh, fname, oid
         self.this, self.cls, self.port, self.impl_class, self.params = this, cls, port, impl_class, params
+
+
+class NeedsInput(Exception):
+    """STD-ISA-101 (1.0-rc12): the process ends with the outcome needs_input."""
+
+    def __init__(self, request):
+        super().__init__('needs_input')
+        self.request = request
 
 
 class Run:
@@ -111,6 +121,7 @@ class Run:
         self.connector_n = 0                    # STD-ISA-090 (1.0-rc8): calls counted by metering
         self.notifications = []                 # STD-ISA-071 (1.0-rc8): notifications requested
         self.rates_used = []                    # STD-FND-029 (1.0-rc9): FX rate versions used
+        self.answered = []                      # STD-ISA-101 (1.0-rc12): requests answered
         self.cancel_after = i.get('cancel_after_units')
         self.context = self._context()
 
@@ -927,6 +938,59 @@ class Run:
         self.per_item(d, len(val['items']))
         return val
 
+    def i_ask_input(self, a, d):
+        """STD-ISA-101 (1.0-rc12): ask the caller for input; the answers come with a repeated
+        invocation and are journaled."""
+        fields = a['fields']
+        if not isinstance(fields, list) or not fields or not all(
+                isinstance(f, dict) and isinstance(f.get('name'), str) and isinstance(f.get('type'), str)
+                for f in fields) or len({f['name'] for f in fields}) != len(fields):
+            raise BpaError('MODEL.INVALID_VALUE', 'fields are {name, type, required, description} items')
+        if not isinstance(a['request'], str) or not isinstance(a['message'], str):
+            raise BpaError('MODEL.INVALID_VALUE', 'request and message are text')
+        timeout = a.get('timeout') or 'PT15M'
+        rec = {'instruction': 'ask.input', 'args_hash': content_id('ubos.chunk.v1', a)}
+        seq = len(self.records) + 1
+        if self.replay is not None:
+            recs = self.replay['records']
+            if seq > len(recs):
+                raise BpaError('LOGIC.REPLAY_INPUT_MISSING', 'no journal record %d' % seq)
+            val = recs[seq - 1]['result']
+        else:
+            inv = {k: v for k, v in self.i.items() if k not in ('process', 'answers', 'max_attempts')}
+            rid = content_id('ubos.chunk.v1', {'invocation': inv, 'request': a['request']})
+            reqs = self.s.input_requests
+            req = reqs.get(rid)
+            answers = (self.i.get('answers') or {}).get(rid)
+            if answers is None:
+                if req is None or req.get('consumed') or self.s.now >= req['expires_at']:
+                    from .workflows import _shift
+                    req = {'request': a['request'], 'fields': fields, 'message': a['message'],
+                           'expires_at': _shift(self.s.now, timeout)}
+                    reqs[rid] = req
+                raise NeedsInput({'request_id': rid, 'request': req['request'], 'fields': req['fields'],
+                                  'message': req['message'], 'expires_at': req['expires_at']})
+            if req is None or req.get('consumed'):
+                raise BpaError('IAM.NOT_FOUND', 'unknown input request')
+            if self.s.now >= req['expires_at']:
+                raise BpaError('FLOW.INPUT_EXPIRED', {'request_id': rid, 'expires_at': req['expires_at']})
+            if not isinstance(answers, dict):
+                raise BpaError('MODEL.INVALID_VALUE', 'answers are a map')
+            known = {f['name']: f for f in fields}
+            if any(k not in known for k in answers):
+                raise BpaError('MODEL.INVALID_VALUE', 'unknown field')
+            val = {}
+            for name, f in sorted(known.items()):
+                v = answers.get(name)
+                if v is None:
+                    if f.get('required'):
+                        raise BpaError('MODEL.INVALID_VALUE', 'missing field %s' % name)
+                    continue
+                val[name] = validate_value(f['type'], f.get('constraints'), v)
+            self.answered.append(rid)
+        self.records.append(dict(rec, seq=seq, result_ref=content_id('ubos.chunk.v1', val), result=val))
+        return val
+
     def i_run_super(self, a, d):
         f = self.frames[-1]
         if f.port is None:
@@ -1148,6 +1212,11 @@ class Exec:
                     p['reads'] = dict(run.reads)
                     _, cid = self._do_commit(branch, run.uow, p, flow={'transitions': run.transitions, 'guards': run.guards,
                                                                        'tables': run.tables})
+            except NeedsInput as n:
+                # STD-ISA-101 (1.0-rc12): nothing is committed and no effect is released
+                self._deferring = None
+                self._record(p, 'aborted')
+                return {'outcome': 'needs_input', 'needs_input': n.request, 'attempts': attempt}
             except BpaError as e:
                 self._deferring = None
                 if replay is not None:
@@ -1161,6 +1230,8 @@ class Exec:
                 self._q_failure(run, e.code, outcome)       # STD-CTX-031 (1.0-rc8)
                 raise
             out = self._finish(run, i, p, result, cid, 'ok', attempt)
+            for rid in run.answered:                        # STD-ISA-101 (1.0-rc12)
+                self.input_requests[rid]['consumed'] = True
             self._notify(run, cid)                          # STD-ISA-071 (1.0-rc8)
             return out
 

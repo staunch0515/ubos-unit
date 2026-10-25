@@ -315,6 +315,14 @@ export class FlowEffectFailed extends UbosError {
 export class FlowFieldRuleViolated extends UbosError {
   static override readonly code = "FLOW.FIELD_RULE_VIOLATED";
 }
+/** `FLOW.TIMEOUT`: a saga step did not complete within its timeout (since 1.0-rc12). */
+export class FlowTimeout extends UbosError {
+  static override readonly code = "FLOW.TIMEOUT";
+}
+/** `FLOW.INPUT_EXPIRED`: answers to an input request after its expiry (since 1.0-rc12). */
+export class FlowInputExpired extends UbosError {
+  static override readonly code = "FLOW.INPUT_EXPIRED";
+}
 /** `EVT.UNKNOWN_EVENT_TYPE`: undeclared event. */
 export class EvtUnknownEventType extends UbosError {
   static override readonly code = "EVT.UNKNOWN_EVENT_TYPE";
@@ -536,6 +544,8 @@ export const CLASSES: Readonly<Record<string, typeof UbosError>> = {
   "FLOW.PORT_UNAVAILABLE": FlowPortUnavailable,
   "FLOW.EFFECT_FAILED": FlowEffectFailed,
   "FLOW.FIELD_RULE_VIOLATED": FlowFieldRuleViolated,
+  "FLOW.TIMEOUT": FlowTimeout,
+  "FLOW.INPUT_EXPIRED": FlowInputExpired,
   "EVT.UNKNOWN_EVENT_TYPE": EvtUnknownEventType,
   "QRY.SCAN_LIMIT": QryScanLimit,
   "QRY.INVALID_QUERY": QryInvalidQuery,

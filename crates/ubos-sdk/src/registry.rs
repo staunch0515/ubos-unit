@@ -211,6 +211,10 @@ pub enum Code {
     FlowEffectFailed,
     /// `FLOW.FIELD_RULE_VIOLATED`: a per-state field rule: a read-only field written or a required field missing (since 1.0-rc3).
     FlowFieldRuleViolated,
+    /// `FLOW.TIMEOUT`: a saga step did not complete within its timeout (since 1.0-rc12).
+    FlowTimeout,
+    /// `FLOW.INPUT_EXPIRED`: answers to an input request after its expiry (since 1.0-rc12).
+    FlowInputExpired,
     /// `EVT.UNKNOWN_EVENT_TYPE`: undeclared event.
     EvtUnknownEventType,
     /// `QRY.SCAN_LIMIT`: unindexed scan too large.
@@ -908,6 +912,22 @@ pub const REGISTRY: &[(Code, &str, Area, bool, bool, u16)] = &[
         false,
         true,
         422,
+    ),
+    (
+        Code::FlowTimeout,
+        "FLOW.TIMEOUT",
+        Area::Flow,
+        false,
+        true,
+        504,
+    ),
+    (
+        Code::FlowInputExpired,
+        "FLOW.INPUT_EXPIRED",
+        Area::Flow,
+        false,
+        true,
+        410,
     ),
     (
         Code::EvtUnknownEventType,

@@ -381,7 +381,12 @@ def cases(g):
     V('STD-ISA-001', 'the descriptors of ABI 1.0 are normative (since 1.0-rc8)', prototype=False,
       steps=[{'op': 'instructions', 'input': {}, 'frozen': 'read.projection joins the catalogue in BPA 1.0-rc9 '
                                                             '(STD-ISA-037, DEC-098)'}])
-    P('STD-ISA-001', 'the descriptors of ABI 1.0 are normative (since 1.0-rc9)', 'instructions', {})
+    # VER-CONF-3004 asserts the catalogue of 1.0-rc9…rc11: superseded by 1.0-rc12, which adds
+    # ask.input (STD-ISA-101, DEC-119).
+    V('STD-ISA-001', 'the descriptors of ABI 1.0 are normative (since 1.0-rc9)', prototype=False,
+      steps=[{'op': 'instructions', 'input': {}, 'frozen': 'ask.input joins the catalogue in BPA 1.0-rc12 '
+                                                            '(STD-ISA-101, DEC-119)'}])
+    P('STD-ISA-001', 'the descriptors of ABI 1.0 are normative (since 1.0-rc12)', 'instructions', {})
 
     # ---- STD-ISA-002 ABI versioning ----
     for abi, err in (('1.0', None), ('1.1', 'LOGIC.ABI_UNSUPPORTED'), ('2.0', 'LOGIC.ABI_UNSUPPORTED'),

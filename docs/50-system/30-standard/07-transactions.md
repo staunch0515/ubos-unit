@@ -230,15 +230,46 @@ DAT-Approval:
 ```yaml
 DAT-Saga:
   name: { type: text, required: true, description: "name" }
-  steps: { type: list, required: true, description: "{name, process, compensation} items; process and compensation are {target, port, params}" }
+  steps: { type: list, required: true, description: "{name, process, compensation, timeout, on_timeout} items; process and compensation are {target, port, params}; timeout is a duration and on_timeout recover | escalate (since 1.0-rc12)" }
   recovery: { type: enum, required: false, description: "backward (default) | forward" }
   max_attempts: { type: integer, required: false, description: "attempts per step under forward recovery (default 1)" }
-  status: { type: enum, required: false, description: "pending | running | compensating | completed | compensated | failed (written by the execution)" }
+  operators: { type: list, required: false, description: "principals who may retry, skip or cancel (since 1.0-rc12)" }
+  status: { type: enum, required: false, description: "pending | running | stuck | compensating | completed | compensated | failed (written by the execution; stuck since 1.0-rc12)" }
   completed: { type: list, required: false, description: "names of the completed steps (written by the execution)" }
   compensated: { type: list, required: false, description: "names of the compensated steps (written by the execution)" }
-  current: { type: composite, required: false, description: "{step, attempt, phase} of the step in progress (written by the execution)" }
+  current: { type: composite, required: false, description: "{step, attempt, phase} of the step in progress, with started_at when the step declares a timeout (written by the execution)" }
+  skipped: { type: list, required: false, description: "{step, principal, reason} of the skipped steps (written by the execution, since 1.0-rc12)" }
   error: { type: composite, required: false, description: "the failed step and error code (written by the execution)" }
 ```
+
+### STD-TXN-081 — Saga timeouts, monitoring and intervention
+- **Clause:** A saga step MAY declare a `timeout`. A step whose process has not committed when the clock reaches the start of its attempt plus the timeout MUST be treated as timed out (`FLOW.TIMEOUT`). A step that times out, by its timeout or by a limit termination (STD-TXN-080), MUST follow its `on_timeout`:
+  - `recover` (the default) applies the saga's recovery as for a failure;
+  - `escalate` stops the saga in the state `stuck`, keeping the step in progress.
+
+  Sagas MUST be queryable by state, by the age of the step in progress and by the failing step. A principal listed in the saga's `operators` MUST be able to act on a `stuck` saga, or on a saga `failed` in a forward step:
+  - retry the step as a new attempt;
+  - skip it with a reason;
+  - cancel the saga, which compensates its completed steps.
+
+  Other principals MUST fail with `IAM.DENIED`. Every action MUST be recorded in the saga's `log` and committed like the saga's other state transitions.
+- **Grammar / Schema:** `DAT-Saga`
+- **Conformance vectors:** VER-CONF-2800…2819
+- **Satisfies:** FR-TXN-063, FR-TXN-064
+- **Notes:** Since 1.0-rc12 (DEC-119):
+  - **Start of an attempt.** When a forward attempt of a step with a `timeout` begins, `current` records `started_at`. `run_saga` resuming such a step whose process has not committed, at or after `started_at` plus the timeout, records the outcome `timeout` with the code `FLOW.TIMEOUT` instead of running the step. Compensations have no timeout.
+  - **Escalation.** A `stuck` saga keeps `current` and records `error` `{step, code}`. Its commit releases an effect `SagaStuck` with `{saga, step, code}` to the outbox (STD-TXN-050). `run_saga` on a stuck saga returns its state without commits.
+  - **Query.** The adapter operation `sagas {branch, status, older_than, step}` returns `{sagas}`, each `{saga_id, name, status, current, error}`, in object-ID order:
+    - `status` keeps the sagas in that state;
+    - `older_than`, a duration, keeps the sagas whose step in progress started at or before the clock minus it;
+    - `step` keeps the sagas whose step in progress or failed step has that name.
+  - **Actions.** The adapter operation `saga_action {branch, saga, action, principal, reason}` acts and then continues the saga as `run_saga` does, returning its result.
+    - `retry` sets the saga `running` with the step's next attempt.
+    - `skip` adds the step to `completed` and to `skipped` (`{step, principal, reason}`) and sets the saga `running`; it needs a `reason` (`MODEL.DECLARATION_INCOMPLETE`).
+    - `cancel` sets the saga `compensating`.
+    - An action on a saga in another state fails with `FLOW.TRANSITION_NOT_ALLOWED`.
+    - Each action adds `{step, phase: "operator", action, principal, reason}` to the `log`.
+  - **Compatibility.** A saga without timeouts, `on_timeout` or `operators` behaves as in 1.0-rc8.
 
 ## 8. Workflows
 
@@ -277,6 +308,18 @@ DAT-WorkflowStep:
   correlation: { type: text, required: false, description: "wait_event: L1 expression of the correlation key" }
   buffer: { type: duration, required: false, description: "wait_event: how long an earlier event stays deliverable" }
   after: { type: duration, required: false, description: "timer: the delay from entering the step" }
+  at: { type: text, required: false, description: "timer: L1 expression of the due instant or date (since 1.0-rc12)" }
+  calendars: { type: composite, required: false, description: "timer with at: calendar name -> {weekend, holidays} (since 1.0-rc12)" }
+  timeout: { type: duration, required: false, description: "wait_event, human_task: the longest wait (since 1.0-rc12)" }
+  on_timeout: { type: text, required: false, description: "wait_event, human_task: the step after a timeout (since 1.0-rc12)" }
+  queue: { type: text, required: false, description: "human_task: the work queue of its Task (since 1.0-rc12)" }
+  task_type: { type: text, required: false, description: "human_task with a queue: the task type (default: the step name; since 1.0-rc12)" }
+  subject: { type: text, required: false, description: "human_task with a queue: the task subject (since 1.0-rc12)" }
+  priority: { type: integer, required: false, description: "human_task with a queue: the task priority (since 1.0-rc12)" }
+  data: { type: list, required: false, description: "human_task with a queue: the variables copied into the task data (since 1.0-rc12)" }
+  on_cancel: { type: text, required: false, description: "human_task with a queue: the step after the task is cancelled (since 1.0-rc12)" }
+  defer: { type: boolean, required: false, description: "action: the port call may store a pending change (since 1.0-rc12)" }
+  on_reject: { type: text, required: false, description: "action with defer: the step after a rejected, expired or invalidated change (since 1.0-rc12)" }
   assignee: { type: text, required: false, description: "human_task: the principal who completes it" }
   cases: { type: list, required: false, description: "decision: {when, next} items" }
   default: { type: text, required: false, description: "decision: the step when no case applies" }
@@ -308,3 +351,51 @@ DAT-WorkflowStep:
 - **Conformance vectors:** VER-CONF-2285…2294
 - **Satisfies:** FR-FLOW-062
 - **Notes:** Since 1.0-rc8 (DEC-092): the adapter operation `migrate_workflow {instance, version, step_map}` migrates to `version` (default: the definition's head). A step mapped to a missing step or a step of another type fails with `MODEL.INVALID_VALUE`; an instance that has ended fails with `MODEL.CONSTRAINT_VIOLATED`. `migrations` records the versions and the step map.
+
+### STD-TXN-093 — Workflow tasks and approvals `[Profile: Governance]`
+- **Clause:** A `human_task` step that names a `queue` MUST, when entered, create a `Task` (STD-LGS-061) linked to the instance and the step. The task is assigned by the queue's rules and gets its due time from the queue's due rule (STD-LGS-062, -063). The step MUST continue when that task is completed, with the task's outcome as the step's result. When the task is cancelled, the wait MUST continue along the step's `on_cancel`, or else the instance fails.
+
+  An `action` step with `defer: true` makes its port call with `defer` (STD-TXN-060). When the call stores a pending change, the step MUST wait for its decision:
+  - an applied change continues to `next`, with `{pending_change_id, cseq}` as the step's result;
+  - a rejected, expired or invalidated change continues to `on_reject`, or else the instance fails.
+- **Grammar / Schema:** `DAT-WorkflowDefinition`
+- **Conformance vectors:** VER-CONF-2820…2849
+- **Satisfies:** FR-FLOW-062, FR-FLOW-042, FR-FLOW-051
+- **Notes:** Since 1.0-rc12 (DEC-119):
+  - **The task.** The task ID is the UUID derived from `ubos.workflow.task` with the instance, token, step and visit, as child instances are derived (STD-TXN-090). The task's members:
+    - `type` is the step's `task_type`, or the step name;
+    - `subject` and `priority` are taken from the step (`priority` defaults to 0);
+    - `assignee` is `{principal}` when the step names an `assignee`;
+    - `data` maps the variables the step lists in `data` to their values;
+    - `created_by` is the instance's initiator;
+    - `workflow` is `{instance, step, visit}`.
+
+    The waiting step shows `task_id`.
+  - **Completion.** Completing the task with the `task` operation (STD-LGS-061) continues the instance in the same operation. `complete_task` on a step that waits for a task fails with `FLOW.TRANSITION_NOT_ALLOWED` and `details` `{task_id}`.
+  - **Cancellation.** A cancelled task logs `cancelled` on the instance and continues to `on_cancel`. Without `on_cancel`, the instance ends `failed` with `error` `{step, task_id, state: "cancelled"}`.
+  - **Approvals.** The waiting step shows `pending_change`.
+    - The approval that applies or rejects the change continues the instance in the same operation.
+    - Expiry is noticed when the clock advances, and invalidation at the next decision on the change.
+    - Without `on_reject`, the instance ends `failed` with `error` `{step, pending_change, state}`.
+    - A port call that commits without approval continues as an ordinary action.
+  - **Declarations.** `queue`, `task_type` and `subject` are text, `priority` is an integer, `data` lists variables, `defer` is a boolean, and `on_cancel` and `on_reject` name steps (`MODEL.INVALID_VALUE`). An unknown queue fails when the step is entered: the instance ends `failed` with `error` `{step, code: "IAM.NOT_FOUND"}`.
+
+### STD-TXN-094 — Workflow timers, business calendars and timeouts
+- **Clause:** A `timer` step MUST name exactly one of:
+  - `after`, a duration from entering the step;
+  - `at`, an L1 expression of the due instant or date.
+
+  The `at` expression is evaluated when the step is entered, over the variables (`params`), with the entry instant as the context's `now`, so that `now()` and `today()` give the entry instant and date. The calendar functions of STD-EXPR-005 use the business calendars the step declares in `calendars`. A `wait_event` or `human_task` step MAY declare `timeout` with `on_timeout`. When the clock reaches the entry plus the timeout before the wait ends, the token MUST continue to `on_timeout`, and a task the step created MUST be cancelled. Due times MUST be resolved when the step is entered. When a migration (STD-TXN-092) moves a waiting token, they MUST be recomputed from the entry instant under the new version.
+- **Grammar / Schema:** `DAT-WorkflowDefinition`
+- **Conformance vectors:** VER-CONF-2850…2879
+- **Satisfies:** FR-FLOW-063, FR-FLOW-082
+- **Notes:** Since 1.0-rc12 (DEC-119):
+  - **Values of `at`.** An instant is the due time. A date is due at 00:00 UTC of that date.
+  - **Errors.** Another type, or an error when the expression is evaluated, ends the instance `failed` with `error` `{step, code}`.
+  - **Declarations.** A timer with both or neither of `after` and `at`, or a `timeout` without `on_timeout`, fails with `MODEL.DECLARATION_INCOMPLETE`. `calendars` map names to `{weekend, holidays}`, as the calendars of work queues do (STD-LGS-063).
+  - **Firing.** Timers and timeouts fire in the order of their due times when the clock advances (STD-TXN-091).
+    - A timeout logs `timeout` on the instance.
+    - A task the step created is cancelled with the reason `timeout` by the instance's initiator.
+    - An event or a completion that arrives after the timeout finds no waiting step.
+  - **Waiting steps** show `due` for a timer and `timeout_at` for a timeout. A token that waits for a step with `at` or `timeout` also records the entry instant.
+  - **Migration.** The due time of a timer with `after` keeps its entry instant.

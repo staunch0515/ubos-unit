@@ -298,7 +298,7 @@ depends_on: [UBS-IDX-00]
 | SUITE-WSP-SEC | portal scoping, widget sandbox, XSS and CSP tests | `40-systems/06-wsp/08-verification.md` |
 | SUITE-WSP-USE | usability studies with business users, approvers and auditors (NR-USE-001…003, NR-USE-007) | `40-systems/06-wsp/08-verification.md` |
 
-## VER (99)
+## VER (100)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -355,6 +355,7 @@ depends_on: [UBS-IDX-00]
 | VER-INSP-9007 | BPA 1.0-rc9 coverage | `60-verification/12-items-ph2.md` |
 | VER-INSP-9008 | BPA 1.0-rc10 coverage | `60-verification/12-items-ph2.md` |
 | VER-INSP-9009 | BPA 1.0-rc11 coverage | `60-verification/12-items-ph2.md` |
+| VER-INSP-9010 | BPA 1.0-rc12 coverage | `60-verification/12-items-ph2.md` |
 | VER-INSP-9500 | PH-1 traceability | `60-verification/10-items-ph0-ph1.md` |
 | VER-INSP-9501 | PH-2 traceability and regression | `60-verification/12-items-ph2.md` |
 | VER-INSP-9502 | PH-3 traceability and regression | `60-verification/13-items-ph3.md` |

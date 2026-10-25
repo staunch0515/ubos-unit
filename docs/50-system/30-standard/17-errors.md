@@ -111,6 +111,8 @@ DAT-Error:
   | `FLOW.PORT_UNAVAILABLE` | port not available in the lifecycle state (since 1.0-rc3) | no | yes | 409 |
   | `FLOW.EFFECT_FAILED` | an entry or exit effect of a transition failed (since 1.0-rc3) | no | yes | 422 |
   | `FLOW.FIELD_RULE_VIOLATED` | a per-state field rule: a read-only field written or a required field missing (since 1.0-rc3) | no | yes | 422 |
+  | `FLOW.TIMEOUT` | a saga step did not complete within its timeout (since 1.0-rc12) | no | yes | 504 |
+  | `FLOW.INPUT_EXPIRED` | answers to an input request after its expiry (since 1.0-rc12) | no | yes | 410 |
   | `EVT.UNKNOWN_EVENT_TYPE` | undeclared event | no | yes | 422 |
   | `QRY.SCAN_LIMIT` | unindexed scan too large | no | yes | 422 |
   | `QRY.INVALID_QUERY` | malformed query | no | yes | 400 |

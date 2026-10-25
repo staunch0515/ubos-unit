@@ -22,6 +22,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-116 | PH-2 step 5e: rule tests and the merge gate in the kernel — `RuleTest` with its declaration check, `run_rule_tests` on provisional objects with coverage, the test gate of change-set merges into protected branches; STD-LGS-072 and -073 claimed | Accepted |
 | DEC-117 | PH-2 step 5f: `forge simulate` — the Server's administrative simulation route, audited; the command with window, port, budget, logic and change-set options, text and JSON reports, exit status by changed outcomes | Accepted |
 | DEC-118 | PH-2 step 5 closed: decision tables and rule operations (parts 5a–5f, DEC-112…117) — BPA 1.0-rc11, decision tables, simulation of rule and logic changes, the end of attachments, live impact, rule tests and the merge gate in the kernel, `forge simulate`; 58 step-5 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
+| DEC-119 | PH-2 step 6 opened in parts 6a–6g; part 6a: BPA 1.0-rc12 — saga timeouts, monitoring and intervention (STD-TXN-081), workflow tasks and approvals (STD-TXN-093), workflow timers, business calendars and timeouts (STD-TXN-094), `ask.input` (STD-ISA-101); 259 clauses, 2,275 vectors, MUST coverage 221/221 | Accepted |
 
 ---
 
@@ -276,3 +277,46 @@ follow.
 - **Alternatives considered:**
   - Leaving the deferred items spread over DEC-112…117 was rejected, as in DEC-104 and DEC-111.
 - **Affects:** DEC-112, DEC-113, DEC-114, DEC-115, DEC-116, DEC-117, DSN-DVM-760, DSN-DVM-763, DSN-FRG-205
+
+### DEC-119 — Durable work, part 6a: BPA 1.0-rc12 (PH-2 step 6)
+- **Date:** 2026-10-25 · **Status:** Accepted
+- **Context:** PH-2 step 6 (UBS-PH-2 §11) implements durable work: workflows and sagas, long-running processes, post-commit effects, replay and backfill (CAP-FLOW-06, -07, CAP-TXN-05, -06, CAP-EVT-07). It also takes the items earlier steps moved to it: approvals and human tasks inside workflow steps with escalation by workflow timers (DEC-111), the maintenance of `async` projections by a job with the `timeout_ms` wait (DEC-100, DEC-104), and projection backfill (DEC-098).
+  - **Baseline.** On the kernel, the 51 vectors of STD-TXN-080 and STD-TXN-090…092 and the 10 of STD-CTX-031 (BPA 1.0-rc8) fail: workflow definitions, sagas and quarantines are missing. The 23 vectors of STD-TXN-051 and STD-ISA-090 are not applicable without connectors. The vectors of STD-TXN-050 and -070 pass.
+  - **Gap in the standard.** Four capabilities have no clauses, and the standard precedes the code (AR-033):
+    - saga step timeouts with monitoring and intervention (FR-TXN-063, -064);
+    - human tasks on work queues and approvals inside workflows (FR-FLOW-062, DEC-111);
+    - business-calendar timers and timeouts of waits (FR-FLOW-063, -082);
+    - actions that ask for input (FR-FLOW-071).
+
+    Replay to a subscription (DSN-NOD-206) and projection backfill (DSN-NOD-207) need no clause. Subscriptions are a node platform class outside BPA 1.0 (DEC-076), and STD-TIME-021 already fixes what an `async` projection reads.
+  - **Confirmation.** The owner confirmed the plan of step 6 with the default suggestions on 2026-10-25.
+- **Decision:**
+  1. **Parts.** Step 6 is done in parts:
+     - 6a writes BPA 1.0-rc12 (standard only);
+     - 6b: workflow definitions, instances and migration in the kernel (STD-TXN-090, -092);
+     - 6c: events, timers and human tasks (STD-TXN-091), with the node's timer service (DSN-NOD-227);
+     - 6d: sagas as jobs (STD-TXN-080, DSN-NOD-230) and quarantine (STD-CTX-031);
+     - 6e: the workflow and saga clauses of 1.0-rc12 (STD-TXN-081, -093, -094);
+     - 6f: post-commit and replay work: `async` projections maintained by a job, the `timeout_ms` wait, projection backfill, event replay to a subscription with the `replay` mark (DSN-NOD-206, -207), and `ask.input` (STD-ISA-101);
+     - 6g closes the step.
+
+     Pre-commit connector calls (STD-TXN-051, STD-ISA-090) stay in step 12 with the connector framework. No new tests are written. Resumption after a crash is verified by the `interrupt_after` vectors, and fault and simulation scenarios for workflows come with steps 11 and 20.
+  2. **Release.** BPA 1.0-rc12 is opened with the scope rule of DEC-089 on base 1.0-rc11. It is released at the end of part 6a with the owner's signed tag `bpa-v1.0.0-rc12`, and is then frozen like the earlier candidates (DEC-045 item 3).
+  3. **Clauses.**
+     - **STD-TXN-081 (Core).** A saga step may declare a `timeout`. A step that times out, by its timeout or by a limit termination, follows its `on_timeout`: `recover`, or `escalate` to the state `stuck` with the effect `SagaStuck`. `sagas` lists sagas by state, by age of the step in progress and by step. `saga_action` lets the saga's `operators` retry or skip the step of a stuck or forward-failed saga, or cancel it; each action is logged.
+     - **STD-TXN-093 (Governance).** A `human_task` step with a `queue` creates a `Task` (STD-LGS-061) with the member `workflow`. Completing the task continues the instance with its outcome; cancelling it follows `on_cancel`. An `action` step with `defer` waits for its pending change: an applied change continues to `next`, any other decision to `on_reject`.
+     - **STD-TXN-094 (Core).** A `timer` is due `after` a duration or `at` an L1 expression evaluated on entry, with the entry instant as the context's `now` and the step's business `calendars`. `wait_event` and `human_task` steps may declare `timeout` with `on_timeout`; a timeout cancels the step's task. A migration recomputes due times from the entry instant.
+     - **STD-ISA-101 (Core).** `ask.input` ends a process `needs_input` without a commit and returns the request. The same call repeated with `answers` before the expiry continues it, and later answers fail with `FLOW.INPUT_EXPIRED`.
+     - **Errors.** `FLOW.TIMEOUT` and `FLOW.INPUT_EXPIRED` join the registry (STD-ERR-002).
+  4. **Compatibility.** New members are written only when a declaration uses them, so no released vector of workflows, sagas or tasks changes. Business calendars are a member of the timer step, not of `WorkflowDefinition`: a new member of that class would change the version hashes in the released workflow vectors.
+  5. **Reference model.**
+     - **Code.** Changes to `workflows.py` (timers, timeouts, tasks, approvals, saga timeouts, `sagas`, `saga_action`), `exec.py` (`ask.input`), `work.py` and `approvals.py` (the continuation hooks), `classes.py` and `ops.py`.
+     - **Cases.** `standard/tools/cases/durable.py`.
+- **Consequences:**
+  - BPA 1.0-rc12 has 259 clauses and 2,275 vectors: 68 added and one superseded. VER-CONF-3004, the instruction catalogue of 1.0-rc9…rc11, is superseded by VER-CONF-3005. MUST coverage is 221/221, and VER-INSP-9010 records it.
+  - Parts 6b–6g implement 1.0-rc12 and the workflow, saga and quarantine clauses of 1.0-rc8 in the kernel.
+- **Alternatives considered:**
+  - Workflow human tasks that stay separate from `Task` objects were rejected: they would keep two inboxes and two escalation mechanisms (FR-FLOW-046, DEC-111).
+  - A separate wall-clock watchdog for saga steps was rejected: the commit that starts a step records its start, so a resumed saga can judge the timeout deterministically.
+  - Dialogues that keep a suspended process were rejected: re-running the deterministic process with the answers commits in one step and keeps nothing between the calls (FR-FLOW-071).
+- **Affects:** STD-TXN-080, STD-TXN-081, STD-TXN-090, STD-TXN-091, STD-TXN-092, STD-TXN-093, STD-TXN-094, STD-ISA-001, STD-ISA-101, STD-LGS-061, STD-ERR-002, STD-CONF-005, DSN-DVM-564, DSN-DVM-565, DSN-DVM-735, DSN-DVM-744, DSN-DVM-751, DSN-NOD-206, DSN-NOD-207, DSN-NOD-227, FR-TXN-063, FR-TXN-064, FR-FLOW-062, FR-FLOW-063, FR-FLOW-071, FR-FLOW-082, VER-INSP-9010, DEC-045, DEC-089, DEC-098, DEC-100, DEC-111

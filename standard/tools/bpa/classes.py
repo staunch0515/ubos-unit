@@ -133,11 +133,11 @@ GENESIS = {
     'Saga': {'name': 'Saga', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
              'fields': [_f('name', 'text', True), _f('steps', 'json', True),
                         _f('recovery', 'enum', constraints={'allowed_values': ['backward', 'forward']}),
-                        _f('max_attempts', 'integer'),
+                        _f('max_attempts', 'integer'), _f('operators', 'json'),
                         _f('status', 'enum', constraints={'allowed_values': [
-                            'pending', 'running', 'compensating', 'completed', 'compensated', 'failed']}),
+                            'pending', 'running', 'stuck', 'compensating', 'completed', 'compensated', 'failed']}),
                         _f('completed', 'json'), _f('compensated', 'json'), _f('current', 'json'),
-                        _f('error', 'json'), _f('log', 'json')]},
+                        _f('error', 'json'), _f('log', 'json'), _f('skipped', 'json')]},
     # STD-CTX-031 (BPA 1.0-rc8, DEC-092): quarantines and their releases are System objects.
     'Quarantine': {'name': 'Quarantine', 'kind': 'system', 'parent': 'SystemObject', 'abstract': False,
                    'fields': [_f('asset', 'text', True), _f('asset_version', 'text', True),
@@ -203,7 +203,7 @@ GENESIS = {
                         _f('due', 'instant'), _f('due_date', 'date'), _f('skills', 'json'), _f('data', 'json'),
                         _f('created_by', 'text', True), _f('created_at', 'instant', True),
                         _f('completed_at', 'instant'), _f('outcome', 'json'), _f('assigned_by', 'text'),
-                        _f('escalations', 'json'), _f('log', 'json')]},
+                        _f('escalations', 'json'), _f('log', 'json'), _f('workflow', 'json')]},
     'WorkQueue': {'name': 'WorkQueue', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
                   'fields': [_f('name', 'text', True), _f('members', 'json', True), _f('managers', 'json'),
                              _f('assignment', 'enum', True, constraints={'allowed_values': [

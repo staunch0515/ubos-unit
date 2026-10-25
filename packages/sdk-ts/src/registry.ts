@@ -106,6 +106,8 @@ export type Code =
   | "FLOW.PORT_UNAVAILABLE"
   | "FLOW.EFFECT_FAILED"
   | "FLOW.FIELD_RULE_VIOLATED"
+  | "FLOW.TIMEOUT"
+  | "FLOW.INPUT_EXPIRED"
   | "EVT.UNKNOWN_EVENT_TYPE"
   | "QRY.SCAN_LIMIT"
   | "QRY.INVALID_QUERY"
@@ -222,6 +224,8 @@ export const REGISTRY: Readonly<Record<Code, readonly [boolean, boolean, number]
   "FLOW.PORT_UNAVAILABLE": [false, true, 409],
   "FLOW.EFFECT_FAILED": [false, true, 422],
   "FLOW.FIELD_RULE_VIOLATED": [false, true, 422],
+  "FLOW.TIMEOUT": [false, true, 504],
+  "FLOW.INPUT_EXPIRED": [false, true, 410],
   "EVT.UNKNOWN_EVENT_TYPE": [false, true, 422],
   "QRY.SCAN_LIMIT": [false, true, 422],
   "QRY.INVALID_QUERY": [false, true, 400],

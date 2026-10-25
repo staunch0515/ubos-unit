@@ -158,6 +158,7 @@ class Approvals:
         approval applies the change in a new process (STD-TXN-060)."""
         rec = self._pc(i.get('pending_change_id'))
         if rec['state'] != 'pending':
+            self._wf_pc_done(rec)                       # STD-TXN-093 (1.0-rc12)
             return self._pc_view(rec)
         approver = i.get('approver')
         decision = i.get('decision', 'approve')
@@ -180,9 +181,11 @@ class Approvals:
         rec['approvals'].append(a)
         if decision == 'reject':
             rec['state'] = 'rejected'
+            self._wf_pc_done(rec)                       # STD-TXN-093 (1.0-rc12)
             return self._pc_view(rec)
         if self._satisfied(rec):
             self._apply(rec)
+            self._wf_pc_done(rec)
         return self._pc_view(rec)
 
     def _apply(self, rec):
