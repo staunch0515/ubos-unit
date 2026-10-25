@@ -3311,6 +3311,24 @@ async fn admin_api(
             Err(e) => problem_response(&e),
         };
     }
+    // DSN-FRG-205 (PH-2 step 5f): a simulation of rule or logic changes (STD-LGS-044, -074)
+    // for `forge simulate`, by an administrator, audited
+    if (method.as_str(), p.as_slice()) == ("POST", &["simulate"][..]) {
+        let h = match s.vae_async(&tenant, &vae).await {
+            Ok(h) => h,
+            Err(e) => return problem_response(&e),
+        };
+        let r = h.call("simulate", body.clone()).await;
+        if let Ok(id) = s.identity_async(&tenant).await {
+            let entry = json!({"vae": key, "by": me.did, "source": body["source"], "target": body["target"],
+                "run_id": body["run_id"], "ok": r.is_ok()});
+            let _ = blocking(move || id.log("admin.simulate", entry)).await;
+        }
+        return match r {
+            Ok(v) => Json(v).into_response(),
+            Err(e) => problem_response(&e),
+        };
+    }
     if p.first() == Some(&"clock") {
         return match admin_clock(&s, &tenant, &vae, &key, &method, &body, &me.did).await {
             Ok(v) => Json(v).into_response(),

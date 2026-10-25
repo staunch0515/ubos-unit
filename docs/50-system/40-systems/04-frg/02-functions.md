@@ -173,6 +173,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given a changed fee script and one month of history, when simulated, then every changed fee is listed with old and new values.
 - **Verification:** CONF, SCN
 - **Origin:** FR-DEV-041, FR-DEV-042, NR-PERF-017
+- **Phase note:** DEC-117: built in PH-2 step 5f on the kernel's `simulate` (STD-LGS-044, -074, DEC-114) through the administration interface of the Server (`POST /api/v1/admin/simulate`, audited as `admin.simulate`), so it needs an administrator of the tenant rather than any user with read access to the history; the candidates are the rules, and with `--include-logic` the logic, of a branch of the VAE; a changed call is reported with its old and new outcome and result hash and the sandbox branch whose commits hold the new values.
 
 ### DSN-FRG-206 — Execution traces and replay debugging
 - **Statement:** Forge MUST display instruction traces (DSN-DVM-634) and support step-through replay with breakpoints on instructions and script lines (FR-DEV-091, FR-DEV-092).

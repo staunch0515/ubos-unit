@@ -20,6 +20,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-114 | PH-2 step 5c: simulation in the kernel — historical port calls re-run on sandbox branches with the candidate rules and, with `include: ["logic"]`, logic; effects dropped and re-runs kept out of the VAE's processes; `SimulationRun` records; STD-LGS-044 and -074 claimed, conformance test on BPA 1.0-rc11 | Accepted |
 | DEC-115 | PH-2 step 5d: the end of rule attachments and the live impact count in the kernel — detach timers with `RuleDetached`, `rule_impact` per class; STD-LGS-070 and -071 claimed | Accepted |
 | DEC-116 | PH-2 step 5e: rule tests and the merge gate in the kernel — `RuleTest` with its declaration check, `run_rule_tests` on provisional objects with coverage, the test gate of change-set merges into protected branches; STD-LGS-072 and -073 claimed | Accepted |
+| DEC-117 | PH-2 step 5f: `forge simulate` — the Server's administrative simulation route, audited; the command with window, port, budget, logic and change-set options, text and JSON reports, exit status by changed outcomes | Accepted |
 
 ---
 
@@ -223,3 +224,21 @@ follow.
   - Running every rule test at each protected merge was rejected, as in DEC-112.
   - A provisional object stored on a sandbox branch was rejected: evaluating the body over the branch state gives the same result without commits.
 - **Affects:** STD-LGS-072, STD-LGS-073, DSN-DVM-764, FR-RULE-081, FR-RULE-082, FR-RULE-083, DEC-112
+
+### DEC-117 — `forge simulate` (PH-2 step 5, part 5f)
+- **Date:** 2026-10-25 · **Status:** Accepted
+- **Context:** Part 5f of PH-2 step 5 (DEC-112) builds the simulator of DSN-FRG-205 on the kernel's simulation (DEC-114). UBTP has no simulation message, and a simulation creates sandbox branches and a `SimulationRun` on the target branch. The owner confirmed the part with the default suggestions on 2026-10-25.
+- **Decision:**
+  1. **Route.** The Server's administration interface gains `POST /api/v1/admin/simulate?vae=<name>`. It passes the body to the VAE's `simulate` operation and writes the audit entry `admin.simulate` with the caller, the branches, the run and whether it succeeded.
+  2. **Permission.** The route needs an administrator of the tenant. A permission of its own for business analysts waits for the Web workspace (PH-2 step 9).
+  3. **Command.** `forge simulate --server <host:port> --source <branch>` with `--target` (default `main`), `--vae`, `--from`, `--to`, `--port`, `--budget` (default 100 processes), `--include-logic`, `--change-set`, `--token` or `UBOS_TOKEN`, and `--json`. The command draws the run's UUID itself.
+  4. **Report.** The text report gives the coverage and one line per changed call: date, process, old and new outcome, and the sandbox branch whose commits hold the new values. `--json` prints the stored run.
+  5. **Exit status.** The command exits with 0 when no outcome changed, 1 when some changed, and 2 on a usage, transport or Server error, so a pipeline can stop on a changed outcome.
+  6. **DSN-FRG-205.** A phase note records the route, the permission and the report.
+- **Consequences:**
+  - The command and the route reuse the kernel's simulation; no new clause or vector.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - A UBTP message for simulation was rejected for now: it would extend the protocol for one administrative operation.
+  - Running the simulation inside `forge` on a pulled copy of the history was rejected: the history, its rules and the evidence of the run belong to the VAE.
+- **Affects:** DSN-FRG-205, DSN-DVM-760, DSN-DVM-761, STD-LGS-044, STD-LGS-074, FR-DEV-041, FR-DEV-042, DEC-112, DEC-114

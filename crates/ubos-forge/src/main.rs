@@ -23,6 +23,9 @@ const USAGE: &str = "usage:
 [--server <ubos-server>] [--binding ws|http] [--json]
   forge dev [<project dir>] [--database <connection string>] [--listen <host:port>] \
 [--server <ubos-server>] [--cors <origin>]... [--test] [--types] [--once] [--json]
+  forge simulate --server <host:port> --source <branch> [--target <branch>] [--vae <name>] \
+[--from <date>] [--to <date>] [--port <name>] [--budget <n>] [--include-logic] [--change-set <id>] \
+[--token <bearer>] [--json]
   forge conform --vectors <dir> [--tag <tag>] [--profiles <p1,p2>] [--report <file>] \
 [--key <file with 64 hex chars>] [--standard <version>] [--build <hash>] \
 [--backend memory|postgres] [--database <connection string>] [--l2] [--verbose]";
@@ -538,6 +541,64 @@ fn test(args: &[String]) -> Result<bool, String> {
     Ok(ok)
 }
 
+/// `forge simulate` (DSN-FRG-205): exit 0 when no outcome changed, 1 when some did.
+fn simulate(args: &[String]) -> Result<bool, String> {
+    let mut opts: BTreeMap<String, String> = BTreeMap::new();
+    let (mut json_out, mut logic) = (false, false);
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--json" => json_out = true,
+            "--include-logic" => logic = true,
+            "--server" | "--source" | "--target" | "--vae" | "--from" | "--to" | "--port"
+            | "--budget" | "--change-set" | "--token" => {
+                let v = it.next().ok_or_else(|| format!("{a} takes a value"))?;
+                opts.insert(a.clone(), v.clone());
+            }
+            other => return Err(format!("unknown argument {other}\n{USAGE}")),
+        }
+    }
+    let need = |k: &str| {
+        opts.get(k)
+            .cloned()
+            .ok_or_else(|| format!("{k} is required\n{USAGE}"))
+    };
+    let token = match opts.get("--token") {
+        Some(t) => t.clone(),
+        None => std::env::var("UBOS_TOKEN")
+            .map_err(|_| "--token or UBOS_TOKEN is required".to_string())?,
+    };
+    let budget = match opts.get("--budget") {
+        Some(b) => b
+            .parse::<u64>()
+            .map_err(|_| "--budget is a positive number")?,
+        None => 100,
+    };
+    let o = ubos_forge::simulate::Options {
+        server: need("--server")?,
+        token,
+        vae: opts.get("--vae").cloned(),
+        source: need("--source")?,
+        target: opts
+            .get("--target")
+            .cloned()
+            .unwrap_or_else(|| "main".into()),
+        from: opts.get("--from").cloned(),
+        to: opts.get("--to").cloned(),
+        port: opts.get("--port").cloned(),
+        budget,
+        logic,
+        change_set: opts.get("--change-set").cloned(),
+    };
+    let run = ubos_forge::simulate::run(&o)?;
+    if json_out {
+        println!("{}", serde_json::to_string_pretty(&run).unwrap_or_default());
+    } else {
+        print!("{}", ubos_forge::simulate::text(&run));
+    }
+    Ok(run["changed"].as_u64() == Some(0))
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let project_cmd = |r: Result<bool, String>| match r {
@@ -554,6 +615,7 @@ fn main() -> ExitCode {
         Some("types") => project_cmd(types(&args[1..])),
         Some("test") => project_cmd(test(&args[1..])),
         Some("dev") => project_cmd(dev(&args[1..])),
+        Some("simulate") => project_cmd(simulate(&args[1..])),
         Some("conform") => match conform(&args[1..]) {
             Ok(true) => ExitCode::SUCCESS,
             Ok(false) => ExitCode::FAILURE,

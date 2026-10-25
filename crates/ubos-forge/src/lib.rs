@@ -13,6 +13,7 @@ pub mod json;
 pub mod project;
 pub mod records;
 pub mod runner;
+pub mod simulate;
 pub mod test;
 pub mod types;
 pub mod ubtp_test;
