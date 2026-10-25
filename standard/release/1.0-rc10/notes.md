@@ -32,6 +32,10 @@ identifies this release. BPA 1.0-rc9 stays frozen as tagged. The standard preced
 
 None. No vector of BPA 1.0-rc9 changed.
 
+## Corrections before the tag
+
+- **Slugs of kernel-written objects** (PH-2 step 4d, DEC-108): the reference model named a delegation or a task by the first eight characters of its ID, so two of them in one vector shared a slug, which STD-OBJ-004 makes unique per class. The slug is now `delegation-<id>` or `task-<id>`; VER-CONF-5911, -5920 and -5955, which read a task, changed accordingly before `bpa-v1.0.0-rc10` was signed.
+
 ## Known limits
 
 - **Kernel.** The vectors added in 1.0-rc8, 1.0-rc9 and 1.0-rc10 are not tagged `prototype`. The kernel runs the approval and work vectors as PH-2 step 4 implements them (parts 4b–4g, EXIT-2-01, VER-CONF-8405).

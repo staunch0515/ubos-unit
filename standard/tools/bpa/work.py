@@ -115,7 +115,7 @@ class Work:
         body = {'delegator': delegator, 'delegate': delegate, 'roles': sorted(set(roles)), 'scope': scope,
                 'valid_from': frm, 'valid_to': to, 'state': 'active'}
         res = self._kernel_write(branch, DELEGATION, [{'op': 'create', 'object_id': did, 'class': DELEGATION,
-                                                       'slug': 'delegation-%s' % did[:8], 'body': body}], delegator)
+                                                       'slug': 'delegation-%s' % did, 'body': body}], delegator)
         return dict(body, delegation_id=did, cseq=res['cseq'])
 
     def revoke_delegation(self, i):
@@ -367,7 +367,7 @@ class Work:
             if due_date:
                 body['due_date'] = due_date
         self._kernel_write(branch, TASK, [{'op': 'create', 'object_id': tid, 'class': TASK,
-                                           'slug': 'task-%s' % tid[:8], 'body': body}], principal)
+                                           'slug': 'task-%s' % tid, 'body': body}], principal)
         if not hasattr(self, 'work_branches'):
             self.work_branches = []
         if branch not in self.work_branches:

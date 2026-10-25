@@ -31,6 +31,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-105 | PH-2 step 4 opened in parts 4a–4g; part 4a: BPA 1.0-rc10 — delegations (STD-LGS-060), tasks (STD-LGS-061), work queues, assignment and inbox (STD-LGS-062), due dates and escalation (STD-LGS-063), service-level report (STD-LGS-064), governed reopening of periods; 250 clauses, 2,181 vectors, MUST coverage 212/212 | Accepted |
 | DEC-106 | PH-2 step 4b: deferred commits and approvals in the kernel — pending changes of port calls called with `defer`, requirements, expiry and invalidation, eligibility, separation of duties, approval evidence and the application in a new process; STD-TXN-060 and STD-LGS-041…043 claimed (22 vectors, memory and PostgreSQL) | Accepted |
 | DEC-107 | PH-2 step 4c: governed reopening of periods in the kernel — the decisions of the port `reopen` govern `reopen_period`, a reopening that requires approval waits as a pending change; the adapter's directory (`principal`); the conformance test runs BPA 1.0-rc10 | Accepted |
+| DEC-108 | PH-2 step 4d: delegations in the kernel — `Delegation` System objects, `delegate`, `revoke_delegation`, `delegations`, approvals through a delegation; STD-LGS-060 claimed; slugs of kernel-written delegations and tasks corrected in BPA 1.0-rc10 before its tag | Accepted |
 
 ---
 
@@ -616,3 +617,28 @@ DEC-090 on follow.
 - **Alternatives considered:**
   - Requiring a change set for every reopening (the first wording of DSN-DVM-444) was rejected, as in DEC-105: the decisions of the port `reopen` make the governance a declaration of the class, and the released reopening vectors stay valid.
 - **Affects:** STD-KIND-025, STD-TXN-060, STD-ISA-071, DSN-DVM-444, FR-LEDG-063, DEC-101, DEC-104, DEC-105, DEC-106
+
+### DEC-108 — Delegations in the kernel (PH-2 step 4, part 4d)
+- **Date:** 2026-10-25 · **Status:** Accepted
+- **Context:** Part 4d of PH-2 step 4 (DEC-105) implements the delegations of STD-LGS-060 (BPA 1.0-rc10, DSN-DVM-745) in the kernel. Before the part, the 16 vectors of the clause were not applicable: the operations were missing.
+  - **Slug defect.** The first kernel run showed a defect of the reference model. It named a delegation or a task by the first eight characters of its ID, and the IDs of the vectors share that prefix, so a second delegation in a vector took the slug of the first. The kernel refused it with `MODEL.KEY_CONFLICT`, since a slug names one object of a class (STD-OBJ-004, DSN-DVM-111).
+  - **Confirmation.** The owner confirmed the part with the default suggestions on 2026-10-24.
+- **Decision:**
+  1. **Delegations.** `crates/ubos-dvm/src/work.rs` follows the reference model. `Delegation` is a genesis System class of the kernel's registry. Delegations are written by kernel processes with the delegator as initiator:
+     - `delegate` checks the delegator and delegate, the scope, the validity and the roles. The roles are those of the adapter's directory (`principal`, DEC-107).
+     - `revoke_delegation` lets only the delegator revoke.
+     - `delegations` lists them with their state at the current time.
+  2. **Use.** An approval naming `delegation` (part 4b's `approve`):
+     - **Checks.** The delegation is checked for the delegate and the delegator, its state (`IAM.DELEGATION_EXPIRED` after its end) and its scope. The scope covers the requirement's port and class, and the `limit` parameter of the deferred call, read from the journal of the requesting process.
+     - **Acting.** Eligibility by principals, roles and sequence is judged for the delegator with the delegated roles. Separation of duties holds for both principals.
+     - **Record.** The approval records `on_behalf_of` and `delegation`.
+  3. **Correction of BPA 1.0-rc10 before its tag.** The reference model names a delegation `delegation-<id>` and a task `task-<id>`. Three vectors that read a task (VER-CONF-5911, -5920, -5955) change in their expected slug; the release manifest and the release notes record it. BPA 1.0-rc10 is not yet tagged, so it is corrected rather than superseded (DEC-045 item 3 freezes a release at its tag).
+  4. **Claim.** The conformance test claims STD-LGS-060.
+  5. **DSN-DVM-745.** A phase note records the one-principal chain and that tasks through a delegation come with part 4e.
+- **Consequences:**
+  - The 40 vectors of STD-TXN-060, STD-LGS-041…043 and STD-LGS-060 pass in memory and on PostgreSQL 16, and the conformance test passes.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - Exempting kernel-written objects from slug uniqueness was rejected: a slug addresses one object in its URI.
+  - Keeping the defective vectors and superseding them in a later release was rejected: the release is not tagged, and a correction before the tag keeps the released text consistent.
+- **Affects:** STD-LGS-060, STD-LGS-061, STD-LGS-063, STD-LGS-043, DSN-DVM-741, DSN-DVM-745, FR-FLOW-091, FR-FLOW-092, FR-FLOW-093, VER-INSP-9008, DEC-045, DEC-105, DEC-106, DEC-107

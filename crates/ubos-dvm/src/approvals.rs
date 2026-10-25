@@ -313,6 +313,11 @@ impl Engine {
         if let Some(b) = s(i, "on_behalf_of") {
             actors.push(b.to_string());
         }
+        // STD-LGS-060 (1.0-rc10): through a delegation, eligibility is the delegator's
+        let who = match (i.get("delegation"), s(i, "on_behalf_of")) {
+            (Some(d), Some(b)) if !d.is_null() => b.to_string(),
+            _ => approver.to_string(),
+        };
         let initiator = s(rec, "initiator").unwrap_or_default();
         if actors.iter().any(|a| a == initiator) {
             return Err(denied(
@@ -361,7 +366,7 @@ impl Engine {
             .collect();
         if !principals.is_empty() || !roles.is_empty() {
             let held = i["roles"].as_array().cloned().unwrap_or_default();
-            let ok = principals.contains(&approver)
+            let ok = principals.contains(&who.as_str())
                 || held
                     .iter()
                     .any(|r| r.as_str().is_some_and(|r| roles.contains(&r)));
@@ -376,13 +381,59 @@ impl Engine {
                 .iter()
                 .filter(|a| s(a, "step") == Some("approval"))
                 .count();
-            if principals.get(n) != Some(&approver) {
+            if principals.get(n) != Some(&who.as_str()) {
                 return Err(denied(
                     json!({"approval": "out_of_sequence", "principal": approver}),
                 ));
             }
         }
         Ok(())
+    }
+
+    /// STD-LGS-060 (1.0-rc10): an approval through a delegation, checked against the port
+    /// and class of the requirement and the parameters of the deferred call; returns the
+    /// delegator and the delegated roles.
+    fn approval_delegation(
+        &mut self,
+        rec: &Value,
+        req: &Value,
+        id: &str,
+        i: &Value,
+        approver: &str,
+    ) -> Result<(String, Vec<String>), BpaError> {
+        let branch = s(rec, "target_branch").unwrap_or("main").to_string();
+        let class = match s(req, "object_id") {
+            Some(oid) => Repo::new(self.store.as_mut(), &self.registry)
+                .object_at(&branch, None, oid)?
+                .map(|o| o.class),
+            None => None,
+        };
+        let params = match s(rec, "process_id") {
+            Some(pid) => self
+                .journal_full(pid)
+                .ok()
+                .map(|j| j["invocation"]["params"].clone()),
+            None => None,
+        };
+        let body = self.use_delegation(
+            &branch,
+            id,
+            approver,
+            s(i, "on_behalf_of"),
+            crate::work::Use {
+                port: s(req, "port"),
+                class: class.as_deref(),
+                task_type: None,
+                params: params.as_ref(),
+            },
+        )?;
+        let roles = body["roles"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|r| r.as_str().map(str::to_string))
+            .collect();
+        Ok((s(&body, "delegator").unwrap_or_default().to_string(), roles))
     }
 
     /// Whether every requirement of a pending change is met.
@@ -451,11 +502,22 @@ impl Engine {
             .find(|r| s(r, "step") == Some(step.as_str()))
             .cloned()
             .unwrap_or_else(|| json!({"step": step, "object_id": null}));
+        let i = match s(i, "delegation") {
+            Some(d) => {
+                let (behalf, roles) = self.approval_delegation(&rec, &req, d, i, &approver)?;
+                let mut x = i.clone();
+                x["on_behalf_of"] = json!(behalf);
+                x["roles"] = json!(roles);
+                x
+            }
+            None => i.clone(),
+        };
+        let i = &i;
         self.eligible(&rec, &req, i, &approver)?;
         let mut a = json!({"approver": approver, "decision": decision, "preview": rec["preview"],
                            "at": self.now, "auth_level": s(i, "auth_level").unwrap_or("basic"),
                            "step": step});
-        for k in ["on_behalf_of", "comment", "signature"] {
+        for k in ["on_behalf_of", "delegation", "comment", "signature"] {
             if let Some(v) = i.get(k).filter(|v| !v.is_null()) {
                 a[k] = v.clone();
             }

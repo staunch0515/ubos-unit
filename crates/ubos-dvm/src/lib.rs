@@ -47,6 +47,7 @@ pub use ubos_types as types;
 pub mod verify;
 pub mod versioning;
 pub mod views;
+pub mod work;
 
 pub use adapter::{Adapter, STATEFUL_OPERATIONS};
 pub use stateful::Engine;

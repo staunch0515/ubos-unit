@@ -405,6 +405,25 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("description", "text", false),
             ],
         ),
+        // STD-LGS-060 (BPA 1.0-rc10, DEC-105): delegations are System objects written by
+        // their operations.
+        g(
+            "Delegation",
+            Some("system"),
+            Some("SystemObject"),
+            false,
+            vec![
+                field("delegator", "text", true),
+                field("delegate", "text", true),
+                ext_json("roles"),
+                field("scope", "json", true),
+                field("valid_from", "instant", true),
+                field("valid_to", "instant", true),
+                enum_field("state", &["active", "revoked"]),
+                field("revoked_at", "instant", false),
+                field("reason", "text", false),
+            ],
+        ),
         g(
             "Release",
             Some("definition"),
@@ -448,6 +467,7 @@ pub fn is_genesis(name: &str) -> bool {
             | "Projection"
             | "CloseArtefact"
             | "MatchRecord"
+            | "Delegation"
     )
 }
 

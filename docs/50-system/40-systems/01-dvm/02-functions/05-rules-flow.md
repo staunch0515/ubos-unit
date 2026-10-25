@@ -314,6 +314,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given a delegation that ended yesterday, when used, then `IAM.DELEGATION_EXPIRED` is returned.
 - **Verification:** CONF, SEC
 - **Origin:** FR-FLOW-091, FR-FLOW-092, FR-FLOW-093
+- **Phase note:** DEC-108: built in PH-2 step 4d as BPA 1.0-rc10 states it (STD-LGS-060): `Delegation` System objects, the roles of the adapter's directory, approvals through a delegation; the chain carried by an action is one principal (`on_behalf_of`). Tasks through a delegation follow with the tasks of step 4e.
 
 ### DSN-DVM-746 — Approval formal model
 - **Statement:** The approval and deferred-commit protocol MUST be modelled formally with properties: no commit without valid approvals; stale approvals never count; SoD always holds.

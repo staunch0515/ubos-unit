@@ -1,6 +1,6 @@
 {
   "clauses": 250,
-  "content_id": "sha256:5b1df551542e15382d070316acb4044f06208ad91a935019d9b7b12b2599e05d",
+  "content_id": "sha256:3326213c5953ccaa7ddd196faaf4d5343ed59c7e5f5b65d54c81b146eda7fe73",
   "files": [
     {
       "path": "release/1.0-rc10/coverage.md",
@@ -8,7 +8,7 @@
     },
     {
       "path": "release/1.0-rc10/notes.md",
-      "sha256": "e5d9d6a87aae1fc58371f7dc27997cd971646654dff62a1cd6e4f256e9e6f049"
+      "sha256": "2ae3d2e28b4943a852847302f5e1c8360fe73051cedf6253fd335375c3ea7673"
     },
     {
       "path": "release/1.0-rc10/scope.json",
@@ -7460,7 +7460,7 @@
     },
     {
       "path": "vectors/governance/VER-CONF-5911.json",
-      "sha256": "98d0250892d3d6849ce931f714f269e2eab47a511d8d786ae4633cb6770fca9c"
+      "sha256": "fff2b039d293a35d935b81230ecf66035a982bd6528a29a28f78eea4cd4c1633"
     },
     {
       "path": "vectors/governance/VER-CONF-5912.json",
@@ -7496,7 +7496,7 @@
     },
     {
       "path": "vectors/governance/VER-CONF-5920.json",
-      "sha256": "674c4f5729b7f0d9d041b6b1bcd5e67bcc3173f9eadaa35f8fd7484bc482c129"
+      "sha256": "536c2e183d286143b114ada2f320d2e9922a70c4dca8c897a2c9e3fa59586bcb"
     },
     {
       "path": "vectors/governance/VER-CONF-5921.json",
@@ -7564,7 +7564,7 @@
     },
     {
       "path": "vectors/governance/VER-CONF-5955.json",
-      "sha256": "f9fa9a936fccc1ec79fcfaed3527265362e0bd3fbf1e1fefed101cb649704a5a"
+      "sha256": "72a536cd706d1641595dfdb0b752260684db8a75481e4b91427ff78d0be669f1"
     },
     {
       "path": "vectors/governance/VER-CONF-5956.json",
