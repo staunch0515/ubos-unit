@@ -33,6 +33,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-107 | PH-2 step 4c: governed reopening of periods in the kernel — the decisions of the port `reopen` govern `reopen_period`, a reopening that requires approval waits as a pending change; the adapter's directory (`principal`); the conformance test runs BPA 1.0-rc10 | Accepted |
 | DEC-108 | PH-2 step 4d: delegations in the kernel — `Delegation` System objects, `delegate`, `revoke_delegation`, `delegations`, approvals through a delegation; STD-LGS-060 claimed; slugs of kernel-written delegations and tasks corrected in BPA 1.0-rc10 before its tag | Accepted |
 | DEC-109 | PH-2 step 4e: tasks, work queues and the inbox in the kernel — `Task` and `WorkQueue`, the task actions with eligibility, `base` and log, the assignment rules, due rules at creation, tasks through a delegation, the inbox with pending changes; STD-LGS-061 and -062 claimed | Accepted |
+| DEC-110 | PH-2 step 4f: escalation, the service-level report and the node's sweeps — escalation steps applied by the kernel's tick, `sla_report`, the leader loop's sweep of pending changes with the default expiry and `pending_change.expired`; STD-LGS-063 and -064 claimed, every clause of BPA 1.0-rc10 implemented | Accepted |
 
 ---
 
@@ -674,3 +675,30 @@ DEC-090 on follow.
 - **Alternatives considered:**
   - Indexing open tasks per member for the load of `least_loaded` was rejected for now: the tasks of a branch are read once per creation, and the benchmarks of step 18 show whether an index is needed.
 - **Affects:** STD-LGS-061, STD-LGS-062, STD-LGS-063, DSN-DVM-743, DSN-DVM-744, FR-FLOW-051, FR-FLOW-052, FR-FLOW-053, FR-FLOW-054, FR-FLOW-081, DEC-105, DEC-106, DEC-108
+
+### DEC-110 — Escalation, service levels and the node's sweeps (PH-2 step 4, part 4f)
+- **Date:** 2026-10-25 · **Status:** Accepted
+- **Context:** Part 4f of PH-2 step 4 (DEC-105) implements the escalation chains of STD-LGS-063 and the service-level report of STD-LGS-064 (BPA 1.0-rc10, DSN-DVM-744, -754) and the node's due-date job (DSN-NOD-231). It also builds the default expiry and the expiry event of pending changes that part 4b left for this part (DSN-DVM-552, DEC-106). Before the part, the four escalation vectors failed and the two report vectors were not applicable. The owner asked to continue on 2026-10-25.
+- **Decision:**
+  1. **Escalation.** The kernel's tick, run when the clock advances (`set_now`, and every second by the node's leader loop), applies escalation steps.
+     - **Scope.** It covers the open and claimed tasks of the branches where tasks were created (`kernel_meta` `work_branches`), for every step whose time (the due time plus `after`) has come.
+     - **Order.** Steps are applied in the order of their times, then of branch and task, once per task and step.
+     - **Effects.** Each step is a kernel commit that records it in `escalations` and `log`, reassigns or raises the priority as declared, and emits `task.escalated` with the commit's sequence number.
+  2. **Report.** `sla_report {branch, from, to}` counts, per type and queue, the tasks with a due time completed in the window on time or late, the attainment (half-even, 4 places) and the open overdue tasks, with a total.
+  3. **Node.** The leader loop's tick is the periodic job of DSN-NOD-231. Every `SWEEP_SECS` it also runs `host.sweep_pending`:
+     - a pending change past its expiry, or past `PENDING_EXPIRY` (`P30D`) after its request when its requirements set none, becomes `expired`;
+     - the effect `pending_change.expired` is emitted.
+
+     The adapter has no default expiry, so the conformance vectors keep the expiry of STD-TXN-060.
+  4. **Claim.** The conformance test claims STD-LGS-063 and STD-LGS-064, so every clause of BPA 1.0-rc10 is implemented in the kernel.
+  5. **Design notes.** DSN-DVM-552, -744, -754 and DSN-NOD-231 get phase notes:
+     - workflow timers come with step 6;
+     - reminder delivery comes with step 13;
+     - time in state and a maintained SLA projection come with step 13.
+- **Consequences:**
+  - The 78 vectors of the approval, delegation and work clauses pass in memory and on PostgreSQL 16, and the conformance test passes with every clause of BPA 1.0-rc10.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - An index of escalation due times per branch was deferred: the tick reads the tasks of the work branches. The benchmarks of step 18 show whether the index is needed.
+  - Emitting `pending_change.expired` when a read finds a pending change expired was rejected: the adapter's operations would emit effects that STD-TXN-060 does not state.
+- **Affects:** STD-LGS-063, STD-LGS-064, STD-TXN-060, DSN-DVM-552, DSN-DVM-744, DSN-DVM-754, DSN-NOD-208, DSN-NOD-231, FR-FLOW-081, FR-FLOW-082, FR-FLOW-083, DEC-105, DEC-106, DEC-109

@@ -83,6 +83,8 @@ pub const WORK_SCAN_SECS: u64 = 30;
 pub const WORK_HORIZON_SECS: i64 = 60;
 /// The retention sweep's interval (DSN-NOD-202).
 pub const SWEEP_SECS: u64 = 600;
+/// The default expiry of a pending change whose requirements set none (DSN-DVM-552).
+pub const PENDING_EXPIRY: &str = "P30D";
 /// Seconds between re-validations of a session's credential (DSN-NOD-106: a local cache
 /// no longer than the NR-SEC-005 bound).
 pub const RECHECK_SECS: i64 = 5;
@@ -432,6 +434,10 @@ fn host_call(vae: &mut Vae, op: &str, input: &Value) -> Result<Value, BpaError> 
             .engine_mut()
             .set_idempotency_retention(input["days"].as_i64().unwrap_or_default()),
         "host.sweep_idempotency" => vae.engine_mut().sweep_idempotency(input["now"].as_str()),
+        // DSN-DVM-552, DSN-NOD-231 (PH-2 step 4f): pending changes past their expiry
+        "host.sweep_pending" => vae
+            .engine_mut()
+            .sweep_pending(input["default"].as_str().unwrap_or(PENDING_EXPIRY)),
         "host.field_classification" => {
             // the classification of a field, declared or inherited (STD-FND-027)
             let field = input["field"].as_str().unwrap_or_default();
@@ -1784,6 +1790,9 @@ impl Server {
                 }
                 if sweep && let Err(e) = h.call("host.sweep_idempotency", json!({})).await {
                     self.log_error("idempotency sweep", format!("idempotency sweep {key}"), &e);
+                }
+                if sweep && let Err(e) = h.call("host.sweep_pending", json!({})).await {
+                    self.log_error("pending sweep", format!("pending sweep {key}"), &e);
                 }
                 if sweep {
                     let (me, k) = (self.clone(), key.clone());

@@ -340,6 +340,8 @@ impl Engine {
     /// Emit the `BecameEffective` events whose segment start the clock has reached and
     /// whose segment still starts there with the same version (STD-TIME-050).
     pub fn tick(&mut self) -> Result<(), BpaError> {
+        // STD-LGS-063 (BPA 1.0-rc10, PH-2 step 4f): escalation steps as the clock reaches them
+        self.task_escalations()?;
         let timers = self.store.timers()?;
         if timers.is_empty() {
             return Ok(());

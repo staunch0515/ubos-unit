@@ -241,6 +241,7 @@ Reading order:
   1. Given an overdue task, when the job runs, then the escalation step is applied once.
 - **Verification:** CONF
 - **Origin:** FR-FLOW-081, FR-FLOW-082
+- **Phase note:** DEC-110: built in PH-2 step 4f. The escalation steps are applied by the kernel's tick, which the leader loop runs every second for each VAE (DSN-NOD-208), so the periodic job is that loop; it also sweeps the pending changes past their expiry every `SWEEP_SECS` (DSN-DVM-552). Reminders are the `task.escalated` effects; their delivery to people comes with the notification channels of PH-2 step 13.
 
 ## Workers
 

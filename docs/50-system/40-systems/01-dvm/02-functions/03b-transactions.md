@@ -337,6 +337,7 @@ This file designs the crate `ubos-txn`. Reading order:
 - **Verification:** CONF
 - **Origin:** STD-TXN-060
 - **Phase note:** DEC-106: PH-2 step 4b expires a pending change at the shortest `expires_in` of its requirements, checked when it is read or decided (STD-TXN-060). The default expiry and the event of a sweep come with the node's due-date job in PH-2 step 4f (DSN-NOD-231).
+- **Phase note:** DEC-110: the node sweeps the pending changes every `SWEEP_SECS`: one past its expiry, or past `PENDING_EXPIRY` (30 days) after its request when its requirements set none, becomes `expired`, and the effect `pending_change.expired` is emitted. A pending change found expired first by a read or a decision expires without the event, as STD-TXN-060 states.
 
 ### DSN-DVM-560 — Bulk processes
 - **Statement:** A bulk process (STD-TXN-070) MUST iterate a query result in batches (default 1,000 objects), commit one commit per batch with a common bulk ID, and persist a checkpoint (last key processed) in each commit. On restart, it MUST resume from the checkpoint. It MUST be cancellable between batches.

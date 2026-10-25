@@ -713,6 +713,16 @@ impl Engine {
                 body["due_date"] = json!(d);
             }
         }
+        // the branches the escalation sweep looks at (STD-LGS-063)
+        let mut branches = self
+            .store
+            .meta("work_branches")?
+            .and_then(|v| names(&v))
+            .unwrap_or_default();
+        if !branches.iter().any(|b| b == branch) {
+            branches.push(branch.to_string());
+            self.store.put_meta("work_branches", &json!(branches))?;
+        }
         self.kernel_write(
             branch,
             vec![json!({"op": "create", "object_id": tid, "class": TASK,
@@ -840,5 +850,191 @@ impl Engine {
         let counts =
             json!({"tasks": tasks.len(), "overdue": overdue, "approvals": approvals.len()});
         Ok(json!({"tasks": tasks, "approvals": approvals, "counts": counts}))
+    }
+}
+
+impl Engine {
+    /// STD-LGS-063 (BPA 1.0-rc10, PH-2 step 4f): apply the escalation steps whose time the
+    /// clock has reached to the open and claimed tasks, in the order of their times, then
+    /// of branch and task, once per task and step; each step is a kernel commit and emits
+    /// `task.escalated`.
+    pub(crate) fn task_escalations(&mut self) -> Result<(), BpaError> {
+        let branches = self
+            .store
+            .meta("work_branches")?
+            .and_then(|v| names(&v))
+            .unwrap_or_default();
+        let mut due: Vec<(String, String, String, usize)> = Vec::new();
+        for branch in branches {
+            let active = Repo::new(self.store.as_mut(), &self.registry)
+                .head(&branch)
+                .is_ok();
+            if !active {
+                continue;
+            }
+            let queues: std::collections::BTreeMap<String, Value> =
+                self.all_of(&branch, QUEUE)?.into_iter().collect();
+            for (tid, b) in self.all_of(&branch, TASK)? {
+                if !matches!(s(&b, "state"), Some("open" | "claimed")) {
+                    continue;
+                }
+                let (Some(d), Some(q)) = (s(&b, "due"), s(&b, "queue").and_then(|q| queues.get(q)))
+                else {
+                    continue;
+                };
+                let done: Vec<u64> = b["escalations"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|e| e["step"].as_u64())
+                    .collect();
+                for (k, step) in q["escalation"].as_array().into_iter().flatten().enumerate() {
+                    let at = crate::approvals::plus(d, s(step, "after").unwrap_or("PT0S"))?;
+                    if !done.contains(&(k as u64)) && at.as_str() <= self.now.as_str() {
+                        due.push((at, branch.clone(), tid.clone(), k));
+                    }
+                }
+            }
+        }
+        due.sort();
+        for (at, branch, tid, k) in due {
+            let (head, mut b) = self.live_of(&branch, &tid, TASK)?;
+            let done = b["escalations"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .any(|e| e["step"].as_u64() == Some(k as u64));
+            if done || !matches!(s(&b, "state"), Some("open" | "claimed")) {
+                continue;
+            }
+            let qid = s(&b, "queue").unwrap_or_default().to_string();
+            let q = self.live_of(&branch, &qid, QUEUE)?.1;
+            let step = q["escalation"][k].clone();
+            let action = s(&step, "action").unwrap_or_default().to_string();
+            let mut rec = json!({"step": k, "action": action, "at": at});
+            let m = b.as_object_mut().expect("task body");
+            match action.as_str() {
+                "reassign" => {
+                    if let Some(q2) = s(&step["to"], "queue") {
+                        m.insert("queue".into(), json!(q2));
+                        m.remove("assignee");
+                    } else {
+                        m.insert("assignee".into(), step["to"].clone());
+                    }
+                    m.insert("state".into(), json!("open"));
+                    m.remove("owner");
+                    m.remove("on_behalf_of");
+                    m.remove("assigned_by");
+                }
+                "raise_priority" => {
+                    m.insert("priority".into(), step["priority"].clone());
+                }
+                _ => {}
+            }
+            if !step["to"].is_null() {
+                rec["to"] = step["to"].clone();
+            }
+            let mut escalations = m
+                .get("escalations")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            escalations.push(rec);
+            m.insert("escalations".into(), Value::Array(escalations));
+            let mut log = m
+                .get("log")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            log.push(json!({"action": "escalate", "step": k, "escalation": action, "at": at}));
+            m.insert("log".into(), Value::Array(log));
+            let res = self.kernel_write(
+                &branch,
+                vec![json!({"op": "update", "object_id": tid, "base": head, "body": b})],
+                None,
+            )?;
+            let mut payload = json!({"task_id": tid, "step": k, "action": action});
+            if !step["to"].is_null() {
+                payload["to"] = step["to"].clone();
+            }
+            self.store.outbox_push(&[json!({
+                "effect_id": format!("task-escalation/{tid}/{k}"), "type": "task.escalated",
+                "branch": branch, "cseq": res["cseq"], "object_id": tid, "payload": payload})])?;
+        }
+        Ok(())
+    }
+
+    /// Adapter operation `sla_report` (STD-LGS-064): per task type and queue, the tasks with
+    /// a due time completed in `[from, to)` on time or late, the attainment and the open
+    /// overdue tasks, with a total.
+    pub fn sla_report(&mut self, i: &Value) -> Result<Value, BpaError> {
+        let branch = s(i, "branch").unwrap_or("main").to_string();
+        let (Some(from), Some(to)) = (s(i, "from"), s(i, "to")) else {
+            return Err(invalid("from and to are dates"));
+        };
+        for d in [from, to] {
+            ubos_types::time::parse_date(d).map_err(|_| invalid("from and to are dates"))?;
+        }
+        let mut rows: std::collections::BTreeMap<(String, String), Value> =
+            std::collections::BTreeMap::new();
+        for (_, b) in self.all_of(&branch, TASK)? {
+            let Some(due) = s(&b, "due") else { continue };
+            let ty = s(&b, "type").unwrap_or_default().to_string();
+            let queue = s(&b, "queue").map(str::to_string);
+            let key = (ty.clone(), queue.clone().unwrap_or_default());
+            let row = |rows: &mut std::collections::BTreeMap<(String, String), Value>| {
+                rows.entry(key.clone())
+                    .or_insert_with(|| {
+                        json!({"type": ty, "queue": queue, "completed": 0, "on_time": 0,
+                               "late": 0, "open_overdue": 0})
+                    })
+                    .clone()
+            };
+            let state = s(&b, "state").unwrap_or_default();
+            let done_at = s(&b, "completed_at").unwrap_or_default();
+            let bump = |r: &mut Value, k: &str| {
+                r[k] = json!(r[k].as_u64().unwrap_or_default() + 1);
+            };
+            if state == "completed" && done_at.get(..10).is_some_and(|d| d >= from && d < to) {
+                let mut r = row(&mut rows);
+                bump(&mut r, "completed");
+                bump(&mut r, if done_at <= due { "on_time" } else { "late" });
+                rows.insert(key, r);
+            } else if matches!(state, "open" | "claimed") && self.now.as_str() >= due {
+                let mut r = row(&mut rows);
+                bump(&mut r, "open_overdue");
+                rows.insert(key, r);
+            }
+        }
+        let rate = |r: &Value| -> Value {
+            let ok = r["on_time"].as_u64().unwrap_or_default();
+            let n = ok + r["late"].as_u64().unwrap_or_default();
+            if n == 0 {
+                return Value::Null;
+            }
+            let q = Decimal::parse(&ok.to_string())
+                .and_then(|a| {
+                    a.div(
+                        &Decimal::parse(&n.to_string())?,
+                        4,
+                        ubos_types::decimal::Rounding::HalfEven,
+                    )
+                })
+                .map(|d| d.format(Some(4)));
+            q.map(Value::String).unwrap_or(Value::Null)
+        };
+        let mut out = Vec::new();
+        let mut total = json!({"completed": 0, "on_time": 0, "late": 0, "open_overdue": 0});
+        for (_, mut r) in rows {
+            r["attainment"] = rate(&r);
+            for k in ["completed", "on_time", "late", "open_overdue"] {
+                total[k] = json!(
+                    total[k].as_u64().unwrap_or_default() + r[k].as_u64().unwrap_or_default()
+                );
+            }
+            out.push(r);
+        }
+        total["attainment"] = rate(&total);
+        Ok(json!({"from": from, "to": to, "rows": out, "total": total}))
     }
 }

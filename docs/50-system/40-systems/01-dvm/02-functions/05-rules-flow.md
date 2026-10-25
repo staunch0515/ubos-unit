@@ -305,6 +305,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given a 2-business-day rule on Friday, when computed, then the due date is Tuesday.
 - **Verification:** CONF
 - **Origin:** FR-FLOW-081, FR-FLOW-082, FR-FLOW-083
+- **Phase note:** DEC-110: built in PH-2 steps 4e and 4f as BPA 1.0-rc10 states it (STD-LGS-063): due rules on the queue's calendars at creation, escalation steps applied when the clock reaches them (the kernel's tick) rather than by workflow timers, which come with PH-2 step 6.
 
 ### DSN-DVM-745 — Delegation
 - **Statement:** Delegation objects (FR-FLOW-091) MUST have scope, validity and a delegate; the context MUST carry the delegation chain; expired delegations MUST fail with `IAM.DELEGATION_EXPIRED`. Delegation MUST NOT exceed the delegator's rights (FR-FLOW-092).
@@ -378,6 +379,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given 1,000 completed tasks, when the SLA projection is read, then it equals a recomputation from history.
 - **Verification:** PROP
 - **Origin:** FR-FLOW-083
+- **Phase note:** DEC-110: PH-2 step 4f builds the service-level report of BPA 1.0-rc10 (STD-LGS-064) as the operation `sla_report`, computed from the tasks at the head of the branch. Time in state and a maintained SLA projection over lifecycle history follow with the reports of PH-2 step 13.
 
 ## Simulation and rule tests
 

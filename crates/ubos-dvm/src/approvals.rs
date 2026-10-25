@@ -82,7 +82,7 @@ pub(crate) fn requirements(decisions: &[(String, String, Value)]) -> Vec<Value> 
 }
 
 /// `now` plus a duration, as an instant.
-fn plus(now: &str, duration: &str) -> Result<String, BpaError> {
+pub(crate) fn plus(now: &str, duration: &str) -> Result<String, BpaError> {
     let us = ubos_expr::value::parse_duration(duration)?;
     let t = ubos_types::time::parse_instant(now)?
         + chrono::Duration::microseconds(i64::try_from(us).unwrap_or(i64::MAX));
@@ -193,7 +193,7 @@ impl Engine {
         let mut rec = json!({"pending_change_id": process_id, "target_branch": branch,
                              "changes": changes, "preview": preview, "requirements": reqs,
                              "approvals": [], "state": "pending", "initiator": initiator,
-                             "process_id": process_id});
+                             "process_id": process_id, "requested_at": self.now});
         let mut exp: Option<String> = None;
         for r in &reqs {
             if let Some(d) = s(r, "expires_in") {
@@ -271,6 +271,48 @@ impl Engine {
             rec["approvals"] = json!([]);
         }
         Ok(true)
+    }
+
+    /// The node's sweep of pending changes (DSN-DVM-552, PH-2 step 4f): a pending change past
+    /// its expiry, or past `default` after its request when its requirements set none,
+    /// becomes `expired`, and the effect `pending_change.expired` is emitted.
+    pub fn sweep_pending(&mut self, default: &str) -> Result<Value, BpaError> {
+        let ids: Vec<String> = self
+            .store
+            .meta("pending_changes")?
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|x| x.as_str().map(str::to_string))
+            .collect();
+        let mut expired = 0usize;
+        for id in ids {
+            let Some(mut rec) = self.store.meta(&Self::pc_key(&id))? else {
+                continue;
+            };
+            if s(&rec, "state") != Some("pending") {
+                continue;
+            }
+            let at = match (s(&rec, "expires_at"), s(&rec, "requested_at")) {
+                (Some(e), _) => e.to_string(),
+                (None, Some(r)) => plus(r, default)?,
+                (None, None) => continue,
+            };
+            if self.now < at {
+                continue;
+            }
+            rec["state"] = json!("expired");
+            rec["expires_at"] = json!(at);
+            self.pc_put(&rec)?;
+            let branch = s(&rec, "target_branch").unwrap_or("main").to_string();
+            let cseq = Repo::new(self.store.as_mut(), &self.registry).ordinal(&branch, None)?;
+            self.store.outbox_push(&[json!({
+                "effect_id": format!("pending-change-expired/{id}"),
+                "type": "pending_change.expired", "branch": branch, "cseq": cseq,
+                "payload": {"pending_change_id": id, "expires_at": at}})])?;
+            expired += 1;
+        }
+        Ok(json!({"expired": expired}))
     }
 
     /// Adapter operation `pending_change` (STD-TXN-060).
