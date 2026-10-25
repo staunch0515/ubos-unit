@@ -32,6 +32,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-106 | PH-2 step 4b: deferred commits and approvals in the kernel — pending changes of port calls called with `defer`, requirements, expiry and invalidation, eligibility, separation of duties, approval evidence and the application in a new process; STD-TXN-060 and STD-LGS-041…043 claimed (22 vectors, memory and PostgreSQL) | Accepted |
 | DEC-107 | PH-2 step 4c: governed reopening of periods in the kernel — the decisions of the port `reopen` govern `reopen_period`, a reopening that requires approval waits as a pending change; the adapter's directory (`principal`); the conformance test runs BPA 1.0-rc10 | Accepted |
 | DEC-108 | PH-2 step 4d: delegations in the kernel — `Delegation` System objects, `delegate`, `revoke_delegation`, `delegations`, approvals through a delegation; STD-LGS-060 claimed; slugs of kernel-written delegations and tasks corrected in BPA 1.0-rc10 before its tag | Accepted |
+| DEC-109 | PH-2 step 4e: tasks, work queues and the inbox in the kernel — `Task` and `WorkQueue`, the task actions with eligibility, `base` and log, the assignment rules, due rules at creation, tasks through a delegation, the inbox with pending changes; STD-LGS-061 and -062 claimed | Accepted |
 
 ---
 
@@ -642,3 +643,34 @@ DEC-090 on follow.
   - Exempting kernel-written objects from slug uniqueness was rejected: a slug addresses one object in its URI.
   - Keeping the defective vectors and superseding them in a later release was rejected: the release is not tagged, and a correction before the tag keeps the released text consistent.
 - **Affects:** STD-LGS-060, STD-LGS-061, STD-LGS-063, STD-LGS-043, DSN-DVM-741, DSN-DVM-745, FR-FLOW-091, FR-FLOW-092, FR-FLOW-093, VER-INSP-9008, DEC-045, DEC-105, DEC-106, DEC-107
+
+### DEC-109 — Tasks, work queues and the inbox in the kernel (PH-2 step 4, part 4e)
+- **Date:** 2026-10-25 · **Status:** Accepted
+- **Context:** Part 4e of PH-2 step 4 (DEC-105) implements the tasks of STD-LGS-061 and the work queues, assignment rules and inbox of STD-LGS-062 (BPA 1.0-rc10, DSN-DVM-743) in the kernel. Before the part, their 25 vectors were not applicable. The owner asked to continue on 2026-10-25.
+- **Decision:**
+  1. **Classes.** `Task` (System) and `WorkQueue` (Definition below ConfigAsset) join the kernel's genesis registry. A commit that writes a work queue checks its members, managers, skills, due rule and escalation steps (`MODEL.INVALID_VALUE`).
+  2. **Task operation.** `task` in `crates/ubos-dvm/src/work.rs` follows the reference model. Each action is one commit of a kernel process with the principal as initiator, and the body records the action in its `log`.
+     - **States.** `create` writes an open task; `claim`, `release`, `reassign`, `complete` and `cancel` move it between the states.
+     - **Eligibility.** Only the assigned principal, a holder of the assigned role or a queue member claims; only the owner releases or completes; only a queue manager reassigns; only the creator or a manager cancels.
+     - **Concurrency.** `base` refuses a task that changed since (`TXN.HEAD_MOVED`).
+     - **Delegation.** A delegate claims, releases and completes for the delegator on the task types of the delegation's scope.
+  3. **Assignment.** At creation in a queue without an assignee, the rule assigns:
+     - `round_robin` by the count of the tasks the rule assigned in the queue;
+     - `least_loaded` by the open or claimed tasks of each member, the first member on a tie;
+     - `skill` among the members with every skill of the task.
+  4. **Due rules.** A task created without `due` in a queue with a `due_rule` takes its due time from the rule, evaluated by the L1 evaluator with the queue's calendars. A date gives the start of the next day and is recorded as `due_date`. Escalation and the service-level report remain for part 4f.
+  5. **Inbox.** `inbox` combines, at the head of the branch:
+     - the tasks of the principal, of their roles and of their queues;
+     - the tasks of their active delegations, with `on_behalf_of`;
+     - the pending changes they are eligible to decide, by the checks of part 4b.
+
+     It orders the tasks by due time and priority (or `sort: priority`) and counts tasks, overdue tasks and approvals.
+  6. **Claim.** The conformance test claims STD-LGS-061 and STD-LGS-062.
+  7. **DSN-DVM-743.** A phase note records the inbox as an operation; a saved query over tasks follows with the saved queries of step 13.
+- **Consequences:**
+  - The 25 vectors pass in memory and on PostgreSQL 16, together with the 40 of the approval and delegation clauses.
+  - The four escalation vectors and the two service-level vectors of STD-LGS-063 and -064 wait for part 4f.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - Indexing open tasks per member for the load of `least_loaded` was rejected for now: the tasks of a branch are read once per creation, and the benchmarks of step 18 show whether an index is needed.
+- **Affects:** STD-LGS-061, STD-LGS-062, STD-LGS-063, DSN-DVM-743, DSN-DVM-744, FR-FLOW-051, FR-FLOW-052, FR-FLOW-053, FR-FLOW-054, FR-FLOW-081, DEC-105, DEC-106, DEC-108

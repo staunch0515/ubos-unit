@@ -1672,6 +1672,8 @@ pub(crate) fn commit_on(
         crate::projections::maintain(&mut repo, &mut tx, &written)?;
         // STD-KIND-025 (BPA 1.0-rc8, PH-2 step 3d): the transitions of period objects
         crate::periods::check_transitions(&mut repo, &mut tx, &written)?;
+        // STD-LGS-062 (BPA 1.0-rc10, PH-2 step 4e): the work queues written
+        crate::work::check(&mut repo, &mut tx, &written)?;
     }
     // STD-CLS-004: the shape and the extension rule of the lifecycle objects written
     {

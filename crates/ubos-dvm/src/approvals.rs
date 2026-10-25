@@ -224,7 +224,7 @@ impl Engine {
 
     /// A pending change, refreshed when still `pending` (FR-FLOW-045): expired at its
     /// expiry, invalidated when a subject changed since the request.
-    fn pc(&mut self, id: &str) -> Result<Value, BpaError> {
+    pub(crate) fn pc(&mut self, id: &str) -> Result<Value, BpaError> {
         let Some(mut rec) = self.store.meta(&Self::pc_key(id))? else {
             return Err(BpaError::new("IAM.NOT_FOUND", "unknown pending change"));
         };
@@ -302,7 +302,7 @@ impl Engine {
 
     /// STD-LGS-041 eligibility and STD-LGS-042 separation of duties of an approval by
     /// `approver`, acting with `i` (`on_behalf_of`, `roles`).
-    fn eligible(
+    pub(crate) fn eligible(
         &mut self,
         rec: &Value,
         req: &Value,

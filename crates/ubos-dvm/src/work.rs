@@ -216,7 +216,7 @@ impl Engine {
     }
 
     /// The state of a delegation at the current time.
-    fn delegation_state(&self, body: &Value) -> &'static str {
+    pub(crate) fn delegation_state(&self, body: &Value) -> &'static str {
         if s(body, "state") == Some("revoked") {
             "revoked"
         } else if self.now.as_str() < s(body, "valid_from").unwrap_or_default() {
@@ -306,5 +306,539 @@ impl Engine {
             return Err(denied(json!({"delegation": "out_of_scope"})));
         }
         Ok(body)
+    }
+}
+
+pub(crate) const TASK: &str = "Task";
+pub(crate) const QUEUE: &str = "WorkQueue";
+const ESCALATION: &[&str] = &["notify", "reassign", "raise_priority"];
+const FAR: &str = "9999-12-31T23:59:59.999999Z";
+
+/// A task target `{principal}`, `{role}` or `{queue}` (the kinds allowed).
+fn target(to: Option<&Value>, kinds: &[&str]) -> Result<Value, BpaError> {
+    let ok = to.and_then(Value::as_object).is_some_and(|m| {
+        m.len() == 1
+            && m.iter()
+                .all(|(k, v)| kinds.contains(&k.as_str()) && v.is_string())
+    });
+    if !ok {
+        return Err(invalid(&format!(
+            "a target is one of {}",
+            kinds
+                .iter()
+                .map(|k| format!("{{{k}}}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )));
+    }
+    Ok(to.cloned().unwrap_or(Value::Null))
+}
+
+/// STD-LGS-062, -063 (BPA 1.0-rc10): the declaration of a work queue.
+fn check_queue(b: &Value) -> Result<(), BpaError> {
+    if names(&b["members"]).is_none() {
+        return Err(invalid("members are principals"));
+    }
+    if !b["managers"].is_null() && names(&b["managers"]).is_none() {
+        return Err(invalid("managers are roles"));
+    }
+    if !b["skills"].is_null()
+        && !b["skills"]
+            .as_object()
+            .is_some_and(|m| m.values().all(|v| v.is_array()))
+    {
+        return Err(invalid("skills map a member to a list of skills"));
+    }
+    if !b["due_rule"].is_null() && !b["due_rule"].is_string() {
+        return Err(invalid("a due rule is an L1 expression"));
+    }
+    for step in b["escalation"].as_array().into_iter().flatten() {
+        let action = s(step, "action").unwrap_or_default();
+        let Some(after) = s(step, "after").filter(|_| ESCALATION.contains(&action)) else {
+            return Err(invalid(
+                "an escalation step is {after, action} with action notify, reassign or raise_priority",
+            ));
+        };
+        ubos_expr::value::parse_duration(after)?;
+        match action {
+            "notify" => {
+                target(step.get("to"), &["principal", "role"])?;
+            }
+            "reassign" => {
+                target(step.get("to"), &["principal", "role", "queue"])?;
+            }
+            _ => {
+                if !step["priority"].is_i64() {
+                    return Err(invalid("raise_priority names the priority"));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// STD-LGS-062 (BPA 1.0-rc10): the work queues the commit wrote.
+pub(crate) fn check(
+    repo: &mut Repo,
+    tx: &mut ubos_version::state::Tx,
+    written: &[(String, String)],
+) -> Result<(), BpaError> {
+    for (_, vh) in written {
+        let v = repo.version_in(tx, vh)?;
+        if s(&v, "class") == Some(QUEUE) && v["tombstone"] != json!(true) {
+            check_queue(&v["body"])?;
+        }
+    }
+    Ok(())
+}
+
+fn log_entry(action: &str, principal: &str, behalf: Option<&str>, now: &str) -> Value {
+    let mut e = json!({"action": action, "principal": principal, "at": now});
+    if let Some(b) = behalf {
+        e["on_behalf_of"] = json!(b);
+    }
+    e
+}
+
+fn with_id(mut body: Value, tid: &str) -> Value {
+    body["task_id"] = json!(tid);
+    body
+}
+
+impl Engine {
+    /// The open or claimed tasks assigned to or owned by a member.
+    fn load(tasks: &[(String, Value)], member: &str) -> usize {
+        tasks
+            .iter()
+            .filter(|(_, b)| {
+                matches!(s(b, "state"), Some("open" | "claimed"))
+                    && (s(b, "owner") == Some(member)
+                        || (b["owner"].is_null() && s(&b["assignee"], "principal") == Some(member)))
+            })
+            .count()
+    }
+
+    /// STD-LGS-062: the member a queue's rule assigns a new task to.
+    fn assign(tasks: &[(String, Value)], qid: &str, q: &Value, task: &Value) -> Option<String> {
+        let rule = s(q, "assignment").unwrap_or("manual");
+        let members = names(&q["members"]).unwrap_or_default();
+        if rule == "manual" || members.is_empty() {
+            return None;
+        }
+        if rule == "round_robin" {
+            let n = tasks
+                .iter()
+                .filter(|(_, b)| {
+                    s(b, "queue") == Some(qid) && s(b, "assigned_by") == Some("round_robin")
+                })
+                .count();
+            return Some(members[n % members.len()].clone());
+        }
+        let mut cands = members;
+        if rule == "skill" {
+            let need = names(&task["skills"]).unwrap_or_default();
+            cands.retain(|m| {
+                let has = names(&q["skills"][m.as_str()]).unwrap_or_default();
+                need.iter().all(|x| has.contains(x))
+            });
+        }
+        cands
+            .iter()
+            .enumerate()
+            .min_by_key(|(k, m)| (Self::load(tasks, m), *k))
+            .map(|(_, m)| m.clone())
+    }
+
+    /// STD-LGS-063: the due instant (and date) of a queue's due rule for a new task.
+    fn due_of(&self, q: &Value, task: &Value) -> Result<(String, Option<String>), BpaError> {
+        let types = json!({"created": {"name": "created", "type": "date"},
+                           "created_at": {"name": "created_at", "type": "instant"},
+                           "type": {"name": "type", "type": "text"},
+                           "priority": {"name": "priority", "type": "integer"}});
+        let out = ubos_expr::eval_expr(
+            &json!({"expr": q["due_rule"], "params_types": types,
+                    "calendars": q.get("calendars").filter(|c| !c.is_null()).cloned().unwrap_or(json!({})),
+                    "params": {"created": &self.now[..10], "created_at": self.now,
+                               "type": task["type"], "priority": task["priority"]}}),
+            None,
+        )?;
+        let v = s(&out, "value").unwrap_or_default().to_string();
+        match s(&out, "type") {
+            Some("date") => {
+                let d = ubos_types::time::parse_date(&v)? + chrono::Duration::days(1);
+                Ok((
+                    format!("{}T00:00:00.000000Z", d.format("%Y-%m-%d")),
+                    Some(v),
+                ))
+            }
+            Some("instant") => Ok((v, None)),
+            _ => Err(invalid("a due rule gives a date or an instant")),
+        }
+    }
+
+    /// Adapter operation `task` (STD-LGS-061): create, claim, release, reassign, complete
+    /// or cancel a task, each in one commit of a kernel process with the principal as
+    /// initiator.
+    pub fn task(&mut self, i: &Value) -> Result<Value, BpaError> {
+        let branch = s(i, "branch").unwrap_or("main").to_string();
+        let action = s(i, "action").unwrap_or_default().to_string();
+        if ![
+            "create", "claim", "release", "reassign", "complete", "cancel",
+        ]
+        .contains(&action.as_str())
+        {
+            return Err(invalid(
+                "a task action is one of create, claim, release, reassign, complete, cancel",
+            ));
+        }
+        let Some(principal) = s(i, "principal").map(str::to_string) else {
+            return Err(incomplete("principal"));
+        };
+        let Some(tid) = s(i, "task_id").map(str::to_string) else {
+            return Err(incomplete("task_id"));
+        };
+        if action == "create" {
+            return self.task_create(&branch, &tid, &principal, i);
+        }
+        let (head, mut body) = self.live_of(&branch, &tid, TASK)?;
+        if let Some(b) = s(i, "base")
+            && b != head
+        {
+            return Err(BpaError::with_details(
+                "TXN.HEAD_MOVED",
+                json!({"object_id": tid}),
+            ));
+        }
+        let q = match s(&body, "queue") {
+            Some(qid) => Some(self.live_of(&branch, qid, QUEUE)?.1),
+            None => None,
+        };
+        let own_roles = self.roles_of(&principal)?;
+        let manager = q.as_ref().is_some_and(|q| {
+            names(&q["managers"])
+                .unwrap_or_default()
+                .iter()
+                .any(|m| own_roles.contains(m))
+        });
+        let (acting, behalf, roles) = match s(i, "delegation")
+            .filter(|_| matches!(action.as_str(), "claim" | "release" | "complete"))
+        {
+            Some(d) => {
+                let tt = s(&body, "type").unwrap_or_default().to_string();
+                let del = self.use_delegation(
+                    &branch,
+                    d,
+                    &principal,
+                    None,
+                    Use {
+                        task_type: Some(&tt),
+                        ..Use::default()
+                    },
+                )?;
+                let who = s(&del, "delegator").unwrap_or_default().to_string();
+                (
+                    who.clone(),
+                    Some(who),
+                    names(&del["roles"]).unwrap_or_default(),
+                )
+            }
+            None => (principal.clone(), None, own_roles),
+        };
+        let state = s(&body, "state").unwrap_or_default().to_string();
+        let need = |states: &[&str]| -> Result<(), BpaError> {
+            if states.contains(&state.as_str()) {
+                Ok(())
+            } else {
+                Err(BpaError::with_details(
+                    "FLOW.TRANSITION_NOT_ALLOWED",
+                    json!({"state": state, "action": action}),
+                ))
+            }
+        };
+        let now = self.now.clone();
+        let m = body.as_object_mut().expect("task body");
+        let mut log = m
+            .get("log")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        match action.as_str() {
+            "claim" => {
+                need(&["open"])?;
+                let a = m.get("assignee").cloned().unwrap_or(Value::Null);
+                let ok = s(&a, "principal") == Some(acting.as_str())
+                    || s(&a, "role").is_some_and(|r| roles.iter().any(|x| x == r))
+                    || (a.get("principal").is_none()
+                        && a.get("role").is_none()
+                        && q.as_ref().is_some_and(|q| {
+                            names(&q["members"]).unwrap_or_default().contains(&acting)
+                        }));
+                if !ok {
+                    return Err(denied(
+                        json!({"task": "not_eligible", "principal": principal}),
+                    ));
+                }
+                m.insert("state".into(), json!("claimed"));
+                m.insert("owner".into(), json!(principal));
+                if let Some(b) = &behalf {
+                    m.insert("on_behalf_of".into(), json!(b));
+                }
+                log.push(log_entry("claim", &principal, behalf.as_deref(), &now));
+            }
+            "release" | "complete" => {
+                need(&["claimed"])?;
+                if m.get("owner").and_then(Value::as_str) != Some(principal.as_str()) {
+                    return Err(denied(json!({"task": "not_owner", "principal": principal})));
+                }
+                if action == "release" {
+                    m.insert("state".into(), json!("open"));
+                    m.remove("owner");
+                    m.remove("on_behalf_of");
+                } else {
+                    m.insert("state".into(), json!("completed"));
+                    m.insert("completed_at".into(), json!(now));
+                    if let Some(o) = i.get("outcome").filter(|v| !v.is_null()) {
+                        m.insert("outcome".into(), o.clone());
+                    }
+                }
+                log.push(log_entry(&action, &principal, behalf.as_deref(), &now));
+            }
+            "reassign" => {
+                need(&["open", "claimed"])?;
+                if !manager {
+                    return Err(denied(
+                        json!({"task": "not_manager", "principal": principal}),
+                    ));
+                }
+                let to = target(i.get("to"), &["principal", "role", "queue"])?;
+                if let Some(qid) = s(&to, "queue") {
+                    self.live_of(&branch, qid, QUEUE)?;
+                    m.insert("queue".into(), json!(qid));
+                    m.remove("assignee");
+                } else {
+                    m.insert("assignee".into(), to.clone());
+                }
+                m.insert("state".into(), json!("open"));
+                m.remove("owner");
+                m.remove("on_behalf_of");
+                m.remove("assigned_by");
+                let mut e = log_entry("reassign", &principal, None, &now);
+                e["to"] = to;
+                if let Some(r) = i.get("reason").filter(|v| !v.is_null()) {
+                    e["reason"] = r.clone();
+                }
+                log.push(e);
+            }
+            _ => {
+                need(&["open", "claimed"])?;
+                if !manager
+                    && m.get("created_by").and_then(Value::as_str) != Some(principal.as_str())
+                {
+                    return Err(denied(
+                        json!({"task": "not_manager", "principal": principal}),
+                    ));
+                }
+                m.insert("state".into(), json!("cancelled"));
+                let mut e = log_entry("cancel", &principal, None, &now);
+                if let Some(r) = i.get("reason").filter(|v| !v.is_null()) {
+                    e["reason"] = r.clone();
+                }
+                log.push(e);
+            }
+        }
+        m.insert("log".into(), Value::Array(log));
+        self.kernel_write(
+            &branch,
+            vec![json!({"op": "update", "object_id": tid, "base": head, "body": body})],
+            Some(&principal),
+        )?;
+        Ok(with_id(body, &tid))
+    }
+
+    fn task_create(
+        &mut self,
+        branch: &str,
+        tid: &str,
+        principal: &str,
+        i: &Value,
+    ) -> Result<Value, BpaError> {
+        let Some(ty) = s(i, "type") else {
+            return Err(incomplete("a task has a type"));
+        };
+        let queue = s(i, "queue");
+        if queue.is_none() && i.get("assignee").is_none_or(Value::is_null) {
+            return Err(incomplete("a task has a queue or an assignee"));
+        }
+        let prio = match i.get("priority") {
+            None | Some(Value::Null) => 0,
+            Some(v) => v
+                .as_i64()
+                .ok_or_else(|| invalid("a priority is an integer"))?,
+        };
+        let mut body = json!({"type": ty, "state": "open", "priority": prio,
+                              "created_by": principal, "created_at": self.now,
+                              "escalations": [],
+                              "log": [log_entry("create", principal, None, &self.now)]});
+        for k in ["subject", "data"] {
+            if let Some(v) = i.get(k).filter(|v| !v.is_null()) {
+                body[k] = v.clone();
+            }
+        }
+        if let Some(v) = i.get("skills").filter(|v| !v.is_null()) {
+            names(v).ok_or_else(|| invalid("skills are a list of names"))?;
+            body["skills"] = v.clone();
+        }
+        if let Some(a) = i.get("assignee").filter(|v| !v.is_null()) {
+            body["assignee"] = target(Some(a), &["principal", "role"])?;
+        }
+        let mut q = None;
+        if let Some(qid) = queue {
+            let qb = self.live_of(branch, qid, QUEUE)?.1;
+            body["queue"] = json!(qid);
+            if body.get("assignee").is_none() {
+                let tasks = self.all_of(branch, TASK)?;
+                if let Some(m) = Self::assign(&tasks, qid, &qb, &body) {
+                    body["assignee"] = json!({"principal": m});
+                    body["assigned_by"] = qb["assignment"].clone();
+                }
+            }
+            q = Some(qb);
+        }
+        if i.get("due").is_some_and(|v| !v.is_null()) {
+            body["due"] = json!(instant(i, "due")?);
+        } else if let Some(qb) = q.as_ref().filter(|qb| qb["due_rule"].is_string()) {
+            let (due, date) = self.due_of(qb, &body)?;
+            body["due"] = json!(due);
+            if let Some(d) = date {
+                body["due_date"] = json!(d);
+            }
+        }
+        self.kernel_write(
+            branch,
+            vec![json!({"op": "create", "object_id": tid, "class": TASK,
+                        "slug": format!("task-{tid}"), "body": body})],
+            Some(principal),
+        )?;
+        Ok(with_id(body, tid))
+    }
+
+    /// Adapter operation `inbox` (STD-LGS-062): the tasks a principal may work on and the
+    /// pending changes they may decide, with counts.
+    pub fn inbox(&mut self, i: &Value) -> Result<Value, BpaError> {
+        let branch = s(i, "branch").unwrap_or("main").to_string();
+        let Some(p) = s(i, "principal").map(str::to_string) else {
+            return Err(incomplete("principal"));
+        };
+        let roles = self.roles_of(&p)?;
+        let queues: std::collections::BTreeMap<String, Value> =
+            self.all_of(&branch, QUEUE)?.into_iter().collect();
+        let member = |qid: Option<&str>, who: &str| -> bool {
+            qid.and_then(|q| queues.get(q)).is_some_and(|q| {
+                names(&q["members"])
+                    .unwrap_or_default()
+                    .iter()
+                    .any(|m| m == who)
+            })
+        };
+        let mut delegated = Vec::new();
+        for (_, d) in self.all_of(&branch, DELEGATION)? {
+            if s(&d, "delegate") == Some(p.as_str())
+                && self.delegation_state(&d) == "active"
+                && !d["scope"]["task_types"].is_null()
+            {
+                delegated.push(d);
+            }
+        }
+        let mut tasks = Vec::new();
+        for (tid, b) in self.all_of(&branch, TASK)? {
+            let state = s(&b, "state").unwrap_or_default();
+            if state != "open" && state != "claimed" {
+                continue;
+            }
+            let a = &b["assignee"];
+            let open = state == "open";
+            let unassigned = a.is_null();
+            let mine = s(&b, "owner") == Some(p.as_str())
+                || (b["owner"].is_null() && s(a, "principal") == Some(p.as_str()));
+            if mine
+                || (open && s(a, "role").is_some_and(|r| roles.iter().any(|x| x == r)))
+                || (open && unassigned && member(s(&b, "queue"), &p))
+            {
+                tasks.push(with_id(b, &tid));
+                continue;
+            }
+            for d in &delegated {
+                let ty = s(&b, "type").unwrap_or_default();
+                if !names(&d["scope"]["task_types"])
+                    .unwrap_or_default()
+                    .iter()
+                    .any(|t| t == ty)
+                {
+                    continue;
+                }
+                let who = s(d, "delegator").unwrap_or_default();
+                let droles = names(&d["roles"]).unwrap_or_default();
+                if open
+                    && (s(a, "principal") == Some(who)
+                        || s(a, "role").is_some_and(|r| droles.iter().any(|x| x == r))
+                        || (unassigned && member(s(&b, "queue"), who)))
+                {
+                    let mut item = with_id(b.clone(), &tid);
+                    item["on_behalf_of"] = json!(who);
+                    tasks.push(item);
+                    break;
+                }
+            }
+        }
+        let due = |t: &Value| s(t, "due").unwrap_or(FAR).to_string();
+        let prio = |t: &Value| t["priority"].as_i64().unwrap_or_default();
+        let id = |t: &Value| s(t, "task_id").unwrap_or_default().to_string();
+        if s(i, "sort") == Some("priority") {
+            tasks.sort_by_key(|t| (-prio(t), due(t), id(t)));
+        } else {
+            tasks.sort_by_key(|t| (due(t), -prio(t), id(t)));
+        }
+        let mut approvals = Vec::new();
+        let mut ids: Vec<String> = self
+            .store
+            .meta("pending_changes")?
+            .and_then(|v| names(&v))
+            .unwrap_or_default();
+        ids.sort();
+        let proles = json!({"roles": roles});
+        for pcid in ids {
+            let rec = self.pc(&pcid)?;
+            if s(&rec, "target_branch") != Some(branch.as_str())
+                || s(&rec, "state") != Some("pending")
+            {
+                continue;
+            }
+            let reqs = rec["requirements"].as_array().cloned().unwrap_or_default();
+            let step = if reqs.iter().any(|r| s(r, "step") == Some("approval")) {
+                "approval"
+            } else {
+                reqs.first()
+                    .and_then(|r| s(r, "step"))
+                    .unwrap_or("approval")
+            };
+            let req = reqs
+                .iter()
+                .find(|r| s(r, "step") == Some(step))
+                .cloned()
+                .unwrap_or_else(|| json!({"step": step, "object_id": null}));
+            if self.eligible(&rec, &req, &proles, &p).is_ok() {
+                approvals.push(
+                    json!({"pending_change_id": pcid, "requirements": rec["requirements"],
+                                      "preview": rec["preview"]}),
+                );
+            }
+        }
+        let overdue = tasks
+            .iter()
+            .filter(|t| s(t, "due").is_some_and(|d| self.now.as_str() >= d))
+            .count();
+        let counts =
+            json!({"tasks": tasks.len(), "overdue": overdue, "approvals": approvals.len()});
+        Ok(json!({"tasks": tasks, "approvals": approvals, "counts": counts}))
     }
 }

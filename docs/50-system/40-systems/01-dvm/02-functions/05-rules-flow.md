@@ -294,6 +294,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given two users claiming one task concurrently, when committed, then exactly one owns it.
 - **Verification:** SIM, CONF
 - **Origin:** FR-FLOW-051, FR-FLOW-052, FR-FLOW-053, FR-FLOW-054
+- **Phase note:** DEC-109: built in PH-2 step 4e as BPA 1.0-rc10 states it (STD-LGS-061, -062): the inbox is the adapter operation `inbox`, computed over the tasks, queues, delegations and pending changes of the branch rather than a saved query; a saved query over tasks follows with the saved queries of PH-2 step 13.
 
 ### DSN-DVM-744 — Due dates and escalation
 - **Statement:** Tasks MUST get due dates from due-date rules evaluated on a business calendar (FR-FLOW-081). Escalation chains (FR-FLOW-082) MUST be driven by timers (DSN-DVM-751).

@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (108)
+## DEC (109)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -202,4 +202,5 @@ depends_on: [UBS-IDX-00]
 | DEC-106 | Deferred commits and approvals in the kernel (PH-2 step 4, part 4b) | `90-decisions/000-index.md` |
 | DEC-107 | Governed reopening of periods in the kernel (PH-2 step 4, part 4c) | `90-decisions/000-index.md` |
 | DEC-108 | Delegations in the kernel (PH-2 step 4, part 4d) | `90-decisions/000-index.md` |
+| DEC-109 | Tasks, work queues and the inbox in the kernel (PH-2 step 4, part 4e) | `90-decisions/000-index.md` |
 

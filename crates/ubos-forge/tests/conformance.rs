@@ -98,6 +98,9 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-LGS-043",
     // BPA 1.0-rc10 (PH-2 step 4d, DEC-108): delegations
     "STD-LGS-060",
+    // BPA 1.0-rc10 (PH-2 step 4e, DEC-109): tasks, work queues, assignment and inbox
+    "STD-LGS-061",
+    "STD-LGS-062",
 ];
 
 /// The clauses a vector verifies.

@@ -424,6 +424,55 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("reason", "text", false),
             ],
         ),
+        // STD-LGS-061, -062 (BPA 1.0-rc10, DEC-105): tasks are System objects written by the
+        // task operations; work queues are Definition objects below ConfigAsset.
+        g(
+            "Task",
+            Some("system"),
+            Some("SystemObject"),
+            false,
+            vec![
+                field("type", "text", true),
+                field("subject", "text", false),
+                field("queue", "text", false),
+                ext_json("assignee"),
+                enum_field("state", &["open", "claimed", "completed", "cancelled"]),
+                field("owner", "text", false),
+                field("on_behalf_of", "text", false),
+                field("priority", "integer", true),
+                field("due", "instant", false),
+                field("due_date", "date", false),
+                ext_json("skills"),
+                ext_json("data"),
+                field("created_by", "text", true),
+                field("created_at", "instant", true),
+                field("completed_at", "instant", false),
+                ext_json("outcome"),
+                field("assigned_by", "text", false),
+                ext_json("escalations"),
+                ext_json("log"),
+            ],
+        ),
+        g(
+            "WorkQueue",
+            Some("definition"),
+            Some("ConfigAsset"),
+            false,
+            vec![
+                field("name", "text", true),
+                field("members", "json", true),
+                ext_json("managers"),
+                enum_field(
+                    "assignment",
+                    &["manual", "round_robin", "least_loaded", "skill"],
+                ),
+                ext_json("skills"),
+                field("due_rule", "text", false),
+                ext_json("calendars"),
+                ext_json("escalation"),
+                field("description", "text", false),
+            ],
+        ),
         g(
             "Release",
             Some("definition"),
@@ -468,6 +517,8 @@ pub fn is_genesis(name: &str) -> bool {
             | "CloseArtefact"
             | "MatchRecord"
             | "Delegation"
+            | "Task"
+            | "WorkQueue"
     )
 }
 
