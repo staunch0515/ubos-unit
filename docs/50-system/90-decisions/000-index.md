@@ -21,6 +21,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-115 | PH-2 step 5d: the end of rule attachments and the live impact count in the kernel — detach timers with `RuleDetached`, `rule_impact` per class; STD-LGS-070 and -071 claimed | Accepted |
 | DEC-116 | PH-2 step 5e: rule tests and the merge gate in the kernel — `RuleTest` with its declaration check, `run_rule_tests` on provisional objects with coverage, the test gate of change-set merges into protected branches; STD-LGS-072 and -073 claimed | Accepted |
 | DEC-117 | PH-2 step 5f: `forge simulate` — the Server's administrative simulation route, audited; the command with window, port, budget, logic and change-set options, text and JSON reports, exit status by changed outcomes | Accepted |
+| DEC-118 | PH-2 step 5 closed: decision tables and rule operations (parts 5a–5f, DEC-112…117) — BPA 1.0-rc11, decision tables, simulation of rule and logic changes, the end of attachments, live impact, rule tests and the merge gate in the kernel, `forge simulate`; 58 step-5 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 
 ---
 
@@ -230,7 +231,7 @@ follow.
 - **Context:** Part 5f of PH-2 step 5 (DEC-112) builds the simulator of DSN-FRG-205 on the kernel's simulation (DEC-114). UBTP has no simulation message, and a simulation creates sandbox branches and a `SimulationRun` on the target branch. The owner confirmed the part with the default suggestions on 2026-10-25.
 - **Decision:**
   1. **Route.** The Server's administration interface gains `POST /api/v1/admin/simulate?vae=<name>`. It passes the body to the VAE's `simulate` operation and writes the audit entry `admin.simulate` with the caller, the branches, the run and whether it succeeded.
-  2. **Permission.** The route needs an administrator of the tenant. A permission of its own for business analysts waits for the Web workspace (PH-2 step 9).
+  2. **Permission.** The route needs an administrator of the tenant. A permission of its own for business analysts waits for the Web workspace (PH-2 step 14).
   3. **Command.** `forge simulate --server <host:port> --source <branch>` with `--target` (default `main`), `--vae`, `--from`, `--to`, `--port`, `--budget` (default 100 processes), `--include-logic`, `--change-set`, `--token` or `UBOS_TOKEN`, and `--json`. The command draws the run's UUID itself.
   4. **Report.** The text report gives the coverage and one line per changed call: date, process, old and new outcome, and the sandbox branch whose commits hold the new values. `--json` prints the stored run.
   5. **Exit status.** The command exits with 0 when no outcome changed, 1 when some changed, and 2 on a usage, transport or Server error, so a pipeline can stop on a changed outcome.
@@ -242,3 +243,36 @@ follow.
   - A UBTP message for simulation was rejected for now: it would extend the protocol for one administrative operation.
   - Running the simulation inside `forge` on a pulled copy of the history was rejected: the history, its rules and the evidence of the run belong to the VAE.
 - **Affects:** DSN-FRG-205, DSN-DVM-760, DSN-DVM-761, STD-LGS-044, STD-LGS-074, FR-DEV-041, FR-DEV-042, DEC-112, DEC-114
+
+### DEC-118 — PH-2 step 5 closed: decision tables and rule operations (PH-2 step 5, part 5g)
+- **Date:** 2026-10-25 · **Status:** Accepted
+- **Context:** PH-2 step 5 (DEC-112) was split into parts 5a–5g. Parts 5a–5f are recorded in DEC-112…117. Part 5g closes the step: it records what the step delivered and lists, in one place, what the parts deferred to later steps. The owner confirmed the part with the default suggestions on 2026-10-25.
+- **Decision:**
+  1. **Delivered.**
+     - **5a (DEC-112).** BPA 1.0-rc11: 255 clauses, 2,208 vectors, MUST coverage 217/217, VER-INSP-9009. Five clauses were added (STD-LGS-070…074).
+     - **5b (DEC-113).** Decision tables with hit policies and aggregators, the authoring check, `decide_table` and `run.decision`.
+     - **5c (DEC-114).** Simulation of rule and logic changes on sandbox branches, effects dropped, `SimulationRun` records; the conformance test on BPA 1.0-rc11.
+     - **5d (DEC-115).** The end of rule attachments with `RuleDetached`, and the live impact count.
+     - **5e (DEC-116).** Rule tests with coverage and the test gate of merges into protected branches.
+     - **5f (DEC-117).** `forge simulate` on the Server's audited administrative route.
+  2. **Verification.** The 58 current vectors of the step-5 clauses (STD-LGS-040, STD-ISA-053, STD-LGS-044, STD-LGS-070…074) pass in one run in memory and on PostgreSQL 16. The kernel conformance test claims every clause of BPA 1.0-rc11.
+  3. **Correction.** DEC-117 named the Web workspace as step 9; it is step 14 (UBS-PH-2 §11), and DEC-117 now says so.
+  4. **Deferred.** Each item keeps its ID and moves to the step named:
+
+     | Item | Source | Target |
+     |---|---|---|
+     | Recorded connector responses in simulations, and the capture of a re-run's effects on the run record (DSN-DVM-760) | DEC-112, DEC-114 | step 12 |
+     | A permission of its own to run simulations, for business analysts | DEC-117 | step 14 |
+     | DMN interchange of decision tables, and the impact shown while a rule is edited (DSN-DVM-763) | DEC-112, DEC-115 | step 16 |
+     | Old and new values of each changed call in the simulator's report, beyond outcomes, result hashes and sandbox branches (DSN-FRG-205) | DEC-117 | step 16 |
+     | A compiled decision tree for large tables; the impact count through the selector index (DSN-DVM-763) | DEC-113, DEC-115 | step 18, if the benchmarks need them |
+     | A UBTP message for simulation | DEC-117 | when a client other than `forge` needs it |
+
+  5. **Owner actions.** Merge the branch, then sign the tags `bpa-v1.0.0-rc8`, `bpa-v1.0.0-rc9`, `bpa-v1.0.0-rc10` and `bpa-v1.0.0-rc11`.
+  6. **Next.** Step 6 (long-running work): workflows and sagas, long-running processes, effects after commit, replay and rollback, with the approvals in workflow steps that DEC-111 moved there. Its plan goes to the owner first.
+- **Consequences:**
+  - The status table in `docs/reports/ph2-plan-zh.md` marks step 5 as done.
+  - The deferred items are picked up by the steps named in the table above, whose plans cite this decision.
+- **Alternatives considered:**
+  - Leaving the deferred items spread over DEC-112…117 was rejected, as in DEC-104 and DEC-111.
+- **Affects:** DEC-112, DEC-113, DEC-114, DEC-115, DEC-116, DEC-117, DSN-DVM-760, DSN-DVM-763, DSN-FRG-205
