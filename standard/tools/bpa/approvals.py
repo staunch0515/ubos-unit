@@ -240,7 +240,12 @@ class Approvals:
             procs.append((when, commits[0] if commits else None, pid))
         procs.sort(key=lambda x: (x[0], self.commits[x[1]]['cseq'] if x[1] is not None else -1, x[2]))
         src = self._state(source)[0]
-        candidates = sorted((oid, o) for oid, o in src['objects'].items() if o['class'] in self.RULE_CLASSES)
+        # STD-LGS-074 (1.0-rc11): `include: ["logic"]` adds the logic assets of the source
+        include = i.get('include') or []
+        if not isinstance(include, list) or any(x != 'logic' for x in include):
+            raise BpaError('MODEL.INVALID_VALUE', 'include lists logic')
+        kinds = self.RULE_CLASSES + (('Logic',) if 'logic' in include else ())
+        candidates = sorted((oid, o) for oid, o in src['objects'].items() if o['class'] in kinds)
         rule_versions = [o['head'] for _, o in candidates]
         outbox, results, covered = len(self.outbox), [], []
         saved = (copy.deepcopy(self.processes), dict(getattr(self, 'journals', {})),

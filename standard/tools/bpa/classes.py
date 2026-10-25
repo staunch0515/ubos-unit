@@ -210,6 +210,12 @@ GENESIS = {
                                  'manual', 'round_robin', 'least_loaded', 'skill']}),
                              _f('skills', 'json'), _f('due_rule', 'text'), _f('calendars', 'json'),
                              _f('escalation', 'json'), _f('description', 'text')]},
+    # STD-LGS-072 (BPA 1.0-rc11, DEC-112): rule tests are Definition objects below ConfigAsset.
+    'RuleTest': {'name': 'RuleTest', 'kind': 'definition', 'parent': 'ConfigAsset', 'abstract': False,
+                 'fields': [_f('name', 'text', True), _f('target', 'text'),
+                            _f('kind', 'enum', True, constraints={'allowed_values': [
+                                'cascade', 'decision', 'table', 'validation']}),
+                            _f('input', 'json', True), _f('expect', 'json', True), _f('description', 'text')]},
     'Release': {'name': 'Release', 'kind': 'definition', 'parent': 'Object', 'abstract': False,
                 'fields': [_f('version', 'text', True), _f('tag', 'text', True), _f('notes', 'text'),
                            _f('change_sets', 'json'), _f('approvals', 'json')]},

@@ -359,4 +359,4 @@ Must requirements without a passing result, with the results of their suites and
 
 ## Suites and items without a result in the index
 
-VER-INSP-9006, VER-INSP-9007, VER-INSP-9008
+VER-INSP-9006, VER-INSP-9007, VER-INSP-9008, VER-INSP-9009

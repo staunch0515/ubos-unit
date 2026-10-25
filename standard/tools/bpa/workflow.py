@@ -160,6 +160,7 @@ class Workflow:
         return frm <= (self._today() if self._decl(cls).get('valid_time', 'date') == 'date' else self.now)
 
     def _schedule(self, branch, cid, st, result):
+        self._schedule_detach(branch, st, result)          # STD-LGS-070 (1.0-rc11)
         for oid in result['versions']:
             o = st['objects'].get(oid)
             if o is None or not self._decl(o['class']).get('emit_became_effective'):
@@ -170,6 +171,7 @@ class Workflow:
                     self.schedule.append({'key': key, 'class': o['class']})
 
     def _tick(self):
+        self._tick_detach()                                # STD-LGS-070 (1.0-rc11)
         keep = []
         for s in getattr(self, 'schedule', []):
             branch, oid, f, vh = s['key']
@@ -422,6 +424,7 @@ class Workflow:
         elif action == 'abandon':
             body['state'] = 'abandoned'
         else:
+            self._test_gate(body['source'], body['target'])   # STD-LGS-073 (1.0-rc11)
             res = self.merge(body['source'], body['target'], i.get('resolutions'), _change_set=oid)
             self.change_sets[oid]['merge'] = self.branches[body['target']]['head']
             body.update(state='merged', merged_commit=res.get('commit_id') or

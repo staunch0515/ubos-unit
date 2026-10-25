@@ -242,6 +242,9 @@ STATEFUL = {
     'task': lambda s, i: s.task(i),
     'inbox': lambda s, i: s.inbox(i),
     'sla_report': lambda s, i: s.sla_report(i),
+    # BPA 1.0-rc11, PH-2 step 5a (DEC-112): rule impact and rule tests
+    'rule_impact': lambda s, i: s.rule_impact(i),
+    'run_rule_tests': lambda s, i: s.run_rule_tests(i),
 }
 
 # Members of `ubtp` frames an implementation assigns (process identifiers), stripped like the

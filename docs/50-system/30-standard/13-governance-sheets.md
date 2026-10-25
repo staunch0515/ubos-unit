@@ -434,3 +434,57 @@ DAT-DecisionTable:
 - **Conformance vectors:** VER-CONF-5970…5979
 - **Satisfies:** FR-FLOW-083, DSN-DVM-754
 - **Notes:** Since 1.0-rc10 (DEC-105): the adapter operation `sla_report {branch, from, to}` returns `{from, to, rows, total}`; each row is `{type, queue, completed, on_time, late, attainment, open_overdue}`, with `queue` null for tasks without one.
+
+## 8. Rule operations
+
+### STD-LGS-070 — The end of an attachment
+- **Clause:** A sheet or a decision table is attached for the valid periods of its versions (STD-LGS-002), so an attachment ends where a valid period ends and no later period starts: a `set_period` update with an end, or an `end`. From that date it MUST stop applying without further action, and the implementation MUST emit the effect `RuleDetached` (STD-TXN-050) once when the business date reaches the end. A change that moves or removes an end before it is reached MUST cancel its event.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-2700…2709
+- **Satisfies:** FR-RULE-062, DSN-DVM-710
+- **Notes:** Since 1.0-rc11 (DEC-112): as `BecameEffective` (STD-TIME-050), the effect ID is `rule-detached/<branch>/<object>/<date>`, and the payload is `{class, valid_to}`. Events are emitted when the clock advances.
+
+### STD-LGS-071 — Live impact of a rule change
+- **Clause:** For a candidate branch, the implementation MUST report the number of current objects of the target branch whose effective declarations (STD-LGS-022) or failing validations (STD-LGS-030) differ when the target's sheets, property declarations and decision tables are replaced by the candidate's, per class. The governed objects are the live Definition objects that are not configuration or logic assets.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-2710…2724
+- **Satisfies:** FR-RULE-074, DSN-DVM-763
+- **Notes:** Since 1.0-rc11 (DEC-112): the adapter operation `rule_impact {branch, source, classes, ctx}` returns `{branch, source, evaluated, changed, by_class}`; `classes` limits the objects to those of the classes named and their subclasses.
+
+### STD-LGS-072 — Rule tests
+- **Clause:** A rule test MUST be an object of the genesis Definition class `RuleTest` below `ConfigAsset` with a `kind`, an `input` and an `expect`:
+  - `cascade`: an input object (`class`, `body`, `ctx`) and the expected effective declarations `properties` (a path absent from the cascade is `null`);
+  - `decision`: an input object, a `port` with `params`, and the expected `outcome` with its `steps` when given;
+  - `table`: a `table` with `inputs` and the expected `outputs`;
+  - `validation`: an input object and the names of the validations expected to fail, `violations`.
+
+  The input object is provisional: it is evaluated in the state of the branch as if it existed and is never stored. A test passes when its outcome is as expected; an expectation may be an error code (`error`) instead. Running the tests of a branch MUST report each result and the coverage of the rules:
+  - the sheet blocks the test objects matched, of the blocks of the live sheets;
+  - the table rows the table tests hit, of the rows of the live tables;
+  - the validations the validation tests evaluated, of the declared validations.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-2725…2754
+- **Satisfies:** FR-RULE-081, FR-RULE-083, DSN-DVM-764
+- **Notes:** Since 1.0-rc11 (DEC-112):
+  - **Declaration.** An unknown `kind` fails at commit with `MODEL.CONSTRAINT_VIOLATED` (an enumeration, STD-FND-020), and a test without its input or expectation with `MODEL.DECLARATION_INCOMPLETE`. `target`, the sheet or table a test is about, is optional.
+  - **Operation.** `run_rule_tests {branch, tests}` and the snapshot selectors returns `{results, passed, failed, coverage}`. Each result is `{test_id, name, kind, passed, actual}`; each coverage item is `{hit, total}`. `tests` runs the tests named.
+  - **Sheets.** The `tests` member of a sheet (STD-LGS-002) names tests for documentation; the tests run are the `RuleTest` objects.
+
+### STD-LGS-073 — Rule tests gate merges
+- **Clause:** Merging a change set into a protected branch (STD-VER-012) MUST first run, at the head of the source branch, the rule tests the change affects:
+  - the tests the change set creates or changes;
+  - the tests whose `target` it changes;
+  - the tests without a target when it changes a sheet, a property declaration, a decision table, a logic asset or a class extension.
+
+  When one of them fails, the merge MUST fail with `RULE.TESTS_FAILED`, details `{failed}` listing the failing tests, and nothing is merged.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-2755…2769
+- **Satisfies:** FR-RULE-082, DSN-DVM-764
+- **Notes:** Since 1.0-rc11 (DEC-112): a merge into a branch that is not protected is not gated; a change set that affects no test merges as before.
+
+### STD-LGS-074 — Simulation of logic changes
+- **Clause:** A simulation (STD-LGS-044) given `include: ["logic"]` MUST also take the `Logic` objects of the source branch as candidates, so the historical port calls re-run with the candidate logic as well as the candidate rules. Its runs MUST NOT release effects or change the target, as for STD-LGS-044. Any other `include` value MUST fail with `MODEL.INVALID_VALUE`.
+- **Grammar / Schema:** —
+- **Conformance vectors:** VER-CONF-2770…2784
+- **Satisfies:** FR-DEV-041, FR-DEV-042
+- **Notes:** Since 1.0-rc11 (DEC-112): without `include`, a simulation takes the rule objects only, as in 1.0-rc8. The candidate versions recorded on the `SimulationRun` (`rule_versions`) then include the logic versions.

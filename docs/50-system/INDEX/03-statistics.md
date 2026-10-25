@@ -21,7 +21,7 @@ depends_on: [UBS-IDX-00]
 | CST | 18 |
 | CTR | 36 |
 | DAT | 77 |
-| DEC | 111 |
+| DEC | 112 |
 | DSN | 699 |
 | ENV | 7 |
 | EXIT | 85 |
@@ -36,9 +36,9 @@ depends_on: [UBS-IDX-00]
 | PER | 33 |
 | RSK | 40 |
 | SCN | 67 |
-| STD | 270 |
+| STD | 275 |
 | SUITE | 78 |
-| VER | 98 |
+| VER | 99 |
 
 ## Requirements by phase
 

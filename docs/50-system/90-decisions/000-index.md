@@ -35,6 +35,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-109 | PH-2 step 4e: tasks, work queues and the inbox in the kernel — `Task` and `WorkQueue`, the task actions with eligibility, `base` and log, the assignment rules, due rules at creation, tasks through a delegation, the inbox with pending changes; STD-LGS-061 and -062 claimed | Accepted |
 | DEC-110 | PH-2 step 4f: escalation, the service-level report and the node's sweeps — escalation steps applied by the kernel's tick, `sla_report`, the leader loop's sweep of pending changes with the default expiry and `pending_change.expired`; STD-LGS-063 and -064 claimed, every clause of BPA 1.0-rc10 implemented | Accepted |
 | DEC-111 | PH-2 step 4 closed: approvals and work (parts 4a–4f, DEC-105…110) — BPA 1.0-rc10, deferred commits and approvals, governed reopening, delegations, tasks and work queues, inbox, escalation and service levels in the kernel; 92 step-4 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
+| DEC-112 | PH-2 step 5 opened in parts 5a–5g; part 5a: BPA 1.0-rc11 — the end of a rule's attachment (STD-LGS-070), live impact (STD-LGS-071), rule tests and coverage (STD-LGS-072), the test gate of merges (STD-LGS-073), simulation of logic changes (STD-LGS-074); 255 clauses, 2,208 vectors, MUST coverage 217/217 | Accepted |
 
 ---
 
@@ -737,3 +738,40 @@ DEC-090 on follow.
 - **Alternatives considered:**
   - Leaving the deferred items spread over DEC-105…110 was rejected, as in DEC-104.
 - **Affects:** DEC-105, DEC-106, DEC-107, DEC-108, DEC-109, DEC-110, DSN-DVM-551, DSN-DVM-743, DSN-DVM-744, DSN-DVM-751, DSN-DVM-754
+
+### DEC-112 — Decision tables and rule operations, part 5a: BPA 1.0-rc11 (PH-2 step 5)
+- **Date:** 2026-10-25 · **Status:** Accepted
+- **Context:** PH-2 step 5 (UBS-PH-2 §11) implements decision tables and the operations around rules: attaching and detaching rules for periods, simulation and impact analysis, rule tests, and the simulator (CAP-RULE-04, -06, -07, -08, CAP-DEV-04).
+  - **Baseline.** On the kernel, 31 of the 49 vectors of STD-LGS-040, STD-ISA-053 and STD-LGS-044 (BPA 1.0-rc8) fail or are not applicable: decision tables and simulations are missing. The 18 vectors of sheets with valid periods and scopes (STD-LGS-002, -010) pass.
+  - **Gap in the standard.** Four capabilities have no clauses: the end of a time-boxed attachment with its event (FR-RULE-062), the live impact count (FR-RULE-074), rule tests with their merge gate and coverage (FR-RULE-081…083), and the simulation of logic changes (FR-DEV-041, -042). The standard precedes the code (AR-033).
+  - **Confirmation.** The owner confirmed the plan of step 5 with the default suggestions on 2026-10-25.
+- **Decision:**
+  1. **Parts.** Step 5 is done in parts, one pull request each:
+     - 5a writes BPA 1.0-rc11 (standard only);
+     - 5b: decision tables in the kernel (STD-LGS-040, STD-ISA-053);
+     - 5c: simulation (STD-LGS-044, -074);
+     - 5d: the end of attachments and the live impact count (STD-LGS-070, -071);
+     - 5e: rule tests and the merge gate (STD-LGS-072, -073);
+     - 5f: `forge simulate` (DSN-FRG-205);
+     - 5g closes the step.
+
+     Recorded connector responses in simulations stay in step 12; DMN interchange and the impact shown while editing stay in step 16.
+  2. **Release.** BPA 1.0-rc11 is opened with the scope rule of DEC-089 on base 1.0-rc10. It is released at the end of part 5a with the owner's signed tag `bpa-v1.0.0-rc11`, and is then frozen like the earlier candidates (DEC-045 item 3).
+  3. **Clauses.** A new section 8 of the governance standard (Governance profile):
+     - **STD-LGS-070.** An attachment ends where a valid period of a sheet or decision table ends and no later one starts. `RuleDetached` is emitted once when the business date reaches it, symmetric to `BecameEffective`; moving the end cancels the event.
+     - **STD-LGS-071.** `rule_impact` compares the effective declarations and failing validations of the target's governed objects under the target's rules and under the candidate branch's sheets, property declarations and decision tables, and counts the changes per class.
+     - **STD-LGS-072.** The genesis class `RuleTest`, of kind `cascade`, `decision`, `table` or `validation`, evaluated on a provisional input object that is never stored. `run_rule_tests` reports the results and the coverage of sheet blocks, table rows and validations.
+     - **STD-LGS-073.** A change-set merge into a protected branch first runs, at the source head, the tests the change affects: the tests it changes, the tests whose target it changes, and the tests without a target when it changes rules or logic. A failure stops the merge with `RULE.TESTS_FAILED`.
+     - **STD-LGS-074.** `simulate` with `include: ["logic"]` takes the source's `Logic` objects as candidates too; without it, simulation is as in 1.0-rc8.
+  4. **Reference model.**
+     - **Code.** `standard/tools/bpa/ruleops.py` and changes to `approvals.py` (`include`), `workflow.py` (the detach schedule, the merge gate), `workflows.py`, `classes.py`, `store.py` and `ops.py`.
+     - **Cases.** `standard/tools/cases/ruleops.py`.
+- **Consequences:**
+  - BPA 1.0-rc11 has 255 clauses and 2,208 vectors (27 added, none superseded). MUST coverage is 217/217, and VER-INSP-9009 records it.
+  - No released vector changed.
+  - Parts 5b–5g implement 1.0-rc11 and the decision-table and simulation clauses of 1.0-rc8 in the kernel.
+- **Alternatives considered:**
+  - A separate attachment object with its own start and end was rejected: a sheet's valid periods already state where it applies (STD-LGS-002), and a second object would give two sources for one fact.
+  - Rule tests that commit their input objects on a sandbox branch were rejected: a provisional object gives the same evaluation without branches or commits.
+  - Running every rule test of the branch at each merge was rejected: FR-RULE-082 asks for the tests the change affects, and the cost would grow with the test suite.
+- **Affects:** STD-LGS-002, STD-LGS-044, STD-LGS-070, STD-LGS-071, STD-LGS-072, STD-LGS-073, STD-LGS-074, STD-CONF-005, DSN-DVM-710, DSN-DVM-760, DSN-DVM-761, DSN-DVM-763, DSN-DVM-764, DSN-FRG-205, FR-RULE-062, FR-RULE-074, FR-RULE-081, FR-RULE-082, FR-RULE-083, FR-DEV-041, FR-DEV-042, VER-INSP-9009, DEC-045, DEC-089, DEC-111

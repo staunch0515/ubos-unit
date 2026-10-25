@@ -36,6 +36,7 @@ from .integration import Integration
 from .search import Search
 from .finance import Finance
 from .work import Work
+from .ruleops import RuleOps
 from . import values as _values
 from . import classes as _classes
 from .values import GRAMMARS, check_name, validate_value, parse_decimal, fmt_decimal, MINOR_UNITS, REFERENCE
@@ -134,7 +135,7 @@ def tl_at(tl, asof):
 
 
 class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Tables, Approvals, Workflows, Lenses, Protection, Integration,
-            Search, Finance, Work):
+            Search, Finance, Work, RuleOps):
     def __init__(self):
         self.reset()
 
@@ -177,6 +178,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         self._search_init()
         self._fin_init()
         self.work_branches = []                # STD-LGS-063 (1.0-rc10)
+        self.detach_schedule = []              # STD-LGS-070 (1.0-rc11)
         root = self._new_commit('main', [], {'objects': {}, 'ledger': {}}, 0, tx=False)
         self.branches['main'] = {'head': root, 'kind': 'main', 'created_at': self.now, 'active_at': self.now,
                                  'parent_line': None, 'created_from': root}
@@ -244,7 +246,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
                                 'WorkflowDefinition', 'WorkflowInstance', 'Saga', 'Quarantine', 'QuarantineRelease',
                                 'Lens', 'Connector', 'NotificationTemplate', 'View',
                                 'Currency', 'FxRate', 'LedgerAccount', 'Projection',
-                                'Delegation', 'Task', 'WorkQueue']:
+                                'Delegation', 'Task', 'WorkQueue', 'RuleTest']:
             eff[n] = effective_class(list(decls.values()), n)
         for n, e in eff.items():
             old = self.classes.get(n)
