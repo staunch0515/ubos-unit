@@ -897,6 +897,8 @@ impl Engine {
                 body.insert("state".into(), json!("abandoned"));
             }
             _ => {
+                // STD-LGS-073 (BPA 1.0-rc11): the rule tests the change affects gate it
+                self.test_gate(&source, &target)?;
                 let res = self.merge_into(&source, &target, i, Some(&oid))?;
                 let head = Repo::new(self.store.as_mut(), &self.registry).head(&target)?;
                 self.store

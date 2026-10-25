@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (115)
+## DEC (116)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -209,4 +209,5 @@ depends_on: [UBS-IDX-00]
 | DEC-113 | Decision tables in the kernel (PH-2 step 5, part 5b) | `90-decisions/000-index.md` |
 | DEC-114 | Simulation in the kernel (PH-2 step 5, part 5c) | `90-decisions/000-index.md` |
 | DEC-115 | The end of attachments and the live impact count in the kernel (PH-2 step 5, part 5d) | `90-decisions/000-index.md` |
+| DEC-116 | Rule tests and the merge gate in the kernel (PH-2 step 5, part 5e) | `90-decisions/000-index.md` |
 

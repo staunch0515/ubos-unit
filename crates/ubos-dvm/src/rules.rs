@@ -369,16 +369,45 @@ impl Engine {
         ctx: &Map<String, Value>,
         lazy: Option<(String, Option<u64>)>,
     ) -> Result<Value, BpaError> {
-        let kind = self.branch_meta(branch)?.kind;
         let Some(o) = st.objects.get(oid).cloned() else {
             return Err(BpaError::new("IAM.NOT_FOUND", "unknown object"));
         };
-        let asof = self.default_valid_of(&o.class);
-        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
-        let head = repo.version(&o.head)?;
+        let head = Repo::new(self.store.as_mut(), &self.registry).version(&o.head)?;
         if head["tombstone"] == json!(true) {
             return Err(BpaError::new("IAM.NOT_FOUND", "unknown object"));
         }
+        let state = crate::flow::state_of(&head);
+        self.decide_body(
+            st,
+            branch,
+            &o.class,
+            &head["body"],
+            state.as_deref(),
+            port,
+            params,
+            ctx,
+            lazy,
+        )
+    }
+
+    /// The decisions of a port call on an object body of `class` over a state, the object
+    /// stored or provisional (a rule test, STD-LGS-072).
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn decide_body(
+        &mut self,
+        st: &State,
+        branch: &str,
+        class: &str,
+        body: &Value,
+        state: Option<&str>,
+        port: &str,
+        params: &Value,
+        ctx: &Map<String, Value>,
+        lazy: Option<(String, Option<u64>)>,
+    ) -> Result<Value, BpaError> {
+        let kind = self.branch_meta(branch)?.kind;
+        let asof = self.default_valid_of(class);
+        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
         let exts = crate::relations::extensions_of(&mut repo, st)?;
         let reg_ext: Cow<Registry> = if exts.is_empty() {
             Cow::Borrowed(&self.registry)
@@ -387,7 +416,7 @@ impl Engine {
         };
         let mut repo = Repo::new(self.store.as_mut(), &reg_ext);
         let Some(decl) = reg_ext
-            .class(&o.class)?
+            .class(class)?
             .ports
             .get(port)
             .map(|p| p.decl.clone())
@@ -397,7 +426,7 @@ impl Engine {
                 format!("no port {port}"),
             ));
         };
-        let body = head["body"].clone();
+        let body = body.clone();
         let mut ctx = ctx.clone();
         let vae = repo.store.authority();
         for (k, d) in [
@@ -415,11 +444,11 @@ impl Engine {
             st,
             &reg_ext,
             &mut self.rules,
-            &o.class,
+            class,
             &body,
             &asof,
             &ctx,
-            crate::flow::state_of(&head).as_deref(),
+            state,
             lazy,
         )?;
         if decl.get("kind") == Some(&json!("query")) {
@@ -442,7 +471,7 @@ impl Engine {
                 .filter(|w| !w.is_empty())
                 && !eval_rule(
                     &reg_ext,
-                    &o.class,
+                    class,
                     when,
                     &body,
                     Some(&empty),

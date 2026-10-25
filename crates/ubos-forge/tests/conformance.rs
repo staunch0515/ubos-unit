@@ -113,6 +113,9 @@ const RC2_CLAUSES: &[&str] = &[
     // BPA 1.0-rc11 (PH-2 step 5d, DEC-115): the end of attachments and live impact
     "STD-LGS-070",
     "STD-LGS-071",
+    // BPA 1.0-rc11 (PH-2 step 5e, DEC-116): rule tests, coverage and the merge gate
+    "STD-LGS-072",
+    "STD-LGS-073",
 ];
 
 /// The clauses a vector verifies.

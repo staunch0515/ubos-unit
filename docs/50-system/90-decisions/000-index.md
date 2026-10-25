@@ -19,6 +19,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-113 | PH-2 step 5b: decision tables in the kernel — `DecisionTable`, evaluation under the hit policies with aggregators, the authoring check `check_table`, `decide_table` and `run.decision` with the table versions in the rule binding; STD-LGS-040 and STD-ISA-053 claimed | Accepted |
 | DEC-114 | PH-2 step 5c: simulation in the kernel — historical port calls re-run on sandbox branches with the candidate rules and, with `include: ["logic"]`, logic; effects dropped and re-runs kept out of the VAE's processes; `SimulationRun` records; STD-LGS-044 and -074 claimed, conformance test on BPA 1.0-rc11 | Accepted |
 | DEC-115 | PH-2 step 5d: the end of rule attachments and the live impact count in the kernel — detach timers with `RuleDetached`, `rule_impact` per class; STD-LGS-070 and -071 claimed | Accepted |
+| DEC-116 | PH-2 step 5e: rule tests and the merge gate in the kernel — `RuleTest` with its declaration check, `run_rule_tests` on provisional objects with coverage, the test gate of change-set merges into protected branches; STD-LGS-072 and -073 claimed | Accepted |
 
 ---
 
@@ -194,3 +195,31 @@ follow.
   - A separate detach schedule in `kernel_meta`, as the reference model keeps it, was rejected: the flush's timers already persist with the commit and are fired by the same tick.
   - Counting the impact through the selector index (DSN-DVM-763) was deferred: re-evaluation is exact, and the benchmarks of step 18 show whether the index is needed for large VAEs.
 - **Affects:** STD-LGS-070, STD-LGS-071, STD-TIME-050, DSN-DVM-710, DSN-DVM-763, FR-RULE-062, FR-RULE-074, DEC-112
+
+### DEC-116 — Rule tests and the merge gate in the kernel (PH-2 step 5, part 5e)
+- **Date:** 2026-10-25 · **Status:** Accepted
+- **Context:** Part 5e of PH-2 step 5 (DEC-112) implements the rule tests of STD-LGS-072 and the test gate of STD-LGS-073 (BPA 1.0-rc11, DSN-DVM-764) in the kernel. Before the part, their 14 vectors were not applicable or failed. The owner confirmed the part with the default suggestions on 2026-10-25.
+- **Decision:**
+  1. **Class.** `RuleTest` joins the genesis registry as a Definition class below `ConfigAsset`. A commit that writes one checks its kind, its input and its expectation (`MODEL.INVALID_VALUE`, `MODEL.DECLARATION_INCOMPLETE`).
+  2. **Evaluation.** `run_rule_tests` in `crates/ubos-dvm/src/ruleops.rs` follows the reference model. The input object of a test is provisional: its body is evaluated over the state of the branch and never stored.
+     - **Cascade.** The test compares the effective values of the expected paths.
+     - **Decision.** The test compares the outcome and its steps. The decisions are those of `decide`, through `decide_body`, which `decide_in` now uses for stored objects too.
+     - **Table.** The test compares the outputs of the named table at `asof`.
+     - **Validation.** The test compares the names of the failing validations.
+     - **Errors.** An evaluation error is the actual outcome `{error}`, and a test may expect it.
+  3. **Coverage.** The report counts the sheet blocks the tests' objects matched, the table rows the table tests hit, and the validations the validation tests evaluated, each of the totals of the branch.
+  4. **Gate.** Before a change set merges into a protected branch, the kernel runs at the source head the tests the change affects:
+     - the tests it changes;
+     - the tests whose target it changes;
+     - the tests without a target when rules or logic change.
+
+     A failure stops the merge with `RULE.TESTS_FAILED` and the failing tests.
+  5. **Claim.** The conformance test claims STD-LGS-072 and STD-LGS-073.
+  6. **DSN-DVM-764.** A phase note records tests as objects and the gate on affected tests.
+- **Consequences:**
+  - The 14 vectors pass in memory and on PostgreSQL 16, and the conformance test passes.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - Running every rule test at each protected merge was rejected, as in DEC-112.
+  - A provisional object stored on a sandbox branch was rejected: evaluating the body over the branch state gives the same result without commits.
+- **Affects:** STD-LGS-072, STD-LGS-073, DSN-DVM-764, FR-RULE-081, FR-RULE-082, FR-RULE-083, DEC-112

@@ -438,3 +438,4 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given a failing rule test, when merge is attempted, then it is refused listing the test.
 - **Verification:** CONF
 - **Origin:** FR-RULE-081, FR-RULE-082, FR-RULE-083
+- **Phase note:** DEC-116: built in PH-2 step 5e as BPA 1.0-rc11 states it (STD-LGS-072, -073): test cases are `RuleTest` objects rather than members of the sheets and tables, and a change-set merge into a protected branch runs the tests the change affects, not every test of the branch.

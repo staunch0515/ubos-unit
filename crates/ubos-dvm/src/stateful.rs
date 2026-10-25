@@ -1674,6 +1674,8 @@ pub(crate) fn commit_on(
         crate::periods::check_transitions(&mut repo, &mut tx, &written)?;
         // STD-LGS-062 (BPA 1.0-rc10, PH-2 step 4e): the work queues written
         crate::work::check(&mut repo, &mut tx, &written)?;
+        // STD-LGS-072 (BPA 1.0-rc11, PH-2 step 5e): the rule tests written
+        crate::ruleops::check(&mut repo, &mut tx, &written)?;
     }
     // STD-CLS-004: the shape and the extension rule of the lifecycle objects written
     {

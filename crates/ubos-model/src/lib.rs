@@ -445,6 +445,22 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("change_set", "text", false),
             ],
         ),
+        // STD-LGS-072 (BPA 1.0-rc11, DEC-112): rule tests are Definition objects below
+        // ConfigAsset.
+        g(
+            "RuleTest",
+            Some("definition"),
+            Some("ConfigAsset"),
+            false,
+            vec![
+                field("name", "text", true),
+                field("target", "text", false),
+                enum_field("kind", &["cascade", "decision", "table", "validation"]),
+                field("input", "json", true),
+                field("expect", "json", true),
+                field("description", "text", false),
+            ],
+        ),
         // STD-LGS-060 (BPA 1.0-rc10, DEC-105): delegations are System objects written by
         // their operations.
         g(
@@ -559,6 +575,7 @@ pub fn is_genesis(name: &str) -> bool {
             | "Delegation"
             | "DecisionTable"
             | "SimulationRun"
+            | "RuleTest"
             | "Task"
             | "WorkQueue"
     )
