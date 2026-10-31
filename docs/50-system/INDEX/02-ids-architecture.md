@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (125)
+## DEC (126)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -219,4 +219,5 @@ depends_on: [UBS-IDX-00]
 | DEC-123 | Workflow tasks, approvals, calendars and timeouts in the kernel (PH-2 step 6, part 6e) | `90-decisions/000-index.md` |
 | DEC-124 | Actions that ask for input in the kernel (PH-2 step 6, part 6f-1) | `90-decisions/000-index.md` |
 | DEC-125 | Projection maintenance, backfill and event replay on the node (PH-2 step 6, part 6f-2) | `90-decisions/000-index.md` |
+| DEC-126 | PH-2 step 6 closed: durable work (PH-2 step 6, part 6g) | `90-decisions/000-index.md` |
 

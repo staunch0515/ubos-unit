@@ -29,6 +29,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-123 | PH-2 step 6e: workflow tasks and approvals, timers with business calendars and timeouts in the kernel — `human_task` steps on work queues create `Task`s that continue the instance, deferred actions wait for their pending change, `at` timers, timeouts, timer rows for timeouts and expiries, due times recomputed by migration; STD-TXN-093 and -094 claimed | Accepted |
 | DEC-124 | PH-2 step 6f-1: `ask.input` in the kernel — `needs_input` without a commit, requests kept by invocation and name, answers validated and journaled, consumed when the process commits; STD-ISA-101 claimed, every clause of BPA 1.0-rc12 in the kernel's scope implemented | Accepted |
 | DEC-125 | PH-2 step 6f-2: post-commit and replay work on the node — `async` projections maintained after their commits in bounded chunks with backfill and progress, the `timeout_ms` wait of `read.projection`, event replay to one subscription marked as replay | Accepted |
+| DEC-126 | PH-2 step 6 closed: durable work (parts 6a–6f-2, DEC-119…125) — BPA 1.0-rc12, workflows with events, timers, tasks, approvals and migration, timer rows and the node's timer service, sagas with timeouts and intervention, quarantine, `ask.input`, projection maintenance and backfill, event replay; 158 step-6 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 
 ---
 
@@ -467,3 +468,44 @@ follow.
   - A watermark equal to the maintenance mark was rejected: reads already fold the remainder exactly, and a moving watermark would make reads lag without need.
   - Replaying through the original delivery jobs was rejected: their identifiers make a second delivery `already_done`, and a replay must run the handler again with the mark.
 - **Affects:** STD-TIME-021, STD-ISA-037, DSN-DVM-420, DSN-NOD-206, DSN-NOD-207, FR-EVT-071, FR-EVT-072, FR-EVT-073, DEC-095, DEC-098, DEC-100, DEC-104, DEC-119, DEC-124
+
+### DEC-126 — PH-2 step 6 closed: durable work (PH-2 step 6, part 6g)
+- **Date:** 2026-10-31 · **Status:** Accepted
+- **Context:** PH-2 step 6 (DEC-119) was done in parts 6a–6g, with part 6f split into 6f-1 and 6f-2 (DEC-124). Parts 6a–6f-2 are recorded in DEC-119…125. Part 6g closes the step: it records what the step delivered and lists, in one place, what the parts deferred to later steps. The owner confirmed the part with the default suggestions.
+- **Decision:**
+  1. **Delivered.**
+     - **6a (DEC-119).** BPA 1.0-rc12: 259 clauses, 2,275 vectors, MUST coverage 221/221, VER-INSP-9010. Four clauses were added (STD-TXN-081, -093, -094, STD-ISA-101), and VER-CONF-3004 was superseded.
+     - **6b (DEC-120).** Workflow definitions and instances, the step interpreter, events with correlation and buffering, human tasks and migration in the kernel.
+     - **6c (DEC-121).** Workflow timer rows written with the commit, fired by the tick of the VAE's lease holder.
+     - **6d (DEC-122).** Sagas with resumption, timeouts, escalation and intervention; saga jobs on the node; the quarantine of failing asset versions.
+     - **6e (DEC-123).** Workflow tasks on work queues, approvals in workflows, timers with business calendars, timeouts and escalation, due times recomputed by migration.
+     - **6f-1 (DEC-124).** `ask.input` in the kernel.
+     - **6f-2 (DEC-125).** `async` projections maintained after their commits, backfill with progress, the `timeout_ms` wait, and event replay to one subscription.
+  2. **Verification.** The 158 current vectors of the step-6 clauses pass in one run in memory and on PostgreSQL 16:
+     - STD-TXN-080, -081 and -090…094;
+     - STD-CTX-031 and STD-ISA-101;
+     - the projection clauses STD-TIME-021 and STD-ISA-037.
+
+     The kernel conformance test runs BPA 1.0-rc12. It claims every clause of it except the pre-commit connector calls of BPA 1.0-rc8 (STD-TXN-051, STD-ISA-090).
+  3. **Deferred.** Each item keeps its ID and moves to the step named:
+
+     | Item | Source | Target |
+     |---|---|---|
+     | The leased claim of timers (IF-DVM-034) for several workers of one VAE | DEC-121 | step 11 |
+     | Fault and simulation scenarios of workflows and sagas resumed after a node crash (DSN-DVM-750, -564) | DEC-119, DEC-120 | steps 11 and 20 |
+     | Pre-commit connector calls with compensation (STD-TXN-051, STD-ISA-090, DSN-DVM-536) | DEC-119 | step 12 |
+     | Suppression of connector calls from replayed handlers (FR-EVT-073) | DEC-125 | step 12 |
+     | Dialogues answered by agents (FR-FLOW-072) | DEC-119, DEC-124 | PH-3 |
+     | An index of correlation keys for event matching (DSN-DVM-752) | DEC-120 | step 18, if the benchmarks need it |
+     | The benchmark of 10,000 timers due in one minute (DSN-NOD-227) | DEC-121 | step 18 |
+     | Scenario checks of the new node paths: the maintenance round, `projection_status` and event replay | DEC-125 | step 20, if the owner asks for them (CLAUDE.md rule 4) |
+     | Saga steps on another branch or VAE (DSN-DVM-564) | DEC-122 | not in PH-2 (no clause in BPA 1.0) |
+
+  4. **Owner actions.** Merge the branch, then sign the tags `bpa-v1.0.0-rc8` to `bpa-v1.0.0-rc12`.
+  5. **Next.** Step 7 (models and packages): schema evolution and lenses, the base ontology, model export, and the Buk format with its dependencies, installation, upgrade, removal, verification and signing; `forge new` and `forge pack`. Its plan goes to the owner first.
+- **Consequences:**
+  - The status table in `docs/reports/ph2-plan-zh.md` marks step 6 as done.
+  - The deferred items are picked up by the steps named in the table above, whose plans cite this decision.
+- **Alternatives considered:**
+  - Leaving the deferred items spread over DEC-119…125 was rejected, as in DEC-104, DEC-111 and DEC-118.
+- **Affects:** DEC-119, DEC-120, DEC-121, DEC-122, DEC-123, DEC-124, DEC-125, IF-DVM-034, DSN-DVM-536, DSN-DVM-564, DSN-DVM-750, DSN-DVM-752, DSN-NOD-227
