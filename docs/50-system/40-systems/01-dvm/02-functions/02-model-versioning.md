@@ -723,6 +723,7 @@ AI implementer:
   1. Given a tenant override and an upstream change to the same object, when the tenant advances, then the report lists it, and the override stays in effect.
 - **Verification:** CONF
 - **Origin:** FR-VER-086, STD-VER-082
+- **Phase note:** DEC-128: built in PH-2 step 7b as BPA 1.0-rc8 states it (STD-VER-082): a branch records, for each object it overrides, the parent-line version the override was based on; `upstream_changes` reports the overrides whose parent-line head differs, at any time and not only when the upstream pointer advances (a `pinned` parent line advances explicitly with `set_parent_line`); `resolve_upstream` clears a mark by acknowledgement or by a three-way merge.
 
 ### DSN-DVM-264 — Inheritance and proofs
 - **Statement:** The state root of a branch with inheritance MUST be computed over the effective state (local overrides plus inherited objects), so proofs verify without knowledge of the chain. The tree MUST share unchanged subtrees with the parent's tree by hash.

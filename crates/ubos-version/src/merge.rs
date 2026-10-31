@@ -525,6 +525,27 @@ impl Repo<'_> {
         ))
     }
 
+    /// The three-way merge of one object's bodies (STD-VER-082): base `vb`, source `vs`,
+    /// target `vt`, with recorded resolutions (STD-VER-058); the merged body and the
+    /// conflicts left.
+    pub fn merge_object_body(
+        &mut self,
+        oid: &str,
+        vb: Option<&str>,
+        vs: &str,
+        vt: &str,
+        resolutions: &[Value],
+        tx: &mut Tx,
+    ) -> Result<(Map<String, Value>, Vec<Value>), BpaError> {
+        let mut res = Some(Resolver::new(resolutions)?);
+        let (piece, conflicts) = self.merge_body(oid, vb, vs, vt, &mut res, tx)?;
+        let body = match piece {
+            Piece::Merged(m) => m,
+            _ => Map::new(),
+        };
+        Ok((body, conflicts))
+    }
+
     fn merge_body(
         &mut self,
         oid: &str,

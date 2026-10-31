@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (127)
+## DEC (128)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -221,4 +221,5 @@ depends_on: [UBS-IDX-00]
 | DEC-125 | Projection maintenance, backfill and event replay on the node (PH-2 step 6, part 6f-2) | `90-decisions/000-index.md` |
 | DEC-126 | PH-2 step 6 closed: durable work (PH-2 step 6, part 6g) | `90-decisions/000-index.md` |
 | DEC-127 | Models and packages, part 7a: schema evolution in the kernel (PH-2 step 7) | `90-decisions/000-index.md` |
+| DEC-128 | Models and packages, part 7b: upstream change detection (PH-2 step 7) | `90-decisions/000-index.md` |
 

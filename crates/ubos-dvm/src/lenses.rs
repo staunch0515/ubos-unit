@@ -1111,3 +1111,189 @@ impl Engine {
         Ok(out)
     }
 }
+
+// ---- upstream changes (STD-VER-082; BPA 1.0-rc8, PH-2 step 7b) ----
+
+/// Metadata key of a branch's overrides: object ID → the parent-line version the override
+/// was based on, or the one last resolved.
+fn overrides_key(branch: &str) -> String {
+    format!("overrides:{branch}")
+}
+
+thread_local! {
+    /// The resolution a `resolve_upstream` merge commits: `(branch, object ID, parent
+    /// head)`, recorded as the new base in the same commit.
+    static RESOLVING: std::cell::RefCell<Option<(String, String, Value)>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// An object of the parent line becomes an override when the branch first commits its own
+/// version; the parent version it was based on is recorded with the commit (STD-VER-082).
+pub(crate) fn note_overrides(
+    repo: &mut Repo,
+    tx: &mut ubos_version::state::Tx,
+    written: &[(String, String)],
+) -> Result<(), BpaError> {
+    let resolving = RESOLVING.with(|r| r.borrow().clone());
+    let mut added: Vec<(String, Value)> = Vec::new();
+    for (oid, _) in written {
+        if let Some(o) = tx.inherited.get(oid) {
+            added.push((oid.clone(), json!(o.head)));
+        }
+    }
+    let resolved = resolving.filter(|(b, _, _)| b == &tx.branch);
+    if added.is_empty() && resolved.is_none() {
+        return Ok(());
+    }
+    let key = overrides_key(&tx.branch);
+    let mut map = repo
+        .store
+        .meta(&key)?
+        .and_then(|v| v.as_object().cloned())
+        .unwrap_or_default();
+    let before = map.clone();
+    for (oid, base) in added {
+        map.entry(oid).or_insert(base);
+    }
+    if let Some((_, oid, after)) = resolved {
+        map.insert(oid, after);
+    }
+    if map != before {
+        tx.marks.push((key, Value::Object(map)));
+    }
+    Ok(())
+}
+
+impl Engine {
+    /// The overrides of a branch whose parent-line head differs from the recorded version:
+    /// object ID → `{object_id, state, before, after}`.
+    fn upstream(&mut self, branch: &str) -> Result<Map<String, Value>, BpaError> {
+        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+        repo.head(branch)?;
+        let map = repo
+            .store
+            .meta(&overrides_key(branch))?
+            .and_then(|v| v.as_object().cloned())
+            .unwrap_or_default();
+        let mut out = Map::new();
+        if map.is_empty() {
+            return Ok(out);
+        }
+        let pv = repo.parent_line_view(branch)?;
+        for (oid, before) in map {
+            let after = pv
+                .as_ref()
+                .and_then(|v| v.state.objects.get(&oid))
+                .map(|o| json!(o.head))
+                .unwrap_or(Value::Null);
+            if after != before {
+                out.insert(
+                    oid.clone(),
+                    json!({"object_id": oid, "state": "upstream_changed",
+                           "before": before, "after": after}),
+                );
+            }
+        }
+        Ok(out)
+    }
+
+    /// Adapter operation `upstream_changes` (STD-VER-082): the overrides of a branch whose
+    /// parent-line version changed since the override or its last resolution.
+    pub fn upstream_changes(&mut self, i: &Value) -> Result<Value, BpaError> {
+        let branch = s(i, "branch").unwrap_or("main").to_string();
+        let changes: Vec<Value> = self.upstream(&branch)?.into_values().collect();
+        Ok(json!({ "changes": changes }))
+    }
+
+    /// Adapter operation `resolve_upstream` (STD-VER-082): resolve an upstream change by
+    /// a three-way merge (base = the parent version at the override) or by
+    /// acknowledgement; both record the parent head as the new base.
+    pub fn resolve_upstream(&mut self, i: &Value) -> Result<Value, BpaError> {
+        let branch = s(i, "branch").unwrap_or("main").to_string();
+        let oid = s(i, "object_id").unwrap_or_default().to_string();
+        let mode = s(i, "mode").unwrap_or_default().to_string();
+        let mark = self.upstream(&branch)?.remove(&oid).ok_or_else(|| {
+            BpaError::new(
+                "MODEL.CONSTRAINT_VIOLATED",
+                "the object has no upstream change",
+            )
+        })?;
+        let (before, after) = (mark["before"].clone(), mark["after"].clone());
+        let mut out = json!({"object_id": oid, "mode": mode, "before": before, "after": after});
+        if mode == "acknowledge" {
+            let key = overrides_key(&branch);
+            let mut map = self
+                .store
+                .meta(&key)?
+                .and_then(|v| v.as_object().cloned())
+                .unwrap_or_default();
+            map.insert(oid, after);
+            self.store.put_meta(&key, &Value::Object(map))?;
+            return Ok(out);
+        }
+        if mode != "merge" {
+            return Err(invalid("mode is merge or acknowledge"));
+        }
+        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+        let ended = match after.as_str() {
+            None => true,
+            Some(h) => repo.version(h)?["tombstone"] == json!(true),
+        };
+        if ended {
+            return Err(BpaError::new(
+                "MODEL.CONSTRAINT_VIOLATED",
+                "the parent line ended the object; acknowledge it",
+            ));
+        }
+        let mut tx = repo.begin_view(&branch)?;
+        let head = tx
+            .state
+            .objects
+            .get(&oid)
+            .map(|o| o.head.clone())
+            .ok_or_else(|| BpaError::new("IAM.NOT_FOUND", "unknown object"))?;
+        let res: Vec<Value> = i
+            .get("resolutions")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let (merged, conflicts) = repo.merge_object_body(
+            &oid,
+            before.as_str(),
+            after.as_str().unwrap_or_default(),
+            &head,
+            &res,
+            &mut tx,
+        )?;
+        if !conflicts.is_empty() {
+            return Err(BpaError::with_details(
+                "VER.MERGE_CONFLICT",
+                json!({ "conflicts": conflicts }),
+            ));
+        }
+        let hv = repo.version(&head)?;
+        let current = current_body(&mut repo, &hv)?;
+        out["body"] = Value::Object(merged.clone());
+        if canonical(&Value::Object(merged.clone())) != canonical(&Value::Object(current)) {
+            let mut input = json!({"branch": branch, "changes": [
+                {"op": "update", "object_id": oid, "base": head, "body": merged}]});
+            if let Some(p) = i.get("process").filter(|p| !p.is_null()) {
+                input["process"] = p.clone();
+            }
+            RESOLVING.with(|r| *r.borrow_mut() = Some((branch.clone(), oid.clone(), after)));
+            let r = self.commit(&input);
+            RESOLVING.with(|r| *r.borrow_mut() = None);
+            out["cseq"] = r?["cseq"].clone();
+        } else {
+            let key = overrides_key(&branch);
+            let mut map = self
+                .store
+                .meta(&key)?
+                .and_then(|v| v.as_object().cloned())
+                .unwrap_or_default();
+            map.insert(oid, after);
+            self.store.put_meta(&key, &Value::Object(map))?;
+        }
+        Ok(out)
+    }
+}

@@ -1705,6 +1705,8 @@ pub(crate) fn commit_on(
         crate::sagas::check(&mut repo, &mut tx, &written)?;
         // STD-CLS-060 (BPA 1.0-rc8, PH-2 step 7a): the lenses written
         crate::lenses::check(&mut repo, &mut tx, &written)?;
+        // STD-VER-082 (BPA 1.0-rc8, PH-2 step 7b): the overrides of the commit
+        crate::lenses::note_overrides(&mut repo, &mut tx, &written)?;
     }
     // STD-CLS-004: the shape and the extension rule of the lifecycle objects written
     {

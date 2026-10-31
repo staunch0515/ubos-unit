@@ -31,6 +31,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-125 | PH-2 step 6f-2: post-commit and replay work on the node — `async` projections maintained after their commits in bounded chunks with backfill and progress, the `timeout_ms` wait of `read.projection`, event replay to one subscription marked as replay | Accepted |
 | DEC-126 | PH-2 step 6 closed: durable work (parts 6a–6f-2, DEC-119…125) — BPA 1.0-rc12, workflows with events, timers, tasks, approvals and migration, timer rows and the node's timer service, sagas with timeouts and intervention, quarantine, `ask.input`, projection maintenance and backfill, event replay; 158 step-6 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 | DEC-127 | PH-2 step 7 opened in parts 7a–7g with the Buk format outside the BPA standard; part 7a: schema evolution in the kernel — `Lens`, the computed classification, `change_class`, lenses on reads, writes, updates and merges, the totality check; STD-CLS-050 and -060…062 claimed | Accepted |
+| DEC-128 | PH-2 step 7, part 7b: upstream change detection in the kernel — overrides recorded with their base version, `upstream_changes`, `resolve_upstream` by acknowledgement or three-way merge; STD-VER-082 claimed | Accepted |
 
 ---
 
@@ -546,3 +547,20 @@ follow.
   - Writing the Buk format into BPA 1.0 was rejected: the standard fixes the semantics of business processing, while a package format is a product concern that a second implementation need not share.
   - Compiling lens chains into one composed operation (DSN-DVM-121) was deferred: step-by-step application gives the same results, and the benchmarks of step 18 show whether composition is needed.
 - **Affects:** STD-CLS-050, STD-CLS-060, STD-CLS-061, STD-CLS-062, DSN-DVM-121, DSN-DVM-122, DSN-DVM-123, DSN-DVM-124, DSN-FRG-301, DSN-DVM-134, DEC-077, DEC-087, DEC-126
+
+### DEC-128 — Models and packages, part 7b: upstream change detection (PH-2 step 7)
+- **Date:** 2026-10-31 · **Status:** Accepted
+- **Context:** Part 7b of step 7 (DEC-127). On the kernel, none of the 10 vectors of STD-VER-082 (BPA 1.0-rc8) passed: a branch with a parent line could override inherited objects (STD-VER-080), but did not record what an override was based on, so a later change of the parent line went unnoticed. The upgrades of part 7e merge Buk updates into overlays and report them through this mechanism. The owner confirmed part 7b with the default suggestions.
+- **Decision:**
+  1. **Overrides.** When a commit on a branch with a parent line writes its own version of an inherited object, the parent-line version it was based on is recorded. The record is a `kernel_meta` map per branch (`overrides:<branch>`), written in the same flush as the commit. Commits on branches without a parent line do not touch it.
+  2. **Detection.** `upstream_changes` resolves the parent line at its head, as the branch reads it (live or pinned), and lists the overrides whose parent-line head differs from the recorded version, with `before` and `after`; `after` is null when the parent line no longer has the object.
+  3. **Resolution.** `resolve_upstream` with `acknowledge` records the parent head as the new base. With `merge` it runs the three-way merge of `ubos-version` on that one object (base = the recorded version, source = the parent head, target = the branch's version) with recorded resolutions, fails with `VER.MERGE_CONFLICT` on a conflict left, and commits the merged body when it differs from the branch's version; the new base is recorded in that commit. A parent version that ends the object can only be acknowledged (`MODEL.CONSTRAINT_VIOLATED`).
+  4. **Claim.** The conformance test claims STD-VER-082.
+  5. **Design note.** DSN-DVM-263 gets a phase note: the report is available at any time, not only when the upstream pointer advances.
+- **Consequences:**
+  - The 10 vectors pass in memory and on PostgreSQL 16, and the conformance test passes.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - One metadata key per override was rejected for now: the metadata store has no prefix listing, and a per-branch map is read once per report. If overlays with many overrides make the map large, a table with an index replaces it (step 18 benchmarks).
+  - Detecting changes when the parent line commits (pushing marks to every child branch) was rejected: it makes a parent commit depend on its children, while comparing on request costs one parent-line view.
+- **Affects:** STD-VER-082, STD-VER-080, DSN-DVM-263, DEC-127

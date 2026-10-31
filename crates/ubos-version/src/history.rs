@@ -345,6 +345,12 @@ impl Repo<'_> {
         })
     }
 
+    /// The view of a branch's parent line at its head, as the branch resolves it now
+    /// (STD-VER-082): `None` for a branch without a parent line.
+    pub fn parent_line_view(&mut self, branch: &str) -> Result<Option<View>, BpaError> {
+        self.parent_view(branch, None, &Map::new(), 0)
+    }
+
     fn parent_view(
         &mut self,
         branch: &str,
