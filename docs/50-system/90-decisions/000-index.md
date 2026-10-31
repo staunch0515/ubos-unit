@@ -24,6 +24,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-118 | PH-2 step 5 closed: decision tables and rule operations (parts 5a–5f, DEC-112…117) — BPA 1.0-rc11, decision tables, simulation of rule and logic changes, the end of attachments, live impact, rule tests and the merge gate in the kernel, `forge simulate`; 58 step-5 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 | DEC-119 | PH-2 step 6 opened in parts 6a–6g; part 6a: BPA 1.0-rc12 — saga timeouts, monitoring and intervention (STD-TXN-081), workflow tasks and approvals (STD-TXN-093), workflow timers, business calendars and timeouts (STD-TXN-094), `ask.input` (STD-ISA-101); 259 clauses, 2,275 vectors, MUST coverage 221/221 | Accepted |
 | DEC-120 | PH-2 step 6b: workflows in the kernel — `WorkflowDefinition` and `WorkflowInstance`, the step interpreter with idempotent actions, decisions, parallel branches and joins, sub-workflows, events with correlation and buffering, human tasks, timers fired by the tick, and migration; STD-TXN-090…092 claimed, conformance test on BPA 1.0-rc12 | Accepted |
+| DEC-121 | PH-2 step 6c: workflow timers as rows written with the commit and fired by the tick of the VAE's lease holder, in place of a scan of the running instances | Accepted |
 
 ---
 
@@ -343,3 +344,24 @@ follow.
   - Compiling definitions into a stored state graph was rejected for now: the checked definition version is immutable and pinned, so interpreting it gives the same behaviour without a second representation.
   - An index of correlation keys was deferred to the benchmarks of PH-2 step 18 (DSN-DVM-752).
 - **Affects:** STD-TXN-090, STD-TXN-091, STD-TXN-092, DSN-DVM-750, DSN-DVM-751, DSN-DVM-752, DSN-DVM-753, DSN-NOD-227, DEC-119
+
+### DEC-121 — Workflow timer rows and the node's timer service (PH-2 step 6, part 6c)
+- **Date:** 2026-10-31 · **Status:** Accepted
+- **Context:** Part 6c of PH-2 step 6 (DEC-119, as adjusted by DEC-120) stores workflow timers as rows written with the commit (DSN-DVM-751) and fires them on a Server (DSN-NOD-227). After part 6b, the tick found due timers by scanning every running instance. The owner confirmed the part with the default suggestions.
+- **Decision:**
+  1. **Rows.** A commit that writes a `WorkflowInstance` whose token waits for a due time adds a timer row for it to the flush, in the store's timer table beside the `BecameEffective` rows (DEC-054).
+     - Its key is `[branch, instance, due, "wf:<token>:<seq>"]`. The mark takes the place of the version, which both stores keep, as the `detach` mark does (DEC-115).
+     - It has instant granularity.
+  2. **Firing.** The tick reads the due rows with the other timers and removes them. After the `BecameEffective` effects, it fires them in the order of `(due, branch, instance, token)`.
+     - A row whose token no longer waits for that due time at that visit sequence is stale and fires nothing: an event ended the wait, the instance ended, or a migration moved the token.
+     - Task escalation follows, as before.
+  3. **Node.** On a Server, the lease holder of each VAE calls the tick every second (DSN-NOD-208), so workflow timers fire there without a new call. Only the holder ticks, so a row fires once. The claim with leases of IF-DVM-034 waits for PH-2 step 11 and is needed only if several workers of one VAE fire timers.
+  4. **Design notes.** DSN-DVM-751 and DSN-NOD-227 get phase notes.
+- **Consequences:**
+  - The 38 workflow vectors pass in memory and on PostgreSQL 16 with timer rows.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+  - No storage migration is needed.
+- **Alternatives considered:**
+  - A timer table of its own for workflows was rejected: the existing table already has the `(due_at, target, step)` shape that DSN-DVM-751 names, and it is written in the same flush.
+  - Removing stale rows when a wait ends was rejected for now: a stale row is skipped when it fires, and removing it would add a write to every event and completion.
+- **Affects:** DSN-DVM-751, DSN-NOD-208, DSN-NOD-227, IF-DVM-034, STD-TXN-091, DEC-054, DEC-115, DEC-119, DEC-120

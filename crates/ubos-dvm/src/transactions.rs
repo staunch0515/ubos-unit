@@ -364,19 +364,21 @@ impl Engine {
     /// Emit the `BecameEffective` events whose segment start the clock has reached and
     /// whose segment still starts there with the same version (STD-TIME-050).
     pub fn tick(&mut self) -> Result<(), BpaError> {
-        self.effective_timers()?;
-        // STD-TXN-091 (BPA 1.0-rc8, PH-2 step 6b): workflow timers as the clock reaches them
-        self.wf_timers()?;
+        // STD-TXN-091 (BPA 1.0-rc8, PH-2 step 6c): workflow timers fire after the effects
+        let wf = self.effective_timers()?;
+        self.fire_wf_timers(wf)?;
         // STD-LGS-063 (BPA 1.0-rc10, PH-2 step 4f): escalation steps as the clock reaches them
         self.task_escalations()
     }
 
     /// The timers of the flush: `BecameEffective` and `RuleDetached` as the business date
     /// reaches them.
-    fn effective_timers(&mut self) -> Result<(), BpaError> {
+    /// Returns the due workflow timers, removed with the others, for the caller to fire.
+    fn effective_timers(&mut self) -> Result<Vec<crate::workflows::WfTimer>, BpaError> {
         let timers = self.store.timers()?;
+        let mut wf = Vec::new();
         if timers.is_empty() {
-            return Ok(());
+            return Ok(wf);
         }
         let mut fired = Vec::new();
         let mut events = Vec::new();
@@ -392,6 +394,14 @@ impl Engine {
                 text_of(&key[3]),
             );
             let class = text_of(&item["class"]);
+            // DSN-DVM-751 (PH-2 step 6c): a workflow timer is due at its instant
+            if let Some((tid, seq)) = crate::workflows::timer_mark(&vh) {
+                if from.as_str() <= self.now.as_str() {
+                    fired.push(text_of(&item["id"]));
+                    wf.push((from.clone(), branch.clone(), oid.clone(), tid, seq));
+                }
+                continue;
+            }
             if !due(&self.registry, &self.now, &from, &class) {
                 continue;
             }
@@ -437,7 +447,8 @@ impl Engine {
         if !events.is_empty() {
             self.store.outbox_push(&events)?;
         }
-        self.store.remove_timers(&fired)
+        self.store.remove_timers(&fired)?;
+        Ok(wf)
     }
 
     /// `outbox_claim {holder, n?, lease_ms?, now_ms?}` (IF-DVM-033): claim unacknowledged

@@ -353,6 +353,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
 - **Verification:** CONF
 - **Origin:** FR-FLOW-063
 - **Phase note:** DEC-120: in PH-2 step 6b, the kernel's tick finds due workflow timers by scanning the running instances; the timer rows written in the flush and claimed by the host scheduler (DSN-NOD-227) come in part 6c. Business calendars are declared on the timer step, so a changed calendar reaches running instances by migration (STD-TXN-094, DEC-119).
+- **Phase note:** DEC-121: since PH-2 step 6c, a commit that writes a workflow instance whose token waits for a due time writes a timer row `(due_at, instance, step)` with it, keyed by the token and its visit sequence; the tick fires the due rows in the order of their due times and drops the rows of tokens that no longer wait for them.
 
 ### DSN-DVM-752 — Event correlation
 - **Statement:** Waiting workflow steps MUST register correlation keys; incoming events MUST be matched by `(event type, correlation key)` through an index and deliver to at most one waiting step per key.

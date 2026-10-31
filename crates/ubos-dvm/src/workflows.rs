@@ -298,6 +298,44 @@ pub(crate) fn check(
     Ok(())
 }
 
+/// A due workflow timer: due instant, branch, instance, token and the token's visit
+/// sequence when it began to wait.
+pub(crate) type WfTimer = (String, String, String, String, u64);
+
+/// DSN-DVM-751 (PH-2 step 6c): the timer rows of the workflow instances a commit writes,
+/// one per token that waits for a due time, written with the commit. The key carries
+/// `wf:<token>:<seq>` in place of a version, which every store keeps.
+pub(crate) fn timer_rows(
+    repo: &mut Repo,
+    tx: &ubos_version::state::Tx,
+    branch: &str,
+    versions: &Value,
+) -> Result<Vec<Value>, BpaError> {
+    let mut out = Vec::new();
+    for (oid, vh) in versions.as_object().into_iter().flatten() {
+        let v = repo.version_in(tx, vh.as_str().unwrap_or_default())?;
+        if s(&v, "class") != Some(WF_INST) || s(&v["body"], "status") != Some("running") {
+            continue;
+        }
+        for t in v["body"]["tokens"].as_array().into_iter().flatten() {
+            if let Some(due) = s(&t["wait"], "due") {
+                let mark = format!("wf:{}:{}", str_of(&t["id"]), t["seq"].as_u64().unwrap_or(0));
+                out.push(
+                    json!({"key": [branch, oid, due, mark], "class": WF_INST, "instant": true}),
+                );
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// The token and visit sequence of a workflow timer row's mark, `wf:<token>:<seq>`.
+pub(crate) fn timer_mark(mark: &str) -> Option<(String, u64)> {
+    let rest = mark.strip_prefix("wf:")?;
+    let (tid, seq) = rest.rsplit_once(':')?;
+    Some((tid.to_string(), seq.parse().ok()?))
+}
+
 /// The token of an instance body with `id`.
 fn tok_mut<'a>(body: &'a mut Value, id: &str) -> &'a mut Value {
     let toks = body["tokens"].as_array_mut().expect("tokens");
@@ -1105,50 +1143,38 @@ impl Engine {
         self.wf_view(&branch, &iid)
     }
 
-    /// STD-TXN-091: the timers whose due time has come fire as the clock advances, in the
-    /// order of their due times.
-    pub(crate) fn wf_timers(&mut self) -> Result<(), BpaError> {
+    /// STD-TXN-091: fire the workflow timers whose rows the tick found due (DSN-DVM-751), in
+    /// the order of their due times; a row whose token no longer waits for that due time at
+    /// that visit is stale and fires nothing.
+    pub(crate) fn fire_wf_timers(&mut self, mut due: Vec<WfTimer>) -> Result<(), BpaError> {
         let now = self.now.clone();
-        let mut due = Vec::new();
-        for (branch, iid) in self.wf_instances()? {
+        due.sort();
+        for (at, branch, iid, tid, seq) in due {
             if Repo::new(self.store.as_mut(), &self.registry)
                 .check_active(&branch, &now)
                 .is_err()
             {
                 continue;
             }
-            let Ok((_, body)) = self.wf_body(&branch, &iid) else {
+            let Ok((head, mut body)) = self.wf_body(&branch, &iid) else {
                 continue;
             };
             if s(&body, "status") != Some("running") {
                 continue;
             }
-            for t in body["tokens"].as_array().into_iter().flatten() {
-                if let Some(at) = s(&t["wait"], "due").filter(|at| *at <= now.as_str()) {
-                    due.push((
-                        at.to_string(),
-                        branch.clone(),
-                        iid.clone(),
-                        str_of(&t["id"]),
-                    ));
-                }
-            }
-        }
-        due.sort();
-        for (_, branch, iid, tid) in due {
-            let (head, mut body) = self.wf_body(&branch, &iid)?;
             let Some(tok) = body["tokens"]
                 .as_array()
                 .into_iter()
                 .flatten()
-                .find(|t| s(t, "id") == Some(tid.as_str()) && t.get("wait").is_some())
+                .find(|t| {
+                    s(t, "id") == Some(tid.as_str())
+                        && s(&t["wait"], "due") == Some(at.as_str())
+                        && t["seq"].as_u64() == Some(seq)
+                })
                 .cloned()
             else {
                 continue;
             };
-            if s(&body, "status") != Some("running") {
-                continue;
-            }
             let d = self.version_body(&str_of(&body["definition_version"]))?;
             log(&mut body, &tok, "fired", json!({"due": tok["wait"]["due"]}));
             let next = str_of(&d["steps"][str_of(&tok["step"])]["next"]);

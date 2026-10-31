@@ -1833,6 +1833,9 @@ pub(crate) fn commit_on(
     // STD-TXN-050, STD-TIME-050, STD-TXN-040: effects, future segment starts and the
     // idempotency record are written with the commit (DEC-054).
     tx.timers = pending_starts(reg, now_, &branch, &tx.state, &result["versions"]);
+    // DSN-DVM-751 (PH-2 step 6c): the workflow timers of the instances written
+    let wf_timers = crate::workflows::timer_rows(&mut repo, &tx, &branch, &result["versions"])?;
+    tx.timers.extend(wf_timers);
     tx.outbox = effects_of(repo.store, process, &branch, tx.cseq)?;
     let effects = u32::try_from(tx.outbox.len()).unwrap_or(u32::MAX);
     if let Some((scope, key, hash)) = idempotency {

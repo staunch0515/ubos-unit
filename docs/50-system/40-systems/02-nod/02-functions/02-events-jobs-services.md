@@ -199,6 +199,7 @@ Reading order:
   1. Given 10,000 timers due in the same minute, when processed, then all fire within 60 s.
 - **Verification:** BENCH
 - **Origin:** FR-FLOW-063, FR-FLOW-082
+- **Phase note:** DEC-121: built in PH-2 step 6c without a separate `timers_claim` call: the lease holder of a VAE fires the due timer rows in its tick every second (DSN-NOD-208), and only the holder ticks, so a row fires once. The claim with leases (IF-DVM-034) comes with PH-2 step 11 if several workers of one VAE fire timers; the benchmark of the acceptance runs in PH-2 step 18.
 
 ### DSN-NOD-228 — Leadership leases
 - **Statement:** Leadership (schedules, became-effective, sweeps) MUST use database rows with lease expiry and a monotonically increasing fencing token (CTR-008). Default lease 15 s, renewal every 5 s.
