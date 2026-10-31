@@ -25,6 +25,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-119 | PH-2 step 6 opened in parts 6a–6g; part 6a: BPA 1.0-rc12 — saga timeouts, monitoring and intervention (STD-TXN-081), workflow tasks and approvals (STD-TXN-093), workflow timers, business calendars and timeouts (STD-TXN-094), `ask.input` (STD-ISA-101); 259 clauses, 2,275 vectors, MUST coverage 221/221 | Accepted |
 | DEC-120 | PH-2 step 6b: workflows in the kernel — `WorkflowDefinition` and `WorkflowInstance`, the step interpreter with idempotent actions, decisions, parallel branches and joins, sub-workflows, events with correlation and buffering, human tasks, timers fired by the tick, and migration; STD-TXN-090…092 claimed, conformance test on BPA 1.0-rc12 | Accepted |
 | DEC-121 | PH-2 step 6c: workflow timers as rows written with the commit and fired by the tick of the VAE's lease holder, in place of a scan of the running instances | Accepted |
+| DEC-122 | PH-2 step 6d: sagas and quarantine in the kernel — `Saga`, `Quarantine`, `QuarantineRelease`, `run_saga` with resumption, step timeouts and escalation, `sagas` and `saga_action`, saga jobs on the node, the quarantine of failing asset versions; STD-TXN-080, -081 and STD-CTX-031 claimed | Accepted |
 
 ---
 
@@ -365,3 +366,31 @@ follow.
   - A timer table of its own for workflows was rejected: the existing table already has the `(due_at, target, step)` shape that DSN-DVM-751 names, and it is written in the same flush.
   - Removing stale rows when a wait ends was rejected for now: a stale row is skipped when it fires, and removing it would add a write to every event and completion.
 - **Affects:** DSN-DVM-751, DSN-NOD-208, DSN-NOD-227, IF-DVM-034, STD-TXN-091, DEC-054, DEC-115, DEC-119, DEC-120
+
+### DEC-122 — Sagas and quarantine in the kernel (PH-2 step 6, part 6d)
+- **Date:** 2026-10-31 · **Status:** Accepted
+- **Context:** Part 6d of PH-2 step 6 (DEC-119) implements the sagas of STD-TXN-080 and the quarantine of STD-CTX-031 (BPA 1.0-rc8, DSN-DVM-564, DSN-DVM-624), and runs saga coordinators as jobs (DSN-NOD-230). Before the part, their 23 vectors failed. The saga clause of BPA 1.0-rc12, STD-TXN-081 (DSN-DVM-565), extends the same code, so the part takes it too. The owner confirmed the part with the default suggestions.
+- **Decision:**
+  1. **Classes.** `Saga` (Definition), `Quarantine` and `QuarantineRelease` (System) join the genesis registry with the declarations of the reference model. A commit that writes a saga checks it. A change to a saga's state members outside its execution fails with `FLOW.STATE_DIRECT_WRITE`.
+  2. **Sagas.** `crates/ubos-dvm/src/sagas.rs` follows the reference model.
+     - **Commits.** Every state transition is one kernel commit, made while a thread-local flag allows the state members.
+     - **Steps.** A step's process is a `job` linked by `saga` and `saga_step`. Its outcome is kept in `kernel_meta`, so a resumed saga repeats no step whose process committed.
+     - **Simulated crash.** `interrupt_after` stops the run after that many commits.
+  3. **Timeouts and intervention (1.0-rc12).**
+     - **Timeouts.** A forward attempt of a step with a timeout records `started_at`, and a resumed step past its timeout times out with `FLOW.TIMEOUT`. With `on_timeout: escalate`, a timeout or a limit termination stops the saga `stuck` with the effect `SagaStuck`.
+     - **Operations.** `sagas` lists sagas by state, age and step. `saga_action` lets the saga's operators retry, skip or cancel, then continues the saga.
+  4. **Quarantine.** The policy, the failure counts in the window and the quarantined versions are kept in `kernel_meta`.
+     - **Counting.** A failure or limit termination of a process counts towards its entry asset version; replays and simulated re-runs do not count. Reaching the threshold commits a `Quarantine` with the effect `AssetQuarantined`.
+     - **Fail fast.** Resolving a quarantined version fails with `LOGIC.ASSET_QUARANTINED`.
+     - **Release.** A releaser's `release_quarantine` commits a `QuarantineRelease` and restarts the counts.
+  5. **Jobs.** The node runs jobs of kind `saga`: the job calls `run_saga`, which resumes from the committed state after a lost lease. Operators may enqueue saga jobs through the administration interface.
+  6. **Claim.** The conformance test claims STD-TXN-080, STD-TXN-081 and STD-CTX-031.
+  7. **Part 6e.** It keeps the workflow clauses of 1.0-rc12: STD-TXN-093 and -094.
+  8. **Design notes.** DSN-DVM-564, -565, -624 and DSN-NOD-230 get phase notes.
+- **Consequences:**
+  - The 40 vectors of the three clauses pass in memory and on PostgreSQL 16, and the conformance test passes.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - A System-kind `Saga` written only by the kernel was rejected, as in DEC-097: the author writes the steps, and only the state members are reserved.
+  - Counting quarantine failures in the process records was rejected: the window needs only the recent failures per version, which `kernel_meta` holds directly.
+- **Affects:** STD-TXN-080, STD-TXN-081, STD-CTX-031, DSN-DVM-564, DSN-DVM-565, DSN-DVM-624, DSN-NOD-230, DEC-097, DEC-119

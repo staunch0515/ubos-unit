@@ -734,6 +734,8 @@ impl<'a> EngineHost<'a> {
                 v
             }
         };
+        // STD-CTX-031 (BPA 1.0-rc8, PH-2 step 6d): a quarantined version fails fast
+        self.e.q_check(&vh)?;
         let body = self.version(&vh)?["body"].clone();
         self.check_asset(core, &body)?;
         if !core.logic.contains(&vh) {
@@ -2236,6 +2238,10 @@ impl Engine {
                         _ => "error",
                     };
                     self.finish(&core, i, &p, None, None, outcome, attempt, &machine)?;
+                    // STD-CTX-031 (BPA 1.0-rc8, PH-2 step 6d): failures count towards quarantine
+                    if replay.is_none() && !crate::simulation::active() {
+                        self.q_failure(&core.branch, &core.logic, e.code, outcome)?;
+                    }
                     return Err(e);
                 }
             }

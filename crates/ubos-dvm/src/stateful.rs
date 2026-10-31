@@ -1158,6 +1158,8 @@ fn create(
             "the lifecycle state changes by transitions only",
         ));
     }
+    // STD-TXN-080 (BPA 1.0-rc8): the state of a saga is written by its execution only
+    crate::sagas::kernel_fields(&class, ch.get("body"))?;
     let state: Option<String> = lc.as_ref().map(|(_, _, body)| {
         flow.transitions
             .get(&oid)
@@ -1232,6 +1234,8 @@ fn update(
     if o.kind == "system" && ch.get(SYSTEM_MARK) != Some(&json!(true)) {
         return Err(BpaError::new("LOGIC.FORBIDDEN_TARGET", oid));
     }
+    // STD-TXN-080 (BPA 1.0-rc8): the state of a saga is written by its execution only
+    crate::sagas::kernel_fields(&o.class, ch.get("body"))?;
     if s(ch, "base").is_none() {
         return Err(BpaError::new(
             "MODEL.DECLARATION_INCOMPLETE",
@@ -1678,6 +1682,8 @@ pub(crate) fn commit_on(
         crate::ruleops::check(&mut repo, &mut tx, &written)?;
         // STD-TXN-090 (BPA 1.0-rc8, PH-2 step 6b): the workflow definitions written
         crate::workflows::check(&mut repo, &mut tx, &written)?;
+        // STD-TXN-080 (BPA 1.0-rc8, PH-2 step 6d): the sagas written
+        crate::sagas::check(&mut repo, &mut tx, &written)?;
     }
     // STD-CLS-004: the shape and the extension rule of the lifecycle objects written
     {

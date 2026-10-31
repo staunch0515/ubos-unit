@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (121)
+## DEC (122)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -215,4 +215,5 @@ depends_on: [UBS-IDX-00]
 | DEC-119 | Durable work, part 6a: BPA 1.0-rc12 (PH-2 step 6) | `90-decisions/000-index.md` |
 | DEC-120 | Workflows in the kernel (PH-2 step 6, part 6b) | `90-decisions/000-index.md` |
 | DEC-121 | Workflow timer rows and the node's timer service (PH-2 step 6, part 6c) | `90-decisions/000-index.md` |
+| DEC-122 | Sagas and quarantine in the kernel (PH-2 step 6, part 6d) | `90-decisions/000-index.md` |
 

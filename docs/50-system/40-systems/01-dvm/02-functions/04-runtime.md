@@ -247,6 +247,7 @@ Reading order:
   1. Given an asset failing 15 of 20 runs, when the next call occurs, then it is rejected, and an event is emitted.
 - **Verification:** CONF
 - **Origin:** FR-LOGIC-064, STD-CTX-031
+- **Phase note:** DEC-122: built in PH-2 step 6d as BPA 1.0-rc8 states it (STD-CTX-031): the policy is a count of failures and limit terminations within a window, configured per VAE, rather than a rate over a minimum of runs; without a policy nothing is quarantined.
 
 ### DSN-DVM-625 — Script complexity limits
 - **Statement:** The loader MUST reject scripts over the size and complexity limits (AST nodes, nesting depth, function count) with `LOGIC.SCRIPT_TOO_COMPLEX`.

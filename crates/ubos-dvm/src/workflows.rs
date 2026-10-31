@@ -424,7 +424,7 @@ impl Engine {
     // ---- objects ----
 
     /// The object of `class` that `r` names: an object ID or a canonical URI.
-    fn wf_ref(
+    pub(crate) fn wf_ref(
         &mut self,
         branch: &str,
         r: &Value,

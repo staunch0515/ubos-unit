@@ -121,6 +121,11 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-TXN-090",
     "STD-TXN-091",
     "STD-TXN-092",
+    // BPA 1.0-rc8, rc12 (PH-2 step 6d, DEC-122): sagas with timeouts, monitoring and
+    // intervention, and quarantine
+    "STD-TXN-080",
+    "STD-TXN-081",
+    "STD-CTX-031",
 ];
 
 /// The clauses a vector verifies.

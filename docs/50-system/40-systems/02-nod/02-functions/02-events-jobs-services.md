@@ -232,6 +232,7 @@ Reading order:
 - **Verification:** FAULT
 - **Origin:** FR-TXN-015, FR-TXN-061
 - **Phase note:** PH-1 step 15 (DEC-076): bulk processes run as jobs in PH-1; saga coordinators follow DSN-DVM-564 in PH-2.
+- **Phase note:** DEC-122: since PH-2 step 6d a saga coordinator runs as a job of kind `saga` that calls `run_saga`; a job re-run after a lost lease resumes from the saga's committed state.
 
 ### DSN-NOD-231 — Due-date and SLA jobs
 - **Statement:** The node MUST run periodic jobs that evaluate task due dates and escalation chains (DSN-DVM-744) and emit reminders.

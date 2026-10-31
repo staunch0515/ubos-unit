@@ -74,7 +74,7 @@ pub const DELIVERY_BATCH: usize = 100;
 /// The lease of a claimed job (heartbeated every third of it).
 pub const DELIVERY_LEASE_MS: i64 = 60_000;
 /// The job kinds the worker runs.
-pub const JOB_KINDS: &[&str] = &["delivery", "port", "bulk", "schedule"];
+pub const JOB_KINDS: &[&str] = &["delivery", "port", "bulk", "schedule", "saga"];
 /// The interval of the job sweeper (FR-EVT-032).
 pub const JOB_SWEEP_SECS: u64 = 30;
 /// The interval of the scan for VAEs with work.
@@ -1598,6 +1598,18 @@ impl Server {
                 }
             }
             "bulk" => self.run_bulk_job(&jobs, h, &job, token).await,
+            // DSN-NOD-230 (PH-2 step 6d): a saga coordinator runs as a job; run_saga resumes
+            // from the saga's committed state, so a job re-run after a lost lease repeats no
+            // step whose process committed
+            "saga" => {
+                let p = &job["payload"];
+                let mut input = json!({"branch": p.get("branch").cloned().unwrap_or_else(|| json!("main")),
+                                       "saga": p["saga"]});
+                if let Some(i) = p.get("initiator").filter(|v| v.is_string()) {
+                    input["process"] = json!({"initiator": i});
+                }
+                h.call("run_saga", input).await.map_err(|e| (e, false))
+            }
             "schedule" => {
                 let run_as = job["payload"]["run_as"]
                     .as_str()
@@ -3389,15 +3401,15 @@ async fn admin_api(
                     Ok((json!({"items": jobs.list(&f)?}), None, None))
                 }
                 ("POST", ["jobs"]) => {
-                    // an operator's job: a bulk process or a port call (DSN-NOD-230)
+                    // an operator's job: a bulk process, a port call or a saga (DSN-NOD-230)
                     let kind = text(&body2, "kind")?.to_string();
-                    if kind != "bulk" && kind != "port" {
-                        return Err(BpaError::new("MODEL.INVALID_VALUE", "an operator enqueues bulk or port jobs"));
+                    if !matches!(kind.as_str(), "bulk" | "port" | "saga") {
+                        return Err(BpaError::new("MODEL.INVALID_VALUE", "an operator enqueues bulk, port or saga jobs"));
                     }
                     let id = crate::uuid()?;
                     let mut payload = body2.get("payload").cloned().unwrap_or_else(|| json!({}));
                     // an operator's port job runs as the operator (it has no parent process)
-                    if kind == "port" && payload.is_object() {
+                    if matches!(kind.as_str(), "port" | "saga") && payload.is_object() {
                         payload["initiator"] = json!(by);
                     }
                     let spec = json!({"job_id": id, "kind": kind, "queue": body2.get("queue").cloned().unwrap_or_else(|| json!("default")),

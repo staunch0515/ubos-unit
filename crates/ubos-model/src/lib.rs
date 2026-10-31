@@ -122,6 +122,11 @@ fn genesis() -> BTreeMap<String, Value> {
         json!({"name": name, "kind": kind, "parent": parent, "abstract": abs, "fields": fields})
     };
     let ext_json = |n: &str| field(n, "json", false);
+    let opt_enum = |n: &str, allowed: &[&str]| {
+        let mut f = field(n, "enum", false);
+        f["constraints"] = json!({"allowed_values": allowed});
+        f
+    };
     let list = vec![
         g("Object", None, None, true, vec![]),
         g("DataObject", None, Some("Object"), true, vec![]),
@@ -567,6 +572,70 @@ fn genesis() -> BTreeMap<String, Value> {
                 ext_json("migrations"),
             ],
         ),
+        // STD-TXN-080 (BPA 1.0-rc8, DEC-092; members of 1.0-rc12, DEC-119): a saga lists its
+        // steps and holds its state, which only the saga's execution writes.
+        g(
+            "Saga",
+            Some("definition"),
+            Some("Object"),
+            false,
+            vec![
+                field("name", "text", true),
+                field("steps", "json", true),
+                opt_enum("recovery", &["backward", "forward"]),
+                field("max_attempts", "integer", false),
+                ext_json("operators"),
+                opt_enum(
+                    "status",
+                    &[
+                        "pending",
+                        "running",
+                        "stuck",
+                        "compensating",
+                        "completed",
+                        "compensated",
+                        "failed",
+                    ],
+                ),
+                ext_json("completed"),
+                ext_json("compensated"),
+                ext_json("current"),
+                ext_json("error"),
+                ext_json("log"),
+                ext_json("skipped"),
+            ],
+        ),
+        // STD-CTX-031 (BPA 1.0-rc8, DEC-092): quarantines and their releases are System
+        // objects.
+        g(
+            "Quarantine",
+            Some("system"),
+            Some("SystemObject"),
+            false,
+            vec![
+                field("asset", "text", true),
+                field("asset_version", "text", true),
+                field("failures", "integer", true),
+                field("limit_terminations", "integer", true),
+                field("window", "text", true),
+                field("threshold", "integer", true),
+                field("since", "instant", true),
+                field("last_error", "text", false),
+            ],
+        ),
+        g(
+            "QuarantineRelease",
+            Some("system"),
+            Some("SystemObject"),
+            false,
+            vec![
+                field("quarantine", "text", true),
+                field("asset_version", "text", true),
+                field("principal", "text", true),
+                field("reason", "text", true),
+                field("released_at", "instant", true),
+            ],
+        ),
         g(
             "Release",
             Some("definition"),
@@ -618,6 +687,9 @@ pub fn is_genesis(name: &str) -> bool {
             | "WorkQueue"
             | "WorkflowDefinition"
             | "WorkflowInstance"
+            | "Saga"
+            | "Quarantine"
+            | "QuarantineRelease"
     )
 }
 

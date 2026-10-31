@@ -369,6 +369,7 @@ This file designs the crate `ubos-txn`. Reading order:
   1. Given a 3-step saga that fails at step 3, when run, then compensations for steps 2 and 1 run in reverse order.
 - **Verification:** FAULT, CONF
 - **Origin:** FR-TXN-061, FR-TXN-062, STD-TXN-080
+- **Phase note:** DEC-122: built in PH-2 step 6d as BPA 1.0-rc8 states it (STD-TXN-080): the steps are port calls on the saga's branch, each its own process linked by `saga`; steps on another branch or VAE have no clause in BPA 1.0 and are not built in PH-2.
 
 ### DSN-DVM-565 — Saga timeouts and monitoring
 - **Statement:** Each saga step MUST have a timeout; on timeout the coordinator MUST compensate or escalate per declaration. Sagas MUST be queryable by state, age and failing step (FR-TXN-064).
@@ -379,6 +380,7 @@ This file designs the crate `ubos-txn`. Reading order:
   1. Given a step that never answers, when its timeout passes, then the declared action runs, and the saga appears in the "stuck" list until resolved.
 - **Verification:** FAULT
 - **Origin:** FR-TXN-063, FR-TXN-064
+- **Phase note:** DEC-122: built in PH-2 step 6d as BPA 1.0-rc12 states it (STD-TXN-081): a step timeout is optional, a limit termination always counts as one, and `on_timeout` chooses recovery or escalation to `stuck`; sagas are queried by state, by the age of the step in progress and by step, and the saga's operators retry, skip or cancel.
 
 ### DSN-DVM-566 — Saga formal model
 - **Statement:** The saga protocol MUST be modelled formally with properties: every started saga ends completed, compensated or failed, and fails only when a compensation fails or forward recovery is exhausted; under backward recovery with compensations that do not fail it ends completed or compensated; steps and compensations run at most once per step.
