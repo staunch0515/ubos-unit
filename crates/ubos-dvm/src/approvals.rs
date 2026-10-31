@@ -512,6 +512,7 @@ impl Engine {
         let id = s(i, "pending_change_id").unwrap_or_default().to_string();
         let mut rec = self.pc(&id)?;
         if s(&rec, "state") != Some("pending") {
+            self.wf_pc_done(&rec)?; // STD-TXN-093 (BPA 1.0-rc12)
             return Ok(view(&rec));
         }
         let Some(approver) = s(i, "approver")
@@ -571,6 +572,7 @@ impl Engine {
             self.pc_apply(&mut rec)?;
         }
         self.pc_put(&rec)?;
+        self.wf_pc_done(&rec)?; // STD-TXN-093 (BPA 1.0-rc12)
         Ok(view(&rec))
     }
 

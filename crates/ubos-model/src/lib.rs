@@ -512,6 +512,7 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("assigned_by", "text", false),
                 ext_json("escalations"),
                 ext_json("log"),
+                ext_json("workflow"),
             ],
         ),
         g(

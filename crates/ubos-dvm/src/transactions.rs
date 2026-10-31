@@ -395,10 +395,10 @@ impl Engine {
             );
             let class = text_of(&item["class"]);
             // DSN-DVM-751 (PH-2 step 6c): a workflow timer is due at its instant
-            if let Some((tid, seq)) = crate::workflows::timer_mark(&vh) {
+            if let Some((kind, tid, seq)) = crate::workflows::timer_mark(&vh) {
                 if from.as_str() <= self.now.as_str() {
                     fired.push(text_of(&item["id"]));
-                    wf.push((from.clone(), branch.clone(), oid.clone(), tid, seq));
+                    wf.push((from.clone(), branch.clone(), oid.clone(), tid, kind, seq));
                 }
                 continue;
             }

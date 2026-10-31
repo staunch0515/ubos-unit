@@ -26,6 +26,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-120 | PH-2 step 6b: workflows in the kernel — `WorkflowDefinition` and `WorkflowInstance`, the step interpreter with idempotent actions, decisions, parallel branches and joins, sub-workflows, events with correlation and buffering, human tasks, timers fired by the tick, and migration; STD-TXN-090…092 claimed, conformance test on BPA 1.0-rc12 | Accepted |
 | DEC-121 | PH-2 step 6c: workflow timers as rows written with the commit and fired by the tick of the VAE's lease holder, in place of a scan of the running instances | Accepted |
 | DEC-122 | PH-2 step 6d: sagas and quarantine in the kernel — `Saga`, `Quarantine`, `QuarantineRelease`, `run_saga` with resumption, step timeouts and escalation, `sagas` and `saga_action`, saga jobs on the node, the quarantine of failing asset versions; STD-TXN-080, -081 and STD-CTX-031 claimed | Accepted |
+| DEC-123 | PH-2 step 6e: workflow tasks and approvals, timers with business calendars and timeouts in the kernel — `human_task` steps on work queues create `Task`s that continue the instance, deferred actions wait for their pending change, `at` timers, timeouts, timer rows for timeouts and expiries, due times recomputed by migration; STD-TXN-093 and -094 claimed | Accepted |
 
 ---
 
@@ -394,3 +395,27 @@ follow.
   - A System-kind `Saga` written only by the kernel was rejected, as in DEC-097: the author writes the steps, and only the state members are reserved.
   - Counting quarantine failures in the process records was rejected: the window needs only the recent failures per version, which `kernel_meta` holds directly.
 - **Affects:** STD-TXN-080, STD-TXN-081, STD-CTX-031, DSN-DVM-564, DSN-DVM-565, DSN-DVM-624, DSN-NOD-230, DEC-097, DEC-119
+
+### DEC-123 — Workflow tasks, approvals, calendars and timeouts in the kernel (PH-2 step 6, part 6e)
+- **Date:** 2026-10-31 · **Status:** Accepted
+- **Context:** Part 6e of PH-2 step 6 (DEC-119, as adjusted by DEC-122) implements the workflow clauses of BPA 1.0-rc12 in the kernel: STD-TXN-093 and -094. With them come the approvals and human tasks inside workflow steps and the escalation by workflow timers that DEC-111 moved to step 6. Before the part, 26 of their 34 vectors failed; the 8 declaration checks already passed (DEC-120). The owner confirmed the part with the default suggestions.
+- **Decision:**
+  1. **Tasks.** A `human_task` step with a `queue` creates a `Task` through the kernel's task creation, with the ID derived from the instance, token, step and visit, and the member `workflow`. `Task` gains the member `workflow` in the genesis registry.
+     - **Completion.** The `task` operation that completes or cancels such a task continues the instance in the same operation. A completion sets the step's result from the outcome; a cancellation follows `on_cancel` or fails the instance.
+  2. **Approvals.** An `action` step with `defer` calls its port with `defer`. When a pending change is stored, the token waits for it.
+     - **Decisions.** `approve` continues the instance after it applies or rejects the change, or finds it invalidated.
+     - **Expiry.** The expiry is a timer row.
+  3. **Timers.** A `timer` with `at` evaluates its expression on entry, with the entry instant as the context's `now` and the step's `calendars`. An error ends the instance `failed`.
+     - **Timeouts.** `wait_event` and `human_task` steps with `timeout` record `timeout_at` and the entry instant.
+     - **Rows.** The timer rows of DEC-121 now mark what is due: `wf:` for a timer, `wfto:` for a timeout, `wfpc:` for the expiry of a pending change.
+     - **Firing.** The tick fires them in the order of `(due, branch, instance, token, kind)`. A timeout cancels the step's task with the reason `timeout` and continues to `on_timeout`.
+  4. **Migration.** A migration recomputes the due times of waiting tokens from their entry instants under the new version of their steps.
+  5. **Claim.** The conformance test claims STD-TXN-093 and -094. Every clause of BPA 1.0-rc12 is now implemented except `ask.input` (STD-ISA-101, part 6f) and the pre-commit connector calls of BPA 1.0-rc8 (step 12).
+  6. **Design notes.** DSN-DVM-744 and -751 get phase notes.
+- **Consequences:**
+  - The 34 vectors pass in memory and on PostgreSQL 16.
+  - The workflow, saga, approval and work vectors of the earlier parts still pass, and the conformance test passes.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - Scanning pending changes at each tick for expiries was rejected: the expiry is known when the token begins to wait, so it is a timer row like the others.
+- **Affects:** STD-TXN-093, STD-TXN-094, STD-LGS-061, DSN-DVM-743, DSN-DVM-744, DSN-DVM-751, DEC-110, DEC-111, DEC-119, DEC-121, DEC-122

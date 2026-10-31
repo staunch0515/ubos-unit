@@ -652,10 +652,16 @@ impl Engine {
             vec![json!({"op": "update", "object_id": tid, "base": head, "body": body})],
             Some(&principal),
         )?;
+        // STD-TXN-093 (BPA 1.0-rc12): a workflow task that ends continues its instance
+        if body.get("workflow").is_some_and(Value::is_object)
+            && matches!(s(&body, "state"), Some("completed" | "cancelled"))
+        {
+            self.wf_task_done(&branch, &tid, &body)?;
+        }
         Ok(with_id(body, &tid))
     }
 
-    fn task_create(
+    pub(crate) fn task_create(
         &mut self,
         branch: &str,
         tid: &str,
@@ -679,7 +685,7 @@ impl Engine {
                               "created_by": principal, "created_at": self.now,
                               "escalations": [],
                               "log": [log_entry("create", principal, None, &self.now)]});
-        for k in ["subject", "data"] {
+        for k in ["subject", "data", "workflow"] {
             if let Some(v) = i.get(k).filter(|v| !v.is_null()) {
                 body[k] = v.clone();
             }

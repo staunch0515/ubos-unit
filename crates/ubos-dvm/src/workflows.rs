@@ -298,9 +298,16 @@ pub(crate) fn check(
     Ok(())
 }
 
-/// A due workflow timer: due instant, branch, instance, token and the token's visit
-/// sequence when it began to wait.
-pub(crate) type WfTimer = (String, String, String, String, u64);
+/// A due workflow timer: due instant, branch, instance, token, what is due (`due`,
+/// `timeout_at` or `pending_change`) and the token's visit sequence when it began to wait.
+pub(crate) type WfTimer = (String, String, String, String, String, u64);
+
+/// The marks of the workflow timer rows by what is due.
+const MARKS: &[(&str, &str)] = &[
+    ("wf:", "due"),
+    ("wfto:", "timeout_at"),
+    ("wfpc:", "pending_change"),
+];
 
 /// DSN-DVM-751 (PH-2 step 6c): the timer rows of the workflow instances a commit writes,
 /// one per token that waits for a due time, written with the commit. The key carries
@@ -318,10 +325,30 @@ pub(crate) fn timer_rows(
             continue;
         }
         for t in v["body"]["tokens"].as_array().into_iter().flatten() {
-            if let Some(due) = s(&t["wait"], "due") {
-                let mark = format!("wf:{}:{}", str_of(&t["id"]), t["seq"].as_u64().unwrap_or(0));
+            let w = &t["wait"];
+            let mut due: Vec<(&str, String)> = Vec::new();
+            if let Some(d) = s(w, "due") {
+                due.push(("wf:", d.to_string()));
+            }
+            // STD-TXN-094 (1.0-rc12): the timeout of a wait
+            if let Some(d) = s(w, "timeout_at") {
+                due.push(("wfto:", d.to_string()));
+            }
+            // STD-TXN-093 (1.0-rc12): the expiry of the pending change a step waits for
+            if let Some(pc) = s(w, "pending_change")
+                && let Some(rec) = repo.store.meta(&format!("pending_change:{pc}"))?
+                && let Some(e) = s(&rec, "expires_at")
+            {
+                due.push(("wfpc:", e.to_string()));
+            }
+            for (prefix, at) in due {
+                let mark = format!(
+                    "{prefix}{}:{}",
+                    str_of(&t["id"]),
+                    t["seq"].as_u64().unwrap_or(0)
+                );
                 out.push(
-                    json!({"key": [branch, oid, due, mark], "class": WF_INST, "instant": true}),
+                    json!({"key": [branch, oid, at, mark], "class": WF_INST, "instant": true}),
                 );
             }
         }
@@ -329,11 +356,14 @@ pub(crate) fn timer_rows(
     Ok(out)
 }
 
-/// The token and visit sequence of a workflow timer row's mark, `wf:<token>:<seq>`.
-pub(crate) fn timer_mark(mark: &str) -> Option<(String, u64)> {
-    let rest = mark.strip_prefix("wf:")?;
+/// What is due, the token and the visit sequence of a workflow timer row's mark,
+/// `<prefix><token>:<seq>`.
+pub(crate) fn timer_mark(mark: &str) -> Option<(String, String, u64)> {
+    let (rest, kind) = MARKS
+        .iter()
+        .find_map(|(p, k)| mark.strip_prefix(p).map(|r| (r, *k)))?;
     let (tid, seq) = rest.rsplit_once(':')?;
-    Some((tid.to_string(), seq.parse().ok()?))
+    Some((kind.to_string(), tid.to_string(), seq.parse().ok()?))
 }
 
 /// The token of an instance body with `id`.
@@ -663,10 +693,15 @@ impl Engine {
                         let proc_ = json!({"kind": "job", "initiator": body["initiator"],
                             "workflow": {"instance": iid, "step": step, "visit": tok["visit"],
                                          "attempt": tok["attempt"]}});
-                        let r = match self
-                            .execute(&json!({"branch": branch, "target": st["target"],
-                            "port": st["port"], "params": params, "process": proc_}))
-                        {
+                        let mut inv = json!({"branch": branch, "target": st["target"],
+                            "port": st["port"], "params": params, "process": proc_});
+                        if st["defer"] == json!(true) {
+                            inv["defer"] = json!(true); // STD-TXN-093 (1.0-rc12)
+                        }
+                        let r = match self.execute(&inv) {
+                            Ok(out) if s(&out["pending"], "state") == Some("pending") => {
+                                json!(["pending", out["pending"]["pending_change_id"]])
+                            }
                             Ok(out) => json!(["ok", out["result"]]),
                             Err(e) => json!(["error", e.code]),
                         };
@@ -674,7 +709,16 @@ impl Engine {
                         r
                     }
                 };
-                if res[0] == "ok" {
+                if res[0] == "pending" {
+                    tok_mut(&mut body, tid)["wait"] =
+                        json!({"pending_change": res[1], "since": since});
+                    log(
+                        &mut body,
+                        &tok,
+                        "deferred",
+                        json!({"pending_change": res[1]}),
+                    );
+                } else if res[0] == "ok" {
                     if let Some(rv) = s(&st, "result") {
                         let mut vars = body["variables"].clone();
                         Self::wf_set(&d, &mut vars, rv, &res[1])?;
@@ -794,8 +838,10 @@ impl Engine {
                 let key = self.wx(&d, s(&st, "correlation").unwrap_or_default(), &vars)?;
                 match self.wf_buffered(branch, &st, &key)? {
                     None => {
-                        tok_mut(&mut body, tid)["wait"] =
+                        let mut w =
                             json!({"event_type": st["event_type"], "key": key, "since": since});
+                        self.wf_timeout(&mut w, &st)?;
+                        tok_mut(&mut body, tid)["wait"] = w;
                     }
                     Some(ev) => {
                         if let Some(rv) = s(&st, "result") {
@@ -814,14 +860,47 @@ impl Engine {
                 }
             }
             "timer" => {
-                let due = shift(&self.now, s(&st, "after").unwrap_or_default(), 1)?;
-                tok_mut(&mut body, tid)["wait"] = json!({"due": due, "since": since});
+                let w = if st.get("at").is_some_and(|a| !a.is_null()) {
+                    // STD-TXN-094 (1.0-rc12): a due time from an expression on entry
+                    let now = self.now.clone();
+                    match self.wf_at(&d, &st, &vars, &now) {
+                        Ok(due) => json!({"due": due, "since": since, "entered": now}),
+                        Err(e) => {
+                            end(
+                                &mut body,
+                                "failed",
+                                Some(json!({"step": step, "code": e.code})),
+                            );
+                            return self.wf_save(branch, iid, head, &body, None);
+                        }
+                    }
+                } else {
+                    let due = shift(&self.now, s(&st, "after").unwrap_or_default(), 1)?;
+                    json!({"due": due, "since": since})
+                };
+                tok_mut(&mut body, tid)["wait"] = w;
             }
             "human_task" => {
-                let mut w = json!({"task": true, "since": since});
+                let mut w = if st.get("queue").is_some_and(|q| !q.is_null()) {
+                    // STD-TXN-093 (1.0-rc12): the step's Task on its work queue
+                    match self.wf_task(branch, iid, &body, &tok, &st) {
+                        Ok(task) => json!({"task_id": task, "since": since}),
+                        Err(e) => {
+                            end(
+                                &mut body,
+                                "failed",
+                                Some(json!({"step": step, "code": e.code})),
+                            );
+                            return self.wf_save(branch, iid, head, &body, None);
+                        }
+                    }
+                } else {
+                    json!({"task": true, "since": since})
+                };
                 if let Some(a) = s(&st, "assignee") {
                     w["assignee"] = json!(a);
                 }
+                self.wf_timeout(&mut w, &st)?;
                 tok_mut(&mut body, tid)["wait"] = w;
             }
             "sub_workflow" => {
@@ -855,6 +934,219 @@ impl Engine {
             _ => {}
         }
         self.wf_save(branch, iid, head, &body, None)
+    }
+
+    // ---- tasks, approvals, timers and timeouts (STD-TXN-093, -094; BPA 1.0-rc12) ----
+
+    /// The due instant of a timer's `at` expression, entered at `entered`.
+    fn wf_at(
+        &self,
+        d: &Value,
+        st: &Value,
+        vars: &Value,
+        entered: &str,
+    ) -> Result<String, BpaError> {
+        let mut types = Map::new();
+        for v in d["variables"].as_array().into_iter().flatten() {
+            types.insert(str_of(&v["name"]), v.clone());
+        }
+        let mut params = Map::new();
+        for (k, v) in vars.as_object().into_iter().flatten() {
+            if !v.is_null() && types.contains_key(k) {
+                params.insert(k.clone(), v.clone());
+            }
+        }
+        let cals = st
+            .get("calendars")
+            .filter(|c| !c.is_null())
+            .cloned()
+            .unwrap_or(json!({}));
+        let out = ubos_expr::eval_expr(
+            &json!({"expr": st["at"], "params_types": types, "params": params,
+                    "ctx": {"now": entered}, "calendars": cals}),
+            None,
+        )?;
+        let v = str_of(&out["value"]);
+        match s(&out, "type") {
+            Some("instant") => Ok(v),
+            Some("date") => Ok(format!("{v}T00:00:00.000000Z")),
+            _ => Err(invalid("at gives an instant or a date")),
+        }
+    }
+
+    /// The timeout of a waiting step, with the entry instant.
+    fn wf_timeout(&self, w: &mut Value, st: &Value) -> Result<(), BpaError> {
+        if let Some(t) = s(st, "timeout") {
+            w["timeout_at"] = json!(shift(&self.now, t, 1)?);
+            w["entered"] = json!(self.now);
+        }
+        Ok(())
+    }
+
+    /// The Task of a `human_task` step with a queue.
+    fn wf_task(
+        &mut self,
+        branch: &str,
+        iid: &str,
+        body: &Value,
+        tok: &Value,
+        st: &Value,
+    ) -> Result<String, BpaError> {
+        let step = str_of(&tok["step"]);
+        let tid = crate::matching::derived_uuid(&json!([
+            "ubos.workflow.task",
+            iid,
+            tok["id"],
+            step,
+            tok["visit"]
+        ]))?;
+        let mut i = json!({"type": s(st, "task_type").unwrap_or(&step), "queue": st["queue"],
+            "priority": st.get("priority").filter(|p| !p.is_null()).cloned().unwrap_or(json!(0)),
+            "workflow": {"instance": iid, "step": step, "visit": tok["visit"]}});
+        if let Some(x) = st.get("subject").filter(|v| !v.is_null()) {
+            i["subject"] = x.clone();
+        }
+        if let Some(a) = s(st, "assignee") {
+            i["assignee"] = json!({"principal": a});
+        }
+        if let Some(names) = st["data"].as_array() {
+            let mut data = Map::new();
+            for n in names {
+                let n = str_of(n);
+                data.insert(
+                    n.clone(),
+                    body["variables"].get(&n).cloned().unwrap_or(Value::Null),
+                );
+            }
+            i["data"] = Value::Object(data);
+        }
+        let initiator = str_of(&body["initiator"]);
+        self.task_create(branch, &tid, &initiator, &i)?;
+        Ok(tid)
+    }
+
+    /// The running instance and token whose wait satisfies `matches`.
+    fn wf_waiting(
+        &mut self,
+        branch: &str,
+        matches: impl Fn(&Value) -> bool,
+    ) -> Result<Option<(String, String, Value, String)>, BpaError> {
+        for (b, iid) in self.wf_instances()? {
+            if b != branch {
+                continue;
+            }
+            let (head, body) = self.wf_body(branch, &iid)?;
+            if s(&body, "status") != Some("running") {
+                continue;
+            }
+            if let Some(t) = body["tokens"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .find(|t| matches(&t["wait"]))
+            {
+                let tid = str_of(&t["id"]);
+                return Ok(Some((iid, head, body, tid)));
+            }
+        }
+        Ok(None)
+    }
+
+    /// STD-TXN-093: a workflow task that was completed or cancelled continues its instance.
+    pub(crate) fn wf_task_done(
+        &mut self,
+        branch: &str,
+        task_id: &str,
+        task: &Value,
+    ) -> Result<(), BpaError> {
+        let Some((iid, head, mut body, tid)) =
+            self.wf_waiting(branch, |w| s(w, "task_id") == Some(task_id))?
+        else {
+            return Ok(());
+        };
+        let d = self.version_body(&str_of(&body["definition_version"]))?;
+        let tok = tok_mut(&mut body, &tid).clone();
+        let st = d["steps"][str_of(&tok["step"])].clone();
+        if s(task, "state") == Some("completed") {
+            if let Some(rv) = s(&st, "result") {
+                let mut vars = body["variables"].clone();
+                Self::wf_set(
+                    &d,
+                    &mut vars,
+                    rv,
+                    task.get("outcome").unwrap_or(&Value::Null),
+                )?;
+                body["variables"] = vars;
+            }
+            log(
+                &mut body,
+                &tok,
+                "completed",
+                json!({"principal": task.get("owner").cloned().unwrap_or(Value::Null),
+                       "task_id": task_id}),
+            );
+            visit(&mut body, &tid, s(&st, "next").unwrap_or_default());
+        } else if let Some(c) = s(&st, "on_cancel") {
+            log(&mut body, &tok, "cancelled", json!({"task_id": task_id}));
+            visit(&mut body, &tid, c);
+        } else {
+            log(&mut body, &tok, "cancelled", json!({"task_id": task_id}));
+            end(
+                &mut body,
+                "failed",
+                Some(json!({"step": tok["step"], "task_id": task_id, "state": "cancelled"})),
+            );
+        }
+        let by = s(task, "owner")
+            .map(str::to_string)
+            .unwrap_or_else(|| str_of(&body["initiator"]));
+        self.wf_save(branch, &iid, &head, &body, Some(&by))?;
+        self.wf_run(branch, &iid)
+    }
+
+    /// STD-TXN-093: a decided pending change continues the step that waits for it.
+    pub(crate) fn wf_pc_done(&mut self, rec: &Value) -> Result<(), BpaError> {
+        let state = s(rec, "state").unwrap_or_default().to_string();
+        if state == "pending" {
+            return Ok(());
+        }
+        let pcid = str_of(&rec["pending_change_id"]);
+        let branch = s(rec, "target_branch").unwrap_or("main").to_string();
+        let Some((iid, head, mut body, tid)) =
+            self.wf_waiting(&branch, |w| s(w, "pending_change") == Some(pcid.as_str()))?
+        else {
+            return Ok(());
+        };
+        let d = self.version_body(&str_of(&body["definition_version"]))?;
+        let tok = tok_mut(&mut body, &tid).clone();
+        let st = d["steps"][str_of(&tok["step"])].clone();
+        if state == "applied" {
+            if let Some(rv) = s(&st, "result") {
+                let mut vars = body["variables"].clone();
+                Self::wf_set(
+                    &d,
+                    &mut vars,
+                    rv,
+                    &json!({"pending_change_id": pcid, "cseq": rec["cseq"]}),
+                )?;
+                body["variables"] = vars;
+            }
+            log(&mut body, &tok, "applied", json!({"pending_change": pcid}));
+            visit(&mut body, &tid, s(&st, "next").unwrap_or_default());
+        } else {
+            log(&mut body, &tok, &state, json!({"pending_change": pcid}));
+            if let Some(r) = s(&st, "on_reject") {
+                visit(&mut body, &tid, r);
+            } else {
+                end(
+                    &mut body,
+                    "failed",
+                    Some(json!({"step": tok["step"], "pending_change": pcid, "state": state})),
+                );
+            }
+        }
+        self.wf_save(&branch, &iid, &head, &body, None)?;
+        self.wf_run(&branch, &iid)
     }
 
     /// STD-TXN-091: the oldest event of the step's type and key that arrived before the
@@ -1149,7 +1441,7 @@ impl Engine {
     pub(crate) fn fire_wf_timers(&mut self, mut due: Vec<WfTimer>) -> Result<(), BpaError> {
         let now = self.now.clone();
         due.sort();
-        for (at, branch, iid, tid, seq) in due {
+        for (at, branch, iid, tid, kind, seq) in due {
             if Repo::new(self.store.as_mut(), &self.registry)
                 .check_active(&branch, &now)
                 .is_err()
@@ -1168,19 +1460,85 @@ impl Engine {
                 .flatten()
                 .find(|t| {
                     s(t, "id") == Some(tid.as_str())
-                        && s(&t["wait"], "due") == Some(at.as_str())
+                        && t["wait"].get(&kind).is_some()
                         && t["seq"].as_u64() == Some(seq)
+                        && (kind == "pending_change" || s(&t["wait"], &kind) == Some(at.as_str()))
                 })
                 .cloned()
             else {
                 continue;
             };
             let d = self.version_body(&str_of(&body["definition_version"]))?;
-            log(&mut body, &tok, "fired", json!({"due": tok["wait"]["due"]}));
-            let next = str_of(&d["steps"][str_of(&tok["step"])]["next"]);
-            visit(&mut body, &tid, &next);
-            self.wf_save(&branch, &iid, &head, &body, None)?;
-            self.wf_run(&branch, &iid)?;
+            let st = d["steps"][str_of(&tok["step"])].clone();
+            match kind.as_str() {
+                "pending_change" => {
+                    // STD-TXN-093 (1.0-rc12): the expiry is noticed as the clock advances
+                    let rec = self.pc(&str_of(&tok["wait"]["pending_change"]))?;
+                    self.wf_pc_done(&rec)?;
+                }
+                "timeout_at" => {
+                    // STD-TXN-094 (1.0-rc12): the wait continues to on_timeout and the
+                    // step's task is cancelled
+                    log(&mut body, &tok, "timeout", json!({"due": at}));
+                    visit(&mut body, &tid, s(&st, "on_timeout").unwrap_or_default());
+                    self.wf_save(&branch, &iid, &head, &body, None)?;
+                    if let Some(task) = s(&tok["wait"], "task_id") {
+                        self.task(
+                            &json!({"branch": branch, "action": "cancel", "task_id": task,
+                                          "principal": body["initiator"], "reason": "timeout"}),
+                        )?;
+                    }
+                    self.wf_run(&branch, &iid)?;
+                }
+                _ => {
+                    log(&mut body, &tok, "fired", json!({"due": tok["wait"]["due"]}));
+                    visit(&mut body, &tid, s(&st, "next").unwrap_or_default());
+                    self.wf_save(&branch, &iid, &head, &body, None)?;
+                    self.wf_run(&branch, &iid)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// STD-TXN-094: recompute the due times of a waiting token from its entry instant under
+    /// the new version of its step.
+    fn wf_redue(
+        &self,
+        olds: &Value,
+        new: &Value,
+        step: &str,
+        w: &mut Value,
+        vars: &Value,
+    ) -> Result<(), BpaError> {
+        let news = &new["steps"][step];
+        let given = |x: &Value, k: &str| x.get(k).is_some_and(|v| !v.is_null());
+        if let Some(due) = s(w, "due").map(str::to_string)
+            && (given(olds, "at") || given(news, "at") || olds.get("after") != news.get("after"))
+        {
+            let entered = match s(w, "entered") {
+                Some(e) => e.to_string(),
+                None => shift(&due, s(olds, "after").unwrap_or_default(), -1)?,
+            };
+            if given(news, "at") {
+                w["due"] = json!(self.wf_at(new, news, vars, &entered)?);
+                w["entered"] = json!(entered);
+            } else {
+                w["due"] = json!(shift(&entered, s(news, "after").unwrap_or_default(), 1)?);
+            }
+        }
+        if w.get("timeout_at").is_some() {
+            match s(news, "timeout") {
+                Some(t) => {
+                    let e = str_of(&w["entered"]);
+                    w["timeout_at"] = json!(shift(&e, t, 1)?);
+                }
+                None => {
+                    if let Some(m) = w.as_object_mut() {
+                        m.remove("timeout_at");
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -1258,9 +1616,13 @@ impl Engine {
             }
         }
         let n = body["tokens"].as_array().map_or(0, Vec::len);
+        let vars = body["variables"].clone();
         for k in 0..n {
             let from = str_of(&body["tokens"][k]["step"]);
             let to = str_of(&smap[from.as_str()]);
+            if let Some(w) = body["tokens"][k].get_mut("wait") {
+                self.wf_redue(&old["steps"][&from], &new, &to, w, &vars)?;
+            }
             body["tokens"][k]["step"] = json!(to);
             let tv = body["tokens"][k]["visit"].as_u64().unwrap_or(0);
             let cur = body["visits"][&to].as_u64().unwrap_or(0);

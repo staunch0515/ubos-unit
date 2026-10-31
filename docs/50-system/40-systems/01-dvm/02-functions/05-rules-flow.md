@@ -308,6 +308,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
 - **Verification:** CONF
 - **Origin:** FR-FLOW-081, FR-FLOW-082, FR-FLOW-083
 - **Phase note:** DEC-110: built in PH-2 steps 4e and 4f as BPA 1.0-rc10 states it (STD-LGS-063): due rules on the queue's calendars at creation, escalation steps applied when the clock reaches them (the kernel's tick) rather than by workflow timers, which come with PH-2 step 6.
+- **Phase note:** DEC-123: since PH-2 step 6e a workflow escalates by timers as well: a `human_task` step on a work queue creates a `Task`, and its `timeout` with `on_timeout` cancels the task and continues to the escalation step (STD-TXN-093, -094, BPA 1.0-rc12); the queue's own escalation steps stay as DEC-110 built them.
 
 ### DSN-DVM-745 — Delegation
 - **Statement:** Delegation objects (FR-FLOW-091) MUST have scope, validity and a delegate; the context MUST carry the delegation chain; expired delegations MUST fail with `IAM.DELEGATION_EXPIRED`. Delegation MUST NOT exceed the delegator's rights (FR-FLOW-092).
@@ -354,6 +355,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
 - **Origin:** FR-FLOW-063
 - **Phase note:** DEC-120: in PH-2 step 6b, the kernel's tick finds due workflow timers by scanning the running instances; the timer rows written in the flush and claimed by the host scheduler (DSN-NOD-227) come in part 6c. Business calendars are declared on the timer step, so a changed calendar reaches running instances by migration (STD-TXN-094, DEC-119).
 - **Phase note:** DEC-121: since PH-2 step 6c, a commit that writes a workflow instance whose token waits for a due time writes a timer row `(due_at, instance, step)` with it, keyed by the token and its visit sequence; the tick fires the due rows in the order of their due times and drops the rows of tokens that no longer wait for them.
+- **Phase note:** DEC-123: since PH-2 step 6e the timer rows also cover the timeouts of waits and the expiry of the pending change an action waits for, each marked with what is due; a timer's `at` expression is resolved with the step's business calendars on entry and recomputed by migration (STD-TXN-094).
 
 ### DSN-DVM-752 — Event correlation
 - **Statement:** Waiting workflow steps MUST register correlation keys; incoming events MUST be matched by `(event type, correlation key)` through an index and deliver to at most one waiting step per key.

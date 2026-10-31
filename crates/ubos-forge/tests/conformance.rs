@@ -126,6 +126,10 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-TXN-080",
     "STD-TXN-081",
     "STD-CTX-031",
+    // BPA 1.0-rc12 (PH-2 step 6e, DEC-123): workflow tasks and approvals, timers with business
+    // calendars and timeouts
+    "STD-TXN-093",
+    "STD-TXN-094",
 ];
 
 /// The clauses a vector verifies.
