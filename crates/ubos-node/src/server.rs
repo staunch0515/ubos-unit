@@ -3350,8 +3350,10 @@ fn buk_request(cfg: &crate::config::Config, body: &Value) -> Result<Value, BpaEr
 /// | `POST buks/plan` | `{archive \| file, branch?}` | the install plan; nothing is written |
 /// | `POST buks/install` | `{archive \| file, branch?}` | stage on the loader branch, open and submit the change set |
 /// | `POST buks/complete` | `{buk}` | approve (by the administrator) and merge the change set, record the Buk |
+/// | `POST buks/rollback` | `{buk, resolutions?}` | revert the merge of the Buk's last upgrade and restore the previous version (FR-PKG-044) |
 ///
-/// Installing and completing are audited as `admin.buk_install` and `admin.buk_complete`.
+/// Installing, completing and rolling back are audited as `admin.buk_install`,
+/// `admin.buk_complete` and `admin.buk_rollback`.
 #[allow(clippy::too_many_arguments)]
 async fn admin_buks(
     s: &Shared,
@@ -3371,10 +3373,14 @@ async fn admin_buks(
         ("POST", ["buks", "complete"]) => {
             ("buk_complete", json!({"buk": body["buk"], "approver": by}))
         }
+        ("POST", ["buks", "rollback"]) => (
+            "buk_rollback",
+            json!({"buk": body["buk"], "resolutions": body.get("resolutions")}),
+        ),
         _ => return Err(BpaError::new("IAM.NOT_FOUND", "unknown Buk route")),
     };
     let r = h.call(op, input).await;
-    if matches!(op, "buk_install" | "buk_complete")
+    if matches!(op, "buk_install" | "buk_complete" | "buk_rollback")
         && let Ok(id) = s.identity_async(tenant).await
     {
         let (buk, version, root) = match &r {
@@ -3389,10 +3395,10 @@ async fn admin_buks(
         let entry = json!({"vae": key, "by": by, "buk": buk, "version": version, "root": root,
             "change_set": r.as_ref().map(|v| v["change_set"].clone()).unwrap_or(Value::Null),
             "ok": r.is_ok(), "error": r.as_ref().err().map(|e| e.code)});
-        let event = if op == "buk_install" {
-            "admin.buk_install"
-        } else {
-            "admin.buk_complete"
+        let event = match op {
+            "buk_install" => "admin.buk_install",
+            "buk_complete" => "admin.buk_complete",
+            _ => "admin.buk_rollback",
         };
         let _ = blocking(move || id.log(event, entry)).await;
     }

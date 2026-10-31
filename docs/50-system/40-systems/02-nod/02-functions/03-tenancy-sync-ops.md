@@ -92,6 +92,7 @@ Reading order:
   1. Given a customised fund class and a Buk upgrade, when upgraded, then the customisation is kept, and conflicts are shown in a change set.
 - **Verification:** SCN
 - **Origin:** FR-TEN-031, FR-TEN-032, FR-TEN-033, FR-PKG-041
+- **Phase note:** DEC-131: built in PH-2 step 7e-1 for overlays with a live parent line on the upgrade's target: the overlay receives the upgrade through inheritance (STD-VER-080); the upgrade plan lists, per overlay, the overridden objects the upgrade changes, and completion reports the overlay's upstream changes (STD-VER-082), which the overlay resolves by acknowledgement or a three-way merge with conflicts reported per object. A pinned overlay is listed with its pin and receives the upgrade when its pin advances; overlay policies stay as built in PH-1 (FR-TEN-033). Creating an overlay over UBTP is not part of this step: `create_branch` of the protocol takes no parent line.
 
 ### DSN-NOD-408 — Parent and child VAEs
 - **Statement:** The node MUST support VAE hierarchies (FR-TEN-041) where parents publish policies and templates that cascade (FR-TEN-042) and may run aggregated queries across children within granted scopes (FR-TEN-043), subject to child autonomy settings (FR-TEN-044).

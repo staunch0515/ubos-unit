@@ -1004,7 +1004,11 @@ pub(crate) fn install() {
 impl Engine {
     /// The current versions of a class at its current schema version, sampled in object
     /// order (STD-CLS-062).
-    fn stored_bodies(&mut self, branch: &str, class: &str) -> Result<Vec<Body>, BpaError> {
+    pub(crate) fn stored_bodies(
+        &mut self,
+        branch: &str,
+        class: &str,
+    ) -> Result<Vec<Body>, BpaError> {
         let mut repo = Repo::new(self.store.as_mut(), &self.registry);
         let cseq = repo.ordinal(branch, None)?;
         let mut objs: Vec<(String, String)> = repo
@@ -1030,7 +1034,11 @@ impl Engine {
 
     /// Adapter operation `change_class` (STD-CLS-050): change a class declaration by one
     /// schema version. The change is classified by the implementation; a lens-required
-    /// change needs a total lens, a breaking change is refused.
+    /// change needs a total lens, a breaking change is refused unless it carries a
+    /// `migration` (DSN-DVM-123; PH-2 step 7e, DEC-131): a one-way lens, given inline, that
+    /// takes every stored body forward to a valid body. The migration is recorded as the
+    /// step's lens, so instances not yet rewritten read forward through it; the instances
+    /// are rewritten by a bulk process (`migrate_instances`).
     pub fn change_class(&mut self, i: &Value) -> Result<Value, BpaError> {
         let new = &i["class"];
         let name = s(new, "name").unwrap_or_default().to_string();
@@ -1047,8 +1055,22 @@ impl Engine {
             return Err(invalid("a class change increments schema_version by one"));
         }
         let branch = s(i, "branch").unwrap_or("main").to_string();
+        let migration = i.get("migration").filter(|m| !m.is_null()).cloned();
+        if let Some(m) = &migration {
+            check_lens(m)?;
+            let uri = format!("ubos://{}/Class/{name}", self.store.authority());
+            let mine = m["class"] == json!(name) || m["class"] == json!(uri);
+            if !mine || m["from"].as_i64() != Some(cur) || !truthy(m.get("one_way")) {
+                return Err(invalid(
+                    "a migration is a one-way lens of this class from its current schema version",
+                ));
+            }
+            if i.get("lens").is_some_and(|l| !l.is_null()) {
+                return Err(invalid("a class change carries a lens or a migration"));
+            }
+        }
         let lens = match i.get("lens").filter(|l| !l.is_null()) {
-            None => None,
+            None => migration.clone(),
             Some(r) => {
                 let (_, head) = self.wf_ref(&branch, r, LENS)?;
                 let l =
@@ -1079,8 +1101,12 @@ impl Engine {
         if let Some(t) = res.get("totality") {
             out["totality"] = t.clone();
         }
-        if res["classification"] == "breaking" {
+        let migrated = migration.is_some() && res["totality"]["total"] == json!(true);
+        if res["classification"] == "breaking" && !migrated {
             return Err(BpaError::with_details("MODEL.MIGRATION_REQUIRED", out));
+        }
+        if migrated {
+            out["migration"] = json!(true);
         }
         if res["classification"] == "lens_required" && lens.is_none() {
             let req: Vec<Value> = res["changes"]
@@ -1105,7 +1131,7 @@ impl Engine {
             .collect();
         self.store.put_meta(
             &step_key(&name, cur + 1),
-            &json!({"classification": res["classification"], "lens": lens,
+            &json!({"classification": res["classification"], "lens": lens, "migration": migrated,
                     "from_fields": old_f, "to_fields": to_f}),
         )?;
         Ok(out)

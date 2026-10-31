@@ -355,13 +355,25 @@ const WITH_PRINCIPAL: &[&str] = &[
 
 /// Run every test of the project on the given backend.
 pub fn run(project: &Project, backend: &Backend) -> Result<Report, BpaError> {
+    let decls = project.declarations();
+    run_with(project, backend, &|| {
+        seed_vae_with(project, &decls, backend)
+    })
+}
+
+/// `run` over fixtures made by `build` (PH-2 step 7e-1: the previous version's data
+/// migrated to this version, DSN-FRG-307).
+pub fn run_with(
+    project: &Project,
+    backend: &Backend,
+    build: &dyn Fn() -> Result<crate::check::Fixture, BpaError>,
+) -> Result<Report, BpaError> {
     // every test runs on its own fixture built from the model and seed (DSN-FRG-203), so
     // that tests cannot see each other's state; the roots of the first fixture are reported
-    let decls = project.declarations();
     let clock: Arc<FixedClock> = Arc::new(FixedClock::new(CLOCK));
     let mocks: Arc<MockConnectors> = Arc::new(MockConnectors::default());
     let fixture = |clock: &Arc<FixedClock>, mocks: &Arc<MockConnectors>| -> Result<_, BpaError> {
-        let (mut vae, findings, recorder) = seed_vae_with(project, &decls, backend)?;
+        let (mut vae, findings, recorder) = build()?;
         let s = vae.services().clone();
         vae.set_services(Services {
             clock: clock.clone(),

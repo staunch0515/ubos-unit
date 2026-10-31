@@ -236,6 +236,7 @@ AI implementer:
 - **Verification:** FAULT, CONF
 - **Origin:** FR-MODEL-087, FR-TXN-015
 - **Phase note:** DEC-127: in PH-2 step 7a a `breaking` class change is refused with `MODEL.MIGRATION_REQUIRED`, as STD-CLS-050 states; a breaking change committed together with a migration process comes with the migrations shipped with Buks in PH-2 step 7e (FR-PKG-042).
+- **Phase note:** DEC-131: built in PH-2 step 7e-1: `change_class` accepts a `migration`, a one-way lens that takes every stored body of the class forward to a valid body; the change is then accepted although it is breaking, the migration is recorded as the step's lens (instances not yet rewritten read forward through it), and `migrate_instances` rewrites the branch's own instances by a bulk process (STD-TXN-070) in commits of 1,000 objects with a common reason, resumed by calling again. A Buk upgrade runs it on the target and on the target's overlays after the merge of its change set.
 
 ### DSN-DVM-124 — Schema alignment before merge
 - **Statement:** Before a merge whose two sides have different model hashes, the merge engine MUST:

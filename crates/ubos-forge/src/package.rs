@@ -835,7 +835,203 @@ fn migrations(project: &Project, previous: Option<&Archive>) -> Result<Vec<Value
             _ => {}
         }
     }
+    // the previous version's data migrated to this version, and this version's tests on it
+    // (DSN-FRG-307; PH-2 step 7e-1, DEC-131)
+    if f.is_empty() {
+        let migs = migration_items(&project.root)?;
+        let backend = crate::check::Backend::default();
+        let build = || migrated_fixture(project, &old, &migs);
+        match crate::test::run_with(project, &backend, &build) {
+            Err(e) => f.push(finding(
+                e.code,
+                format!(
+                    "the previous version's data does not migrate: {} {}",
+                    e.message,
+                    e.details.clone().unwrap_or(Value::Null)
+                ),
+            )),
+            Ok(rep) => {
+                for r in rep.results.iter().filter(|r| !r.pass) {
+                    f.push(finding(
+                        "migration_test_failed",
+                        format!("{} fails on the migrated data", r.name),
+                    ));
+                }
+                for x in &rep.findings {
+                    f.push(finding(
+                        "migration_fixture",
+                        format!("{}: {}", x.file, x.message),
+                    ));
+                }
+            }
+        }
+    }
     Ok(f)
+}
+
+/// The migrations a project ships (`migrations/`): one-way lenses, one per file or a list.
+pub fn migration_items(root: &Path) -> Result<Vec<Value>, String> {
+    let mut out = Vec::new();
+    for (p, v) in project_files(root)? {
+        if !p.starts_with("migrations/") {
+            continue;
+        }
+        match v {
+            Value::Array(a) => out.extend(a),
+            Value::Object(ref o) if o.contains_key("migrations") => {
+                out.extend(o["migrations"].as_array().cloned().unwrap_or_default())
+            }
+            Value::Object(_) => out.push(v),
+            _ => {}
+        }
+    }
+    Ok(out)
+}
+
+/// A fixture of the previous version (model, seed, assets) upgraded to `project` as an
+/// installation would upgrade it: the new classes, the lenses and the class changes (with a
+/// lens, a migration or neither), the instances rewritten by the migrations, the new seed
+/// objects and the new assets.
+fn migrated_fixture(
+    project: &Project,
+    old: &Project,
+    migrations: &[Value],
+) -> Result<crate::check::Fixture, BpaError> {
+    let backend = crate::check::Backend::default();
+    let (mut vae, mut findings, recorder) =
+        crate::check::seed_vae_with(old, &old.declarations(), &backend)?;
+    let ctx = ubos_dvm::host::Context {
+        principal: "did:ubos:acme:01900000-0000-7000-8000-000000000002".into(),
+        on_behalf_of: None,
+    };
+    let name_of = |v: &Value| v["name"].as_str().unwrap_or_default().to_string();
+    let olds: BTreeMap<String, Value> = old
+        .classes
+        .iter()
+        .map(|i| (name_of(&i.value), i.value.clone()))
+        .collect();
+    let added: Vec<Value> = project
+        .classes
+        .iter()
+        .filter(|i| !olds.contains_key(&name_of(&i.value)))
+        .map(|i| i.value.clone())
+        .collect();
+    let have: BTreeSet<String> = old.value_types.iter().map(|i| name_of(&i.value)).collect();
+    let vts: Vec<Value> = project
+        .value_types
+        .iter()
+        .filter(|i| !have.contains(&name_of(&i.value)))
+        .map(|i| i.value.clone())
+        .collect();
+    if !added.is_empty() || !vts.is_empty() {
+        let mut g = json!({ "classes": added });
+        if !vts.is_empty() {
+            g["value_types"] = json!(vts);
+        }
+        vae.call("load_genesis", &g)?;
+    }
+    let exists = |vae: &mut ubos_dvm::host::Vae, branch: &str, oid: &str| {
+        vae.call("read", &json!({"branch": branch, "object_id": oid}))
+            .ok()
+    };
+    // the lenses, then the class changes
+    let lenses: Vec<Value> = project
+        .seed
+        .iter()
+        .map(|i| i.value.clone())
+        .filter(|ch| ch["class"] == "Lens")
+        .filter(|ch| {
+            ch["object_id"]
+                .as_str()
+                .is_none_or(|o| exists(&mut vae, "main", o).is_none())
+        })
+        .collect();
+    if !lenses.is_empty() {
+        vae.commit(&ctx, json!({"branch": "main", "changes": lenses}))?;
+    }
+    for item in &project.classes {
+        let name = name_of(&item.value);
+        let Some(o) = olds.get(&name).filter(|o| **o != item.value) else {
+            continue;
+        };
+        let from = o["schema_version"].as_i64().unwrap_or(1);
+        let of_class = |c: &Value| {
+            let c = c.as_str().unwrap_or_default();
+            c == name || c.ends_with(&format!("/Class/{name}"))
+        };
+        let mut input = json!({"class": item.value, "branch": "main"});
+        let lens = project.seed.iter().find(|i| {
+            i.value["class"] == "Lens"
+                && of_class(&i.value["body"]["class"])
+                && i.value["body"]["from"].as_i64() == Some(from)
+        });
+        let migration = migrations
+            .iter()
+            .find(|m| of_class(&m["class"]) && m["from"].as_i64() == Some(from));
+        if let Some(l) = lens {
+            input["lens"] = l.value["object_id"].clone();
+        } else if let Some(m) = migration {
+            input["migration"] = m.clone();
+        }
+        vae.call("change_class", &input)?;
+        if migration.is_some() && lens.is_none() {
+            let r = vae.engine_mut().migrate_instances("main", &name, "forge")?;
+            if r["state"] != "committed" {
+                return Err(BpaError::with_details("MODEL.MIGRATION_REQUIRED", r));
+            }
+        }
+    }
+    // the new seed objects
+    let fresh: Vec<Value> = project
+        .seed
+        .iter()
+        .map(|i| i.value.clone())
+        .filter(|ch| ch["class"] != "Lens")
+        .filter(|ch| {
+            ch["object_id"]
+                .as_str()
+                .is_none_or(|o| exists(&mut vae, "main", o).is_none())
+        })
+        .collect();
+    if !fresh.is_empty()
+        && let Err(e) = vae.commit(&ctx, json!({"branch": "main", "changes": fresh}))
+    {
+        findings.push(crate::project::Finding {
+            file: "seed".into(),
+            line: None,
+            rule: e.code.into(),
+            severity: "error",
+            message: e.message,
+            stage: "seed",
+        });
+    }
+    // the assets of this version on the feature branch of the tests
+    if !project.logic.is_empty() {
+        if vae
+            .call("branch_info", &json!({"branch": "feature/forge"}))
+            .is_err()
+        {
+            vae.call(
+                "create_branch",
+                &json!({"name": "feature/forge", "from": "main"}),
+            )?;
+        }
+        for item in &project.logic {
+            let name = name_of(&item.value);
+            let oid = crate::check::asset_object_id(&name);
+            let change = match exists(&mut vae, "feature/forge", &oid) {
+                Some(r) => json!({"op": "update", "object_id": oid,
+                    "base": r["version_hash"], "body": item.value}),
+                None => json!({"op": "create", "class": "Logic", "object_id": oid,
+                    "slug": name.replace('.', "-"), "body": item.value}),
+            };
+            vae.commit(
+                &ctx,
+                json!({"branch": "feature/forge", "changes": [change]}),
+            )?;
+        }
+    }
+    Ok((vae, findings, recorder))
 }
 
 /// Sign a verification record with the verifier key (FR-PKG-061): the record's content ID
@@ -981,6 +1177,11 @@ pub fn install(a: &Archive, o: &InstallOptions) -> Result<Value, String> {
     Ok(out)
 }
 
+/// `forge install --rollback <Buk ID>`: revert the Buk's last upgrade (FR-PKG-044).
+pub fn rollback(id: &str, o: &InstallOptions) -> Result<Value, String> {
+    call(o, "rollback", &json!({ "buk": id }))
+}
+
 /// `forge install --complete <Buk ID>`: approve and merge a staged installation.
 pub fn complete(id: &str, o: &InstallOptions) -> Result<Value, String> {
     call(o, "complete", &json!({ "buk": id }))
@@ -1009,6 +1210,23 @@ pub fn plan_text(p: &Value) -> String {
         p["root"].as_str().unwrap_or_default(),
         list(&p["signers"])
     );
+    if let Some(f) = p["from"].as_object() {
+        t.push_str(&format!(
+            "  upgrade from {} (root {})\n",
+            f["version"].as_str().unwrap_or_default(),
+            f["root"].as_str().unwrap_or_default()
+        ));
+    }
+    for c in p["classes"]["change"].as_array().into_iter().flatten() {
+        t.push_str(&format!(
+            "  class changed: {} {} → {}, {} (via {})\n",
+            c["class"].as_str().unwrap_or_default(),
+            c["from"],
+            c["to"],
+            c["classification"].as_str().unwrap_or_default(),
+            c["via"].as_str().unwrap_or_default()
+        ));
+    }
     t.push_str(&format!(
         "  classes added: {}\n",
         list(&p["classes"]["add"])
@@ -1029,6 +1247,31 @@ pub fn plan_text(p: &Value) -> String {
         "  logic assets unchanged: {}\n",
         list(&p["assets"]["unchanged"])
     ));
+    t.push_str(&format!(
+        "  logic assets changed: {}\n",
+        list(&p["assets"]["change"])
+    ));
+    t.push_str(&format!(
+        "  logic assets no longer shipped (kept): {}\n",
+        list(&p["assets"]["kept"])
+    ));
+    let sp = &p["seed"]["plan"];
+    if sp.get("update").is_some() {
+        t.push_str(&format!(
+            "  seed objects: create {}, update {}, kept as changed locally {}\n",
+            list(&sp["create"]),
+            list(&sp["update"]),
+            list(&sp["kept"])
+        ));
+    }
+    for o in p["overlays"].as_array().into_iter().flatten() {
+        t.push_str(&format!(
+            "  overlay {} ({}): overridden objects the upgrade changes: {}\n",
+            o["branch"].as_str().unwrap_or_default(),
+            o["mode"].as_str().unwrap_or_default(),
+            list(&o["overridden"])
+        ));
+    }
     t.push_str(&format!(
         "  seed changes: {} {}\n",
         p["seed"]["changes"], p["seed"]["by_class"]

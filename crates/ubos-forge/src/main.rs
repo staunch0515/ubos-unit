@@ -25,6 +25,7 @@ const USAGE: &str = "usage:
   forge install <buk file> --server <host:port> --token <bearer> [--vae <name>] [--branch <name>] \
 [--repo <dir>] [--plan] [--approve] [--json]
   forge install --complete <namespace/name> --server <host:port> --token <bearer> [--vae <name>] [--json]
+  forge install --rollback <namespace/name> --server <host:port> --token <bearer> [--vae <name>] [--json]
   forge check [<project dir>] [--json]
   forge types [<project dir>] [--out <dir>] [--sdk <module>] [--json]
   forge test [<project dir>] [--report <json file>] [--junit <xml file>] [--records <dir>] \
@@ -431,6 +432,18 @@ fn install_cmd(args: &[String]) -> Result<bool, String> {
         approve: flags.contains("--approve"),
         repo: opts.get("repo").map(PathBuf::from),
     };
+    if let Some(id) = opts.get("rollback") {
+        let r = ubos_forge::package::rollback(id, &o)?;
+        emit(
+            json_out,
+            &r,
+            &format!(
+                "forge install: {id} rolled back to {}",
+                r["version"].as_str().unwrap_or_default()
+            ),
+        );
+        return Ok(r["state"] == "installed");
+    }
     if let Some(id) = opts.get("complete") {
         let r = ubos_forge::package::complete(id, &o)?;
         emit(

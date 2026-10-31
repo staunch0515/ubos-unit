@@ -35,6 +35,7 @@ pub mod simulation;
 pub mod stateful;
 pub mod transactions;
 pub mod ubtp;
+pub mod upgrades;
 pub mod vectors;
 pub mod verification;
 

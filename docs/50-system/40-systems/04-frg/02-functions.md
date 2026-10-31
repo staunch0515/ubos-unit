@@ -263,6 +263,7 @@ depends_on: [UBS-SYS-FRG-01]
 - **Verification:** CONF
 - **Origin:** FR-PKG-042, FR-PKG-044
 - **Phase note:** DEC-129: in PH-2 step 7c `forge verify` checks that a lens-required or breaking class change ships a lens or a migration; running the migrations against the previous version's fixtures comes with part 7e.
+- **Phase note:** DEC-131: built in PH-2 step 7e-1: a migration is a one-way lens under `migrations/` (`class`, `from`, `to`, `ops`, `one_way`, `one_way_reason`); `forge verify --previous` builds the previous version's fixture (model, seed, assets), applies this version's lenses, migrations and class changes as an upgrade would, and runs this version's tests on the migrated data. The platform applies them during the upgrade (DSN-DVM-123), and an upgrade is rolled back by reverting its merge (`buk_rollback`, FR-PKG-044): class changes and rewritten instances stay and read through the lenses.
 
 ### DSN-FRG-308 — Publish
 - **Statement:** `forge publish` MUST upload the archive to EXC (CTR-015), request verification, and publish the version on success; deprecations MUST be publishable with notices (FR-PKG-052).

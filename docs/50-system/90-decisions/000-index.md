@@ -34,6 +34,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-128 | PH-2 step 7, part 7b: upstream change detection in the kernel — overrides recorded with their base version, `upstream_changes`, `resolve_upstream` by acknowledgement or three-way merge; STD-VER-082 claimed | Accepted |
 | DEC-129 | PH-2 step 7, part 7c: the Buk format `ubos.buk.v1` (UBS-SYS-FRG-09) and Forge `new`, `pack`, `sign`, `verify` with dependency resolution into `forge.lock` | Accepted |
 | DEC-130 | PH-2 step 7, part 7d: Buk installation — plan, loader branch, node-verified assets, change set, registry record with the `Buk` object; Server routes and `forge install` | Accepted |
+| DEC-131 | PH-2 step 7, part 7e-1: Buk upgrades with class changes by lens or migration, overlays' upstream report, migrations as one-way lenses rewritten by bulk process, rollback by revert; step 7e split into 7e-1 and 7e-2 | Accepted |
 
 ---
 
@@ -644,3 +645,48 @@ follow.
   - Adding the registry members to the `Buk` class now was rejected. It changes the signed `system` genesis Buk, so it belongs with the genesis upgrades of part 7e.
   - Running the Buk's scenarios on the node was deferred. Forge already runs them on the development fixture before sending the Buk, and the node verifies every asset with its own tests on the loader branch.
 - **Affects:** DSN-FRG-306, DSN-DVM-134, DSN-NOD-422, FR-PKG-031, FR-PKG-032, FR-PKG-033, STD-CTX-023, UBS-SYS-FRG-09, UBS-SYS-NOD-06, DEC-077, DEC-127, DEC-129
+
+### DEC-131 — Models and packages, part 7e-1: upgrades, migrations and rollback (PH-2 step 7)
+- **Date:** 2026-10-31 · **Status:** Accepted
+- **Context:** Part 7e of step 7 (DEC-127) covers upgrade and removal. The owner confirmed splitting it in two:
+  - 7e-1: upgrades, migrations and rollback;
+  - 7e-2: uninstall, deprecation and genesis upgrades.
+
+  After part 7d an installed Buk could not be upgraded: another version was refused (DEC-130). A breaking class change was refused without the migration processes of DSN-DVM-123 (DEC-127). Overlays had the upstream report (DEC-128), but nothing connected it to a Buk release.
+- **Decision:**
+  1. **Upgrade.** A later version of an installed Buk goes through the plan, loader branch and change set of an installation (UBS-SYS-FRG-09 §8).
+     - **Refused:** a downgrade, and a version that an installed dependent's range excludes.
+     - **Plan:** the class changes with their classification and means (none, lens or migration, one schema step), the assets changed or no longer shipped (kept), the seed objects to create, update or keep (changed locally), and the overridden objects per overlay.
+     - **Staging:** applies the additive and lensed class changes, because declarations are shared by the branches of a VAE and data reads through the lens.
+     - **Completion:** merges the change set, then applies the class changes by migration and rewrites their instances, commits the seed of those classes, records the new version with the previous one kept, and reports each overlay's upstream changes.
+     - **Resumption:** a completion that stops part way is resumed by calling it again.
+  2. **Migrations.**
+     - A migration is a one-way lens under `migrations/`.
+     - `change_class` accepts a breaking change with a `migration` that takes every stored body forward to a valid body, and records it as the step's lens.
+     - `migrate_instances` rewrites a branch's own instances by a bulk process (STD-TXN-070) in commits of 1,000 objects. It runs on the target and on its overlays.
+  3. **Rollback.**
+     - `buk_rollback` reverts the merge of the Buk's last upgrade (STD-VER-071) and restores the previous record and `Buk` object.
+     - A conflict on the change set's own state keeps that state; any other conflict is returned for the administrator's resolutions.
+     - Class changes and rewritten instances stay (FR-PKG-044).
+     - One upgrade is kept for a rollback.
+  4. **Forge.**
+     - `forge verify --previous` builds the previous version's fixture, upgrades it as an installation would, and runs the new version's tests on the migrated data (DSN-FRG-307). The test runner gains `run_with` for this.
+     - `forge install --rollback` and the Server route `POST /api/v1/admin/buks/rollback` (audited) are added.
+  5. **Design notes.** DSN-DVM-123, DSN-NOD-407 and DSN-FRG-307 get phase notes.
+- **Consequences:**
+  - The flow was run on a Server over PostgreSQL with `contoso/crm` 1.0.0 → 1.1.0 → 2.0.0:
+    - 1.1.0 is an additive class change, a changed asset, one seed object updated and one created;
+    - 2.0.0 makes `tier` required, with a migration that defaults it;
+    - a completion interrupted after its merge was resumed;
+    - two rollbacks restored the previous versions: 2.0.0 → 1.1.0 kept the migrated data; 1.1.0 → 1.0.0 restored the changed object, ended the created one, and the restored asset still runs.
+  - The overlay flow was run in process, because UBTP's `create_branch` takes no parent line:
+    - the plan listed the overlay's override;
+    - completion reported its upstream change, and the three-way merge kept the tenant's change and took the vendor's;
+    - the migration rewrote two objects on the target and only the overlay's own object on the overlay.
+  - `forge verify --previous` refuses 2.0.0 without its migration.
+  - No new tests were written (DEC-127).
+- **Alternatives considered:**
+  - Applying breaking class changes at staging was rejected: the rewrite would change the target before approval.
+  - Several schema steps per upgrade were deferred: one step per class per upgrade keeps the lens and migration checks exact; a Buk that skips versions is upgraded through each one.
+  - Passing a parent line through UBTP `create_branch` was left out: it is a protocol change (STD-PROTO), not a package change.
+- **Affects:** DSN-DVM-123, DSN-NOD-407, DSN-FRG-307, FR-PKG-041, FR-PKG-042, FR-PKG-044, FR-TEN-032, STD-CLS-050, STD-TXN-070, STD-VER-071, STD-VER-082, UBS-SYS-FRG-09, DEC-127, DEC-128, DEC-130

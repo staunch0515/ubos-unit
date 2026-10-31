@@ -34,7 +34,7 @@ pub const REGISTRY: &str = "buks";
 
 thread_local! {
     /// Metadata written with the next commit's flush: `(branch, key, value)`.
-    static MARKS: std::cell::RefCell<Vec<(String, String, Value)>> =
+    pub(crate) static MARKS: std::cell::RefCell<Vec<(String, String, Value)>> =
         const { std::cell::RefCell::new(Vec::new()) };
 }
 
@@ -48,7 +48,7 @@ pub(crate) fn marks(tx: &mut ubos_version::state::Tx) {
     });
 }
 
-fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
+pub(crate) fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
     v.get(k).and_then(Value::as_str)
 }
 
@@ -57,7 +57,7 @@ fn invalid(m: impl Into<String>) -> BpaError {
 }
 
 /// A stable object identifier from a content ID (version 7 or 8 layout of a UUID).
-fn stable_id(v: &Value, version: char) -> Result<String, BpaError> {
+pub(crate) fn stable_id(v: &Value, version: char) -> Result<String, BpaError> {
     let h = content_id("ubos.chunk.v1", v)?;
     let x = &h[7..];
     Ok(format!(
@@ -86,7 +86,7 @@ fn archive_of(i: &Value) -> Result<Archive, BpaError> {
 
 /// Items of a folder of the archive, as Forge loads them: a file holds one item, a list,
 /// or a map with the list under `key` (and `value_types` in `model/`).
-fn items(a: &Archive, folder: &str, key: &str) -> (Vec<Value>, Vec<Value>) {
+pub(crate) fn items(a: &Archive, folder: &str, key: &str) -> (Vec<Value>, Vec<Value>) {
     let mut out = Vec::new();
     let mut extra = Vec::new();
     for (path, h) in &a.tree {
@@ -124,13 +124,30 @@ fn names(v: &[Value]) -> Vec<String> {
         .collect()
 }
 
-fn problem(code: &str, message: impl Into<String>) -> Value {
+/// Kernel metadata key of an installed archive, kept for the upgrades that follow.
+pub(crate) fn archive_key(root: &str) -> String {
+    format!("buk_archive:{root}")
+}
+
+/// Whether an asset as stored (with the state and verification the node recorded)
+/// carries the archive's body.
+fn same_asset(stored: &Value, shipped: &Value) -> Result<bool, BpaError> {
+    let strip = |v: &Value| {
+        let mut m = v.as_object().cloned().unwrap_or_default();
+        m.remove("state");
+        m.remove("verification");
+        Value::Object(m)
+    };
+    Ok(canonical(&strip(stored))? == canonical(&strip(shipped))?)
+}
+
+pub(crate) fn problem(code: &str, message: impl Into<String>) -> Value {
     json!({"code": code, "message": message.into()})
 }
 
 impl Engine {
     /// The installation registry: Buk ID → record.
-    fn registry_records(&mut self) -> Result<Map<String, Value>, BpaError> {
+    pub(crate) fn registry_records(&mut self) -> Result<Map<String, Value>, BpaError> {
         Ok(self
             .store
             .meta(REGISTRY)?
@@ -199,6 +216,7 @@ impl Engine {
         // the registry: the same content, another version, or a namespace held by another Buk
         let reg = self.registry_records()?;
         let mut status = "new";
+        let mut from: Option<Value> = None;
         if let Some(r) = reg.get(&id) {
             if r["root"] == json!(root) {
                 status = if r["state"] == "installed" {
@@ -206,16 +224,55 @@ impl Engine {
                 } else {
                     "pending"
                 };
-            } else {
+            } else if r["pending"]["root"] == json!(root) {
+                status = "pending";
+            } else if r["state"] != "installed" || r["pending"].is_object() {
                 problems.push(problem(
                     "PKG.MANIFEST_INVALID",
-                    format!(
-                        "{id} {} is installed; upgrades come with part 7e",
-                        r["version"].as_str().unwrap_or_default()
-                    ),
+                    format!("another installation of {id} is pending"),
                 ));
+            } else {
+                // an upgrade (DEC-131): a later version than the installed one
+                status = "upgrade";
+                from = Some(json!({"version": r["version"], "root": r["root"]}));
+                let newer = Version::parse(a.version())
+                    .ok()
+                    .zip(Version::parse(r["version"].as_str().unwrap_or_default()).ok())
+                    .is_some_and(|(n, o)| n > o);
+                if !newer {
+                    problems.push(problem(
+                        "PKG.MANIFEST_INVALID",
+                        format!(
+                            "{id} {} is installed; a downgrade is a rollback of the upgrade",
+                            r["version"].as_str().unwrap_or_default()
+                        ),
+                    ));
+                }
+                // the installed Buks that depend on this one accept the new version
+                for (other, o) in &reg {
+                    if let Some(range) = o["dependencies"].get(&id).and_then(Value::as_str) {
+                        let ok = Version::parse(a.version())
+                            .ok()
+                            .zip(Range::parse(range).ok())
+                            .is_some_and(|(v, r)| r.matches(&v));
+                        if !ok {
+                            problems.push(problem(
+                                "PKG.CONFIGURATION_INCOMPLETE",
+                                format!("{other} requires {id} {range}"),
+                            ));
+                        }
+                    }
+                }
             }
         }
+        let upgrading = status == "upgrade";
+        let previous = match &from {
+            Some(f) => self
+                .store
+                .meta(&archive_key(f["root"].as_str().unwrap_or_default()))?,
+            None => None,
+        }
+        .and_then(|d| Archive::decode(canonical(&d).ok()?.as_bytes()).ok());
         for (other, r) in &reg {
             let ons = r["namespace"].as_str().unwrap_or_default();
             // a namespace is shared only by Buks of the same publisher
@@ -231,7 +288,9 @@ impl Engine {
         }
         // classes and value types
         let (classes, value_types) = items(a, "model", "classes");
-        let (mut add, mut unchanged) = (Vec::new(), Vec::new());
+        let (mut add, mut unchanged, mut changed) = (Vec::new(), Vec::new(), Vec::new());
+        let (seed_all, _) = items(a, "seed", "changes");
+        let (migrations, _) = items(a, "migrations", "migrations");
         for c in &classes {
             let name = s(c, "name").unwrap_or_default().to_string();
             let cns = s(c, "namespace").unwrap_or_default();
@@ -248,15 +307,22 @@ impl Engine {
                     format!("class {name} exists in namespace {}", d["namespace"]),
                 )),
                 Ok(d) if canonical(d)? == canonical(c)? => unchanged.push(name),
-                Ok(_) => problems.push(problem(
+                Ok(_) if !upgrading => problems.push(problem(
                     "PKG.MANIFEST_INVALID",
-                    format!("class {name} exists with another declaration; class upgrades come with part 7e"),
+                    format!("class {name} exists with another declaration"),
                 )),
+                Ok(d) => {
+                    let d = d.clone();
+                    match self.class_change(&target, &name, &d, c, &seed_all, &migrations)? {
+                        Ok(ch) => changed.push(ch),
+                        Err(p) => problems.push(p),
+                    }
+                }
             }
         }
         // logic assets
         let (assets, _) = items(a, "logic", "assets");
-        let (mut a_add, mut a_same) = (Vec::new(), Vec::new());
+        let (mut a_add, mut a_same, mut a_change) = (Vec::new(), Vec::new(), Vec::new());
         for x in &assets {
             let name = s(x, "name").unwrap_or_default().to_string();
             if !owned(&name) {
@@ -267,10 +333,11 @@ impl Engine {
             }
             match self.read(&json!({"branch": target, "object_id": asset_object_id(&name)})) {
                 Err(_) => a_add.push(name),
-                Ok(r) if canonical(&r["body"])? == canonical(x)? => a_same.push(name),
+                Ok(r) if same_asset(&r["body"], x)? => a_same.push(name),
+                Ok(_) if upgrading => a_change.push(name),
                 Ok(_) => problems.push(problem(
                     "PKG.MANIFEST_INVALID",
-                    format!("asset {name} exists with another body; upgrades come with part 7e"),
+                    format!("asset {name} exists with another body"),
                 )),
             }
         }
@@ -283,6 +350,35 @@ impl Engine {
                 .or_default() += 1;
         }
         let count = |k: &str| by_class.get(k).copied().unwrap_or(0);
+        let seed_plan = if upgrading {
+            self.seed_upgrade(&target, &seed, previous.as_ref())?
+        } else {
+            json!({"create": seed.len()})
+        };
+        let removed: Vec<String> = previous
+            .as_ref()
+            .map(|p| {
+                let now: BTreeSet<String> = names(&assets).into_iter().collect();
+                names(&items(p, "logic", "assets").0)
+                    .into_iter()
+                    .filter(|n| !now.contains(n))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let overlays = if upgrading {
+            let mut touched: BTreeSet<String> =
+                a_change.iter().map(|n| asset_object_id(n)).collect();
+            touched.extend(
+                seed_plan["update"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|x| x.as_str().map(str::to_string)),
+            );
+            self.overlay_report(&target, &touched)?
+        } else {
+            json!([])
+        };
         // dependencies (installed, with a matching version)
         let mut deps = Vec::new();
         for (d, r) in m["dependencies"].as_object().into_iter().flatten() {
@@ -316,10 +412,12 @@ impl Engine {
             "target": target, "status": status,
             "loader": format!("loader/{}/{}-{}", ns.replace('.', "-"), s(m, "name").unwrap_or_default().replace('_', "-"),
                 a.version().replace('.', "-").to_lowercase()),
-            "classes": {"add": add, "unchanged": unchanged},
+            "from": from,
+            "classes": {"add": add, "unchanged": unchanged, "change": changed},
             "value_types": {"add": names(&value_types)},
-            "assets": {"add": a_add, "unchanged": a_same},
-            "seed": {"changes": seed.len(), "by_class": by_class},
+            "assets": {"add": a_add, "unchanged": a_same, "change": a_change, "kept": removed},
+            "seed": {"changes": seed.len(), "by_class": by_class, "plan": seed_plan},
+            "overlays": overlays,
             "subscriptions": count("Subscription"), "schedules": count("Schedule"),
             "connectors": by_class.iter().filter(|(k, _)| k.contains("Connector")).map(|(_, n)| n).sum::<u64>(),
             "sheets": files_in(a, "sheets"), "views": files_in(a, "views"), "components": files_in(a, "components"),
@@ -339,11 +437,16 @@ impl Engine {
             let code: &'static str = match s(p, "code") {
                 Some("PKG.NAMESPACE_VIOLATION") => "PKG.NAMESPACE_VIOLATION",
                 Some("PKG.CONFIGURATION_INCOMPLETE") => "PKG.CONFIGURATION_INCOMPLETE",
+                Some("MODEL.LENS_REQUIRED") => "MODEL.LENS_REQUIRED",
+                Some("MODEL.MIGRATION_REQUIRED") => "MODEL.MIGRATION_REQUIRED",
                 _ => "PKG.MANIFEST_INVALID",
             };
             return Err(BpaError::with_details(code, plan));
         }
         let id = a.id();
+        if plan["status"] == "upgrade" {
+            return self.stage_upgrade(&a, plan);
+        }
         if plan["status"] != "new" {
             let rec = self
                 .registry_records()?
@@ -450,6 +553,7 @@ impl Engine {
         let mut reg = self.registry_records()?;
         reg.insert(id, rec);
         self.store.put_meta(REGISTRY, &Value::Object(reg))?;
+        self.store.put_meta(&archive_key(&root), &a.to_json()?)?;
         Ok(
             json!({"plan": plan, "change_set": cs, "state": submitted["state"], "loader": loader,
                   "verified_assets": verified}),
@@ -465,6 +569,9 @@ impl Engine {
         let mut rec = self.registry_records()?.get(&id).cloned().ok_or_else(|| {
             BpaError::new("IAM.NOT_FOUND", format!("{id} is not being installed"))
         })?;
+        if rec["pending"].is_object() {
+            return self.complete_upgrade(&id, rec, i);
+        }
         if rec["state"] == "installed" {
             return Ok(json!({"buk": id, "state": "installed", "change_set": rec["change_set"]}));
         }

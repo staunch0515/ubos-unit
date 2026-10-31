@@ -128,9 +128,9 @@ The checks are:
 - `coverage`: the gate, per asset in permille;
 - `capabilities`: the capabilities used by the assets, against those requested;
 - `migrations`: against a previous version given with `--previous`. A lens-required class
-  change needs a seeded `Lens` or a migration, and a breaking one needs a migration. A
-  migration is a file under `migrations/` that names its `class`; its execution comes
-  with part 7e.
+  change needs a seeded `Lens` or a migration, and a breaking one needs a migration (§8).
+  The previous version's fixture is then upgraded to this version as an installation
+  would upgrade it, and this version's tests run on the migrated data (DSN-FRG-307).
 
 The record carries no time, so the same inputs give the same record (FR-PKG-063). With
 `--key` it is signed by the verifier: its content ID becomes `record_id`, and its
@@ -192,4 +192,56 @@ commit and state. Installing the same root again reports `present`.
 completing are audited as `admin.buk_install` and `admin.buk_complete`. The registry
 answers which Buks depend on a Buk; refusing an uninstall or downgrade on that answer
 comes with part 7e.
+
+## 8. Upgrades, migrations and rollback
+
+Upgrades are built in PH-2 step 7e-1 (DEC-131) in `crates/ubos-dvm/src/upgrades.rs`.
+
+**Upgrade.** Installing a later version of an installed Buk is an upgrade. It uses the same
+plan, loader branch and change set as an installation; a downgrade is refused (it is a
+rollback), and so is a version that an installed dependent's range excludes. The plan
+adds:
+- `from`: the installed version and root;
+- per changed class: the classification and the means, one of `none` (additive), `lens`
+  (a `Lens` the new version seeds from the current schema version) or `migration`. A
+  class goes up one schema version per upgrade;
+- the assets changed, and those no longer shipped, which are kept;
+- the seed objects to create, those to update (still at the previous version's seed body)
+  and those kept because they were changed locally;
+- per overlay of the target (a branch whose parent line is the target): the overridden
+  objects the upgrade changes.
+
+Staging applies the additive and lensed class changes (declarations are shared by the
+branches of a VAE, and existing data reads through the lens), commits the lenses, the
+changed assets (verified again) and the seed on the loader branch, and submits the change
+set. Completion merges it, then applies the class changes by migration, rewrites their
+instances, commits the seed of those classes, and records the new version with the
+previous one kept. It reports each overlay's upstream changes (STD-VER-082), which the
+overlay resolves by acknowledgement or a three-way merge. A completion that stops part way
+is resumed by calling it again.
+
+**Migrations.** A migration is a file under `migrations/` holding a one-way lens:
+
+```yaml
+class: Customer
+from: 2
+to: 3
+one_way: true
+one_way_reason: customers without a tier become standard customers
+ops:
+  - {op: default, field: tier, value: standard}
+```
+
+`change_class` with a `migration` accepts a breaking change when the migration takes every
+stored body forward to a valid body (DSN-DVM-123). The migration is recorded as the step's
+lens. `migrate_instances` then rewrites the instances on the target and on each overlay
+(only the overlay's own objects) by a bulk process, in commits of 1,000 objects.
+
+**Rollback.** `buk_rollback` (`POST /api/v1/admin/buks/rollback`, `forge install
+--rollback <ID>`) reverts the merge of the Buk's last upgrade (STD-VER-071): objects the
+upgrade created are ended, and changed objects and assets are restored. The previous
+registry record and `Buk` object come back. A conflict with later changes is returned for
+the administrator's resolutions; one on the change set's own state keeps its current
+state. Class changes and rewritten instances stay: data written under the new schema reads
+through the lenses (FR-PKG-044). One upgrade is kept for a rollback.
 
