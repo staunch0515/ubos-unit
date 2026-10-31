@@ -379,6 +379,25 @@ impl NodeSource for StoreNodes<'_> {
     }
 }
 
+/// The aligner of merges: a version record's body in its class's current schema version
+/// (STD-CLS-061). The DVM installs it; without one a body is taken as stored.
+pub type Aligner = fn(&mut Repo<'_>, &Value) -> Result<Map<String, Value>, BpaError>;
+
+static ALIGNER: std::sync::OnceLock<Aligner> = std::sync::OnceLock::new();
+
+/// Install the aligner of merges (once per process).
+pub fn set_aligner(f: Aligner) {
+    let _ = ALIGNER.set(f);
+}
+
+/// A version record's body as merges compare it.
+pub fn aligned_body(repo: &mut Repo<'_>, v: &Value) -> Result<Map<String, Value>, BpaError> {
+    match ALIGNER.get() {
+        Some(f) => f(repo, v),
+        None => Ok(v["body"].as_object().cloned().unwrap_or_default()),
+    }
+}
+
 /// Access to the stored branches, commits and versions.
 pub struct Repo<'a> {
     /// The store.

@@ -132,6 +132,11 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-TXN-094",
     // BPA 1.0-rc12 (PH-2 step 6f-1, DEC-124): actions that ask for input
     "STD-ISA-101",
+    // BPA 1.0-rc8 (PH-2 step 7a, DEC-127): schema evolution and lenses
+    "STD-CLS-050",
+    "STD-CLS-060",
+    "STD-CLS-061",
+    "STD-CLS-062",
 ];
 
 /// The clauses a vector verifies.

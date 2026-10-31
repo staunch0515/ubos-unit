@@ -17,6 +17,7 @@ pub mod finance;
 pub mod flow;
 pub mod host;
 pub mod keys;
+pub mod lenses;
 pub mod matching;
 pub mod periods;
 pub mod process;

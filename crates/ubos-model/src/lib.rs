@@ -637,6 +637,23 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("released_at", "instant", true),
             ],
         ),
+        // STD-CLS-060 (BPA 1.0-rc8, DEC-092): lenses are Definition objects below ConfigAsset.
+        g(
+            "Lens",
+            Some("definition"),
+            Some("ConfigAsset"),
+            false,
+            vec![
+                field("class", "text", true),
+                field("from", "integer", true),
+                field("to", "integer", true),
+                field("ops", "json", true),
+                field("residual_forward", "text", false),
+                field("residual_backward", "text", false),
+                field("one_way", "boolean", false),
+                field("one_way_reason", "text", false),
+            ],
+        ),
         g(
             "Release",
             Some("definition"),
@@ -689,6 +706,7 @@ pub fn is_genesis(name: &str) -> bool {
             | "WorkflowDefinition"
             | "WorkflowInstance"
             | "Saga"
+            | "Lens"
             | "Quarantine"
             | "QuarantineRelease"
     )

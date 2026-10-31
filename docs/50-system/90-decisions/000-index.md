@@ -30,6 +30,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-124 | PH-2 step 6f-1: `ask.input` in the kernel — `needs_input` without a commit, requests kept by invocation and name, answers validated and journaled, consumed when the process commits; STD-ISA-101 claimed, every clause of BPA 1.0-rc12 in the kernel's scope implemented | Accepted |
 | DEC-125 | PH-2 step 6f-2: post-commit and replay work on the node — `async` projections maintained after their commits in bounded chunks with backfill and progress, the `timeout_ms` wait of `read.projection`, event replay to one subscription marked as replay | Accepted |
 | DEC-126 | PH-2 step 6 closed: durable work (parts 6a–6f-2, DEC-119…125) — BPA 1.0-rc12, workflows with events, timers, tasks, approvals and migration, timer rows and the node's timer service, sagas with timeouts and intervention, quarantine, `ask.input`, projection maintenance and backfill, event replay; 158 step-6 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
+| DEC-127 | PH-2 step 7 opened in parts 7a–7g with the Buk format outside the BPA standard; part 7a: schema evolution in the kernel — `Lens`, the computed classification, `change_class`, lenses on reads, writes, updates and merges, the totality check; STD-CLS-050 and -060…062 claimed | Accepted |
 
 ---
 
@@ -509,3 +510,39 @@ follow.
 - **Alternatives considered:**
   - Leaving the deferred items spread over DEC-119…125 was rejected, as in DEC-104, DEC-111 and DEC-118.
 - **Affects:** DEC-119, DEC-120, DEC-121, DEC-122, DEC-123, DEC-124, DEC-125, IF-DVM-034, DSN-DVM-536, DSN-DVM-564, DSN-DVM-750, DSN-DVM-752, DSN-NOD-227
+
+### DEC-127 — Models and packages, part 7a: schema evolution in the kernel (PH-2 step 7)
+- **Date:** 2026-10-31 · **Status:** Accepted
+- **Context:** PH-2 step 7 (UBS-PH-2 §11) covers three blocks:
+  - schema evolution with lenses, the base ontology and model export (CAP-MODEL-08, -09, -10);
+  - the Buk format with its dependencies, installation, upgrade, removal, verification and signing (CAP-PKG-01…07);
+  - `forge new` and `forge pack`, moved here by DEC-087.
+
+  **Baseline.** On the kernel, none of the 51 vectors of STD-CLS-050 and -060…062 or the 10 of STD-VER-082 (BPA 1.0-rc8) passed: lenses, class changes and upstream changes were missing. The genesis Buks have their PH-1 form (DEC-077), and Forge lacks `new`, `pack`, `sign`, `verify` and `install`. The owner confirmed the plan of step 7 with the default suggestions.
+- **Decision:**
+  1. **Parts.**
+     - 7a: schema evolution in the kernel (STD-CLS-050, -060…062).
+     - 7b: upstream change detection (STD-VER-082).
+     - 7c: the Buk format and its description; `forge new`, `pack`, `sign` and `verify`; dependency resolution with `forge.lock`.
+     - 7d: installation — the install plan, the loader branch and change set, the installation registry with dependency protection (DSN-DVM-134), retrieval from local files with verification (DSN-NOD-422), and `forge install`.
+     - 7e: upgrade and removal — upgrades merged into overlays with the upstream report, migrations shipped with Buks, rollback, uninstall with data retention, deprecation notices, and genesis upgrades proposed as change sets (DSN-NOD-421).
+     - 7f: the full ontology Buk (DSN-NOD-424), and OpenAPI and model-graph export (DSN-DVM-132).
+     - 7g closes the step.
+
+     No new tests are written; the package parts have no conformance vectors, and their scenarios run in steps 18 and 20. The exchange (download, `forge publish`, keyless signing) stays in PH-4, air-gapped import in PH-3, and staged rollout in step 11.
+  2. **The Buk format is not part of BPA 1.0.** It is a format of the UBOS product, specified by DSN-FRG-301…307, DSN-DVM-134 and DSN-NOD-407, -421 and -422, with a format description written in part 7c. The installation registry uses the platform class `Buk` of the `system` Buk, outside BPA 1.0 (DEC-077). No release candidate is opened in step 7.
+  3. **Lenses (7a).** `crates/ubos-dvm/src/lenses.rs` follows the reference model.
+     - **Class.** `Lens` joins the genesis registry as a Definition below `ConfigAsset`, and a commit that writes one checks it.
+     - **Pure operations.** `classify_change`, `apply_lens` and `check_lens`.
+     - **Class changes.** `change_class` classifies a class change over the effective fields, the ports and the other members, against the stored current versions. A lens-required change needs a total lens, and a breaking one is refused. The step is recorded in `kernel_meta` with its lens and the effective fields before and after.
+     - **Application.** Reads return the current or the asked schema version. A change in an older version is lensed forward, and an update applies to its base in the current version.
+     - **Merges.** A merge aligns base, source and target through an aligner that the DVM installs in the merge engine of `ubos-version`, which does not depend on the expression language.
+  4. **Claim.** The conformance test claims STD-CLS-050 and -060…062.
+  5. **Design notes.** DSN-DVM-121…124 get phase notes. A breaking change committed with a migration process (DSN-DVM-123) comes with the Buk migrations of part 7e.
+- **Consequences:**
+  - The 51 vectors pass in memory and on PostgreSQL 16, and the conformance test passes.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - Writing the Buk format into BPA 1.0 was rejected: the standard fixes the semantics of business processing, while a package format is a product concern that a second implementation need not share.
+  - Compiling lens chains into one composed operation (DSN-DVM-121) was deferred: step-by-step application gives the same results, and the benchmarks of step 18 show whether composition is needed.
+- **Affects:** STD-CLS-050, STD-CLS-060, STD-CLS-061, STD-CLS-062, DSN-DVM-121, DSN-DVM-122, DSN-DVM-123, DSN-DVM-124, DSN-FRG-301, DSN-DVM-134, DEC-077, DEC-087, DEC-126

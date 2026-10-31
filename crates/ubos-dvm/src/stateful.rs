@@ -85,6 +85,7 @@ fn tl_err(e: ubos_time::TimelineError) -> BpaError {
 impl Engine {
     /// A new engine over a store, reset.
     pub fn new(store: Box<dyn Store>) -> Result<Engine, BpaError> {
+        crate::lenses::install();
         let mut e = Engine {
             system_write: false,
             store,
@@ -113,6 +114,7 @@ impl Engine {
     /// An engine over a store that already holds data (for example a loaded benchmark
     /// dataset), with the given class declarations; nothing is reset.
     pub fn attach(store: Box<dyn Store>, classes: &Value) -> Result<Engine, BpaError> {
+        crate::lenses::install();
         let mut e = Engine {
             system_write: false,
             store,
@@ -254,6 +256,7 @@ impl Engine {
     /// (`genesis`), the process counter continues after the recorded processes; a store
     /// without `main` is initialised (CTR-001 `open_vae`, step 7a).
     pub fn open_existing(store: Box<dyn Store>) -> Result<Engine, BpaError> {
+        crate::lenses::install();
         let mut e = Engine {
             system_write: false,
             store,
@@ -831,6 +834,9 @@ impl Engine {
         let seg = at(&o.timeline, &a)
             .ok_or_else(|| BpaError::new("QRY.NOT_FOUND_AT_TIME", "no segment at asof"))?;
         let mut out = segment(&mut repo, &seg.from, seg.to.as_deref(), &seg.version)?;
+        // STD-CLS-061 (BPA 1.0-rc8, PH-2 step 7a): the body in the schema version asked for
+        let v = repo.version(&seg.version)?;
+        crate::lenses::lens_read(&mut repo, &mut out, &v, input)?;
         out["evaluated_at"] = json!(ev);
         if input.get("provenance") == Some(&json!(true))
             && let Some((b, cid)) = prov
@@ -1243,7 +1249,9 @@ fn update(
         ));
     }
     let base = repo.version_in(tx, &o.head)?;
-    let base_body = base["body"].as_object().cloned().unwrap_or_default();
+    // STD-CLS-061 (BPA 1.0-rc8, PH-2 step 7a): an update applies to its base in the current
+    // schema version
+    let base_body = crate::lenses::current_body(repo, &base)?;
     let valid = ch.get("valid").cloned().unwrap_or(json!({}));
     let dv = default_valid(&o.class);
     let mut obj = o.clone();
@@ -1512,6 +1520,17 @@ pub(crate) fn commit_on(
         ));
     }
     for ch in &changes {
+        // STD-CLS-061 (BPA 1.0-rc8, PH-2 step 7a): a change in an older schema version is
+        // lensed forward before it is stored
+        let lensed;
+        let ch = if matches!(s(ch, "op"), Some("create" | "update"))
+            && ch.get("schema_version").is_some()
+        {
+            lensed = crate::lenses::lens_change(&mut repo, &mut tx, ch)?;
+            &lensed
+        } else {
+            ch
+        };
         let deriv = derivation_of(&mut repo, &tx, ch, &process.id, max_inputs)?;
         let rid = deriv.as_ref().map(|d| d.id.as_str());
         if let Some(d) = &deriv {
@@ -1684,6 +1703,8 @@ pub(crate) fn commit_on(
         crate::workflows::check(&mut repo, &mut tx, &written)?;
         // STD-TXN-080 (BPA 1.0-rc8, PH-2 step 6d): the sagas written
         crate::sagas::check(&mut repo, &mut tx, &written)?;
+        // STD-CLS-060 (BPA 1.0-rc8, PH-2 step 7a): the lenses written
+        crate::lenses::check(&mut repo, &mut tx, &written)?;
     }
     // STD-CLS-004: the shape and the extension rule of the lifecycle objects written
     {

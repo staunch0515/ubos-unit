@@ -534,13 +534,19 @@ impl Repo<'_> {
         res: &mut Option<Resolver>,
         tx: &mut Tx,
     ) -> Result<(Piece, Vec<Value>), BpaError> {
-        let body = |v: Value| v["body"].as_object().cloned().unwrap_or_default();
+        // STD-CLS-061 (BPA 1.0-rc8, PH-2 step 7a): base, source and target in the current
+        // schema version
         let bb = match vb {
-            Some(h) => body(self.version_in(tx, h)?),
+            Some(h) => {
+                let v = self.version_in(tx, h)?;
+                crate::state::aligned_body(self, &v)?
+            }
             None => Map::new(),
         };
-        let sb = body(self.version_in(tx, vs)?);
-        let tb = body(self.version_in(tx, vt)?);
+        let v = self.version_in(tx, vs)?;
+        let sb = crate::state::aligned_body(self, &v)?;
+        let v = self.version_in(tx, vt)?;
+        let tb = crate::state::aligned_body(self, &v)?;
         let keys: BTreeSet<&String> = bb.keys().chain(sb.keys()).chain(tb.keys()).collect();
         let mut out = Map::new();
         let mut conflicts = Vec::new();

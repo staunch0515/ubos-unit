@@ -213,6 +213,7 @@ AI implementer:
   2. Given a lens that does not handle a nullable field, when compiled, then the totality error names the field.
 - **Verification:** CONF, PROP
 - **Origin:** FR-MODEL-082, FR-MODEL-086, STD-CLS-060, STD-CLS-062
+- **Phase note:** DEC-127: built in PH-2 step 7a as BPA 1.0-rc8 states it (STD-CLS-060, -062): a lens is applied operation by operation and a chain step by step from the schema steps `change_class` records, not compiled and composed; a lens that fails the totality check makes the change `breaking`, so it is refused.
 
 ### DSN-DVM-122 — Read-time lens application
 - **Statement:** When a version's schema differs from the reading snapshot's schema, the reader MUST apply the composed lens (STD-CLS-061) before returning it and MUST mark the payload with the source schema. Lens application MUST NOT change stored bytes or content IDs. Where no lens path exists, the read MUST fail with `MODEL.LENS_REQUIRED`.
@@ -223,6 +224,7 @@ AI implementer:
   1. Given 1,000 versions written under three schemas, when read under the latest schema, then all values are in the latest shape, and stored IDs are unchanged.
 - **Verification:** CONF, PROP
 - **Origin:** FR-MODEL-083, STD-CLS-061
+- **Phase note:** DEC-127: built in PH-2 step 7a as STD-CLS-061 states it: a read returns the body in the current schema version, or the one asked for, and marks the result with that `schema_version` when it differs from the stored one; stored bytes and content IDs do not change; backward through a one-way lens fails with `MODEL.LENS_REQUIRED`.
 
 ### DSN-DVM-123 — Breaking changes and migration processes
 - **Statement:** A breaking class change without a total lens MUST be rejected with `MODEL.MIGRATION_REQUIRED` unless it is committed together with a migration process (a bulk process, DSN-DVM-560) that rewrites all instances on the same branch. The migration process MUST be resumable and MUST produce one commit per batch with a common reason code.
@@ -233,6 +235,7 @@ AI implementer:
   1. Given a breaking change and 100,000 instances, when migrated, then every instance is rewritten, and the migration survives a node restart mid-way.
 - **Verification:** FAULT, CONF
 - **Origin:** FR-MODEL-087, FR-TXN-015
+- **Phase note:** DEC-127: in PH-2 step 7a a `breaking` class change is refused with `MODEL.MIGRATION_REQUIRED`, as STD-CLS-050 states; a breaking change committed together with a migration process comes with the migrations shipped with Buks in PH-2 step 7e (FR-PKG-042).
 
 ### DSN-DVM-124 — Schema alignment before merge
 - **Statement:** Before a merge whose two sides have different model hashes, the merge engine MUST:
@@ -249,6 +252,7 @@ AI implementer:
   1. Given a branch that renamed a field and a main that edited that field, when merged, then the edit appears under the new name.
 - **Verification:** CONF, PROP
 - **Origin:** FR-MODEL-085, STD-VER-050
+- **Phase note:** DEC-127: built in PH-2 step 7a as STD-CLS-061 states it: the declarations of a VAE are shared by its branches, so a merge aligns the bodies of base, source and target to each class's current schema version before it compares them, through the aligner the DVM installs in the merge engine.
 
 ### DSN-DVM-125 — Extension scope resolution
 - **Statement:** Extensions (STD-CLS-030) MUST be applied only within their declared scope (tenant, VAE or branch). The registry MUST build effective definitions per scope and include the extension set in the cache key. Overlay policies (STD-CLS-031) MUST be checked when an extension is committed.
