@@ -51,6 +51,8 @@ pub const IMPLEMENTED: &[&str] = &[
     "emit.event",
     // BPA 1.0-rc2, PH-1 step 13a (DEC-073)
     "search.query",
+    // BPA 1.0-rc12, PH-2 step 6f-1 (DEC-124)
+    "ask.input",
 ];
 /// System instructions and their determinism class.
 pub const SYSTEM: &[(&str, &str)] = &[

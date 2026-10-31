@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (123)
+## DEC (124)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -217,4 +217,5 @@ depends_on: [UBS-IDX-00]
 | DEC-121 | Workflow timer rows and the node's timer service (PH-2 step 6, part 6c) | `90-decisions/000-index.md` |
 | DEC-122 | Sagas and quarantine in the kernel (PH-2 step 6, part 6d) | `90-decisions/000-index.md` |
 | DEC-123 | Workflow tasks, approvals, calendars and timeouts in the kernel (PH-2 step 6, part 6e) | `90-decisions/000-index.md` |
+| DEC-124 | Actions that ask for input in the kernel (PH-2 step 6, part 6f-1) | `90-decisions/000-index.md` |
 

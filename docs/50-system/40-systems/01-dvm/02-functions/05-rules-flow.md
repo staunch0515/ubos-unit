@@ -254,6 +254,7 @@ This file designs the crates `ubos-rules` and `ubos-flow`. Reading order:
   1. Given a port requiring a reason, when invoked without it, then a typed request for the reason is returned, and nothing is staged.
 - **Verification:** CONF
 - **Origin:** FR-FLOW-071, FR-FLOW-072
+- **Phase note:** DEC-124: built in PH-2 step 6f-1 as BPA 1.0-rc12 states it (STD-ISA-101): logic asks with the instruction `ask.input`, the process ends `needs_input` without a commit, and the repeated invocation with `answers` runs the process again from the start; the request is machine-readable for agents, whose dialogues come in PH-3 (FR-FLOW-072).
 
 ## Approvals, tasks and delegation
 

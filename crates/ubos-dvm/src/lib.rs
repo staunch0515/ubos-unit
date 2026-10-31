@@ -10,6 +10,7 @@ pub mod adapter;
 pub mod approvals;
 pub mod audit;
 pub mod authz;
+pub mod dialogs;
 pub mod execution;
 pub mod expressions;
 pub mod finance;

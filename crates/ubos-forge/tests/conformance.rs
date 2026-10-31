@@ -130,6 +130,8 @@ const RC2_CLAUSES: &[&str] = &[
     // calendars and timeouts
     "STD-TXN-093",
     "STD-TXN-094",
+    // BPA 1.0-rc12 (PH-2 step 6f-1, DEC-124): actions that ask for input
+    "STD-ISA-101",
 ];
 
 /// The clauses a vector verifies.

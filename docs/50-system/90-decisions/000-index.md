@@ -27,6 +27,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-121 | PH-2 step 6c: workflow timers as rows written with the commit and fired by the tick of the VAE's lease holder, in place of a scan of the running instances | Accepted |
 | DEC-122 | PH-2 step 6d: sagas and quarantine in the kernel — `Saga`, `Quarantine`, `QuarantineRelease`, `run_saga` with resumption, step timeouts and escalation, `sagas` and `saga_action`, saga jobs on the node, the quarantine of failing asset versions; STD-TXN-080, -081 and STD-CTX-031 claimed | Accepted |
 | DEC-123 | PH-2 step 6e: workflow tasks and approvals, timers with business calendars and timeouts in the kernel — `human_task` steps on work queues create `Task`s that continue the instance, deferred actions wait for their pending change, `at` timers, timeouts, timer rows for timeouts and expiries, due times recomputed by migration; STD-TXN-093 and -094 claimed | Accepted |
+| DEC-124 | PH-2 step 6f-1: `ask.input` in the kernel — `needs_input` without a commit, requests kept by invocation and name, answers validated and journaled, consumed when the process commits; STD-ISA-101 claimed, every clause of BPA 1.0-rc12 in the kernel's scope implemented | Accepted |
 
 ---
 
@@ -419,3 +420,23 @@ follow.
 - **Alternatives considered:**
   - Scanning pending changes at each tick for expiries was rejected: the expiry is known when the token begins to wait, so it is a timer row like the others.
 - **Affects:** STD-TXN-093, STD-TXN-094, STD-LGS-061, DSN-DVM-743, DSN-DVM-744, DSN-DVM-751, DEC-110, DEC-111, DEC-119, DEC-121, DEC-122
+
+### DEC-124 — Actions that ask for input in the kernel (PH-2 step 6, part 6f-1)
+- **Date:** 2026-10-31 · **Status:** Accepted
+- **Context:** The owner split part 6f of PH-2 step 6 (DEC-119) in two. Part 6f-1 implements `ask.input` of BPA 1.0-rc12 (STD-ISA-101, DSN-DVM-735) in the kernel. Part 6f-2 takes the post-commit and replay work of the node. Before the part, the 16 vectors of STD-ISA-101 failed because the instruction was not available. The owner confirmed the split and the part with the default suggestions.
+- **Decision:**
+  1. **Instruction.** `ask.input` joins the instructions the runtime implements. It runs through the journaling helper of the host instructions, so its result, the validated answers, is the journal record a replay reads (STD-CTX-012).
+  2. **Requests.** `crates/ubos-dvm/src/dialogs.rs` keeps each request in `kernel_meta` under the content ID of the invocation (without `process`, `answers` and `max_attempts`) and the request name.
+     - **Lookup.** A repeated call finds the same request and expiry; an expired or consumed request starts again.
+     - **Context.** The invocation being run is held on a thread-local stack with a guard, so every exit of the run leaves it.
+  3. **Outcome.** A request without answers ends the run with the outcome `needs_input` and the request. The process record ends `aborted`, and nothing is committed or released.
+     - **Answers.** Answers are checked: a missing required field, a value of another type or an unknown field fails with `MODEL.INVALID_VALUE`. A request never made or already consumed fails with `IAM.NOT_FOUND`, and late answers with `FLOW.INPUT_EXPIRED`.
+     - **Consumption.** A process that commits consumes the requests it answered.
+  4. **Claim.** The conformance test claims STD-ISA-101. Every clause of BPA 1.0-rc12 is implemented in the kernel, except the pre-commit connector calls of BPA 1.0-rc8 (STD-TXN-051, STD-ISA-090), which stay in step 12 (DEC-119).
+  5. **Design note.** DSN-DVM-735 gets a phase note.
+- **Consequences:**
+  - The 16 vectors and the instruction catalogue of 1.0-rc12 (VER-CONF-3005) pass in memory and on PostgreSQL 16, and the conformance test passes.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+- **Alternatives considered:**
+  - Keeping a suspended process between the calls was rejected, as in DEC-119: re-running the deterministic process with the answers commits in one step and holds nothing open.
+- **Affects:** STD-ISA-101, STD-ISA-001, STD-CTX-012, DSN-DVM-735, FR-FLOW-071, DEC-119

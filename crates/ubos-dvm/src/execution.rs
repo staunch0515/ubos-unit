@@ -1814,6 +1814,11 @@ impl Host for EngineHost<'_> {
             "run.async" => self.run_async(core, a),
             "emit.event" => self.emit_event(core, a, d),
             "call.connector" | "ask.model" => self.host_call(core, d, a),
+            // STD-ISA-101 (BPA 1.0-rc12, PH-2 step 6f-1): the answers are journaled
+            "ask.input" => {
+                let args = Value::Object(a.clone());
+                program::journaled(core, "ask.input", &args, |_| self.e.input_answers(a))
+            }
             other => Err(BpaError::new(
                 "LOGIC.NOT_AVAILABLE",
                 format!("{other} is not available in BPA 1.0-rc1"),
@@ -2041,6 +2046,8 @@ impl Engine {
             .get("max_attempts")
             .and_then(Value::as_u64)
             .unwrap_or(MAX_ATTEMPTS);
+        // STD-ISA-101 (BPA 1.0-rc12): the invocation `ask.input` answers from
+        let mut dialog = crate::dialogs::enter(i);
         let mut attempt = 0u64;
         // the process state machine of DSN-DVM-501 (UBS-SYS-DVM-05 §1)
         let mut machine = crate::process::Machine::new();
@@ -2208,11 +2215,23 @@ impl Engine {
                     if let Some(v) = pending {
                         out["pending"] = v;
                     }
+                    // STD-ISA-101 (BPA 1.0-rc12): the answered requests are consumed
+                    let answered = dialog.take();
+                    self.input_consumed(&answered)?;
                     return Ok(out);
                 }
                 Err(e) => {
                     if replay.is_some() {
                         return Err(e);
+                    }
+                    // STD-ISA-101 (BPA 1.0-rc12): the process needs input; nothing is
+                    // committed and no effect is released
+                    if e.code == crate::dialogs::NEEDS_INPUT {
+                        dialog.take();
+                        crate::versioning::record(self.store.as_mut(), &p, "aborted", None, 0)?;
+                        return Ok(json!({"outcome": "needs_input",
+                                         "needs_input": e.details.clone().unwrap_or(Value::Null),
+                                         "attempts": attempt}));
                     }
                     // another execution of the same request committed meanwhile (its
                     // idempotency record was written first): its result stands, and this
