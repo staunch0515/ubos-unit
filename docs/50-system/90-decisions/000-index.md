@@ -28,6 +28,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-122 | PH-2 step 6d: sagas and quarantine in the kernel — `Saga`, `Quarantine`, `QuarantineRelease`, `run_saga` with resumption, step timeouts and escalation, `sagas` and `saga_action`, saga jobs on the node, the quarantine of failing asset versions; STD-TXN-080, -081 and STD-CTX-031 claimed | Accepted |
 | DEC-123 | PH-2 step 6e: workflow tasks and approvals, timers with business calendars and timeouts in the kernel — `human_task` steps on work queues create `Task`s that continue the instance, deferred actions wait for their pending change, `at` timers, timeouts, timer rows for timeouts and expiries, due times recomputed by migration; STD-TXN-093 and -094 claimed | Accepted |
 | DEC-124 | PH-2 step 6f-1: `ask.input` in the kernel — `needs_input` without a commit, requests kept by invocation and name, answers validated and journaled, consumed when the process commits; STD-ISA-101 claimed, every clause of BPA 1.0-rc12 in the kernel's scope implemented | Accepted |
+| DEC-125 | PH-2 step 6f-2: post-commit and replay work on the node — `async` projections maintained after their commits in bounded chunks with backfill and progress, the `timeout_ms` wait of `read.projection`, event replay to one subscription marked as replay | Accepted |
 
 ---
 
@@ -440,3 +441,29 @@ follow.
 - **Alternatives considered:**
   - Keeping a suspended process between the calls was rejected, as in DEC-119: re-running the deterministic process with the answers commits in one step and holds nothing open.
 - **Affects:** STD-ISA-101, STD-ISA-001, STD-CTX-012, DSN-DVM-735, FR-FLOW-071, DEC-119
+
+### DEC-125 — Projection maintenance, backfill and event replay on the node (PH-2 step 6, part 6f-2)
+- **Date:** 2026-10-31 · **Status:** Accepted
+- **Context:** Part 6f-2 of PH-2 step 6 (DEC-119, DEC-124) takes the post-commit and replay work. It covers two items moved to step 6: the maintenance of `async` projections by a job with the `timeout_ms` wait (DEC-100, DEC-104), and projection backfill (DEC-098, DSN-NOD-207). It also covers event replay to a subscription (DSN-NOD-206, FR-EVT-071). The standard needs no change. The owner confirmed the part with the default suggestions.
+- **Decision:**
+  1. **Maintenance after the commit.** The flush no longer writes the rows of `async` projections; it records their branch.
+     - **Operation.** The host operation `maintain_projections {branch?, limit?}` adds the rows of the branch's own entries from a projection's mark towards the head, or towards the commit `projection_lag` stopped it at. It takes at most about `limit` entries, in whole commits, and writes the rows and the mark in one storage transaction (`append_projection` of both stores).
+     - **Node.** The lease holder of each VAE runs one round every second with a chunk of 10,000 entries.
+  2. **Backfill.** A new or changed projection version starts at mark 0, so the same maintenance backfills it from the committed entries.
+     - **Progress.** `projection_status {branch, projection}` reports the mark, the target, the entries maintained and the state `backfilling` or `live`.
+     - **No gap.** Reads fold the entries after the mark (DEC-100), so they are exact during the backfill and the switch to live maintenance has no gap. The watermark keeps its meaning (STD-TIME-021): the snapshot, or the commit of a lag.
+  3. **Waiting reads.** A read whose `at_least` is above the watermark and that gives `timeout_ms` first runs its projection's maintenance, then judges the watermark again. A lag that holds it below still fails with `QRY.WATERMARK_TIMEOUT`.
+  4. **Event replay.** The administration route `POST /api/v1/admin/events/replay {subscription, from, to, types}` reads the event log of the range and delivers the events the subscription listens to again, to that subscription only.
+     - **Jobs.** Each replay is a delivery job with its own job and process identifiers, derived from the subscription, the replay and the event.
+     - **Mark.** The handler process's trigger carries `replay: true` and the replay ID, and port parameters may use `$event.replay`.
+     - **Limits and audit.** A replay is limited to 100,000 events and audited as `admin.events_replay`.
+     - **Connector calls.** Their suppression for replayed handlers (FR-EVT-073) waits for the connector framework of step 12.
+  5. **Design notes.** DSN-NOD-206 and -207 get phase notes.
+- **Consequences:**
+  - The 30 projection vectors pass in memory and on PostgreSQL 16, and the conformance test passes.
+  - The CI suites, the cargo tests, fmt, clippy, the dependency check and the SDK registry check pass.
+  - No new tests were written (CLAUDE.md rule 4). The new node paths are covered by these suites only where they share code with the existing paths: the maintenance round in the leader loop, the replay route and `projection_status`.
+- **Alternatives considered:**
+  - A watermark equal to the maintenance mark was rejected: reads already fold the remainder exactly, and a moving watermark would make reads lag without need.
+  - Replaying through the original delivery jobs was rejected: their identifiers make a second delivery `already_done`, and a replay must run the handler again with the mark.
+- **Affects:** STD-TIME-021, STD-ISA-037, DSN-DVM-420, DSN-NOD-206, DSN-NOD-207, FR-EVT-071, FR-EVT-072, FR-EVT-073, DEC-095, DEC-098, DEC-100, DEC-104, DEC-119, DEC-124

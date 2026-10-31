@@ -371,6 +371,54 @@ fn delivery_specs(vae: &mut Vae, effects: &[Value]) -> Result<Vec<Value>, BpaErr
     Ok(out)
 }
 
+/// The delivery jobs of a replay (DSN-NOD-206, FR-EVT-071, PH-2 step 6f-2): the logged
+/// events `events` that the subscription listens to, each delivered again to that
+/// subscription only and marked as a replay. `input` is `{subscription, events, replay_id}`.
+pub fn replay_specs(vae: &mut Vae, input: &Value) -> Result<Value, BpaError> {
+    let sub_id = input["subscription"].as_str().unwrap_or_default();
+    let replay_id = input["replay_id"].as_str().unwrap_or_default();
+    let evs = input["events"].as_array().cloned().unwrap_or_default();
+    let mut by_branch: std::collections::BTreeMap<String, Vec<Value>> =
+        std::collections::BTreeMap::new();
+    for e in evs {
+        let b = e["branch"].as_str().unwrap_or("main").to_string();
+        by_branch.entry(b).or_default().push(e);
+    }
+    let mut out = Vec::new();
+    let mut found = false;
+    for (branch, evs) in by_branch {
+        let subs = subscriptions(vae, &branch)?;
+        let Some(s) = subs.iter().find(|s| s["object_id"] == json!(sub_id)) else {
+            continue;
+        };
+        found = true;
+        let b = &s["body"];
+        let policy = b
+            .get("policy")
+            .cloned()
+            .filter(|x| x.is_object())
+            .unwrap_or_else(|| json!({}));
+        let max = crate::services::RetryPolicy::from_json(&policy).max_attempts;
+        for e in evs.iter().filter(|e| listens(s, e, &branch)) {
+            let effect = e["effect_id"].as_str().unwrap_or_default();
+            let mut ev = event_view(e);
+            ev["replay"] = json!(true);
+            out.push(
+                json!({"job_id": derived_uuid("replay", &format!("{sub_id}:{replay_id}:{effect}"))?,
+                "kind": "delivery", "queue": "deliveries", "max_attempts": max,
+                "dedupe_key": format!("{sub_id}:{effect}:replay:{replay_id}"),
+                "payload": {"subscription": sub_id, "name": b["name"], "run_as": b["run_as"],
+                    "handler": b["handler"], "policy": policy, "event": ev,
+                    "replay": true, "replay_id": replay_id}}),
+            );
+        }
+    }
+    if !found {
+        return Err(BpaError::new("IAM.NOT_FOUND", "unknown subscription"));
+    }
+    Ok(json!({ "specs": out }))
+}
+
 /// The job identifier of a delivery: a UUID derived from `(subscription, effect)`.
 pub fn delivery_job_id(subscription: &str, effect_id: &str) -> Result<String, BpaError> {
     derived_uuid("delivery", &format!("{subscription}:{effect_id}"))
@@ -423,7 +471,19 @@ pub fn deliver(vae: &mut Vae, job: &Value, principal: &Value) -> Result<Value, B
     let sub = p["subscription"].as_str().unwrap_or_default();
     let event = &p["event"];
     let event_id = event["event_id"].as_str().unwrap_or_default();
-    let pid = delivery_process_id(sub, event_id)?;
+    // a replay is a delivery of its own (DSN-NOD-206): its process is not the original one
+    let replay = p["replay"] == json!(true);
+    let pid = if replay {
+        delivery_process_id(
+            sub,
+            &format!(
+                "{event_id}#replay:{}",
+                p["replay_id"].as_str().unwrap_or_default()
+            ),
+        )?
+    } else {
+        delivery_process_id(sub, event_id)?
+    };
     if let Ok(info) = vae.call("process_info", &json!({"process_id": pid}))
         && info["state"] == "committed"
     {
@@ -439,8 +499,13 @@ pub fn deliver(vae: &mut Vae, job: &Value, principal: &Value) -> Result<Value, B
         .filter(|x| x.len() == 36)
         .filter(|x| vae.call("process_info", &json!({"process_id": x})).is_ok())
         .map(str::to_string);
-    let trigger = json!({"type": if parent.is_some() { "event" } else { "external" }, "source": "subscription",
+    let mut trigger = json!({"type": if parent.is_some() { "event" } else { "external" }, "source": "subscription",
         "subscription": sub, "event_id": event_id, "event_type": event["type"]});
+    // FR-EVT-073: the handler sees the replay mark in its trigger (and `$event.replay`)
+    if replay {
+        trigger["replay"] = json!(true);
+        trigger["replay_id"] = p["replay_id"].clone();
+    }
     // the job's idempotency key commits the handler's work once, whichever holder of the
     // lease gets there first (DEC-076)
     let mut process = json!({"process_id": pid, "kind": "action", "initiator": did, "principal_kind": kind,

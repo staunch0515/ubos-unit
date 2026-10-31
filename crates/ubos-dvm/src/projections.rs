@@ -319,8 +319,8 @@ pub fn mark_key(branch: &str, projection: &str, version: &str) -> String {
 /// Maintain the projections of a commit in its flush (DSN-DVM-420): for each live
 /// projection whose source class the commit appends to, or that the commit writes, add the
 /// rows of the branch's entries after its mark and of the appended entries, and move the
-/// mark to the commit. `async` projections are maintained the same way; their watermark is
-/// applied by the reads.
+/// mark to the commit. `async` projections are maintained after the commit
+/// (`maintain_projections`, PH-2 step 6f-2, DEC-125); the flush records their branch.
 pub(crate) fn maintain(
     repo: &mut Repo,
     tx: &mut ubos_version::state::Tx,
@@ -343,12 +343,17 @@ pub(crate) fn maintain(
         .filter(|(_, o)| o.class == "Projection")
         .map(|(id, o)| (id.clone(), o.head.clone()))
         .collect();
+    let mut async_seen = false;
     for (oid, vh) in live {
         let v = repo.version_in(tx, &vh)?;
         if v["tombstone"] == json!(true) {
             continue;
         }
         let decl = v["body"].clone();
+        if s(&decl, "mode") == Some("async") {
+            async_seen = true;
+            continue;
+        }
         let source = s(&decl, "source").unwrap_or_default().to_string();
         let mine = written.iter().any(|(o, _)| *o == oid);
         let appended: Vec<Entry> = tx
@@ -379,7 +384,41 @@ pub(crate) fn maintain(
         tx.projections.extend(rows_of(&decl, &oid, &vh, &entries)?);
         tx.marks.push((key, json!({"through": tx.cseq})));
     }
+    // the branches whose `async` projections the maintenance looks at
+    if async_seen {
+        let mut branches: Vec<Value> = repo
+            .store
+            .meta(ASYNC_BRANCHES)?
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default();
+        if !branches.contains(&json!(tx.branch)) {
+            branches.push(json!(tx.branch));
+            tx.marks
+                .push((ASYNC_BRANCHES.to_string(), Value::Array(branches)));
+        }
+    }
     Ok(())
+}
+
+/// The branches with `async` projections (`kernel_meta`).
+const ASYNC_BRANCHES: &str = "projection_async_branches";
+
+/// The entries of a branch's own commits in `(from, to]`.
+fn own_entries(
+    repo: &mut Repo,
+    branch: &str,
+    source: &str,
+    from: u64,
+    to: u64,
+) -> Result<Vec<Entry>, BpaError> {
+    repo.store
+        .entries_between(branch, source, from, to)?
+        .into_iter()
+        .map(|e| {
+            serde_json::from_value(e)
+                .map_err(|x| BpaError::new("NOD.STORAGE_UNAVAILABLE", x.to_string()))
+        })
+        .collect()
 }
 
 /// The body of an object at a date, when live then.
@@ -482,6 +521,14 @@ impl Engine {
                 .and_then(|v| v.as_u64())
         {
             wm = wm.min(l);
+        }
+        // STD-ISA-037 (PH-2 step 6f-2): a read that may wait lets the projection's
+        // maintenance run before it judges the watermark
+        if let Some(n) = i.get("at_least").and_then(Value::as_u64)
+            && wm < n
+            && i.get("timeout_ms").and_then(Value::as_u64).unwrap_or(0) > 0
+        {
+            self.maintain_projection(branch, (&oid, &vh, &decl), None)?;
         }
         if let Some(n) = i.get("at_least").and_then(Value::as_u64)
             && wm < n
@@ -611,6 +658,138 @@ impl Engine {
     pub fn read_projection(&mut self, i: &Value) -> Result<Value, BpaError> {
         let branch = s(i, "branch").unwrap_or("main").to_string();
         self.projection_at(&branch, i)
+    }
+
+    /// The commit up to which the maintenance of an `async` projection may go: the head, or
+    /// the commit `projection_lag` stopped it at.
+    fn maintenance_target(&mut self, branch: &str, name: &str) -> Result<u64, BpaError> {
+        let head = Repo::new(self.store.as_mut(), &self.registry).ordinal(branch, None)?;
+        Ok(
+            match self
+                .store
+                .meta(&Self::lag_key(branch, name))?
+                .and_then(|v| v.as_u64())
+            {
+                Some(l) => l.min(head),
+                None => head,
+            },
+        )
+    }
+
+    /// Maintain an `async` projection after its commits (PH-2 step 6f-2, DEC-125): add the
+    /// rows of the branch's own entries from its mark towards the target, at most about
+    /// `limit` entries (whole commits) per call, in one storage transaction. A new or changed
+    /// projection starts at mark 0, so this is also its backfill (DSN-NOD-207). Returns the
+    /// mark afterwards.
+    fn maintain_projection(
+        &mut self,
+        branch: &str,
+        (oid, vh, decl): (&str, &str, &Value),
+        limit: Option<usize>,
+    ) -> Result<u64, BpaError> {
+        let name = s(decl, "name").unwrap_or_default().to_string();
+        let key = mark_key(branch, oid, vh);
+        let through = self
+            .store
+            .meta(&key)?
+            .and_then(|m| m["through"].as_u64())
+            .unwrap_or(0);
+        let target = self.maintenance_target(branch, &name)?;
+        if through >= target {
+            return Ok(through);
+        }
+        let source = s(decl, "source").unwrap_or_default().to_string();
+        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+        let mut entries = own_entries(&mut repo, branch, &source, through, target)?;
+        entries.sort_by_key(|e| (e.cseq, e.seq));
+        let mut upto = target;
+        if let Some(l) = limit.filter(|l| *l > 0 && entries.len() > *l) {
+            upto = entries[l - 1].cseq;
+            entries.retain(|e| e.cseq <= upto);
+        }
+        let rows = rows_of(decl, oid, vh, &entries)?;
+        self.store
+            .append_projection(branch, oid, vh, &rows, (&key, &json!({"through": upto})))?;
+        Ok(upto)
+    }
+
+    /// The live `async` projections of a branch at its head: `(object id, version, declaration)`.
+    fn async_projections(
+        &mut self,
+        branch: &str,
+    ) -> Result<Vec<(String, String, Value)>, BpaError> {
+        let mut r = Repo::new(self.store.as_mut(), &self.registry);
+        let head = r.ordinal(branch, None)?;
+        let mut out = Vec::new();
+        for (oid, o) in r.objects_in(branch, head, Some("Projection"))? {
+            let v = r.version(&o.head)?;
+            if v["tombstone"] != json!(true) && s(&v["body"], "mode") == Some("async") {
+                out.push((oid, o.head.clone(), v["body"].clone()));
+            }
+        }
+        Ok(out)
+    }
+
+    /// Host operation `maintain_projections {branch?, limit?}` (PH-2 step 6f-2, DEC-125): one
+    /// round of the maintenance of the `async` projections of a branch, or of every branch
+    /// that has them; `{projections}` with each one's `{branch, projection, through, target}`.
+    pub fn maintain_projections(&mut self, i: &Value) -> Result<Value, BpaError> {
+        let branches: Vec<String> = match s(i, "branch") {
+            Some(b) => vec![b.to_string()],
+            None => self
+                .store
+                .meta(ASYNC_BRANCHES)?
+                .and_then(|v| v.as_array().cloned())
+                .unwrap_or_default()
+                .iter()
+                .filter_map(|b| b.as_str().map(str::to_string))
+                .collect(),
+        };
+        let limit = i
+            .get("limit")
+            .and_then(Value::as_u64)
+            .map(|l| usize::try_from(l).unwrap_or(usize::MAX));
+        let mut out = Vec::new();
+        for b in branches {
+            let Ok(list) = self.async_projections(&b) else {
+                continue;
+            };
+            for (oid, vh, decl) in list {
+                let through = self.maintain_projection(&b, (&oid, &vh, &decl), limit)?;
+                let name = s(&decl, "name").unwrap_or_default().to_string();
+                let target = self.maintenance_target(&b, &name)?;
+                out.push(
+                    json!({"branch": b, "projection": name, "through": through, "target": target}),
+                );
+            }
+        }
+        Ok(json!({ "projections": out }))
+    }
+
+    /// Host operation `projection_status {branch, projection}` (FR-EVT-072): the progress of
+    /// a projection's maintenance or backfill, `{projection, mode, version, through, target,
+    /// entries, maintained, state}` with `state` `live` or `backfilling`.
+    pub fn projection_status(&mut self, i: &Value) -> Result<Value, BpaError> {
+        let branch = s(i, "branch").unwrap_or("main").to_string();
+        let name = s(i, "projection").unwrap_or_default().to_string();
+        let head = Repo::new(self.store.as_mut(), &self.registry).ordinal(&branch, None)?;
+        let (oid, vh, decl) = self.projection_decl(&branch, head, &name)?;
+        let through = self
+            .store
+            .meta(&mark_key(&branch, &oid, &vh))?
+            .and_then(|m| m["through"].as_u64())
+            .unwrap_or(0);
+        let target = self.maintenance_target(&branch, &name)?;
+        let source = s(&decl, "source").unwrap_or_default().to_string();
+        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+        let total = own_entries(&mut repo, &branch, &source, 0, target)?.len();
+        let done = own_entries(&mut repo, &branch, &source, 0, through.min(target))?.len();
+        let mode = s(&decl, "mode").unwrap_or("sync");
+        Ok(
+            json!({"projection": name, "mode": mode, "version": vh, "through": through,
+            "target": target, "entries": total, "maintained": done,
+            "state": if mode != "async" || through >= target { "live" } else { "backfilling" }}),
+        )
     }
 
     /// Adapter operation `projection_lag`: stop or resume the maintenance of an `async`

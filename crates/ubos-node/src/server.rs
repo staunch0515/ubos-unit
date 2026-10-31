@@ -83,6 +83,13 @@ pub const WORK_SCAN_SECS: u64 = 30;
 pub const WORK_HORIZON_SECS: i64 = 60;
 /// The retention sweep's interval (DSN-NOD-202).
 pub const SWEEP_SECS: u64 = 600;
+
+/// The entries an `async` projection's maintenance or backfill takes per second and VAE
+/// (PH-2 step 6f-2, DEC-125).
+pub const PROJECTION_CHUNK: u64 = 10_000;
+
+/// The most events one replay delivers (DSN-NOD-206); a larger range is split by the caller.
+pub const REPLAY_MAX: usize = 100_000;
 /// The default expiry of a pending change whose requirements set none (DSN-DVM-552).
 pub const PENDING_EXPIRY: &str = "P30D";
 /// Seconds between re-validations of a session's credential (DSN-NOD-106: a local cache
@@ -408,6 +415,7 @@ fn host_call(vae: &mut Vae, op: &str, input: &Value) -> Result<Value, BpaError> 
             Ok(json!({"released": effects.len(), "deliveries": deliveries}))
         }
         "host.deliver" => crate::platform::deliver(vae, &input["job"], &input["principal"]),
+        "host.replay_specs" => crate::platform::replay_specs(vae, input),
         "host.run_port" => crate::platform::run_port(vae, &input["job"], &input["principal"]),
         "host.run_schedule" => {
             crate::platform::run_schedule(vae, &input["job"], &input["principal"])
@@ -1793,6 +1801,14 @@ impl Server {
                 }
                 if let Err(e) = h.call("host.tick", json!({})).await {
                     self.log_error("tick", format!("tick {key}"), &e);
+                }
+                // PH-2 step 6f-2 (DEC-125): `async` projections are maintained after their
+                // commits, and new ones backfilled, a bounded chunk per second
+                if let Err(e) = h
+                    .call("maintain_projections", json!({"limit": PROJECTION_CHUNK}))
+                    .await
+                {
+                    self.log_error("projections", format!("projections {key}"), &e);
                 }
                 if let Err(e) = self.evaluate_schedules(&key, &h).await {
                     self.log_error("schedules", format!("schedules {key}"), &e);
@@ -3210,6 +3226,89 @@ fn lease_name(key: &str) -> String {
 /// | `PUT jobs-limit` | `{concurrency}` — the tenant's limit of running jobs (FR-EVT-034) |
 /// | `GET schedules`, `GET schedules/{id}/slots` | `?status&limit` — schedules with their cursor and next slots, and their recorded slots |
 /// | `POST schedules/{id}/pause`, `…/resume` | pause or resume a schedule (FR-EVT-044), committed and audited |
+/// `POST /api/v1/admin/events/replay {subscription, from?, to?, types?}` (DSN-NOD-206,
+/// FR-EVT-071): the logged events released in `[from, to)` of the given types (all when
+/// absent) are delivered again to the subscription only, each marked `replay: true`; the
+/// replay is audited as `admin.events_replay`. Returns `{replay_id, events, enqueued}`.
+async fn admin_replay(
+    s: &Shared,
+    tenant: &str,
+    vae: &str,
+    key: &str,
+    body: &Value,
+    by: &str,
+) -> Result<Value, BpaError> {
+    let sub = text(body, "subscription")?.to_string();
+    let types: Option<Vec<String>> = body["types"].as_array().map(|a| {
+        a.iter()
+            .filter_map(|x| x.as_str().map(str::to_string))
+            .collect()
+    });
+    let (me2, key2) = (s.clone(), key.to_string());
+    let (from, to) = (
+        body["from"].as_str().map(str::to_string),
+        body["to"].as_str().map(str::to_string),
+    );
+    let events = blocking(move || -> Result<Vec<Value>, BpaError> {
+        let ev = me2.events_of(&key2)?.ok_or_else(|| {
+            BpaError::new(
+                "LOGIC.NOT_AVAILABLE",
+                "this server keeps no event log for the VAE",
+            )
+        })?;
+        let mut out = Vec::new();
+        let mut after = 0;
+        loop {
+            let page = ev.query(&EventFilter {
+                type_: None,
+                object_id: None,
+                from: from.clone(),
+                to: to.clone(),
+                after,
+                limit: 1_000,
+            })?;
+            let Some(last) = page.last().and_then(|r| r["seq"].as_i64()) else {
+                break;
+            };
+            after = last;
+            out.extend(page.into_iter().filter(|r| {
+                types
+                    .as_ref()
+                    .is_none_or(|t| t.iter().any(|x| r["type"] == json!(x)))
+            }));
+            if out.len() > REPLAY_MAX {
+                return Err(BpaError::with_details(
+                    "MODEL.CONSTRAINT_VIOLATED",
+                    json!({"reason": "replay_too_large", "max": REPLAY_MAX}),
+                ));
+            }
+        }
+        Ok(out)
+    })
+    .await?;
+    let h = s.vae_async(tenant, vae).await?;
+    let replay_id = crate::uuid()?;
+    let specs = h
+        .call(
+            "host.replay_specs",
+            json!({"subscription": sub, "events": events, "replay_id": replay_id}),
+        )
+        .await?;
+    let n = specs["specs"].as_array().map_or(0, Vec::len);
+    if n > 0 {
+        h.call("host.enqueue", json!({"specs": specs["specs"]}))
+            .await?;
+    }
+    if let Ok(id) = s.identity_async(tenant).await {
+        let entry = json!({"vae": key, "by": by, "subscription": sub, "replay_id": replay_id,
+            "from": body["from"], "to": body["to"], "types": body["types"],
+            "events": events.len(), "enqueued": n});
+        let _ = blocking(move || id.log("admin.events_replay", entry)).await;
+    }
+    s.deliver_now.notify_one();
+    Ok(json!({"replay_id": replay_id, "events": events.len(), "enqueued": n}))
+}
+
 async fn admin_api(
     State(s): State<Shared>,
     ConnectInfo(peer): ConnectInfo<SocketAddr>,
@@ -3484,6 +3583,14 @@ async fn admin_api(
         }
         s.deliver_now.notify_one();
         return Json(v).into_response();
+    }
+    // DSN-NOD-206 (PH-2 step 6f-2): replay the logged events of a time range and types to
+    // one subscription, marked as replays, audited
+    if (method.as_str(), p.as_slice()) == ("POST", &["events", "replay"][..]) {
+        return match admin_replay(&s, &tenant, &vae, &key, &body, &me.did).await {
+            Ok(v) => Json(v).into_response(),
+            Err(e) => problem_response(&e),
+        };
     }
     let me2 = s.clone();
     let m = method.clone();

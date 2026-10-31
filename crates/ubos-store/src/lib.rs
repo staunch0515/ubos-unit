@@ -396,6 +396,21 @@ pub trait Store {
             "projection rebuilds on this store",
         ))
     }
+    /// Add rows of an `async` projection after its commits and move its mark, in one
+    /// storage transaction (PH-2 step 6f-2, DEC-125).
+    fn append_projection(
+        &mut self,
+        _branch: &str,
+        _projection: &str,
+        _version: &str,
+        _rows: &[ProjectionRow],
+        _mark: (&str, &Value),
+    ) -> Result<(), BpaError> {
+        Err(BpaError::new(
+            "ADAPTER.UNSUPPORTED",
+            "projection maintenance on this store",
+        ))
+    }
     /// A stored tree node.
     fn node(&mut self, hash: &str) -> Result<Value, BpaError>;
     /// Store a value under a key (class declarations, adapter clock).
@@ -1026,6 +1041,25 @@ impl Store for MemStore {
             ),
             rows.to_vec(),
         );
+        self.meta.insert(mark.0.to_string(), mark.1.clone());
+        Ok(())
+    }
+    fn append_projection(
+        &mut self,
+        branch: &str,
+        projection: &str,
+        version: &str,
+        rows: &[ProjectionRow],
+        mark: (&str, &Value),
+    ) -> Result<(), BpaError> {
+        self.projections
+            .entry((
+                branch.to_string(),
+                projection.to_string(),
+                version.to_string(),
+            ))
+            .or_default()
+            .extend(rows.iter().cloned());
         self.meta.insert(mark.0.to_string(), mark.1.clone());
         Ok(())
     }

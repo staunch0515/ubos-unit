@@ -81,6 +81,7 @@ Reading order:
   1. Given a replay of 1,000 events to a notification subscription, when run, then no notifications are sent.
 - **Verification:** CONF
 - **Origin:** FR-EVT-071, FR-EVT-073
+- **Phase note:** DEC-125: built in PH-2 step 6f-2 as an administration route, `POST /api/v1/admin/events/replay {subscription, from, to, types}`: the logged events of the range that the subscription listens to are delivered again to it only, as delivery jobs of their own marked `replay: true` (in the handler process's trigger and as `$event.replay`), and the replay is audited. The suppression of connector calls from replayed handlers (FR-EVT-073) comes with the connector framework in PH-2 step 12.
 
 ### DSN-NOD-207 — Projection backfill
 - **Statement:** New asynchronous projections and search indexes MUST be backfilled by scanning committed state at a snapshot and then following commits from that snapshot (FR-EVT-072).
@@ -91,6 +92,7 @@ Reading order:
   1. Given a new index over 10 M objects with concurrent writes, when backfilled, then the final index equals a rebuild at the final head.
 - **Verification:** SIM
 - **Origin:** FR-EVT-072, FR-ANL-023
+- **Phase note:** DEC-125: built in PH-2 step 6f-2 for projections: an `async` projection is maintained after its commits rather than in the flush; a new or changed one starts at mark 0 and is backfilled from the committed entries in bounded chunks by the lease holder every second, with progress from `projection_status`. Reads stay exact during the backfill, as they fold the entries after the mark (DEC-100), so the switch to live maintenance has no gap. Search indexes keep their own maintenance (DEC-095).
 
 ### DSN-NOD-208 — Became-effective scheduler
 - **Statement:** A leader node per VAE MUST call `due_effective` (IF-DVM-030) every minute and emit became-effective events through a process with an idempotency key per segment.

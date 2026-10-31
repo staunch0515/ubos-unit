@@ -3377,6 +3377,27 @@ impl Store for PgStore {
             tx.commit().await
         })
     }
+    fn append_projection(
+        &mut self,
+        branch: &str,
+        _projection: &str,
+        _version: &str,
+        rows: &[crate::ProjectionRow],
+        mark: (&str, &Value),
+    ) -> Result<(), BpaError> {
+        let Some(bid) = self.branch_id(branch)? else {
+            return Err(db("unknown branch"));
+        };
+        let backend = self.backend.clone();
+        let (k, m) = (mark.0.to_string(), serde_json::to_vec(mark.1).map_err(db)?);
+        let rows = rows.to_vec();
+        self.rt.block_on(async move {
+            let mut tx = backend.begin().await?;
+            tx.put_projection_rows(bid, &rows).await?;
+            tx.put_meta(&k, &m).await?;
+            tx.commit().await
+        })
+    }
     fn put_meta(&mut self, key: &str, value: &Value) -> Result<(), BpaError> {
         let b = serde_json::to_vec(value).map_err(db)?;
         let backend = self.backend.clone();
