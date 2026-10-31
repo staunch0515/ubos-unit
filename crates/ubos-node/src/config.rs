@@ -85,7 +85,7 @@ const fn key(
 /// The log levels.
 pub const LEVELS: &[&str] = &["error", "warn", "info", "debug", "trace"];
 
-/// The schema of `ubos.toml` (schema version 1; 25 keys).
+/// The schema of `ubos.toml` (schema version 1; 27 keys).
 pub const SCHEMA: &[Key] = &[
     key(
         "server.listen",
@@ -240,6 +240,21 @@ pub const SCHEMA: &[Key] = &[
         Some("1024"),
         true,
         "the free disk space below which the self-checks warn",
+    ),
+    // Buk installation (PH-2 step 7d, DEC-130; DSN-NOD-422)
+    key(
+        "buks.dir",
+        Kind::Path,
+        None,
+        true,
+        "the directory of the .buk files administrators may install by name",
+    ),
+    key(
+        "buks.trusted_publishers",
+        Kind::Text,
+        None,
+        true,
+        "the publisher DIDs whose Buks the node installs, separated by commas (any signer when absent)",
     ),
     key(
         "bootstrap.admin_username",

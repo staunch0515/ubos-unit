@@ -326,6 +326,7 @@ AI implementer:
   2. Given an uninstall with data retention, when completed, then the Buk's objects remain readable and exportable.
 - **Verification:** CONF
 - **Origin:** FR-PKG-051, FR-PKG-053, FR-PKG-031
+- **Phase note:** DEC-130: built in PH-2 step 7d with the `Buk` class of the `system` genesis Buk unchanged (name = Buk ID, `content_hash` = archive root): the registry record (namespace, dependencies, capabilities, target, loader branch, change set, state) is kept in the kernel metadata, written with the commit of the `Buk` object, until the genesis upgrades of part 7e add these members to the class; refusing an uninstall or downgrade while dependents exist comes with part 7e, on the dependents the registry reports.
 
 ## Commits and branches
 

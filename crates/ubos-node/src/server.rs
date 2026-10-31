@@ -3309,6 +3309,96 @@ async fn admin_replay(
     Ok(json!({"replay_id": replay_id, "events": events.len(), "enqueued": n}))
 }
 
+/// The archive of a Buk request (DSN-NOD-422): the archive document under `archive`, or a
+/// file of the node's Buk directory (`buks.dir`) named by `file`; the trusted publishers
+/// are `buks.trusted_publishers` (any valid signer when absent).
+fn buk_request(cfg: &crate::config::Config, body: &Value) -> Result<Value, BpaError> {
+    let trust: Vec<String> = cfg
+        .text("buks.trusted_publishers")
+        .unwrap_or_default()
+        .split(',')
+        .map(str::trim)
+        .filter(|x| !x.is_empty())
+        .map(str::to_string)
+        .collect();
+    let mut input =
+        json!({"branch": body.get("branch").cloned().unwrap_or(json!("main")), "trust": trust});
+    if let Some(f) = body["file"].as_str() {
+        let ok =
+            f.ends_with(".buk") && !f.contains('/') && !f.contains('\\') && !f.starts_with('.');
+        let (true, Some(dir)) = (ok, cfg.text("buks.dir")) else {
+            return Err(BpaError::new(
+                "MODEL.INVALID_VALUE",
+                "file names a .buk file of the node's Buk directory (buks.dir)",
+            ));
+        };
+        let bytes = std::fs::read(std::path::Path::new(dir).join(f))
+            .map_err(|e| BpaError::new("IAM.NOT_FOUND", format!("{f}: {e}")))?;
+        input["archive"] = serde_json::from_slice(&bytes)
+            .map_err(|e| BpaError::new("PKG.MANIFEST_INVALID", format!("{f}: {e}")))?;
+    } else {
+        input["archive"] = body["archive"].clone();
+    }
+    Ok(input)
+}
+
+/// `/api/v1/admin/buks` (DSN-FRG-306, DSN-NOD-422, DSN-DVM-134; PH-2 step 7d):
+///
+/// | Route | Body | |
+/// |---|---|---|
+/// | `GET buks` | — | the installation registry |
+/// | `POST buks/plan` | `{archive \| file, branch?}` | the install plan; nothing is written |
+/// | `POST buks/install` | `{archive \| file, branch?}` | stage on the loader branch, open and submit the change set |
+/// | `POST buks/complete` | `{buk}` | approve (by the administrator) and merge the change set, record the Buk |
+///
+/// Installing and completing are audited as `admin.buk_install` and `admin.buk_complete`.
+#[allow(clippy::too_many_arguments)]
+async fn admin_buks(
+    s: &Shared,
+    tenant: &str,
+    vae: &str,
+    key: &str,
+    method: &Method,
+    p: &[&str],
+    body: &Value,
+    by: &str,
+) -> Result<Value, BpaError> {
+    let h = s.vae_async(tenant, vae).await?;
+    let (op, input) = match (method.as_str(), p) {
+        ("GET", ["buks"]) => ("buks", json!({})),
+        ("POST", ["buks", "plan"]) => ("buk_plan", buk_request(&s.config(), body)?),
+        ("POST", ["buks", "install"]) => ("buk_install", buk_request(&s.config(), body)?),
+        ("POST", ["buks", "complete"]) => {
+            ("buk_complete", json!({"buk": body["buk"], "approver": by}))
+        }
+        _ => return Err(BpaError::new("IAM.NOT_FOUND", "unknown Buk route")),
+    };
+    let r = h.call(op, input).await;
+    if matches!(op, "buk_install" | "buk_complete")
+        && let Ok(id) = s.identity_async(tenant).await
+    {
+        let (buk, version, root) = match &r {
+            Ok(v) if op == "buk_install" => (
+                v["plan"]["buk"].clone(),
+                v["plan"]["version"].clone(),
+                v["plan"]["root"].clone(),
+            ),
+            Ok(v) => (v["buk"].clone(), Value::Null, Value::Null),
+            Err(_) => (body["buk"].clone(), Value::Null, Value::Null),
+        };
+        let entry = json!({"vae": key, "by": by, "buk": buk, "version": version, "root": root,
+            "change_set": r.as_ref().map(|v| v["change_set"].clone()).unwrap_or(Value::Null),
+            "ok": r.is_ok(), "error": r.as_ref().err().map(|e| e.code)});
+        let event = if op == "buk_install" {
+            "admin.buk_install"
+        } else {
+            "admin.buk_complete"
+        };
+        let _ = blocking(move || id.log(event, entry)).await;
+    }
+    r
+}
+
 async fn admin_api(
     State(s): State<Shared>,
     ConnectInfo(peer): ConnectInfo<SocketAddr>,
@@ -3436,6 +3526,14 @@ async fn admin_api(
             let _ = blocking(move || id.log("admin.simulate", entry)).await;
         }
         return match r {
+            Ok(v) => Json(v).into_response(),
+            Err(e) => problem_response(&e),
+        };
+    }
+    // DSN-NOD-422, DSN-DVM-134 (PH-2 step 7d): Buk installation by an administrator,
+    // audited
+    if p.first() == Some(&"buks") {
+        return match admin_buks(&s, &tenant, &vae, &key, &method, &p, &body, &me.did).await {
             Ok(v) => Json(v).into_response(),
             Err(e) => problem_response(&e),
         };

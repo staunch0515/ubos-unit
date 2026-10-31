@@ -1,6 +1,6 @@
 //! `forge` command line: `init`, `check`, `types`, `test` (PH-1 step 7b, DEC-060), `dev`
 //! (step 17e, DEC-078), `conform` (PH-0), and `new`, `pack`, `sign` and `verify` (PH-2
-//! step 7c, DEC-129). Every command takes `--json`; exit status 0 on success, 1 on findings
+//! step 7c, DEC-129) and `install` (step 7d, DEC-130). Every command takes `--json`; exit status 0 on success, 1 on findings
 //! or failures, 2 on usage (DSN-FRG-001).
 
 use ed25519_dalek::{Signer, SigningKey};
@@ -22,6 +22,9 @@ const USAGE: &str = "usage:
   forge sign <buk file> --key <file with 64 hex chars> [--json]
   forge verify <buk file> [--trust <did>]... [--repo <dir>] [--previous <buk file>] \
 [--key <seed file>] [--record <file>] [--json]
+  forge install <buk file> --server <host:port> --token <bearer> [--vae <name>] [--branch <name>] \
+[--repo <dir>] [--plan] [--approve] [--json]
+  forge install --complete <namespace/name> --server <host:port> --token <bearer> [--vae <name>] [--json]
   forge check [<project dir>] [--json]
   forge types [<project dir>] [--out <dir>] [--sdk <module>] [--json]
   forge test [<project dir>] [--report <json file>] [--junit <xml file>] [--records <dir>] \
@@ -408,6 +411,79 @@ fn verify_cmd(args: &[String]) -> Result<bool, String> {
     Ok(rec["result"] == "pass")
 }
 
+fn install_cmd(args: &[String]) -> Result<bool, String> {
+    let mut flags = std::collections::BTreeSet::new();
+    let mut rest = Vec::new();
+    for a in args {
+        if matches!(a.as_str(), "--plan" | "--approve") {
+            flags.insert(a.clone());
+        } else {
+            rest.push(a.clone());
+        }
+    }
+    let (file, opts, json_out) = options(&rest);
+    let o = ubos_forge::package::InstallOptions {
+        server: opts.get("server").cloned().ok_or("--server is required")?,
+        token: opts.get("token").cloned().ok_or("--token is required")?,
+        vae: opts.get("vae").cloned(),
+        branch: opts.get("branch").cloned().unwrap_or_else(|| "main".into()),
+        plan_only: flags.contains("--plan"),
+        approve: flags.contains("--approve"),
+        repo: opts.get("repo").map(PathBuf::from),
+    };
+    if let Some(id) = opts.get("complete") {
+        let r = ubos_forge::package::complete(id, &o)?;
+        emit(
+            json_out,
+            &r,
+            &format!(
+                "forge install: {id} {} (change set {})",
+                r["state"].as_str().unwrap_or_default(),
+                r["change_set"].as_str().unwrap_or_default()
+            ),
+        );
+        return Ok(r["state"] == "installed");
+    }
+    let a = read_buk(&file)?;
+    let out = ubos_forge::package::install(&a, &o)?;
+    let mut text = String::new();
+    if out.get("plan").is_none() {
+        for c in out["verify"]["checks"].as_array().into_iter().flatten() {
+            if c["result"] != "pass" {
+                text.push_str(&format!(
+                    "verify {}: fail {}\n",
+                    c["name"].as_str().unwrap_or("?"),
+                    c["findings"]
+                ));
+            }
+        }
+        text.push_str("forge install: the Buk does not verify; nothing was sent");
+    } else {
+        text.push_str(&ubos_forge::package::plan_text(&out["plan"]));
+        if let Some(i) = out.get("install") {
+            text.push_str(&format!(
+                "\nstaged: change set {} {}",
+                i["change_set"].as_str().unwrap_or_default(),
+                i["state"].as_str().unwrap_or_default()
+            ));
+        }
+        match out.get("complete") {
+            Some(c) => text.push_str(&format!(
+                "\nforge install: {} {}",
+                a.id(),
+                c["state"].as_str().unwrap_or_default()
+            )),
+            None if out.get("install").is_some() => text.push_str(&format!(
+                "\nforge install: approve and merge with `forge install --complete {}`",
+                a.id()
+            )),
+            None => {}
+        }
+    }
+    emit(json_out, &out, &text);
+    Ok(out["result"] == "pass")
+}
+
 fn check(args: &[String]) -> Result<bool, String> {
     let (dir, _, json_out) = options(args);
     let project = load(&dir)?;
@@ -790,6 +866,7 @@ fn main() -> ExitCode {
         Some("pack") => project_cmd(pack_cmd(&args[1..])),
         Some("sign") => project_cmd(sign_cmd(&args[1..])),
         Some("verify") => project_cmd(verify_cmd(&args[1..])),
+        Some("install") => project_cmd(install_cmd(&args[1..])),
         Some("check") => project_cmd(check(&args[1..])),
         Some("types") => project_cmd(types(&args[1..])),
         Some("test") => project_cmd(test(&args[1..])),

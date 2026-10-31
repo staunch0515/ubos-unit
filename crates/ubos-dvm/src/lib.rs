@@ -20,6 +20,7 @@ pub mod host;
 pub mod keys;
 pub mod lenses;
 pub mod matching;
+pub mod packages;
 pub mod periods;
 pub mod process;
 pub mod projections;

@@ -278,18 +278,10 @@ pub fn seed_vae_with(
     Ok((vae, findings, recorder))
 }
 
-/// A stable object identifier for a logic asset of a project (from its name).
+/// A stable object identifier for a logic asset of a project (from its name), the one
+/// Buk installation uses (DEC-130).
 pub fn asset_object_id(name: &str) -> String {
-    let h = ubos_dvm::content_id("ubos.chunk.v1", &json!(name)).unwrap_or_default();
-    let x = &h[7..];
-    format!(
-        "{}-{}-7{}-8{}-{}",
-        &x[0..8],
-        &x[8..12],
-        &x[13..16],
-        &x[17..20],
-        &x[20..32]
-    )
+    ubos_dvm::packages::asset_object_id(name)
 }
 
 /// Classification coverage of the project's own fields (NR-PRIV-003, DSN-DVM-824): every

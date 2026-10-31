@@ -176,6 +176,7 @@ Reading order:
   1. Given a Buk with a modified file, when installed, then installation fails before any commit.
 - **Verification:** SEC
 - **Origin:** NR-SEC-007, CTR-054, CR-NIST-003
+- **Phase note:** DEC-130: built in PH-2 step 7d for local files (the archive in the request, or a file of `buks.dir`) with the publishers of `buks.trusted_publishers`; a changed file or a missing or untrusted signature is refused before any commit. Retrieval from EXC (CTR-054) comes with PH-4.
 
 ### DSN-NOD-423 — Air-gapped package import
 - **Statement:** Air-gapped nodes MUST import Buks, licences and upgrades from signed bundles on removable media (FR-OPS-013, FR-PKG-083).

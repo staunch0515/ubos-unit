@@ -892,3 +892,181 @@ pub fn new_project(dir: &Path, name: &str, namespace: &str) -> Result<Vec<String
     std::fs::write(&p, t).map_err(err)?;
     Ok(written)
 }
+
+// ---- install (DSN-FRG-306; PH-2 step 7d, DEC-130) ----
+
+/// Options of `forge install`.
+#[derive(Debug, Default)]
+pub struct InstallOptions {
+    /// The Server, `host:port`.
+    pub server: String,
+    /// A bearer token of an administrator of the tenant.
+    pub token: String,
+    /// The VAE (default: the Server's default authority).
+    pub vae: Option<String>,
+    /// The target branch.
+    pub branch: String,
+    /// Show the plan only.
+    pub plan_only: bool,
+    /// Approve and merge the change set after staging it.
+    pub approve: bool,
+    /// Repository of dependency archives for the local verification.
+    pub repo: Option<PathBuf>,
+}
+
+fn call(o: &InstallOptions, route: &str, body: &Value) -> Result<Value, String> {
+    let path = match &o.vae {
+        Some(v) => format!("/api/v1/admin/buks/{route}?vae={v}"),
+        None => format!("/api/v1/admin/buks/{route}"),
+    };
+    let (status, reply) = crate::simulate::post(&o.server, &path, body, &o.token)?;
+    if status != 200 {
+        let code = reply["code"].as_str().unwrap_or("NOD.UNAVAILABLE");
+        let detail = reply["detail"].as_str().unwrap_or_default();
+        let plan = reply
+            .get("details")
+            .or_else(|| reply.get("explanation"))
+            .cloned()
+            .unwrap_or(Value::Null);
+        return Err(format!("{route}: {status} {code} {detail} {plan}"));
+    }
+    Ok(reply)
+}
+
+/// `forge install`: the Buk is verified locally (its checks and its scenarios run on the
+/// development fixture, a sandbox copy, FR-PKG-031), the Server computes the install plan,
+/// stages the Buk on its loader branch and submits the change set; with `approve` the
+/// change set is approved and merged and the Buk recorded. Returns `{verify, plan,
+/// install?, complete?}`.
+pub fn install(a: &Archive, o: &InstallOptions) -> Result<Value, String> {
+    let rec = verify(
+        a,
+        &VerifyOptions {
+            trust: Vec::new(),
+            repo: o.repo.clone(),
+            previous: None,
+        },
+    )?;
+    // dependencies are checked by the Server against its installed Buks
+    let failed: Vec<&Value> = rec["checks"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|c| {
+            c["result"] != "pass"
+                && !c["findings"]
+                    .as_array()
+                    .is_some_and(|f| f.iter().all(|x| x["rule"] == "dependencies_unchecked"))
+        })
+        .collect();
+    let mut out = json!({"verify": rec});
+    if !failed.is_empty() {
+        out["result"] = json!("fail");
+        return Ok(out);
+    }
+    let body = json!({"archive": a.to_json().map_err(err)?, "branch": o.branch});
+    let plan = call(o, "plan", &body)?;
+    out["plan"] = plan.clone();
+    let blocked = plan["problems"].as_array().is_some_and(|p| !p.is_empty());
+    if o.plan_only || blocked {
+        out["result"] = json!(if blocked { "fail" } else { "pass" });
+        return Ok(out);
+    }
+    let staged = call(o, "install", &body)?;
+    out["install"] = staged;
+    if o.approve {
+        out["complete"] = call(o, "complete", &json!({"buk": a.id()}))?;
+    }
+    out["result"] = json!("pass");
+    Ok(out)
+}
+
+/// `forge install --complete <Buk ID>`: approve and merge a staged installation.
+pub fn complete(id: &str, o: &InstallOptions) -> Result<Value, String> {
+    call(o, "complete", &json!({ "buk": id }))
+}
+
+/// The text of an install plan (FR-PKG-033).
+pub fn plan_text(p: &Value) -> String {
+    let list = |v: &Value| -> String {
+        let a: Vec<&str> = v
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .collect();
+        if a.is_empty() {
+            "none".into()
+        } else {
+            format!("{} ({})", a.len(), a.join(", "))
+        }
+    };
+    let mut t = format!(
+        "install plan of {} {} into {} (root {}, signed by {}):\n",
+        p["buk"].as_str().unwrap_or_default(),
+        p["version"].as_str().unwrap_or_default(),
+        p["target"].as_str().unwrap_or_default(),
+        p["root"].as_str().unwrap_or_default(),
+        list(&p["signers"])
+    );
+    t.push_str(&format!(
+        "  classes added: {}\n",
+        list(&p["classes"]["add"])
+    ));
+    t.push_str(&format!(
+        "  classes unchanged: {}\n",
+        list(&p["classes"]["unchanged"])
+    ));
+    t.push_str(&format!(
+        "  value types added: {}\n",
+        list(&p["value_types"]["add"])
+    ));
+    t.push_str(&format!(
+        "  logic assets added: {}\n",
+        list(&p["assets"]["add"])
+    ));
+    t.push_str(&format!(
+        "  logic assets unchanged: {}\n",
+        list(&p["assets"]["unchanged"])
+    ));
+    t.push_str(&format!(
+        "  seed changes: {} {}\n",
+        p["seed"]["changes"], p["seed"]["by_class"]
+    ));
+    t.push_str(&format!(
+        "  subscriptions {}, schedules {}, connectors {}; sheets {}, views {}, components {} files\n",
+        p["subscriptions"], p["schedules"], p["connectors"], p["sheets"], p["views"], p["components"]
+    ));
+    t.push_str(&format!(
+        "  configuration required: {}\n",
+        list(&p["configuration"])
+    ));
+    t.push_str(&format!(
+        "  permissions requested: {}\n",
+        list(&p["permissions"])
+    ));
+    for d in p["dependencies"].as_array().into_iter().flatten() {
+        t.push_str(&format!(
+            "  dependency {} {}: {}\n",
+            d["id"].as_str().unwrap_or_default(),
+            d["range"].as_str().unwrap_or_default(),
+            d["installed"]
+                .as_str()
+                .map(|v| format!("{v} installed"))
+                .unwrap_or_else(|| "not installed".into())
+        ));
+    }
+    for x in p["problems"].as_array().into_iter().flatten() {
+        t.push_str(&format!(
+            "  problem [{}] {}\n",
+            x["code"].as_str().unwrap_or_default(),
+            x["message"].as_str().unwrap_or_default()
+        ));
+    }
+    t.push_str(&format!(
+        "  loader branch: {}; status: {}",
+        p["loader"].as_str().unwrap_or_default(),
+        p["status"].as_str().unwrap_or_default()
+    ));
+    t
+}

@@ -251,6 +251,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given an install, when previewed, then the plan lists all objects and permissions before any commit.
 - **Verification:** CONF
 - **Origin:** FR-PKG-031, FR-PKG-033, FR-PKG-032
+- **Phase note:** DEC-130: built in PH-2 step 7d as UBS-SYS-FRG-09 §7 describes: `forge install` runs `forge verify` (the Buk's checks and scenarios on the development fixture, the sandbox copy of FR-PKG-031), shows the Server's plan, and stages the Buk on a loader branch with a submitted change set; `--approve`, or `forge install --complete`, approves and merges it.
 
 ### DSN-FRG-307 — Migrations shipped with Buks
 - **Statement:** Breaking changes between Buk versions MUST ship migration definitions (lenses or migration processes) (FR-PKG-042); Forge MUST test them against the previous version's seed and test fixtures.

@@ -11,8 +11,8 @@ depends_on: [UBS-SYS-FRG-02, UBS-SYS-FRG-06]
 The Buk is the package format of the UBOS product. It is not part of BPA 1.0 (DEC-127): a
 second implementation of the standard need not read it. This page describes version 1 of
 the format as PH-2 step 7c builds it (DEC-129). The designs it serves are DSN-FRG-301…305;
-installation (DSN-FRG-306, DSN-DVM-134, DSN-NOD-422) and shipped migrations (DSN-FRG-307)
-use it from parts 7d and 7e. The shared code is `crates/ubos-dvm/src/buk.rs`, and the
+installation (DSN-FRG-306, DSN-DVM-134, DSN-NOD-422; §7, part 7d) and shipped migrations
+(DSN-FRG-307, part 7e) use it. The shared code is `crates/ubos-dvm/src/buk.rs`, and the
 Forge commands are in `crates/ubos-forge/src/package.rs`.
 
 ## 1. Archive
@@ -135,3 +135,61 @@ The checks are:
 The record carries no time, so the same inputs give the same record (FR-PKG-063). With
 `--key` it is signed by the verifier: its content ID becomes `record_id`, and its
 signature is stored in `signature`.
+
+## 7. Installation
+
+Installation is built in PH-2 step 7d (DEC-130). The kernel part is in
+`crates/ubos-dvm/src/packages.rs`, the Server routes are under `/api/v1/admin/buks`, and the
+client is `forge install`.
+
+**Archive checks.** A Buk is refused before anything is written when:
+- its integrity fails (§1);
+- it has no valid signature, or no signature of a publisher in
+  `buks.trusted_publishers` (`PKG.SIGNATURE_INVALID`).
+
+The Server takes the archive in the request body, or as the name of a `.buk` file in its
+`buks.dir`.
+
+**Plan** (`buk_plan`, FR-PKG-033). The plan is computed against the target branch and
+writes nothing. It lists:
+- the classes and value types added or unchanged;
+- the logic assets added or unchanged;
+- the seed changes by class, with the subscriptions, schedules and connectors among them;
+- the sheet, view and component files;
+- the configuration the manifest requires (member `configuration`);
+- the permissions requested (the capabilities);
+- the dependencies, with the installed versions.
+
+These problems block the installation:
+- a class or asset outside the Buk's namespace;
+- a class of the same name in another namespace;
+- a namespace held by a Buk of another publisher (`PKG.NAMESPACE_VIOLATION`);
+- a dependency that is not installed in a matching version (`PKG.CONFIGURATION_INCOMPLETE`);
+- another version installed, or a class or asset that exists with another content
+  (`PKG.MANIFEST_INVALID`; upgrades come with part 7e).
+
+**Install** (`buk_install`, FR-PKG-031):
+1. A loader branch `loader/<namespace>/<name>-<version>` is created from the target, with
+   dots written as dashes and a numeric suffix when an earlier attempt left one.
+2. The new classes and value types are declared. Declarations are shared by the branches
+   of a VAE, so a retry finds them unchanged.
+3. The assets and the seed are committed on the loader branch, and each asset is verified
+   there by the node (`verify_asset`, STD-CTX-023), so that it runs on protected branches
+   after the merge.
+4. A change set from the loader branch into the target is opened and submitted; its
+   preview validates the merge.
+
+The registry records the Buk as `pending`. Running the Buk's scenarios in a sandbox copy
+is the `forge verify` that `forge install` runs before it sends the Buk.
+
+**Completion** (`buk_complete`). The administrator approves the change set, which is then
+merged. The Buk is recorded on the target as a System-kind `Buk` object (name = Buk ID,
+version, `content_hash` = root, publisher, signature). Its registry record goes in the same
+commit: namespace, dependencies, capabilities, target, loader branch, change set, merged
+commit and state. Installing the same root again reports `present`.
+
+**Registry and audit.** `GET /api/v1/admin/buks` lists the registry. Installing and
+completing are audited as `admin.buk_install` and `admin.buk_complete`. The registry
+answers which Buks depend on a Buk; refusing an uninstall or downgrade on that answer
+comes with part 7e.
+

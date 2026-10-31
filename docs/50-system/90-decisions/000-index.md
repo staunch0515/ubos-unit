@@ -33,6 +33,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-127 | PH-2 step 7 opened in parts 7a–7g with the Buk format outside the BPA standard; part 7a: schema evolution in the kernel — `Lens`, the computed classification, `change_class`, lenses on reads, writes, updates and merges, the totality check; STD-CLS-050 and -060…062 claimed | Accepted |
 | DEC-128 | PH-2 step 7, part 7b: upstream change detection in the kernel — overrides recorded with their base version, `upstream_changes`, `resolve_upstream` by acknowledgement or three-way merge; STD-VER-082 claimed | Accepted |
 | DEC-129 | PH-2 step 7, part 7c: the Buk format `ubos.buk.v1` (UBS-SYS-FRG-09) and Forge `new`, `pack`, `sign`, `verify` with dependency resolution into `forge.lock` | Accepted |
+| DEC-130 | PH-2 step 7, part 7d: Buk installation — plan, loader branch, node-verified assets, change set, registry record with the `Buk` object; Server routes and `forge install` | Accepted |
 
 ---
 
@@ -600,3 +601,46 @@ follow.
   - A full PubGrub solver was deferred. The backtracking solver gives the same answers on small graphs and explains conflicts by path; the exchange in PH-4 shows whether larger graphs need learned incompatibilities.
   - A new error code for archive integrity was rejected: `PKG.MANIFEST_INVALID` is registered and covers an archive whose manifest and content disagree.
 - **Affects:** DSN-FRG-301, DSN-FRG-302, DSN-FRG-303, DSN-FRG-304, DSN-FRG-305, DSN-FRG-307, DSN-FRG-104, FR-DEV-011, UBS-SYS-FRG-06, UBS-SYS-FRG-09, DEC-077, DEC-127
+
+### DEC-130 — Models and packages, part 7d: Buk installation (PH-2 step 7)
+- **Date:** 2026-10-31 · **Status:** Accepted
+- **Context:** Part 7d of step 7 (DEC-127). Buks could be packed, signed and verified (DEC-129), but not installed:
+  - the node installed only its embedded genesis Buks (DEC-077);
+  - the installation registry, the install plan and the loader branch were missing (FR-PKG-031…033, DSN-FRG-306, DSN-DVM-134, DSN-NOD-422).
+
+  The `Buk` class belongs to the signed `system` genesis Buk. Changing it would stop existing VAEs until the genesis upgrades of part 7e. The owner confirmed part 7d with the default suggestions.
+- **Decision:**
+  1. **Kernel operations** (`crates/ubos-dvm/src/packages.rs`):
+     - `buk_plan` computes the plan and writes nothing;
+     - `buk_install` creates the loader branch, declares the new classes, commits the assets and the seed on the loader branch, verifies each asset there with `verify_asset`, and opens and submits the change set;
+     - `buk_complete` approves and merges the change set, and records the `Buk` object with its registry record in one commit;
+     - `buks` lists the registry.
+
+     UBS-SYS-FRG-09 §7 describes them.
+  2. **Checks before any write.** Integrity, signatures and trusted publishers are checked first. Then every problem of the plan blocks the installation:
+     - namespace, class and asset conflicts;
+     - missing dependencies;
+     - another installed version or changed content, since upgrades are part 7e.
+
+     Two Buks may share a namespace only when they have the same publisher.
+  3. **Registry.** The `Buk` class is unchanged. Its object carries the Buk ID as name and the archive root as `content_hash`. The rest of the registry record is kept in the kernel metadata (`buks`), written in the flush of the commit that records the `Buk` object, until part 7e adds the members to the class by a genesis upgrade.
+  4. **Server.** The administration interface gains the routes under `/api/v1/admin/buks`: `GET buks`, `POST buks/plan`, `POST buks/install` and `POST buks/complete`.
+     - The administrator is the approver.
+     - Installing and completing are audited.
+     - An archive comes in the body, or as a file of the new key `buks.dir`.
+     - Trusted publishers are the new key `buks.trusted_publishers`.
+  5. **Forge.** `forge install` runs `forge verify` locally, which is the sandbox run of the Buk's scenarios. It then shows the plan and stages the Buk. `--plan` stops after the plan; `--approve`, or `forge install --complete <ID>`, completes the installation. `forge test` and installation share the asset object IDs.
+  6. **Design notes.** DSN-FRG-306, DSN-DVM-134 and DSN-NOD-422 get phase notes.
+- **Consequences:**
+  - The flow was run on a Server over PostgreSQL:
+    - the plan of a Buk with a missing dependency is blocked;
+    - the dependency was staged, completed and recorded;
+    - the dependent Buk was installed with its asset verified;
+    - the ports of both Buks run on `main`;
+    - installing again reports `present`, and another version is refused;
+    - a changed chunk, an unsigned Buk, an untrusted publisher and a path outside `buks.dir` are refused before any commit.
+  - No new tests were written (DEC-127).
+- **Alternatives considered:**
+  - Adding the registry members to the `Buk` class now was rejected. It changes the signed `system` genesis Buk, so it belongs with the genesis upgrades of part 7e.
+  - Running the Buk's scenarios on the node was deferred. Forge already runs them on the development fixture before sending the Buk, and the node verifies every asset with its own tests on the loader branch.
+- **Affects:** DSN-FRG-306, DSN-DVM-134, DSN-NOD-422, FR-PKG-031, FR-PKG-032, FR-PKG-033, STD-CTX-023, UBS-SYS-FRG-09, UBS-SYS-NOD-06, DEC-077, DEC-127, DEC-129

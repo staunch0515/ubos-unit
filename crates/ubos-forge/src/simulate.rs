@@ -53,7 +53,12 @@ fn run_id() -> Result<String, String> {
 }
 
 /// One HTTP/1.1 request with a JSON body: the status and the JSON reply.
-fn post(addr: &str, path: &str, body: &Value, token: &str) -> Result<(u16, Value), String> {
+pub(crate) fn post(
+    addr: &str,
+    path: &str,
+    body: &Value,
+    token: &str,
+) -> Result<(u16, Value), String> {
     let mut s = std::net::TcpStream::connect(addr).map_err(|e| format!("{addr}: {e}"))?;
     s.set_read_timeout(Some(Duration::from_secs(3600)))
         .map_err(|e| e.to_string())?;

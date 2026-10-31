@@ -58,6 +58,8 @@ Secrets are references (`env:`, `file:`, `kms:`), never inline (DSN-NOD-605). Th
 | `server.tls_certificate` | — | path | yes | DSN-NOD-614 |
 | `selfcheck.interval_secs` | 60 | 5–3600 | yes | DSN-NOD-614 |
 | `selfcheck.disk_min_free_mb` | 1024 | 0–10000000 | yes | DSN-NOD-614 |
+| `buks.dir` | — | absolute path | yes | DSN-NOD-422 |
+| `buks.trusted_publishers` | — (any valid signer) | publisher DIDs, comma-separated | yes | DSN-NOD-422 |
 | `backup.wal_archive` | — | target reference | no | DSN-NOD-620 |
 | `backup.retention_days` | 35 | 7–3650 | yes | DSN-NOD-623 |
 | `backup.dir` | — | path (a separate failure domain) | yes | DSN-NOD-620 |
