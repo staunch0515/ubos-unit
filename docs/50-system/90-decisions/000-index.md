@@ -32,6 +32,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-126 | PH-2 step 6 closed: durable work (parts 6a–6f-2, DEC-119…125) — BPA 1.0-rc12, workflows with events, timers, tasks, approvals and migration, timer rows and the node's timer service, sagas with timeouts and intervention, quarantine, `ask.input`, projection maintenance and backfill, event replay; 158 step-6 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 | DEC-127 | PH-2 step 7 opened in parts 7a–7g with the Buk format outside the BPA standard; part 7a: schema evolution in the kernel — `Lens`, the computed classification, `change_class`, lenses on reads, writes, updates and merges, the totality check; STD-CLS-050 and -060…062 claimed | Accepted |
 | DEC-128 | PH-2 step 7, part 7b: upstream change detection in the kernel — overrides recorded with their base version, `upstream_changes`, `resolve_upstream` by acknowledgement or three-way merge; STD-VER-082 claimed | Accepted |
+| DEC-129 | PH-2 step 7, part 7c: the Buk format `ubos.buk.v1` (UBS-SYS-FRG-09) and Forge `new`, `pack`, `sign`, `verify` with dependency resolution into `forge.lock` | Accepted |
 
 ---
 
@@ -564,3 +565,38 @@ follow.
   - One metadata key per override was rejected for now: the metadata store has no prefix listing, and a per-branch map is read once per report. If overlays with many overrides make the map large, a table with an index replaces it (step 18 benchmarks).
   - Detecting changes when the parent line commits (pushing marks to every child branch) was rejected: it makes a parent commit depend on its children, while comparing on request costs one parent-line view.
 - **Affects:** STD-VER-082, STD-VER-080, DSN-DVM-263, DEC-127
+
+### DEC-129 — Models and packages, part 7c: the Buk format and its Forge commands (PH-2 step 7)
+- **Date:** 2026-10-31 · **Status:** Accepted
+- **Context:** Part 7c of step 7 (DEC-127). Forge had `init`, `check`, `types`, `test`, `dev`, `simulate` and `conform`, but no Buk: the genesis Buks have their PH-1 form (DEC-077), and `new`, `pack`, `sign` and `verify` were missing (FR-DEV-011, DSN-FRG-301…305). The node's installation in part 7d reads the same archives, and `ubos-node` may not depend on `ubos-forge` (UBS-ARC-07 §2). The owner confirmed part 7c with the default suggestions.
+- **Decision:**
+  1. **Format.** `ubos.buk.v1` is described in UBS-SYS-FRG-09. In short:
+     - an archive is one canonical JSON document holding the manifest, the path tree, the chunks (one per file), the root and the detached signatures;
+     - the root is `content_id("ubos.chunk.v1", {"buk": {manifest, tree}})`;
+     - a signature is a DAT-Signature by the publisher's key-form DID over the root.
+  2. **Shared code.** The archive, its integrity check, the signatures, and semantic versions with ranges are in `ubos-dvm::buk`. Forge and the node both use it, so no new crate is needed.
+  3. **Commands** (`crates/ubos-forge/src/package.rs`):
+     - `forge new` scaffolds a Buk project with a namespace;
+     - `forge pack` runs `forge check` (seed data included), resolves dependencies and writes the archive, optionally signed;
+     - `forge sign` adds a signature;
+     - `forge verify` runs the checks of UBS-SYS-FRG-09 §6 and writes a reproducible record, signed with `--key`.
+
+     The manifest keys stay in the `[project]` table of `forge.toml`; UBS-SYS-FRG-06 lists them.
+  4. **Dependencies.** Resolution runs against a local repository of `.buk` files. A deterministic backtracking solver prefers the previous lock and explains a conflict by every path. The result goes to `forge.lock` and the manifest member `locked`.
+  5. **Coverage.** A port test counts toward the coverage of the function that implements the port. Before, only unit and property tests counted, so a function reached only through its port could not meet the coverage gate (DSN-FRG-104).
+  6. **Errors.** The registered codes are used: `PKG.MANIFEST_INVALID` for a malformed or inconsistent archive, `PKG.SIGNATURE_INVALID`, `PKG.NAMESPACE_VIOLATION`, and `MODEL.LENS_REQUIRED` and `MODEL.MIGRATION_REQUIRED` for changes without a lens or a migration.
+  7. **Design notes.** DSN-FRG-301…305 and -307 get phase notes.
+- **Consequences:**
+  - Each command was run on a scaffolded project:
+    - packing twice gives the same root, and a changed manifest is refused;
+    - an unsigned Buk or one without a trusted signer fails verification;
+    - a missing capability request is listed;
+    - a breaking class change without a lens or migration is listed;
+    - a version conflict names both dependency paths;
+    - the record is byte-identical on a second run.
+  - No new tests were written (DEC-127); the package scenarios run in steps 18 and 20.
+- **Alternatives considered:**
+  - A tar or zip container with content-defined chunks was rejected for version 1. Sources are small structured files, a canonical JSON document needs no new dependency, and large binary content belongs in the blob store.
+  - A full PubGrub solver was deferred. The backtracking solver gives the same answers on small graphs and explains conflicts by path; the exchange in PH-4 shows whether larger graphs need learned incompatibilities.
+  - A new error code for archive integrity was rejected: `PKG.MANIFEST_INVALID` is registered and covers an archive whose manifest and content disagree.
+- **Affects:** DSN-FRG-301, DSN-FRG-302, DSN-FRG-303, DSN-FRG-304, DSN-FRG-305, DSN-FRG-307, DSN-FRG-104, FR-DEV-011, UBS-SYS-FRG-06, UBS-SYS-FRG-09, DEC-077, DEC-127

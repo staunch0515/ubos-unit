@@ -10,6 +10,7 @@ pub mod adapter;
 pub mod approvals;
 pub mod audit;
 pub mod authz;
+pub mod buk;
 pub mod dialogs;
 pub mod execution;
 pub mod expressions;

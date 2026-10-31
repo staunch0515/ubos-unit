@@ -233,6 +233,43 @@ fn concurrent(
     }
 }
 
+/// The asset and function implementing the port a port test calls: the class of the
+/// target from the seed, else the only class declaring a port of that name.
+fn port_impl(project: &Project, input: &Value) -> Option<(String, String)> {
+    let port = input.get("port").and_then(Value::as_str)?;
+    let target = input
+        .get("target")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let seeded = project
+        .seed
+        .iter()
+        .find(|i| i.value.get("object_id").and_then(Value::as_str) == Some(target))
+        .and_then(|i| i.value.get("class").and_then(Value::as_str));
+    let with_port: Vec<&Value> = project
+        .classes
+        .iter()
+        .map(|i| &i.value)
+        .filter(|c| {
+            c["ports"]
+                .as_array()
+                .is_some_and(|ps| ps.iter().any(|p| p["name"] == json!(port)))
+        })
+        .collect();
+    let class = match seeded {
+        Some(n) => with_port.into_iter().find(|c| c["name"] == json!(n))?,
+        None if with_port.len() == 1 => with_port[0],
+        None => return None,
+    };
+    let imp = class["ports"]
+        .as_array()?
+        .iter()
+        .find(|p| p["name"] == json!(port))?["impl"]
+        .as_str()?;
+    let (asset, f) = imp.split_once('#').unwrap_or((imp, "main"));
+    Some((asset.to_string(), f.to_string()))
+}
+
 fn note_invocation(invoked: &mut BTreeMap<String, Vec<String>>, input: &Value) {
     if let Some(asset) = input.get("asset").and_then(Value::as_str) {
         let f = input
@@ -441,6 +478,12 @@ pub fn run(project: &Project, backend: &Backend) -> Result<Report, BpaError> {
                 let out = vae.call("execute", &input);
                 if out.is_ok() {
                     note_invocation(&mut invoked, &input);
+                    // a port test covers the function implementing the port (DEC-129)
+                    if kind == "port"
+                        && let Some((asset, f)) = port_impl(project, &input)
+                    {
+                        note_invocation(&mut invoked, &json!({"asset": asset, "function": f}));
+                    }
                 }
                 let expect = t.get("expect").cloned().unwrap_or(json!({}));
                 let d = match (&out, expect.get("error").and_then(Value::as_str)) {

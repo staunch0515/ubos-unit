@@ -137,6 +137,7 @@ depends_on: [UBS-IDX-00]
 | UBS-SYS-FRG-06 | Logic Forge — Configuration | draft | PH-1 | `40-systems/04-frg/06-configuration.md` |
 | UBS-SYS-FRG-07 | Logic Forge — Operations | draft | PH-2 | `40-systems/04-frg/07-operations.md` |
 | UBS-SYS-FRG-08 | Logic Forge — Verification Plan | draft | PH-1 | `40-systems/04-frg/08-verification.md` |
+| UBS-SYS-FRG-09 | Logic Forge — Buk Format | draft | PH-2 | `40-systems/04-frg/09-buk-format.md` |
 | UBS-SYS-SDK-00 | Client SDKs — Overview | draft | PH-1 | `40-systems/05-sdk/00-index.md` |
 | UBS-SYS-SDK-01 | Client SDKs — Context | draft | PH-1 | `40-systems/05-sdk/01-context.md` |
 | UBS-SYS-SDK-02 | Client SDKs — Design Requirements | draft | PH-1 | `40-systems/05-sdk/02-functions.md` |

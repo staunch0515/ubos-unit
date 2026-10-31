@@ -65,6 +65,18 @@ pub struct Manifest {
     pub abi: String,
     /// Branch the generated types are versioned for.
     pub branch: String,
+    /// Namespace of the Buk (DSN-FRG-301); the VAE authority by default.
+    pub namespace: String,
+    /// One-line description.
+    pub description: String,
+    /// Licence terms (an SPDX expression or a reference).
+    pub licence: String,
+    /// Dependencies: Buk ID `<namespace>/<name>` → version range (DSN-FRG-303).
+    pub dependencies: std::collections::BTreeMap<String, String>,
+    /// Capabilities the Buk requests; the union of its assets' capabilities when absent.
+    pub capabilities: Option<Vec<String>>,
+    /// Coverage gate of the logic assets (`gates.script_coverage`, DSN-FRG-104).
+    pub script_coverage: f64,
 }
 
 /// A loaded project.
@@ -216,6 +228,31 @@ impl Project {
             vae: get("vae", "acme"),
             abi: get("abi", "1.0"),
             branch: get("branch", "main"),
+            namespace: get("namespace", &get("vae", "acme")),
+            description: get("description", ""),
+            licence: get("licence", ""),
+            dependencies: t
+                .get("dependencies")
+                .and_then(toml::Value::as_table)
+                .map(|d| {
+                    d.iter()
+                        .map(|(k, v)| (k.clone(), v.as_str().unwrap_or_default().to_string()))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            capabilities: p
+                .get("capabilities")
+                .and_then(toml::Value::as_array)
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(str::to_string))
+                        .collect()
+                }),
+            script_coverage: t
+                .get("gates")
+                .and_then(|g| g.get("script_coverage"))
+                .and_then(|x| x.as_float().or_else(|| x.as_integer().map(|i| i as f64)))
+                .unwrap_or(0.80),
         };
         let mut findings = Vec::new();
         let (classes, value_types) = load_folder(root, "model", "classes", &mut findings);

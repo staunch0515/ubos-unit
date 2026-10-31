@@ -1,5 +1,6 @@
 //! `forge` command line: `init`, `check`, `types`, `test` (PH-1 step 7b, DEC-060), `dev`
-//! (step 17e, DEC-078) and `conform` (PH-0). Every command takes `--json`; exit status 0 on success, 1 on findings
+//! (step 17e, DEC-078), `conform` (PH-0), and `new`, `pack`, `sign` and `verify` (PH-2
+//! step 7c, DEC-129). Every command takes `--json`; exit status 0 on success, 1 on findings
 //! or failures, 2 on usage (DSN-FRG-001).
 
 use ed25519_dalek::{Signer, SigningKey};
@@ -16,6 +17,11 @@ static ALLOC: cap::Cap<std::alloc::System> = cap::Cap::new(std::alloc::System, u
 
 const USAGE: &str = "usage:
   forge init <dir> [--name <name>] [--json]
+  forge new <dir> [--name <name>] [--namespace <namespace>] [--json]
+  forge pack [<project dir>] [--repo <dir of .buk files>] [--out <dir>] [--key <seed file>] [--json]
+  forge sign <buk file> --key <file with 64 hex chars> [--json]
+  forge verify <buk file> [--trust <did>]... [--repo <dir>] [--previous <buk file>] \
+[--key <seed file>] [--record <file>] [--json]
   forge check [<project dir>] [--json]
   forge types [<project dir>] [--out <dir>] [--sdk <module>] [--json]
   forge test [<project dir>] [--report <json file>] [--junit <xml file>] [--records <dir>] \
@@ -231,6 +237,175 @@ fn init(args: &[String]) -> Result<bool, String> {
         ),
     );
     Ok(true)
+}
+
+fn new_cmd(args: &[String]) -> Result<bool, String> {
+    let (dir, opts, json_out) = options(args);
+    let name = opts
+        .get("name")
+        .cloned()
+        .or_else(|| dir.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .unwrap_or_else(|| "project".into());
+    let ns = opts
+        .get("namespace")
+        .cloned()
+        .unwrap_or_else(|| "acme".into());
+    let written = ubos_forge::package::new_project(&dir, &name, &ns)?;
+    emit(
+        json_out,
+        &json!({"command": "new", "project": name, "namespace": ns, "dir": dir.display().to_string(), "written": written}),
+        &format!(
+            "forge new: Buk project {ns}/{name} in {} ({} files)",
+            dir.display(),
+            written.len()
+        ),
+    );
+    Ok(true)
+}
+
+fn read_buk(path: &Path) -> Result<ubos_dvm::buk::Archive, String> {
+    let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    ubos_dvm::buk::Archive::decode(&bytes).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+fn pack_cmd(args: &[String]) -> Result<bool, String> {
+    let (dir, opts, json_out) = options(args);
+    let repo = opts
+        .get("repo")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| dir.join("buks"));
+    let (mut archive, lock) = match ubos_forge::package::pack(&dir, &repo)? {
+        ubos_forge::package::Packed::Findings(f) => {
+            emit(
+                json_out,
+                &json!({"command": "pack", "result": "fail", "findings": f}),
+                &format!(
+                    "forge pack: {} errors of forge check; nothing packed",
+                    f.len()
+                ),
+            );
+            return Ok(false);
+        }
+        ubos_forge::package::Packed::Archive(a, l) => (*a, l),
+    };
+    if let Some(k) = opts.get("key") {
+        archive.sign(&seed(Some(k))?).map_err(|e| e.to_string())?;
+    }
+    let out = opts
+        .get("out")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| dir.join("dist"));
+    std::fs::create_dir_all(&out).map_err(|e| e.to_string())?;
+    let file = out.join(ubos_forge::package::file_name(&archive));
+    std::fs::write(&file, archive.encode().map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    let root = archive.root().map_err(|e| e.to_string())?;
+    emit(
+        json_out,
+        &json!({"command": "pack", "result": "pass", "buk": archive.id(), "version": archive.version(),
+            "root": root, "file": file.display().to_string(), "files": archive.tree.len(),
+            "locked": lock.to_json(), "signed": !archive.signatures.is_empty()}),
+        &format!(
+            "forge pack: {} {} → {} (root {root}, {} files, {} dependencies locked)",
+            archive.id(),
+            archive.version(),
+            file.display(),
+            archive.tree.len(),
+            lock.entries.len()
+        ),
+    );
+    Ok(true)
+}
+
+fn sign_cmd(args: &[String]) -> Result<bool, String> {
+    let (file, opts, json_out) = options(args);
+    let key = opts.get("key").ok_or("--key is required")?;
+    let mut a = read_buk(&file)?;
+    let sig = a.sign(&seed(Some(key))?).map_err(|e| e.to_string())?;
+    std::fs::write(&file, a.encode().map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    emit(
+        json_out,
+        &json!({"command": "sign", "buk": a.id(), "version": a.version(),
+            "root": a.root().map_err(|e| e.to_string())?, "signer": sig["signer"], "signatures": a.signatures.len()}),
+        &format!(
+            "forge sign: {} {} signed by {} ({} signatures)",
+            a.id(),
+            a.version(),
+            sig["signer"].as_str().unwrap_or_default(),
+            a.signatures.len()
+        ),
+    );
+    Ok(true)
+}
+
+fn verify_cmd(args: &[String]) -> Result<bool, String> {
+    let mut trust = Vec::new();
+    let mut rest = Vec::new();
+    let mut i = 0;
+    while i < args.len() {
+        if args[i] == "--trust" {
+            trust.push(args.get(i + 1).cloned().ok_or("--trust needs a DID")?);
+            i += 2;
+        } else {
+            rest.push(args[i].clone());
+            i += 1;
+        }
+    }
+    let (file, opts, json_out) = options(&rest);
+    let a = read_buk(&file)?;
+    let o = ubos_forge::package::VerifyOptions {
+        trust,
+        repo: opts.get("repo").map(PathBuf::from),
+        previous: opts
+            .get("previous")
+            .map(|p| read_buk(Path::new(p)))
+            .transpose()?,
+    };
+    let mut rec = ubos_forge::package::verify(&a, &o)?;
+    if let Some(k) = opts.get("key") {
+        ubos_forge::package::sign_record(&mut rec, &seed(Some(k))?).map_err(|e| e.to_string())?;
+    }
+    if let Some(r) = opts.get("record") {
+        std::fs::write(
+            r,
+            serde_json::to_string_pretty(&rec).unwrap_or_default() + "\n",
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    let mut text = String::new();
+    for c in rec["checks"].as_array().into_iter().flatten() {
+        text.push_str(&format!(
+            "{}: {}\n",
+            c["name"].as_str().unwrap_or("?"),
+            c["result"].as_str().unwrap_or("?")
+        ));
+        for f in c["findings"].as_array().into_iter().flatten() {
+            text.push_str(&format!(
+                "  [{}] {}\n",
+                f["rule"].as_str().unwrap_or("?"),
+                f["message"].as_str().unwrap_or_default()
+            ));
+        }
+    }
+    let signers: Vec<&str> = rec["signers"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    text.push_str(&format!(
+        "forge verify: {} {} {} (signed by {})",
+        a.id(),
+        a.version(),
+        rec["result"].as_str().unwrap_or("?"),
+        if signers.is_empty() {
+            "nobody".to_string()
+        } else {
+            signers.join(", ")
+        }
+    ));
+    emit(json_out, &rec, &text);
+    Ok(rec["result"] == "pass")
 }
 
 fn check(args: &[String]) -> Result<bool, String> {
@@ -611,6 +786,10 @@ fn main() -> ExitCode {
     };
     match args.first().map(String::as_str) {
         Some("init") => project_cmd(init(&args[1..])),
+        Some("new") => project_cmd(new_cmd(&args[1..])),
+        Some("pack") => project_cmd(pack_cmd(&args[1..])),
+        Some("sign") => project_cmd(sign_cmd(&args[1..])),
+        Some("verify") => project_cmd(verify_cmd(&args[1..])),
         Some("check") => project_cmd(check(&args[1..])),
         Some("types") => project_cmd(types(&args[1..])),
         Some("test") => project_cmd(test(&args[1..])),

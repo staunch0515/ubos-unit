@@ -196,6 +196,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given the same sources, when packed twice on different machines, then root hashes are equal.
 - **Verification:** CONF
 - **Origin:** FR-PKG-011, FR-PKG-012, NR-MAINT-004
+- **Phase note:** DEC-129: built in PH-2 step 7c with the format UBS-SYS-FRG-09: one canonical JSON archive with a chunk per file (parsed YAML or JSON, or text) and the root over the manifest and the path tree; content-defined chunking of large files is not needed for source files and is left to the blob store. The manifest lists capabilities, dependencies with the locked resolution, the coverage gate and the development fixture; licence terms are a string, and seed data is packed as the `seed/` files.
 
 ### DSN-FRG-302 — Seed data with temporal attributes
 - **Statement:** Seed data MUST support valid-time periods and ledger opening entries (FR-PKG-013), validated against the model at pack time.
@@ -206,6 +207,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given seed data with overlapping periods, when packed, then packing fails.
 - **Verification:** CONF
 - **Origin:** FR-PKG-013
+- **Phase note:** DEC-129: in PH-2 step 7c `forge pack` runs `forge check`, which loads the seed against the model, so seed data the model refuses (overlapping timeline segments, unbalanced opening entries) stops packing.
 
 ### DSN-FRG-303 — Dependency resolution and lock
 - **Statement:** Dependencies MUST use semantic version ranges (FR-PKG-021), resolved deterministically by a PubGrub-style solver into `forge.lock` with exact versions and root hashes (FR-PKG-022). Conflicts MUST be explained with the derivation (FR-PKG-023).
@@ -216,6 +218,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given two dependencies requiring incompatible versions of a third, when resolved, then the explanation names both paths.
 - **Verification:** CONF, PROP
 - **Origin:** FR-PKG-021, FR-PKG-022, FR-PKG-023
+- **Phase note:** DEC-129: built in PH-2 step 7c against a local repository of `.buk` files: a deterministic backtracking solver that prefers the previous lock and explains a conflict with every path to the Buk (UBS-SYS-FRG-09 §5), not a full PubGrub implementation with learned incompatibilities; retrieval from the exchange comes with PH-4.
 
 ### DSN-FRG-304 — Signing
 - **Statement:** `forge sign` MUST sign the archive root with the publisher key (Ed25519, `did:ubos`) and optionally with Sigstore keyless signing for open-source Buks; signatures MUST be detached and listed in the archive trailer.
@@ -226,6 +229,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given a signed Buk, when verified offline, then the publisher identity is shown.
 - **Verification:** SEC
 - **Origin:** NR-SEC-007, FR-PKG-061, CR-NIST-003
+- **Phase note:** DEC-129: built in PH-2 step 7c with publisher keys as key-form DIDs (`did:ubos:k:…`), verified offline; Sigstore keyless signing stays in PH-4 (DEC-127).
 
 ### DSN-FRG-305 — Buk verification
 - **Statement:** `forge verify` MUST check signatures, manifest schema, namespace ownership, ABI compatibility, full checks, tests, coverage gates, capability requests versus inferred use, and migration presence for breaking changes, and produce a signed Buk verification record (FR-PKG-061), reproducible for the same inputs (FR-PKG-063).
@@ -236,6 +240,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given a Buk requesting fewer capabilities than it uses, when verified, then verification fails, listing the missing capability.
 - **Verification:** CONF, SEC
 - **Origin:** FR-PKG-061, FR-PKG-062, FR-PKG-063
+- **Phase note:** DEC-129: built in PH-2 step 7c with the checks of UBS-SYS-FRG-09 §6: namespace ownership covers the classes and asset names of the Buk (whether a namespace belongs to its publisher is an exchange registry check of PH-4), and migration presence is checked against a previous version given to `forge verify`; the record is reproducible and signed with the verifier key.
 
 ### DSN-FRG-306 — Install plan
 - **Statement:** `forge install` MUST compute an install plan (classes, sheets, assets, seed data, required configuration, permissions requested) (FR-PKG-033) and install through a loader branch and change set (FR-PKG-031).
@@ -256,6 +261,7 @@ depends_on: [UBS-SYS-FRG-01]
   1. Given v1 fixtures, when migrated to v2, then v2 tests pass on migrated data.
 - **Verification:** CONF
 - **Origin:** FR-PKG-042, FR-PKG-044
+- **Phase note:** DEC-129: in PH-2 step 7c `forge verify` checks that a lens-required or breaking class change ships a lens or a migration; running the migrations against the previous version's fixtures comes with part 7e.
 
 ### DSN-FRG-308 — Publish
 - **Statement:** `forge publish` MUST upload the archive to EXC (CTR-015), request verification, and publish the version on success; deprecations MUST be publishable with notices (FR-PKG-052).

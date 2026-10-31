@@ -10,6 +10,7 @@
 pub mod check;
 pub mod dev;
 pub mod json;
+pub mod package;
 pub mod project;
 pub mod records;
 pub mod runner;
