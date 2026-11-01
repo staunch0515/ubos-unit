@@ -201,6 +201,34 @@ pub fn seed_vae(project: &Project) -> Result<Fixture, ubos_dvm::BpaError> {
     seed_vae_with(project, &project.declarations(), &Backend::default())
 }
 
+/// Commit a seed file on a loader branch and merge it into `main` through an approved
+/// change set.
+fn seed_by_change_set(
+    vae: &mut Vae,
+    ctx: &ubos_dvm::host::Context,
+    file: &str,
+    changes: Vec<Value>,
+) -> Result<(), ubos_dvm::BpaError> {
+    let loader = format!("loader/seed-{}", file.replace(['/', '.'], "-"));
+    vae.call("create_branch", &json!({"name": loader, "from": "main"}))?;
+    vae.commit(ctx, json!({"branch": loader, "changes": changes}))?;
+    let id = asset_object_id(&format!("forge-seed:{file}"));
+    vae.call(
+        "change_set",
+        &json!({"action": "open", "id": id, "source": loader, "target": "main",
+                "title": format!("Seed {file}")}),
+    )?;
+    vae.call("change_set", &json!({"action": "submit", "id": id}))?;
+    let state = vae.call(
+        "change_set",
+        &json!({"action": "approve", "id": id, "approver": "did:ubos:acme:forge-seed"}),
+    )?;
+    if state["state"] == json!("approved") {
+        vae.call("change_set", &json!({"action": "merge", "id": id}))?;
+    }
+    Ok(())
+}
+
 /// `seed_vae` over the given declarations and backend. The L2 host is on, so that `l2`
 /// assets of the project run (STD-CTX-020).
 pub fn seed_vae_with(
@@ -241,8 +269,16 @@ pub fn seed_vae_with(
             .filter(|i| i.file == file)
             .map(|i| i.value.clone())
             .collect();
-        if let Err(e) = vae.commit(&ctx, json!({"branch": "main", "changes": changes})) {
-            findings.push(finding(&file, e.code, "error", e.message, "seed"));
+        match vae.commit(&ctx, json!({"branch": "main", "changes": changes.clone()})) {
+            // configuration classes reach `main` through a change set, as on installation
+            // (FR-PKG-031; PH-2 step 9a)
+            Err(e) if e.code == "VER.CHANGE_SET_REQUIRED" => {
+                if let Err(e) = seed_by_change_set(&mut vae, &ctx, &file, changes) {
+                    findings.push(finding(&file, e.code, "error", e.message, "seed"));
+                }
+            }
+            Err(e) => findings.push(finding(&file, e.code, "error", e.message, "seed")),
+            Ok(_) => {}
         }
     }
     // logic assets are committed on a feature branch (write policies of `main`)

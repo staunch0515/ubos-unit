@@ -1,0 +1,15 @@
+[project]
+name = "finance"
+version = "0.1.0"
+vae = "acme"
+abi = "1.0"
+branch = "main"
+namespace = "ubos.finance"
+description = "US Basic Finance: chart of accounts, journals, periods and close, general ledger and financial statements (PH-2 steps 9 and 10, DEC-141)"
+licence = "LicenseRef-UBOS-Commercial"
+capabilities = ["read"]
+
+[gates]
+script_coverage = 0.80
+
+[dependencies]

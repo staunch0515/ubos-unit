@@ -27,6 +27,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-138 | PH-2 step 8, part 8c: encrypted fields under subject keys, disclosure, key rotation, crypto-shredding and key unavailability; STD-OBJ-010, -011, -012 and STD-LGS-052 claimed | Accepted |
 | DEC-139 | PH-2 step 8, part 8d: personal-data read logging in the security log, the subject access export, and security-log records of key rotations and erasures | Accepted |
 | DEC-140 | PH-2 step 8 closed: protection (parts 8a–8d, DEC-136…139) — relation-based authorization, field masking, encrypted fields and crypto-shredding, read logging and the subject export; 48 vectors in memory and on PostgreSQL; open items assigned to steps | Accepted |
+| DEC-141 | PH-2 step 9 opened in parts 9a–9e; part 9a: the `finance` Buk in `buks/finance` with the chart of accounts, fiscal periods, the journal ledger and the balance projection; tie-out tests generated from the frozen sample company; FIN-EXP-01 ties out | Accepted |
 
 ---
 
@@ -524,3 +525,34 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
 - **Alternatives considered:**
   - Leaving the open items spread over DEC-136…139 was rejected, as in DEC-104, DEC-111, DEC-118, DEC-126 and DEC-135.
 - **Affects:** DEC-136, DEC-137, DEC-138, DEC-139, DSN-DVM-808, DSN-DVM-810, DSN-DVM-811, DSN-DVM-813, DSN-DVM-821, DSN-DVM-823, DSN-DVM-830, DSN-DVM-831, DSN-DVM-832, DSN-DVM-833, DSN-DVM-837, DSN-DVM-840, DSN-DVM-841
+
+### DEC-141 — The finance Buk, part 9a: chart of accounts, journal and opening balances (PH-2 step 9)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** PH-2 step 9 (UBS-PH-2 §11) builds part 1 of the `finance` Buk (DEC-022). Its scope is the chart of accounts, journals, periods and close, the general ledger and the financial statements of the sample company, tied out in process to `docs/finance-requirements/21-expected-results.md` (fin-req-v1.0, DEC-029). Its exit criterion is EXIT-2-04: no finance-specific kernel code (MET-BIZ-001), shown by inspection. The kernel features it needs were released in steps 1 and 3: the chart of accounts, double entry, periods and close artefacts, and projections (STD-KIND-020…029, STD-TIME-021). The owner confirmed the plan with the default suggestions.
+- **Decision:**
+  1. **Parts.**
+     - 9a: the Buk and its model, and the opening trial balance (FIN-EXP-01).
+     - 9b: journals and posting of the January documents (FIN-EXP-02, -03).
+     - 9c: periods, close and the February items (the general-ledger part of FIN-EXP-15…17).
+     - 9d: the financial statements (FIN-EXP-04…07).
+     - 9e: the tie-out report, the EXIT-2-04 inspection record, and closing the step.
+
+     Receivables, payables, bank, fixed assets, multi-currency, sales tax and 1099 (FIN-EXP-08…14) stay in step 10.
+  2. **Place and licence.** First-party Buks live in `buks/` of the monorepo, licensed as `LICENSING.md` states (commercial, source available to customers). The finance Buk is `buks/finance`, namespace `ubos.finance`, version 0.1.0.
+  3. **Model.**
+     - `GlAccount` subclasses the genesis `LedgerAccount` (STD-KIND-029). It adds the chart's `category`, `normal_balance` and `statement_line`. The categories map to account types: Revenue to `income`, Tax to `expense`, and Other to `income` or `expense` by normal balance.
+     - `FiscalPeriod` is the period class (STD-KIND-025).
+     - `JournalLine` is one double-entry ledger with key `account`, amount `amount` (debits positive, credits negative), `ledger.account` and `period_scope`. The lines of a document share its posting group and carry `document`, `kind`, `party` and `description`.
+     - The seed holds the `gl-balance` projection, the sum and count by account. A trial balance at a date is a read of it with `asof`.
+  4. **Tie-out.**
+     - The sample company is test data, not seed. `buks/finance/tools/gen_tests.py` generates `tests/sample-*.yaml` from the frozen CSVs and the tables of the expected results; the generated files are never edited by hand.
+     - The tests load the company through adapter operations and compare results exactly. Lists match in length and order.
+     - CI runs `gen_tests.py --check`, then `forge check` and `forge test` in memory and on PostgreSQL.
+  5. **Forge.** A seed file whose classes need a change set on `main` (`VER.CHANGE_SET_REQUIRED`) is loaded on a loader branch and merged through an approved change set, as installation does (FR-PKG-031).
+- **Consequences:**
+  - FIN-EXP-01 (the 16 opening balances, 638,500.00 each side) ties out in memory and on PostgreSQL 16.
+  - The commit clock of `forge test` starts at 2026-01-01, after the seed. Posting dates, which are commit dates (STD-KIND-025), therefore fall in 2026 or later; dates of business effect (`valid_at`) may be earlier.
+- **Alternatives considered:**
+  - Loading the sample company as seed was rejected: the seed is installed in every VAE that installs the Buk.
+  - A separate ledger per document kind was rejected for step 9. One journal keeps the trial balance a single projection; step 10 adds subledgers where FIN-AR and FIN-AP need them.
+- **Affects:** DEC-022, DEC-029, EXIT-2-04, MET-BIZ-001, STD-KIND-025, STD-KIND-029, STD-TIME-021, FR-PKG-031

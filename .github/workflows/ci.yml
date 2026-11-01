@@ -211,6 +211,12 @@ jobs:
           ./target/release/forge check verify/sdk/fixture
           ./target/release/forge test verify/scenarios
           ./target/release/forge test verify/scenarios --backend postgres --database "host=127.0.0.1 user=postgres dbname=bpa"
+      - name: finance Buk tie-out to the expected results in memory and on PostgreSQL (PH-2 step 9, DEC-141)
+        run: |
+          python3 buks/finance/tools/gen_tests.py --check
+          ./target/release/forge check buks/finance
+          ./target/release/forge test buks/finance
+          ./target/release/forge test buks/finance --backend postgres --database "host=127.0.0.1 user=postgres dbname=bpa"
       - name: concurrency and crash simulation, 2,000 seeds (SUITE-DVM-SIM, VER-SIM-0001, DEC-061)
         run: |
           cargo build --release --locked -p ubos-dvm --bin ubos-sim

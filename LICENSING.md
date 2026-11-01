@@ -13,7 +13,7 @@ is private.
 | `packages/sdk-ts/` | `@ubos/sdk` (the TypeScript SDK, DEC-078) | Apache-2.0 | `packages/sdk-ts/LICENSE` |
 | `packages/eng-ui/` | `@ubos/eng-ui` (the engineering UI prototype, DEC-078) | AGPL-3.0-only | `packages/eng-ui/LICENSE` |
 | `packages/` | `ubos` (other clients) | per DEC-019 | — |
-| `buks/` (not yet created) | `ubos-buks` | commercial (source available to customers) | — |
+| `buks/` | `ubos-buks` (first-party Buks, from PH-2 step 9, DEC-141) | commercial (source available to customers) | — |
 | `docs/` | specification, finance requirements, tools, reports | internal | — |
 
 A crate outside the kernel, node and Forge (for example an SDK crate) states its own licence

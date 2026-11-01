@@ -1,0 +1,22 @@
+# The journal: one double-entry ledger of journal lines (FIN-GL; STD-KIND-020…029).
+classes:
+  - name: JournalLine
+    label: journal line
+    description: A line of a balanced journal entry; the lines of one document share its posting group. Debits are positive, credits negative.
+    namespace: ubos.finance
+    parent: DataObject
+    kind: ledger
+    schema_version: 1
+    ledger: {key: [account], amounts: [amount], double_entry: true, account: account, period_scope: FiscalPeriod}
+    fields:
+      - name: account
+        label: account
+        description: the leaf account posted
+        type: reference
+        required: true
+        constraints: {target_class: GlAccount}
+      - {name: amount, label: amount, description: signed amount, debit positive, type: money, required: true}
+      - {name: document, label: document, description: the source document number, type: text, required: true}
+      - {name: kind, label: kind, description: the kind of source document, type: text, required: true}
+      - {name: party, label: party, description: the customer or vendor code, type: text}
+      - {name: description, label: description, description: line description, type: text}

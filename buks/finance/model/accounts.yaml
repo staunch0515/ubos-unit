@@ -1,0 +1,43 @@
+# Chart of accounts and fiscal periods (FIN-GL, FIN-PC; STD-KIND-025, -029).
+classes:
+  - name: GlAccount
+    label: GL account
+    description: An account of the general ledger; extends the genesis LedgerAccount with its category, normal balance and statement line
+    namespace: ubos.finance
+    parent: LedgerAccount
+    kind: definition
+    schema_version: 1
+    fields:
+      - name: category
+        label: category
+        description: the account category of the chart
+        type: enum
+        required: true
+        constraints: {allowed_values: [Asset, Liability, Equity, Revenue, Expense, Other, Tax]}
+      - name: normal_balance
+        label: normal balance
+        description: D for debit, C for credit
+        type: enum
+        required: true
+        constraints: {allowed_values: [D, C]}
+      - name: statement_line
+        label: statement line
+        description: the line of the financial statements the account reports on
+        type: text
+        required: true
+  - name: FiscalPeriod
+    label: fiscal period
+    description: A fiscal period [start, end) that governs the journal (STD-KIND-025)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    fields:
+      - {name: start, label: start, description: first day of the period, type: date, required: true}
+      - {name: end, label: end, description: first day after the period, type: date, required: true}
+      - name: state
+        label: state
+        description: open, closing or closed
+        type: enum
+        required: true
+        constraints: {allowed_values: [open, closing, closed]}

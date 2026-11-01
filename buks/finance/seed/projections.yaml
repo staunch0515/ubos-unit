@@ -1,0 +1,14 @@
+# The balance of every account (STD-TIME-021): the trial balance at any date is a read of
+# this projection with asof.
+changes:
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-000000000001
+    slug: gl-balance
+    body:
+      name: gl-balance
+      source: JournalLine
+      group_by: [account]
+      aggregates:
+        - {fn: sum, field: amount, as: balance}
+        - {fn: count, as: entries}
