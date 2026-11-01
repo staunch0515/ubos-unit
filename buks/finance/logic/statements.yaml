@@ -182,7 +182,9 @@ assets:
                 if keep.is_empty() { vals.push(()); continue; }
                 specs = row.only;
               }
-              let v = line_amount(#{accounts: specs, at: row.at, sign: col.sign}, ctx);
+              let spec = #{accounts: specs, at: row.at, sign: col.sign};
+              if "exclude_kinds" in row { spec.exclude_kinds = row.exclude_kinds; }
+              let v = line_amount(spec, ctx);
               total += v;
               vals.push(text_of(v));
             }

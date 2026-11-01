@@ -463,6 +463,14 @@ pub fn run_with(
                         let out = vae.call(op, &input);
                         if op == "execute" && out.is_ok() {
                             note_invocation(&mut invoked, &input);
+                            // a port call of a scenario covers the function implementing the
+                            // port, as a port test does (DSN-FRG-201; PH-2 step 10a-2, DEC-147)
+                            if let Some((asset, f)) = port_impl(project, &input) {
+                                note_invocation(
+                                    &mut invoked,
+                                    &json!({"asset": asset, "function": f}),
+                                );
+                            }
                         }
                         out
                     };

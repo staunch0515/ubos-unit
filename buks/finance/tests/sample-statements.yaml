@@ -650,7 +650,9 @@
         "body": {
          "start": "2025-12-01",
          "end": "2026-01-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2025",
+         "number": 12
         }
        },
        {
@@ -664,7 +666,9 @@
         "body": {
          "start": "2026-01-01",
          "end": "2026-02-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 1
         }
        },
        {
@@ -678,7 +682,9 @@
         "body": {
          "start": "2026-02-01",
          "end": "2026-03-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 2
         }
        },
        {
@@ -692,7 +698,169 @@
         "body": {
          "start": "2026-03-01",
          "end": "2026-04-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 3
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "605166f0-070c-8cd4-84a3-7326e11b5893",
+        "slug": "2026-04",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-04-01",
+         "end": "2026-05-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 4
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "65eeffd2-8b91-84a7-8f57-6118b5335088",
+        "slug": "2026-05",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-05-01",
+         "end": "2026-06-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 5
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "ed7c3b1d-a9d6-8ebe-842e-22304bf4a570",
+        "slug": "2026-06",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-06-01",
+         "end": "2026-07-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 6
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "8491a5a1-f51f-8ffc-87ea-204678f23136",
+        "slug": "2026-07",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-07-01",
+         "end": "2026-08-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 7
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "4502955e-93f8-8eda-89ed-22466f9c075a",
+        "slug": "2026-08",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-08-01",
+         "end": "2026-09-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 8
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "a2f0c927-04c5-8369-878d-bdc628432e06",
+        "slug": "2026-09",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-09-01",
+         "end": "2026-10-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 9
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "28976511-4a0f-8fc3-884b-a16f89c100c1",
+        "slug": "2026-10",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-10-01",
+         "end": "2026-11-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 10
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "806d0a10-0744-8d09-868c-8e8766ce694f",
+        "slug": "2026-11",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-11-01",
+         "end": "2026-12-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 11
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "f59a3fd7-693e-8edd-8854-dda41a87c3bc",
+        "slug": "2026-12",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-12-01",
+         "end": "2027-01-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 12
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "9a8c09e8-c32d-886c-8722-21d58b8da5b7",
+        "slug": "2027-01",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2027-01-01",
+         "end": "2027-02-01",
+         "state": "open",
+         "fiscal_year": "2027",
+         "number": 1
         }
        }
       ]
@@ -3336,7 +3504,9 @@
         "body": {
          "start": "2025-12-01",
          "end": "2026-01-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2025",
+         "number": 12
         }
        },
        {
@@ -3350,7 +3520,9 @@
         "body": {
          "start": "2026-01-01",
          "end": "2026-02-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 1
         }
        },
        {
@@ -3364,7 +3536,9 @@
         "body": {
          "start": "2026-02-01",
          "end": "2026-03-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 2
         }
        },
        {
@@ -3378,7 +3552,169 @@
         "body": {
          "start": "2026-03-01",
          "end": "2026-04-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 3
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "605166f0-070c-8cd4-84a3-7326e11b5893",
+        "slug": "2026-04",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-04-01",
+         "end": "2026-05-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 4
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "65eeffd2-8b91-84a7-8f57-6118b5335088",
+        "slug": "2026-05",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-05-01",
+         "end": "2026-06-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 5
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "ed7c3b1d-a9d6-8ebe-842e-22304bf4a570",
+        "slug": "2026-06",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-06-01",
+         "end": "2026-07-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 6
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "8491a5a1-f51f-8ffc-87ea-204678f23136",
+        "slug": "2026-07",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-07-01",
+         "end": "2026-08-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 7
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "4502955e-93f8-8eda-89ed-22466f9c075a",
+        "slug": "2026-08",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-08-01",
+         "end": "2026-09-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 8
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "a2f0c927-04c5-8369-878d-bdc628432e06",
+        "slug": "2026-09",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-09-01",
+         "end": "2026-10-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 9
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "28976511-4a0f-8fc3-884b-a16f89c100c1",
+        "slug": "2026-10",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-10-01",
+         "end": "2026-11-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 10
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "806d0a10-0744-8d09-868c-8e8766ce694f",
+        "slug": "2026-11",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-11-01",
+         "end": "2026-12-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 11
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "f59a3fd7-693e-8edd-8854-dda41a87c3bc",
+        "slug": "2026-12",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-12-01",
+         "end": "2027-01-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 12
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "9a8c09e8-c32d-886c-8722-21d58b8da5b7",
+        "slug": "2027-01",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2027-01-01",
+         "end": "2027-02-01",
+         "state": "open",
+         "fiscal_year": "2027",
+         "number": 1
         }
        }
       ]
@@ -6010,7 +6346,9 @@
         "body": {
          "start": "2025-12-01",
          "end": "2026-01-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2025",
+         "number": 12
         }
        },
        {
@@ -6024,7 +6362,9 @@
         "body": {
          "start": "2026-01-01",
          "end": "2026-02-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 1
         }
        },
        {
@@ -6038,7 +6378,9 @@
         "body": {
          "start": "2026-02-01",
          "end": "2026-03-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 2
         }
        },
        {
@@ -6052,7 +6394,169 @@
         "body": {
          "start": "2026-03-01",
          "end": "2026-04-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 3
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "605166f0-070c-8cd4-84a3-7326e11b5893",
+        "slug": "2026-04",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-04-01",
+         "end": "2026-05-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 4
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "65eeffd2-8b91-84a7-8f57-6118b5335088",
+        "slug": "2026-05",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-05-01",
+         "end": "2026-06-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 5
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "ed7c3b1d-a9d6-8ebe-842e-22304bf4a570",
+        "slug": "2026-06",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-06-01",
+         "end": "2026-07-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 6
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "8491a5a1-f51f-8ffc-87ea-204678f23136",
+        "slug": "2026-07",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-07-01",
+         "end": "2026-08-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 7
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "4502955e-93f8-8eda-89ed-22466f9c075a",
+        "slug": "2026-08",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-08-01",
+         "end": "2026-09-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 8
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "a2f0c927-04c5-8369-878d-bdc628432e06",
+        "slug": "2026-09",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-09-01",
+         "end": "2026-10-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 9
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "28976511-4a0f-8fc3-884b-a16f89c100c1",
+        "slug": "2026-10",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-10-01",
+         "end": "2026-11-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 10
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "806d0a10-0744-8d09-868c-8e8766ce694f",
+        "slug": "2026-11",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-11-01",
+         "end": "2026-12-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 11
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "f59a3fd7-693e-8edd-8854-dda41a87c3bc",
+        "slug": "2026-12",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-12-01",
+         "end": "2027-01-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 12
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "9a8c09e8-c32d-886c-8722-21d58b8da5b7",
+        "slug": "2027-01",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2027-01-01",
+         "end": "2027-02-01",
+         "state": "open",
+         "fiscal_year": "2027",
+         "number": 1
         }
        }
       ]
@@ -8680,7 +9184,9 @@
         "body": {
          "start": "2025-12-01",
          "end": "2026-01-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2025",
+         "number": 12
         }
        },
        {
@@ -8694,7 +9200,9 @@
         "body": {
          "start": "2026-01-01",
          "end": "2026-02-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 1
         }
        },
        {
@@ -8708,7 +9216,9 @@
         "body": {
          "start": "2026-02-01",
          "end": "2026-03-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 2
         }
        },
        {
@@ -8722,7 +9232,169 @@
         "body": {
          "start": "2026-03-01",
          "end": "2026-04-01",
-         "state": "open"
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 3
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "605166f0-070c-8cd4-84a3-7326e11b5893",
+        "slug": "2026-04",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-04-01",
+         "end": "2026-05-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 4
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "65eeffd2-8b91-84a7-8f57-6118b5335088",
+        "slug": "2026-05",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-05-01",
+         "end": "2026-06-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 5
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "ed7c3b1d-a9d6-8ebe-842e-22304bf4a570",
+        "slug": "2026-06",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-06-01",
+         "end": "2026-07-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 6
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "8491a5a1-f51f-8ffc-87ea-204678f23136",
+        "slug": "2026-07",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-07-01",
+         "end": "2026-08-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 7
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "4502955e-93f8-8eda-89ed-22466f9c075a",
+        "slug": "2026-08",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-08-01",
+         "end": "2026-09-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 8
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "a2f0c927-04c5-8369-878d-bdc628432e06",
+        "slug": "2026-09",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-09-01",
+         "end": "2026-10-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 9
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "28976511-4a0f-8fc3-884b-a16f89c100c1",
+        "slug": "2026-10",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-10-01",
+         "end": "2026-11-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 10
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "806d0a10-0744-8d09-868c-8e8766ce694f",
+        "slug": "2026-11",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-11-01",
+         "end": "2026-12-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 11
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "f59a3fd7-693e-8edd-8854-dda41a87c3bc",
+        "slug": "2026-12",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2026-12-01",
+         "end": "2027-01-01",
+         "state": "open",
+         "fiscal_year": "2026",
+         "number": 12
+        }
+       },
+       {
+        "op": "create",
+        "class": "FiscalPeriod",
+        "object_id": "9a8c09e8-c32d-886c-8722-21d58b8da5b7",
+        "slug": "2027-01",
+        "valid": {
+         "from": "2025-01-01"
+        },
+        "body": {
+         "start": "2027-01-01",
+         "end": "2027-02-01",
+         "state": "open",
+         "fiscal_year": "2027",
+         "number": 1
         }
        }
       ]

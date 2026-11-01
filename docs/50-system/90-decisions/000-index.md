@@ -33,6 +33,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-144 | PH-2 step 9, part 9d: financial statements as layout data rendered by an L2 port from the balance projections; the four US layouts and the `gl-kind` projection; FIN-EXP-04…07 tie out line by line | Accepted |
 | DEC-145 | PH-2 step 9 closed: the `finance` Buk, part 1 (parts 9a–9d, DEC-141…144) — 12 tests tie out 466 figures in memory and on PostgreSQL; EXIT-2-04 passed by inspection (VER-INSP-0002, 0 findings); requirement coverage recorded and the rest assigned to steps | Accepted |
 | DEC-146 | PH-2 step 10 opened in parts 10a–10h; part 10a-1: journal entries with maker–checker approval, the control-account rule and gap-free numbering per fiscal year and source; `ref()` in decisions reads at the decision's coordinates | Accepted |
+| DEC-147 | PH-2 step 10, part 10a-2: recurring entries, automatic reversal on opening a period, governed reopening, the fiscal-year close with superseded closes; two gaps of BPA 1.0 for the next release candidate (a ledger's posting-date field, explicit coordinates of `read.projection`) | Accepted |
 
 ---
 
@@ -697,3 +698,37 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
   - Typing the lines as composites was not used: the standard does not yet fix how a composite declares its members (an open point for the BPA 1.0 release notes).
   - Raising the control-account refusal from the script was rejected: a sheet decision gives the reason and is changed through review.
 - **Affects:** DEC-141, DEC-145, FIN-GL-005, FIN-GL-010, FIN-GL-013, FIN-GL-014, FIN-GL-015, STD-KIND-022, STD-TXN-060, STD-LGS-031, STD-LGS-041, STD-LGS-042, STD-EXPR-005
+
+### DEC-147 — The finance Buk, part 10a-2: recurring and reversing entries, reopening and year-end close (PH-2 step 10)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 10a-2 of step 10 (DEC-146) covers recurring entries (FIN-GL-017), automatic reversal (FIN-GL-018), the fiscal calendar and year-end close (FIN-PC-001, -008, FIN-SCN-11), governed reopening (FIN-PC-006, SCN-507), and statements "as known on" a date (FIN-RP-020, SCN-508).
+- **Decision:**
+  1. **Recurring entries.** `RecurringEntry` is a template with code, description, source, lines, total and its first and last period. Its command port `run(period_end)` creates the draft entry `<code>-<yyyy-mm>` once; a second run of the period creates nothing. The entry posts like any other, under the same approval rules.
+  2. **Automatic reversal.**
+     - `JournalEntry` gains `auto_reverse_on`, `reverses`, `reversed_by` and `adjustment_period`.
+     - The command port `FiscalPeriod.open` posts the reversal `<number>-R` of every posted entry whose `auto_reverse_on` falls in the period, once. The reversal has opposite amounts, the kind `<kind> reversal` and a reference to the original.
+     - Reversals are exempt from the approval of manual entries, since the original was approved.
+  3. **Fiscal calendar.**
+     - `FiscalPeriod` gains `fiscal_year` and `number`.
+     - `FiscalYear` holds the year, its first and last day, its state, the retained-earnings account and its closes.
+     - Its command port `close` posts a closing entry `CLOSE-<year>-<n>` that brings every income and expense account to zero against retained earnings, at the year's last day.
+     - A later close, after an adjustment, posts the remaining difference and marks the earlier closes superseded.
+     - The income statement, the cash-flow net income and the equity statement's net income leave out closing entries; the balance sheet is unchanged by the close.
+  4. **Governed reopening.**
+     - `FiscalPeriod` declares the command port `reopen`, and the sheet `ubos.finance.controls` requires one approval by a controller for closed periods (`FiscalPeriod:closed`).
+     - `reopen_period` then waits as a pending change (STD-KIND-025 since rc10): the requester cannot approve it, a rejection keeps the period closed, and the approval reopens it.
+     - A second close writes the artefact `close-2026-01-2`; the first artefact keeps the balances as first closed.
+  5. **Forge.** A port call of a scenario now counts toward script coverage for the function that implements the port, as a port test does (DSN-FRG-201). All five assets have coverage 1.0.
+  6. **Gaps of BPA 1.0, for the next release candidate.** Two acceptance criteria need features the standard names but does not specify:
+     - **Posting date of a ledger class (STD-KIND-025).** The clause allows a class to declare a posting-date field, but no member names it, and the kernel takes the commit date. A correction posted into a reopened January after January has ended therefore falls in February, and the second close cannot include it (FIN-PC-006 acceptance 1, the correction part).
+     - **Explicit coordinates of `read.projection` (STD-ISA-037).** The clause says "or at explicit coordinates", but its parameters have none. A port therefore cannot render the statements "as known on" a date (FIN-RP-020 for statements; FIN-PC-006 acceptance 3). The trial balance as known on a date works through the adapter operation (DEC-143), and a close artefact keeps the balances as first closed.
+
+     Both are standard changes: a new release candidate (1.0-rc13) with clauses, vectors and the kernel. The owner decides when; until then the two criteria stay open in the step-10 coverage record.
+  7. **Not in 10a-2.** Period 13 in the statements (annual but not December) goes to step 15 with comparatives (FIN-PC-001 acceptance 2). The entry `adjustment_period` marks such entries now.
+- **Consequences:**
+  - Five new tests pass in memory and on PostgreSQL 16; all 22 finance tests pass.
+  - The year-end test runs on a release branch, a kind without a lifetime (STD-VER-011), because it spans a year. It verifies the Buk's assets there first, since a release branch runs verified assets only (STD-CTX-023).
+- **Alternatives considered:**
+  - Posting reversals by a timer (BecameEffective events) was rejected for now: FIN-GL-018 ties the reversal to opening the period, and a port keeps it explicit and idempotent.
+  - Treating the posting date as the entry's `valid_at` inside the Buk was rejected: the kernel's period rules and close artefacts follow the posting date of STD-KIND-025, and a Buk cannot change them.
+- **Affects:** DEC-146, FIN-GL-017, FIN-GL-018, FIN-PC-001, FIN-PC-006, FIN-PC-008, FIN-RP-020, STD-KIND-025, STD-KIND-026, STD-ISA-037, STD-VER-011, STD-CTX-023, DSN-FRG-201

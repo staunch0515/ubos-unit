@@ -1,0 +1,112 @@
+# Periods, years and recurring entries (FIN-GL-017, -018, FIN-PC-006, -008; PH-2 step 10a-2,
+# DEC-147).
+assets:
+  - name: ubos.finance.periods
+    abi: "1.0"
+    tier: l2
+    profile: standard
+    state: committed
+    capabilities: [read, commit, run, search]
+    exports: [open, reopen]
+    source: |
+      fn negated(lines) {
+        let out = [];
+        for l in lines {
+          let a = -dec(l.amount.amount);
+          out.push(#{account: l.account, amount: #{amount: a.to_string(), currency: l.amount.currency}});
+        }
+        out
+      }
+      // the automatic reversals dated in the period, each posted once (FIN-GL-018)
+      fn open() {
+        sys.read.get(#{target: self_id});
+        let w = "this.state == \"posted\" and this.reversed_by is null and this.auto_reverse_on >= d'"
+                + this.start + "' and this.auto_reverse_on < d'" + this.end + "'";
+        let q = sys.search.query(#{query: #{from: "JournalEntry", where: w}});
+        let done = [];
+        for id in q.items {
+          let e = sys.read.get(#{target: id}).fields;
+          let number = e.number + "-R";
+          let f = #{number: number, source: e.source, kind: e.kind + " reversal", posting_date: e.auto_reverse_on,
+                    description: "Auto-reversal of " + e.number, lines: negated(e.lines), total: e.total,
+                    state: "draft", reverses: e.number};
+          if e.party != () { f.party = e.party; }
+          let c = sys.commit.create(#{class: "JournalEntry", slug: number.to_lower(), fields: f});
+          sys.run.port(#{target: c.object_id, port: "post", params: #{}});
+          sys.commit.update(#{target: id, set: #{reversed_by: number}});
+          done.push(number);
+        }
+        #{reversed: done}
+      }
+      // reopening goes through reopen_period, which evaluates this port's decisions
+      fn reopen(reason) {
+        #{reopen: "use reopen_period", reason: reason}
+      }
+  - name: ubos.finance.years
+    abi: "1.0"
+    tier: l2
+    profile: standard
+    state: committed
+    capabilities: [read, commit, run]
+    exports: [close]
+    source: |
+      // close the year: every income and expense account to zero against retained earnings;
+      // a later close (after adjustments) supersedes the earlier ones (FIN-PC-008)
+      fn close() {
+        sys.read.get(#{target: self_id});
+        let groups = sys.read.projection(#{projection: "gl-balance", asof: this.last_day}).groups;
+        let lines = [];
+        let total = dec("0.00");
+        let debits = dec("0.00");
+        let currency = "USD";
+        for g in groups {
+          let cat = sys.read.get(#{target: g.key.account}).fields.category;
+          if !(cat in ["Revenue", "Expense", "Other", "Tax"]) { continue; }
+          let b = dec("0.00");
+          for m in g.values.balance { b += dec(m.amount); currency = m.currency; }
+          if b.is_zero() { continue; }
+          lines.push(#{account: g.key.account, amount: #{amount: (-b).to_string(), currency: currency}});
+          if b < 0 { debits -= b; }
+          total += b;
+        }
+        let closes = if this.closes == () { [] } else { this.closes };
+        if lines.is_empty() {
+          sys.commit.update(#{target: self_id, set: #{state: "closed", closes: closes}});
+          return #{closed: true, entry: ()};
+        }
+        lines.push(#{account: this.retained_earnings, amount: #{amount: total.to_string(), currency: currency}});
+        if total > 0 { debits += total; }
+        let number = "CLOSE-" + this.year + "-" + (closes.len() + 1).to_string();
+        let c = sys.commit.create(#{class: "JournalEntry", slug: number.to_lower(),
+          fields: #{number: number, source: "closing", kind: "closing", posting_date: this.last_day,
+                    description: "Year-end close " + this.year, lines: lines,
+                    total: #{amount: debits.to_string(), currency: currency}, state: "draft"}});
+        sys.run.port(#{target: c.object_id, port: "post", params: #{}});
+        let out = [];
+        for x in closes { out.push(#{number: x.number, superseded: true}); }
+        out.push(#{number: number, superseded: false});
+        sys.commit.update(#{target: self_id, set: #{state: "closed", closes: out}});
+        #{closed: true, entry: number}
+      }
+  - name: ubos.finance.recurring
+    abi: "1.0"
+    tier: l2
+    profile: standard
+    state: committed
+    capabilities: [read, commit, search]
+    exports: [run]
+    source: |
+      // the entry of the period, created once (FIN-GL-017); it is posted like any entry
+      fn run(period_end) {
+        sys.read.get(#{target: self_id});
+        if period_end < this.first_period_end || (this.last_period_end != () && period_end > this.last_period_end) {
+          return #{created: false, reason: "outside the template's periods"};
+        }
+        let number = this.code + "-" + period_end.sub_string(0, 7);
+        let q = sys.search.query(#{query: #{from: "JournalEntry", where: "this.number == \"" + number + "\""}});
+        if q.items.len() > 0 { return #{created: false, number: number}; }
+        sys.commit.create(#{class: "JournalEntry", slug: number.to_lower(),
+          fields: #{number: number, source: this.source, kind: "journal", posting_date: period_end,
+                    description: this.description, lines: this.lines, total: this.total, state: "draft"}});
+        #{created: true, number: number}
+      }

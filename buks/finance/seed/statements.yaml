@@ -1,5 +1,5 @@
 # The US statement layouts of the standard chart (FIN-GL-002, FIN-RP-002…005, -011).
-# Labels in ** ** are subtotals and totals.
+# Labels in ** ** are subtotals and totals. The year's result excludes closing entries (DEC-147).
 {
  "changes": [
   {
@@ -17,7 +17,10 @@
       "accounts": [
        "4000"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "service",
@@ -25,7 +28,10 @@
       "accounts": [
        "4100"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "returns",
@@ -33,7 +39,10 @@
       "accounts": [
        "4900"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "net_revenue",
@@ -50,7 +59,10 @@
       "accounts": [
        "5000-5999"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "gross",
@@ -66,7 +78,10 @@
       "accounts": [
        "6100"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "x6150",
@@ -74,7 +89,10 @@
       "accounts": [
        "6150"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "x6200",
@@ -82,7 +100,10 @@
       "accounts": [
        "6200"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "x6300",
@@ -90,7 +111,10 @@
       "accounts": [
        "6300"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "x6400",
@@ -98,7 +122,10 @@
       "accounts": [
        "6400"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "x6500",
@@ -106,7 +133,10 @@
       "accounts": [
        "6500"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "x6600",
@@ -114,7 +144,10 @@
       "accounts": [
        "6600"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "x6700",
@@ -122,7 +155,10 @@
       "accounts": [
        "6700"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "x6800",
@@ -130,7 +166,10 @@
       "accounts": [
        "6800"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "opex",
@@ -161,7 +200,10 @@
       "accounts": [
        "7100"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "interest_income",
@@ -169,7 +211,10 @@
       "accounts": [
        "7300"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "fx_unrealized",
@@ -177,7 +222,10 @@
       "accounts": [
        "7210"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "pretax",
@@ -195,7 +243,10 @@
       "accounts": [
        "8000"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "net_income",
@@ -423,7 +474,10 @@
       "accounts": [
        "4000-8999"
       ],
-      "sign": -1
+      "sign": -1,
+      "exclude_kinds": [
+       "closing"
+      ]
      },
      {
       "id": "dep",
@@ -626,6 +680,9 @@
       "at": "change",
       "only": [
        "4000-8999"
+      ],
+      "exclude_kinds": [
+       "closing"
       ]
      },
      {

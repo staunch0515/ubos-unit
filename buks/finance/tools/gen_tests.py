@@ -105,11 +105,16 @@ def chart_changes():
 
 
 def period_changes():
+    """The monthly periods of December 2025 to January 2027 (FIN-PC-001)."""
     out = []
-    for slug, start, end in (('2025-12', '2025-12-01', '2026-01-01'), ('2026-01', '2026-01-01', '2026-02-01'),
-                             ('2026-02', '2026-02-01', '2026-03-01'), ('2026-03', '2026-03-01', '2026-04-01')):
+    months = [(2025, 12)] + [(2026, m) for m in range(1, 13)] + [(2027, 1)]
+    for y, m in months:
+        slug = '%d-%02d' % (y, m)
+        ny, nm = (y + 1, 1) if m == 12 else (y, m + 1)
         out.append({'op': 'create', 'class': 'FiscalPeriod', 'object_id': uid('period', slug), 'slug': slug,
-                    'valid': {'from': '2025-01-01'}, 'body': {'start': start, 'end': end, 'state': 'open'}})
+                    'valid': {'from': '2025-01-01'},
+                    'body': {'start': '%d-%02d-01' % (y, m), 'end': '%d-%02d-01' % (ny, nm), 'state': 'open',
+                             'fiscal_year': str(y), 'number': m}})
     return out
 
 
@@ -537,6 +542,162 @@ def entry_tests():
     }]
 
 
+def period_tests():
+    """Recurring and reversing entries, governed reopening and the year-end close
+    (FIN-GL-017, -018, FIN-PC-006, -008; SCN-507)."""
+    base = setup_steps()
+    jan, clock = posting_steps('2026-01', START)
+    tb = trial_balance('FIN-EXP-03')
+    feb, _ = posting_steps('2026-02', clock, [(datetime.datetime(2026, 2, 2, 9), close_steps('2026-01', tb))])
+    exp_feb = posted_feb()
+    run = lambda target, port, params, exp=None, who=PREPARER: dict(
+        {'op': 'execute', 'input': {'branch': BRANCH, 'target': target, 'port': port, 'params': params,
+                                    'process': {'initiator': who}}}, **({'expect': exp} if exp else {}))
+    doc_groups = lambda doc, pairs: {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document',
+                                                                     'group': {'document': doc}},
+                                     'expect': {'match': 'subset', 'result': {'groups': document_groups(pairs)}}}
+    # FIN-GL-017: the template of JE-0003
+    je3 = je('JE-0003')['body']
+    template = {'op': 'create', 'class': 'RecurringEntry', 'object_id': uid('template', 'INS'), 'slug': 'ins-amort',
+                'body': {'code': 'INS-AMORT', 'description': 'Recurring: amortize prepaid insurance 1/12',
+                         'source': 'manual', 'lines': je3['lines'], 'total': je3['total'],
+                         'first_period_end': '2026-01-31', 'last_period_end': '2026-12-31'}}
+    jan3 = {(code, 'INS-AMORT-2026-01'): c for (code, doc), c in posted_lines('FIN-EXP-02').items() if doc == 'JE-0003'}
+    # FIN-GL-018: FXR-2601 marked auto-reversing on 2026-02-01
+    fxr = je('FXR-2601', source='revaluation', auto_reverse_on='2026-02-01')
+    rev = {(code, doc): c for (code, doc), c in exp_feb.items() if doc == 'FXR-2601-R'}
+    # FIN-PC-006: governed reopening of January
+    period = uid('period', '2026-01')
+    pid = uid('process', 'reopen', '2026-01')
+    reopen = lambda defer, exp: {'op': 'reopen_period', 'input': dict(
+        {'branch': BRANCH, 'period': period, 'reason': 'late utilities invoice for January',
+         'process': {'initiator': PREPARER, 'process_id': pid}}, **({'defer': True} if defer else {})), 'expect': exp}
+    # FIN-PC-008: the year 2026
+    year = {'op': 'create', 'class': 'FiscalYear', 'object_id': uid('year', '2026'), 'slug': 'fy-2026',
+            'body': {'year': '2026', 'first_day': '2026-01-01', 'last_day': '2026-12-31', 'state': 'open',
+                     'retained_earnings': account_uri('3200')}}
+    pl = sorted({c for c in list(tb) + [code for code, _ in exp_feb] if c >= '4000'})
+    zero = account_reads('2026-12-31', {c: 0 for c in pl})
+    bs = {'op': 'execute', 'input': {'branch': BRANCH, 'target': 'ubos://%s/FinancialStatement/balance-sheet' % VAE,
+                                     'port': 'render', 'params': {'opening': '2025-12-31', 'closing': '2026-12-31'}}}
+    adj = {'op': 'create', 'class': 'JournalEntry', 'object_id': uid('entry', 'JE-ADJ1'), 'slug': 'je-adj1',
+           'body': {'number': 'JE-ADJ1', 'source': 'manual', 'kind': 'journal', 'posting_date': '2026-12-31',
+                    'description': 'Audit adjustment, period 13', 'adjustment_period': True, 'state': 'draft',
+                    'lines': [{'account': account_uri('6400'), 'amount': money('1000.00')},
+                              {'account': account_uri('2100'), 'amount': money('-1000.00')}],
+                    'total': money('1000.00')}}
+    year_after = advance(datetime.datetime(2026, 2, 28, 12), datetime.datetime(2027, 1, 5, 12))[0]
+    books = 'release/fy-2026'   # a branch kind without a lifetime (STD-VER-011): the test spans a year
+    return [{
+        'name': 'FIN-GL-017 the recurring template creates the January entry once; it posts as JE-0003 did',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [template]}},
+            run(uid('template', 'INS'), 'run', {'period_end': '2026-01-31'},
+                {'match': 'subset', 'result': {'result': {'created': True, 'number': 'INS-AMORT-2026-01'}}}),
+            run(uid('template', 'INS'), 'run', {'period_end': '2026-01-31'},
+                {'match': 'subset', 'result': {'result': {'created': False, 'number': 'INS-AMORT-2026-01'}}}),
+            run('ubos://%s/JournalEntry/ins-amort-2026-01' % VAE, 'post', {},
+                {'match': 'subset', 'result': {'result': {'posted': True}}}),
+            doc_groups('INS-AMORT-2026-01', jan3),
+        ],
+    }, {
+        'name': 'FIN-GL-018 opening February posts FXR-2601-R with opposite amounts, once (FIN-EXP-15)',
+        'kind': 'scenario',
+        'steps': base + advance(START, datetime.datetime(2026, 1, 31, 12))[0] + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [fxr]}},
+            run(uid('entry', 'FXR-2601'), 'post', {}),
+            {'advance': '1440m'},
+            run(uid('period', '2026-02'), 'open', {},
+                {'match': 'subset', 'result': {'result': {'reversed': ['FXR-2601-R']}}}),
+            run(uid('period', '2026-02'), 'open', {}, {'match': 'subset', 'result': {'result': {'reversed': []}}}),
+            doc_groups('FXR-2601-R', rev),
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': uid('entry', 'FXR-2601')},
+             'expect': {'match': 'subset', 'result': {'body': {'reversed_by': 'FXR-2601-R'}}}},
+        ],
+    }, {
+        'name': 'FIN-PC-006 reopening January waits for a controller; a rejection keeps it closed',
+        'kind': 'scenario',
+        'steps': base + jan + feb[:1] + close_steps('2026-01', tb) + [
+            reopen(False, {'error_code': 'RULE.DECISION_REQUIRES'}),
+            reopen(True, {'match': 'subset', 'result': {'pending': {'state': 'pending'}}}),
+            {'op': 'approve', 'input': {'pending_change_id': pid, 'approver': CONTROLLER, 'roles': ['controller'],
+                                        'decision': 'reject', 'comment': 'post it in February'},
+             'expect': {'match': 'subset', 'result': {'state': 'rejected'}}},
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': period},
+             'expect': {'match': 'subset', 'result': {'body': {'state': 'closed'}}}},
+            # the port itself changes nothing: reopening is reopen_period, which evaluates its decisions
+            run(uid('period', '2026-02'), 'reopen', {'reason': 'none'},
+                {'match': 'subset', 'result': {'result': {'reopen': 'use reopen_period'}}}),
+        ],
+    }, {
+        'name': 'FIN-PC-006 SCN-507 an approved reopening and a second close; the first close artefact stays as issued',
+        'kind': 'scenario',
+        'steps': base + jan + feb[:1] + close_steps('2026-01', tb) + [
+            reopen(True, {'match': 'subset', 'result': {'pending': {'state': 'pending'}}}),
+            {'op': 'approve', 'input': {'pending_change_id': pid, 'approver': PREPARER, 'roles': ['controller']},
+             'expect': {'error_code': 'IAM.DENIED', 'details': {'sod': 'maker_checker'}}},
+            {'op': 'approve', 'input': {'pending_change_id': pid, 'approver': CONTROLLER, 'roles': ['controller']},
+             'expect': {'match': 'subset', 'result': {'state': 'applied'}}},
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': period}, 'label': 'p2',
+             'expect': {'match': 'subset', 'result': {'body': {'state': 'open'}}}},
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                {'op': 'update', 'object_id': period, 'base': {'$ref': 'p2/version_hash'}, 'body': {'state': 'closing'}}]}},
+            {'op': 'close_period', 'input': {'branch': BRANCH, 'period': period, 'artefact_id': uid('artefact', '2026-01-2')},
+             'expect': {'match': 'subset', 'result': {'tag': 'close-2026-01-2', 'sequence': 2, 'balances': [
+                 {'class': 'JournalLine', 'ledger_key': g['key'], 'amounts': {'amount': g['values']['balance']}}
+                 for g in balance_groups(tb)]}}},
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': uid('artefact', '2026-01')},
+             'expect': {'match': 'subset', 'result': {'body': {'sequence': 1, 'balances': [
+                 {'class': 'JournalLine', 'ledger_key': g['key'], 'amounts': {'amount': g['values']['balance']}}
+                 for g in balance_groups(tb)]}}}},
+        ],
+    }, {
+        'name': 'FIN-PC-008 FIN-SCN-11 the year-end close zeroes income and expense, leaves the balance sheet unchanged; a re-close after an adjustment supersedes the first',
+        'kind': 'scenario',
+        'steps': base + jan + feb + [{'op': 'create_branch', 'input': {'name': books, 'from': BRANCH}}] + verified_on(books) + year_after + on(books, [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [year]}},
+            dict(bs, label='bs1'),
+            run(uid('year', '2026'), 'close', {}, {'match': 'subset', 'result': {'result': {'closed': True,
+                                                                                         'entry': 'CLOSE-2026-1'}}}),
+            ] + zero + [
+            dict(bs, expect={'match': 'subset', 'result': {'result': {'lines': {'$ref': 'bs1/result/lines'}}}}),
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [adj]}},
+            run(uid('entry', 'JE-ADJ1'), 'post', {}, {'match': 'subset', 'result': {'result': {'posted': True}}}),
+            run(uid('year', '2026'), 'close', {}, {'match': 'subset', 'result': {'result': {'entry': 'CLOSE-2026-2'}}}),
+            ] + zero + [
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': uid('year', '2026')},
+             'expect': {'match': 'subset', 'result': {'body': {'state': 'closed', 'closes': [
+                 {'number': 'CLOSE-2026-1', 'superseded': True}, {'number': 'CLOSE-2026-2', 'superseded': False}]}}}},
+        ]),
+    }]
+
+
+def asset_id(name):
+    """The object id `forge test` gives a logic asset (`ubos_dvm::packages::asset_object_id`)."""
+    h = hashlib.sha256(b'ubos.chunk.v1\x00' + json.dumps(name).encode()).hexdigest()
+    return '%s-%s-7%s-8%s-%s' % (h[0:8], h[8:12], h[13:16], h[17:20], h[20:32])
+
+
+ASSETS = ('ubos.finance.statements', 'ubos.finance.entries', 'ubos.finance.periods', 'ubos.finance.years',
+          'ubos.finance.recurring')
+
+
+def verified_on(branch):
+    """A protected branch runs verified assets only (STD-CTX-023): verify the Buk's assets there."""
+    return [{'op': 'verify_asset', 'input': {'branch': branch, 'object_id': asset_id(a), 'verifier': CONTROLLER},
+             'expect': {'match': 'subset', 'result': {'verified': True}}} for a in ASSETS]
+
+
+def on(branch, steps):
+    """The steps with their branch replaced."""
+    out = json.loads(json.dumps(steps))
+    for s in out:
+        if isinstance(s.get('input'), dict) and s['input'].get('branch') == BRANCH:
+            s['input']['branch'] = branch
+    return out
+
+
 def dump(tests):
     return HEADER + json.dumps({'tests': tests}, indent=1, ensure_ascii=False) + '\n'
 
@@ -546,7 +707,8 @@ def main():
              'tests/sample-january.yaml': dump(january_tests()),
              'tests/sample-february.yaml': dump(february_tests()),
              'tests/sample-statements.yaml': dump(statement_tests()),
-             'tests/sample-entries.yaml': dump(entry_tests())}
+             'tests/sample-entries.yaml': dump(entry_tests()),
+             'tests/sample-periods.yaml': dump(period_tests())}
     check = '--check' in sys.argv
     stale = []
     for rel, text in files.items():

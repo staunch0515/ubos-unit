@@ -46,3 +46,63 @@ classes:
         type: enum
         required: true
         constraints: {allowed_values: [open, closing, closed]}
+      - {name: fiscal_year, label: fiscal year, description: the fiscal year the period belongs to, type: text}
+      - {name: number, label: number, description: the period's number in its year (1-12; 13 for the adjustment period), type: integer}
+    ports:
+      - {name: open, description: post the automatic reversals dated in the period (FIN-GL-018), kind: command, params: [], permission: open, impl: ubos.finance.periods#open}
+      - name: reopen
+        description: reopen the closed period through reopen_period; the sheet ubos.finance.controls requires a controller's approval (FIN-PC-006)
+        kind: command
+        params:
+          - {name: reason, label: reason, description: why the period is reopened, type: text, required: true}
+        permission: reopen
+        impl: ubos.finance.periods#reopen
+  - name: FiscalYear
+    label: fiscal year
+    description: A fiscal year; `close` transfers the year's result to retained earnings with a closing entry (FIN-PC-008)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    fields:
+      - {name: year, label: year, description: the fiscal year, type: text, required: true}
+      - {name: first_day, label: first day, description: the first day of the year, type: date, required: true}
+      - {name: last_day, label: last day, description: the last day of the year, type: date, required: true}
+      - name: state
+        label: state
+        description: open or closed
+        type: enum
+        required: true
+        constraints: {allowed_values: [open, closed]}
+      - {name: retained_earnings, label: retained earnings, description: the account the result is closed to, type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: closes, label: closes, description: "the closes of the year: {number, superseded}; a later close supersedes the earlier ones", type: json}
+    ports:
+      - {name: close, description: close the year's income and expense accounts to retained earnings, kind: command, params: [], permission: close, impl: ubos.finance.years#close}
+  - name: RecurringEntry
+    label: recurring entry
+    description: The template of a recurring journal entry; `run` creates the period's entry once (FIN-GL-017)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    fields:
+      - {name: code, label: code, description: the template's code; the entry of a period is numbered <code>-<yyyy-mm>, type: text, required: true}
+      - {name: description, label: description, description: the entries' description, type: text, required: true}
+      - name: source
+        label: source
+        description: the entries' source; manual entries follow the same approval rules
+        type: enum
+        required: true
+        constraints: {allowed_values: [manual, recurring]}
+      - {name: lines, label: lines, description: "the lines: {account, amount}", type: json, required: true}
+      - {name: total, label: total, description: the sum of the debits, type: money, required: true}
+      - {name: first_period_end, label: first period end, description: the end of the first period the template runs for, type: date, required: true}
+      - {name: last_period_end, label: last period end, description: the end of the last period, if any, type: date}
+    ports:
+      - name: run
+        description: create the entry of the period ending on period_end, once
+        kind: command
+        params:
+          - {name: period_end, label: period end, description: the last day of the period, type: date, required: true}
+        permission: run
+        impl: ubos.finance.recurring#run
