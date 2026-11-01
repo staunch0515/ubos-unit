@@ -1,0 +1,191 @@
+# Payables and Form 1099 (FIN-AP, FIN-TX-007, FIN-GL-021, FIN-RP-007; PH-2 step 10c, DEC-149).
+# Every document posts through a JournalEntry of source `payables`.
+assets:
+  - name: ubos.finance.payables
+    abi: "1.0"
+    tier: l2
+    profile: standard
+    state: committed
+    capabilities: [read, commit, run, search]
+    exports: [post_bill, post_run, aging, form_1099]
+    source: |
+      fn d(v) { dec(v.to_string()) }
+      fn two(x) {
+        let s = x.to_string();
+        if !s.contains(".") { return s + ".00"; }
+        let p = s.split(".");
+        let f = p[1];
+        if f.len() == 1 { f += "0"; }
+        if f.len() > 2 { f = f.sub_string(0, 2); }
+        let out = p[0] + "." + f;
+        if out == "-0.00" { "0.00" } else { out }
+      }
+      fn usd(x, cur) { #{amount: two(x), currency: cur} }
+      fn num(s) {
+        let n = 0;
+        for c in s.chars() { n = n * 10 + "0123456789".index_of(c); }
+        n
+      }
+      fn days(s) {
+        let y = num(s.sub_string(0, 4));
+        let m = num(s.sub_string(5, 2));
+        let dd = num(s.sub_string(8, 2));
+        if m <= 2 { y -= 1; }
+        let era = y / 400;
+        let yoe = y - era * 400;
+        let mp = (m + 9) % 12;
+        let doy = (153 * mp + 2) / 5 + dd - 1;
+        era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy
+      }
+      fn date_of(z) {
+        let era = z / 146097;
+        let doe = z - era * 146097;
+        let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+        let y = yoe + era * 400;
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+        let mp = (5 * doy + 2) / 153;
+        let dd = doy - (153 * mp + 2) / 5 + 1;
+        let m = if mp < 10 { mp + 3 } else { mp - 9 };
+        if m <= 2 { y += 1; }
+        let ms = if m < 10 { "0" + m.to_string() } else { m.to_string() };
+        let ds = if dd < 10 { "0" + dd.to_string() } else { dd.to_string() };
+        y.to_string() + "-" + ms + "-" + ds
+      }
+      fn bucket(late) {
+        if late <= 0 { "Current" } else if late <= 30 { "1–30" } else if late <= 60 { "31–60" }
+        else if late <= 90 { "61–90" } else { "Over 90" }
+      }
+      fn sum_of(values, name) {
+        let t = dec("0.00");
+        for m in values[name] { t += dec(m.amount); }
+        t
+      }
+      fn sorted(rows, key) {
+        let out = [];
+        for r in rows {
+          let i = 0;
+          while i < out.len() && out[i][key] <= r[key] { i += 1; }
+          out.insert(i, r);
+        }
+        out
+      }
+
+      // a bill: expenses (and accrued use tax) against payables, and the open item
+      fn post_bill() {
+        if this.state == "posted" { return #{posted: false, reason: "already posted"}; }
+        sys.read.get(#{target: self_id});
+        let v = sys.read.get(#{target: this.vendor}).fields;
+        let cur = "USD";
+        let lines = [];
+        let total = dec("0.00");
+        let debits = dec("0.00");
+        for l in this.lines {
+          let a = d(l.amount.amount);
+          cur = l.amount.currency;
+          lines.push(#{account: l.account, amount: usd(a, cur)});
+          total += a;
+          debits += a;
+          // use tax: the buyer accrues the tax the vendor did not charge (FIN-TX-007)
+          if "use_tax_code" in l && l.use_tax_code != () {
+            let tc = sys.read.get(#{target: l.use_tax_code}).fields;
+            let tax = div(a * d(tc.rate), 100, 2, "half_up");
+            if !tax.is_zero() {
+              lines.push(#{account: l.account, amount: usd(tax, cur)});
+              lines.push(#{account: tc.payable_account, amount: usd(-tax, cur)});
+              debits += tax;
+            }
+          }
+        }
+        lines.push(#{account: v.payable_account, amount: usd(-total, cur)});
+        let due = if this.due_date == () { date_of(days(this.bill_date) + v.terms_days) } else { this.due_date };
+        let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
+          fields: #{number: this.number, source: "payables", kind: "bill", posting_date: this.bill_date,
+                    document_date: this.bill_date, description: this.description, party: v.code,
+                    lines: lines, total: usd(debits, cur), state: "draft"}});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        sys.commit.append(#{class: "ApItem", ledger_key: #{vendor: v.code}, valid_at: this.bill_date,
+          fields: #{vendor: v.code, document: this.vendor_invoice, amount: usd(total, cur), kind: "bill",
+                    source: this.number, bill_date: this.bill_date, due: due}});
+        sys.commit.update(#{target: self_id, set: #{state: "posted", due_date: due, total: usd(total, cur)}});
+        #{posted: true, number: this.number, total: two(total), due_date: due}
+      }
+
+      // a payment run: payables against the bank, each payment reducing its open item
+      fn post_run() {
+        if this.state == "posted" { return #{posted: false, reason: "already posted"}; }
+        sys.read.get(#{target: self_id});
+        let total = dec("0.00");
+        let cur = "USD";
+        let lines = [];
+        let parties = [];
+        for p in this.payments {
+          let g = sys.read.projection(#{projection: "ap-open", group: #{vendor: p.vendor, document: p.document}}).groups;
+          if g.len() == 0 { throw "no open item " + p.document; }
+          let open = sum_of(g[0].values, "open");
+          let a = d(p.amount.amount);
+          if a > open { throw "the payment of " + p.document + " exceeds its open amount"; }
+          cur = p.amount.currency;
+          let vq = sys.search.query(#{query: #{from: "Vendor", where: "this.code == \"" + p.vendor + "\""}});
+          let v = sys.read.get(#{target: vq.items[0]}).fields;
+          lines.push(#{account: v.payable_account, amount: usd(a, cur)});
+          total += a;
+          if !(p.vendor in parties) { parties.push(p.vendor); }
+          sys.commit.append(#{class: "ApItem", ledger_key: #{vendor: p.vendor}, valid_at: this.run_date,
+            fields: #{vendor: p.vendor, document: p.document, amount: usd(-a, cur), kind: "payment",
+                      source: this.number, bill_date: g[0].values.bill_date, due: g[0].values.due}});
+        }
+        lines.push(#{account: this.bank_account, amount: usd(-total, cur)});
+        let party = "";
+        for x in parties { party = if party == "" { x } else { party + ", " + x }; }
+        let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
+          fields: #{number: this.number, source: "payables", kind: "payment", posting_date: this.run_date,
+                    document_date: this.run_date, description: "Payment run " + this.number,
+                    party: party,
+                    lines: lines, total: usd(total, cur), state: "draft"}});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        sys.commit.update(#{target: self_id, set: #{state: "posted"}});
+        #{posted: true, number: this.number, total: two(total)}
+      }
+
+      fn aging(as_of) {
+        let groups = sys.read.projection(#{projection: "ap-open", asof: as_of}).groups;
+        let control = sys.read.projection(#{projection: "gl-balance", asof: as_of,
+                                            group: #{account: this.control_account}}).groups;
+        let rows = [];
+        let total = dec("0.00");
+        for g in groups {
+          let open = sum_of(g.values, "open");
+          if open.is_zero() { continue; }
+          rows.push(#{vendor: g.key.vendor, document: g.key.document, date: g.values.bill_date, due: g.values.due,
+                      bucket: bucket(days(as_of) - days(g.values.due)), open: two(open),
+                      order: g.values.bill_date + "|" + g.key.vendor});
+          total += open;
+        }
+        let out = [];
+        for r in sorted(rows, "order") { r.remove("order"); out.push(r); }
+        // the control account is a credit balance
+        let c = if control.len() > 0 { -sum_of(control[0].values, "balance") } else { dec("0.00") };
+        #{as_of: as_of, rows: out, total: two(total), control_balance: two(c), difference: two(total - c)}
+      }
+
+      // payments of the tax year (cash basis) to vendors with a reportable form, against the
+      // threshold of the year's table (FIN-EXP-14)
+      fn form_1099(tax_year, through) {
+        let tq = sys.search.query(#{query: #{from: "Form1099Threshold", where: "this.tax_year == \"" + tax_year + "\""}});
+        if tq.items.len() == 0 { throw "no Form 1099 threshold for " + tax_year; }
+        let threshold = d(sys.read.get(#{target: tq.items[0]}).fields.threshold.amount);
+        let start = date_of(days(tax_year + "-01-01") - 1);
+        let g0 = sys.read.projection(#{projection: "ap-activity", asof: start}).groups;
+        let g1 = sys.read.projection(#{projection: "ap-activity", asof: through}).groups;
+        let paid = #{};
+        for g in g1 { if g.key.kind == "payment" { paid[g.key.vendor] = -sum_of(g.values, "amount"); } }
+        for g in g0 { if g.key.kind == "payment" && g.key.vendor in paid { paid[g.key.vendor] = paid[g.key.vendor] + sum_of(g.values, "amount"); } }
+        let vq = sys.search.query(#{query: #{from: "Vendor", where: "this.form_1099 is not null"}});
+        let rows = [];
+        for id in vq.items {
+          let v = sys.read.get(#{target: id}).fields;
+          let p = if v.code in paid { paid[v.code] } else { dec("0.00") };
+          rows.push(#{vendor: v.code, name: v.name, form: v.form_1099, paid: two(p), reportable: p >= threshold});
+        }
+        #{tax_year: tax_year, through: through, threshold: two(threshold), rows: sorted(rows, "vendor")}
+      }

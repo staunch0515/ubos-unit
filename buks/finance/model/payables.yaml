@@ -1,0 +1,116 @@
+# Payables and Form 1099 (FIN-AP; PH-2 step 10c, DEC-149).
+classes:
+  - name: Vendor
+    label: vendor
+    description: A vendor (FIN-AP-001)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[code]]
+    fields:
+      - {name: code, label: code, description: the vendor ID, type: text, required: true}
+      - {name: name, label: name, description: the legal name, type: text, required: true}
+      - {name: entity_type, label: entity type, description: the vendor's entity type, type: text}
+      - {name: form_1099, label: Form 1099, description: "the form and box a payment is reported in (for example 1099-NEC box 1); none when not reportable", type: text}
+      - {name: tin_on_file, label: TIN on file, description: whether a taxpayer identification number is on file, type: boolean}
+      - {name: terms_days, label: terms, description: net days to the due date, type: integer, required: true}
+      - {name: payable_account, label: payable account, description: the payables control account, type: reference, required: true, constraints: {target_class: GlAccount}}
+  - name: Form1099Threshold
+    label: Form 1099 threshold
+    description: The reporting threshold of Forms 1099-NEC and 1099-MISC per tax year, read from this table and never hard-coded (FIN-EXP-14)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[tax_year]]
+    fields:
+      - {name: tax_year, label: tax year, description: the tax year, type: text, required: true}
+      - {name: threshold, label: threshold, description: the amount from which payments are reportable, type: money, required: true}
+  - name: Bill
+    label: bill
+    description: A vendor bill; `post` posts it to the general ledger and records the open item (FIN-AP-003…006)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[number]]
+    fields:
+      - {name: number, label: number, description: the bill's document number, type: text, required: true}
+      - {name: vendor_invoice, label: vendor invoice, description: the vendor's invoice number, type: text, required: true}
+      - {name: vendor, label: vendor, description: the vendor, type: reference, required: true, constraints: {target_class: Vendor}}
+      - {name: bill_date, label: bill date, description: the document and posting date, type: date, required: true}
+      - {name: due_date, label: due date, description: computed from the terms when absent, type: date}
+      - {name: description, label: description, description: the bill's description, type: text, required: true}
+      - {name: lines, label: lines, description: "the lines: {description, account, amount (money, positive), use_tax_code? (URI of a TaxCode; accrues use tax, FIN-TX-007)}", type: json, required: true}
+      - {name: total, label: total, description: the amount owed, computed on posting, type: money}
+      - name: state
+        label: state
+        description: draft until posted
+        type: enum
+        constraints: {allowed_values: [draft, posted]}
+    ports:
+      - {name: post, description: post the bill, kind: command, params: [], permission: post, impl: ubos.finance.payables#post_bill}
+  - name: PaymentRun
+    label: payment run
+    description: A run of vendor payments from one bank account (FIN-AP-008)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[number]]
+    fields:
+      - {name: number, label: number, description: the run's number, type: text, required: true}
+      - {name: run_date, label: date, description: the payment date, type: date, required: true}
+      - {name: bank_account, label: bank account, description: the account paid from, type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: method, label: method, description: ACH, check or wire, type: text}
+      - {name: payments, label: payments, description: "{vendor (code), document (vendor invoice), amount}", type: json, required: true}
+      - name: state
+        label: state
+        description: draft until posted
+        type: enum
+        constraints: {allowed_values: [draft, posted]}
+    ports:
+      - {name: post, description: post the run, kind: command, params: [], permission: post, impl: ubos.finance.payables#post_run}
+  - name: Payables
+    label: payables
+    description: The payables subledger's reports
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    fields:
+      - {name: name, label: name, description: the subledger's name, type: text, required: true}
+      - {name: control_account, label: control account, description: the payables control account (FIN-RP-007), type: reference, required: true, constraints: {target_class: GlAccount}}
+    ports:
+      - name: aging
+        description: the open bills by due-date bucket as of a date, with the control account (FIN-AP-010, FIN-RP-007)
+        kind: query
+        params:
+          - {name: as_of, label: as of, description: the date, type: date, required: true}
+        permission: read
+        impl: ubos.finance.payables#aging
+      - name: form_1099
+        description: the payments of a tax year to reportable vendors, cash basis, against the year's threshold (FIN-AP-015…017)
+        kind: query
+        params:
+          - {name: tax_year, label: tax year, description: the tax year, type: text, required: true}
+          - {name: through, label: through, description: the last payment date counted, type: date, required: true}
+        permission: read
+        impl: ubos.finance.payables#form_1099
+  - name: ApItem
+    label: payable item
+    description: The payables subledger; an item's balance owed is the sum of its document's entries
+    namespace: ubos.finance
+    parent: DataObject
+    kind: ledger
+    schema_version: 1
+    ledger: {key: [vendor], amounts: [amount], double_entry: false}
+    fields:
+      - {name: vendor, label: vendor, description: the vendor code, type: text, required: true}
+      - {name: document, label: document, description: the vendor invoice, type: text, required: true}
+      - {name: amount, label: amount, description: positive for bills, negative for payments, type: money, required: true}
+      - {name: kind, label: kind, description: opening, bill or payment, type: text, required: true}
+      - {name: source, label: source, description: the document that wrote the entry, type: text, required: true}
+      - {name: bill_date, label: bill date, description: the item's document date, type: date, required: true}
+      - {name: due, label: due, description: the item's due date, type: date, required: true}

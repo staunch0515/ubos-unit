@@ -1,0 +1,24 @@
+# The payables projections (STD-TIME-021): open bills and the activity by vendor and kind.
+changes:
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-000000000007
+    slug: ap-open
+    body:
+      name: ap-open
+      source: ApItem
+      group_by: [vendor, document]
+      aggregates:
+        - {fn: sum, field: amount, as: open}
+        - {fn: last, field: bill_date, as: bill_date}
+        - {fn: last, field: due, as: due}
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-000000000008
+    slug: ap-activity
+    body:
+      name: ap-activity
+      source: ApItem
+      group_by: [vendor, kind]
+      aggregates:
+        - {fn: sum, field: amount, as: amount}

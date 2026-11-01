@@ -35,6 +35,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-146 | PH-2 step 10 opened in parts 10a–10h; part 10a-1: journal entries with maker–checker approval, the control-account rule and gap-free numbering per fiscal year and source; `ref()` in decisions reads at the decision's coordinates | Accepted |
 | DEC-147 | PH-2 step 10, part 10a-2: recurring entries, automatic reversal on opening a period, governed reopening, the fiscal-year close with superseded closes; two gaps of BPA 1.0 for the next release candidate (a ledger's posting-date field, explicit coordinates of `read.projection`) | Accepted |
 | DEC-148 | PH-2 step 10, part 10b: receivables and sales tax — customers, tax codes, invoices and credit memos with tax, receipts with application and reapplication, the open-item and tax subledgers, aging with the control account, the sales tax report and customer statements | Accepted |
+| DEC-149 | PH-2 step 10, part 10c: payables and Form 1099 — vendors, bills with use tax, payment runs, the open-item subledger, aging with the control account, and the 1099 summary on a cash basis against a threshold table by tax year | Accepted |
 
 ---
 
@@ -768,3 +769,30 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
   - invoice documents as PDF (FIN-AR-005): step 15;
   - jurisdictions combined into codes (FIN-TX-001): the sample codes are single rates, so 10g decides whether a combination is needed.
 - **Affects:** DEC-146, FIN-AR-001…010, FIN-TX-002…006, FIN-TX-008, FIN-GL-021, FIN-RP-007, DSN-FRG-201
+
+### DEC-149 — The finance Buk, part 10c: payables and Form 1099 (PH-2 step 10)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 10c of step 10 (DEC-146) builds payables and Form 1099 (FIN-AP) and SCN-504. It ties out the January bills and payment runs against FIN-EXP-02, the aging against FIN-EXP-09 and the 1099 summary against FIN-EXP-14.
+- **Decision:**
+  1. **Master data.**
+     - `Vendor` holds the code, name, entity type, Form 1099 form and box, whether a TIN is on file, terms and payable account.
+     - `Form1099Threshold` holds the reporting threshold per tax year. FIN-EXP-14 requires the threshold to be read from a table, never hard-coded.
+  2. **Documents.**
+     - `Bill` holds the document number, the vendor's invoice number and lines with accounts. Its port `post` posts expenses against payables through a `JournalEntry` of source `payables` and records the open item (`ApItem`). The due date comes from the terms.
+     - A bill line with a `use_tax_code` accrues the use tax the vendor did not charge, against that code's payable account (FIN-TX-007).
+     - `PaymentRun` pays open items from one bank account. A payment above an item's open amount is refused, and each payment reduces its item.
+  3. **Reports.** The `Payables` object answers two query ports:
+     - `aging(as_of)`, in bill-date order, with the control account's balance and difference (FIN-AP-010, FIN-RP-007);
+     - `form_1099(tax_year, through)`: the payments made in the tax year to vendors with a reportable form (cash basis), each with whether it reaches the year's threshold.
+  4. **Test data.** Vendors, thresholds and opening open items come from the frozen CSVs; bills and payment runs are built from the journal lines and descriptions.
+     - The vendor invoice numbers are the document numbers without `BILL-`, except two that the expected aging and the payment-run descriptions name: MP-2026-01 and DC-2026-01.
+     - The expected figures come only from the tables.
+  5. **Vendor tax IDs.** The sample data records only whether a TIN is on file. Stored lookup tokens for vendor tax IDs (DSN-DVM-833, DEC-140) are therefore not needed in step 10 and stay with step 19.
+- **Consequences:**
+  - Four new tests pass in memory and on PostgreSQL 16. They cover the GL lines of the seven January bills and two payment runs; the aging with control 46,300.00; the 1099 summary (V200 9,000.00 and V300 8,500.00 reportable, V800 1,500.00 below the threshold of 2,000.00); and use tax.
+  - All 32 finance tests pass, with script coverage 1.0. No kernel code was added.
+- **Open, assigned to parts of step 10 or later steps:**
+  - the capitalisation of BILL-TS-5520 as asset FA-003 (10e);
+  - early-payment discounts, three-way matching and vendor statements, wherever FIN-AP asks for them (10g reviews FIN-AP-001…019 against the record);
+  - 1099 forms as documents, and their e-filing (step 15 and step 12).
+- **Affects:** DEC-146, DEC-140, FIN-AP-001…019, FIN-TX-007, FIN-GL-021, FIN-RP-007, DSN-DVM-833

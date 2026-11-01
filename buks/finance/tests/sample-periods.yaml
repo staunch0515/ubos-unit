@@ -14150,6 +14150,20 @@
      }
     },
     {
+     "op": "verify_asset",
+     "input": {
+      "branch": "release/fy-2026",
+      "object_id": "b845546c-3cae-75c6-8d13-da7965764dc3",
+      "verifier": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2"
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "verified": true
+      }
+     }
+    },
+    {
      "advance": "447840m"
     },
     {

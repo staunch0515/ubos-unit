@@ -859,6 +859,133 @@ def receivables_tests():
     }]
 
 
+# ---- payables and Form 1099 (PH-2 step 10c, DEC-149) ----
+
+# the vendor invoice numbers of the bills: the document number without BILL-, except where the
+# expected aging (FIN-EXP-09) and the payment-run descriptions (FIN-EXP-02) name another
+VENDOR_INVOICE = {'BILL-V300-2601': 'MP-2026-01', 'BILL-DC-2601': 'DC-2026-01'}
+
+
+def vendor_uri(code):
+    return 'ubos://%s/Vendor/%s' % (VAE, code.lower())
+
+
+def vendor_invoice(bill):
+    return VENDOR_INVOICE.get(bill, bill[len('BILL-'):])
+
+
+def payables_setup():
+    changes = []
+    for r in rows('vendors.csv'):
+        body = {'code': r['id'], 'name': r['name'], 'entity_type': r['entity_type'],
+                'tin_on_file': r['tin_on_file'] == 'yes', 'terms_days': int(r['terms_days']),
+                'payable_account': account_uri('2000')}
+        if r['form_1099']:
+            body['form_1099'] = r['form_1099']
+        changes.append({'op': 'create', 'class': 'Vendor', 'object_id': uid('vendor', r['id']), 'slug': r['id'].lower(),
+                        'body': body})
+    for r in rows('thresholds-1099.csv'):
+        changes.append({'op': 'create', 'class': 'Form1099Threshold', 'object_id': uid('threshold', r['tax_year']),
+                        'slug': 'fy-' + r['tax_year'],
+                        'body': {'tax_year': r['tax_year'], 'threshold': money(amount(cents(r['nec_misc_threshold_usd'])))}})
+    changes.append({'op': 'create', 'class': 'Payables', 'object_id': uid('payables'), 'slug': 'payables',
+                    'body': {'name': 'Payables', 'control_account': account_uri('2000')}})
+    for r in rows('open-payables.csv'):
+        changes.append({'op': 'append', 'class': 'ApItem', 'entry_id': uid('ap-open', r['document']),
+                        'ledger_key': {'vendor': r['vendor']}, 'valid_at': r['date'],
+                        'body': {'vendor': r['vendor'], 'document': r['document'],
+                                 'amount': money(amount(cents(r['amount_usd']))), 'kind': 'opening',
+                                 'source': 'opening', 'bill_date': r['date'], 'due': r['due']}})
+    return [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': changes}}]
+
+
+def ap_document(doc):
+    """The Bill or PaymentRun object of a payables document of the CSV."""
+    name, kind, posting, _, lines = doc
+    if kind == 'bill':
+        party = lines[0]['party']
+        out = [{'description': r['description'], 'account': account_uri(r['account']),
+                'amount': money(amount(cents(r['debit'])))} for r in lines if r['account'] != '2000']
+        return {'op': 'create', 'class': 'Bill', 'object_id': uid('bill', name), 'slug': name.lower(),
+                'body': {'number': name, 'vendor_invoice': vendor_invoice(name), 'vendor': vendor_uri(party),
+                         'bill_date': posting, 'description': lines[0]['description'], 'lines': out, 'state': 'draft'}}
+    owner = {r['document']: r['vendor'] for r in rows('open-payables.csv')}
+    for d in documents('2026-01') + documents('2026-02'):
+        if d[1] == 'bill':
+            owner[vendor_invoice(d[0])] = d[4][0]['party']
+    pays = [{'vendor': owner[m.group(1)], 'document': m.group(1), 'amount': money(amount(cents(m.group(2))))}
+            for m in re.finditer(r'([A-Z]+-[A-Z0-9-]*\d) ([\d,]+\.\d\d)', lines[0]['description'])]
+    return {'op': 'create', 'class': 'PaymentRun', 'object_id': uid('run', name), 'slug': name.lower(),
+            'body': {'number': name, 'run_date': posting, 'bank_account': account_uri('1010'), 'method': 'ACH',
+                     'payments': pays, 'state': 'draft'}}
+
+
+def ap_steps(month, clock):
+    steps = []
+    for doc in documents(month):
+        if doc[1] not in ('bill', 'payment'):
+            continue
+        at = datetime.datetime.fromisoformat(doc[3]) + datetime.timedelta(hours=12)
+        more, clock = advance(clock, at)
+        obj = ap_document(doc)
+        steps += more + [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': [obj]}},
+                         {'op': 'execute', 'input': {'branch': BRANCH, 'target': obj['object_id'], 'port': 'post',
+                                                     'params': {}, 'process': {'initiator': PREPARER}},
+                          'expect': {'match': 'subset', 'result': {'result': {'posted': True}}}}]
+    return steps, clock
+
+
+def payables_tests():
+    base = setup_steps() + receivables_setup() + payables_setup()
+    steps, _ = ap_steps('2026-01', START)
+    ap_docs = [d[0] for d in documents('2026-01') if d[1] in ('bill', 'payment')]
+    posted = {k: c for k, c in posted_lines('FIN-EXP-02').items() if k[1] in ap_docs}
+    aging = [{'vendor': c[0], 'document': c[1], 'date': c[2], 'due': c[3], 'bucket': c[4], 'open': amount(cents(c[5]))}
+             for c in section('FIN-EXP-09') if c[0]]
+    total = amount(sum(cents(r['open']) for r in aging))
+    f1099 = [{'vendor': c[0], 'name': c[1], 'form': c[2], 'paid': amount(cents(c[3])), 'reportable': c[4].startswith('yes')}
+             for c in section('FIN-EXP-14')]
+    report = lambda port, params, result: {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('payables'),
+                                                                        'port': port, 'params': params},
+                                           'expect': {'match': 'subset', 'result': {'result': result}}}
+    use_tax = {'op': 'create', 'class': 'Bill', 'object_id': uid('bill', 'BILL-UT-1'), 'slug': 'bill-ut-1',
+               'body': {'number': 'BILL-UT-1', 'vendor_invoice': 'UT-1', 'vendor': vendor_uri('V400'),
+                        'bill_date': '2026-01-20', 'description': 'software bought out of state, no tax charged',
+                        'state': 'draft', 'lines': [{'description': 'licence', 'account': account_uri('6500'),
+                                                     'amount': money('1000.00'), 'use_tax_code': tax_uri('TX-AUSTIN')}]}}
+    return [{
+        'name': 'SCN-504 FIN-GL-021 the January bills and payment runs post the journal lines of FIN-EXP-02',
+        'kind': 'scenario',
+        'steps': base + steps + [
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document', 'group': {'document': d}},
+             'expect': {'match': 'subset', 'result': {'groups': document_groups(
+                 {k: c for k, c in posted.items() if k[1] == d})}}} for d in ap_docs],
+    }, {
+        'name': 'FIN-AP-010 FIN-RP-007 the payables aging at 2026-01-31 equals FIN-EXP-09 and the control account',
+        'kind': 'scenario',
+        'steps': base + steps + [report('aging', {'as_of': '2026-01-31'},
+                                        {'rows': aging, 'total': total, 'control_balance': total, 'difference': '0.00'})],
+    }, {
+        'name': 'FIN-EXP-14 the Form 1099 summary of 2026 to 2026-01-31, cash basis, threshold from the table',
+        'kind': 'scenario',
+        'steps': base + steps + [report('form_1099', {'tax_year': '2026', 'through': '2026-01-31'},
+                                        {'threshold': amount(cents(next(r['nec_misc_threshold_usd'] for r in rows(
+                                            'thresholds-1099.csv') if r['tax_year'] == '2026'))), 'rows': f1099})],
+    }, {
+        'name': 'FIN-TX-007 a bill line with a use-tax code accrues the tax the vendor did not charge',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [use_tax]}},
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('bill', 'BILL-UT-1'), 'port': 'post', 'params': {}},
+             'expect': {'match': 'subset', 'result': {'result': {'posted': True, 'total': '1000.00'}}}},
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document',
+                                                'group': {'document': 'BILL-UT-1'}},
+             'expect': {'match': 'subset', 'result': {'groups': document_groups(
+                 {('2000', 'BILL-UT-1'): -100000, ('2200', 'BILL-UT-1'): -8250, ('6500', 'BILL-UT-1'): 108250})}}},
+        ],
+    }]
+
+
 def asset_id(name):
     """The object id `forge test` gives a logic asset (`ubos_dvm::packages::asset_object_id`)."""
     h = hashlib.sha256(b'ubos.chunk.v1\x00' + json.dumps(name).encode()).hexdigest()
@@ -866,7 +993,7 @@ def asset_id(name):
 
 
 ASSETS = ('ubos.finance.statements', 'ubos.finance.entries', 'ubos.finance.periods', 'ubos.finance.years',
-          'ubos.finance.recurring', 'ubos.finance.receivables')
+          'ubos.finance.recurring', 'ubos.finance.receivables', 'ubos.finance.payables')
 
 
 def verified_on(branch):
@@ -895,7 +1022,8 @@ def main():
              'tests/sample-statements.yaml': dump(statement_tests()),
              'tests/sample-entries.yaml': dump(entry_tests()),
              'tests/sample-periods.yaml': dump(period_tests()),
-             'tests/sample-receivables.yaml': dump(receivables_tests())}
+             'tests/sample-receivables.yaml': dump(receivables_tests()),
+             'tests/sample-payables.yaml': dump(payables_tests())}
     check = '--check' in sys.argv
     stale = []
     for rel, text in files.items():
