@@ -21,6 +21,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-132 | PH-2 step 7, part 7e-2: Buk uninstall with dependency protection and read-only data, reinstall, deprecation notices, genesis upgrades as proposed change sets (`system` 0.2.0) | Accepted |
 | DEC-133 | PH-2 step 7, part 7f, first half: model export as OpenAPI 3.1 and the `ubos.model-graph.v1` graph; the ontology Buk waits for a decision on its class names | Accepted |
 | DEC-134 | PH-2 step 7, part 7f, second half: the genesis `ontology` Buk 0.2.0 with the content of FR-MODEL-091; fixture classes that collided with it renamed (option A) | Accepted |
+| DEC-135 | PH-2 step 7 closed: models and packages (parts 7a–7f, DEC-127…134) — schema evolution and lenses, upstream changes, the Buk format and Forge commands, installation, upgrade, migration, rollback, removal, deprecation, genesis upgrades, model export and the ontology Buk; 61 step-7 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 
 ---
 
@@ -311,3 +312,54 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
 - **Alternatives considered:**
   - Leaving `Account`, `Document` and `Agreement` out of the ontology (option B) was declined by the owner: domain Buks would define them again, against FR-MODEL-093.
 - **Affects:** DSN-NOD-424, DSN-NOD-421, FR-MODEL-091, FR-MODEL-092, FR-MODEL-093, FR-MODEL-094, DEC-077, DEC-132, DEC-133
+
+### DEC-135 — PH-2 step 7 closed: models and packages (PH-2 step 7, part 7g)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** PH-2 step 7 (DEC-127) was done in parts 7a–7f. Part 7e was split into 7e-1 and 7e-2 (DEC-131), and part 7f into two halves (DEC-133, DEC-134). Parts 7a–7f are recorded in DEC-127…134. Part 7g closes the step: it records what the step delivered and lists, in one place, what the parts deferred. The owner confirmed the part with the default suggestions.
+- **Decision:**
+  1. **Delivered.**
+     - **7a (DEC-127).** Schema evolution in the kernel: `Lens`, the computed change classification, `change_class`, and lenses on reads, writes, updates and merges with the totality check. The Buk format stays outside BPA 1.0.
+     - **7b (DEC-128).** Upstream change detection: overrides recorded with their base, `upstream_changes` and `resolve_upstream`.
+     - **7c (DEC-129).** The Buk format `ubos.buk.v1` (UBS-SYS-FRG-09), plus:
+       - `forge new`, `pack`, `sign` and `verify`;
+       - dependency resolution into `forge.lock`;
+       - port tests counted toward coverage.
+     - **7d (DEC-130).** Installation: the plan, the loader branch with assets verified by the node, the change set, the registry, the Server routes and `forge install`.
+     - **7e-1 (DEC-131).** Upgrades:
+       - class changes by lens or migration;
+       - migrations as one-way lenses rewritten by bulk process;
+       - the overlays' upstream report;
+       - rollback by revert;
+       - `forge verify --previous` on migrated data.
+     - **7e-2 (DEC-132).** Removal and lifecycle:
+       - uninstall with dependency protection and read-only data, and reinstall;
+       - deprecation in manifests and by signed notices;
+       - genesis upgrades proposed per VAE (`system` 0.2.0).
+     - **7f (DEC-133, DEC-134).** Model export as OpenAPI 3.1 and as the `ubos.model-graph.v1` graph. The `ontology` Buk 0.2.0 with the content of FR-MODEL-091; fixtures that collided with it were renamed.
+  2. **Verification.**
+     - The 61 current vectors of the step-7 clauses pass in one run in memory and on PostgreSQL 16: STD-CLS-050 and -060…062 (51) and STD-VER-082 (10).
+     - The kernel conformance test claims these clauses.
+     - The Buk flows, which have no vectors (DEC-127), were run on a Server over PostgreSQL in each part. The OpenAPI exports pass `openapi-spec-validator`.
+  3. **Deferred.** Each item keeps its ID and moves to the target named:
+
+     | Item | Source | Target |
+     |---|---|---|
+     | Retrieval from the exchange (CTR-054), `forge publish` (DSN-FRG-308), keyless signing (DSN-FRG-304), notices, yanking and advisories through the exchange (DSN-EXC-008) | DEC-127, DEC-129, DEC-130, DEC-132 | PH-4 |
+     | Air-gapped import of Buks | DEC-127 | PH-3 |
+     | Staged rollout of upgrades across VAEs with gates (FR-PKG-043) | DEC-127 | step 11 |
+     | Disposal of an uninstalled Buk's read-only data by retention schedules (FR-PKG-051, FR-AUD-071) | DEC-132 | PH-3 |
+     | Overlay branches created through UBTP (`create_branch` with a parent line; a protocol change) | DEC-131 | step 16, with Studio's overlay editing |
+     | A PubGrub solver with learned incompatibilities (DSN-FRG-303) | DEC-129 | PH-4, if the exchange's dependency graphs need it |
+     | Compiled lens chains (DSN-DVM-121) and an indexed override table (DEC-128) | DEC-127, DEC-128 | step 18, if the benchmarks need them |
+     | The migration of 100,000 instances across a node restart (DSN-DVM-123 acceptance) and the scenario SCN-013 | DEC-131 | steps 18 and 20 |
+     | Several schema steps of one class in one upgrade; reviving configuration objects ended by an uninstall when the Buk is reinstalled | DEC-131, DEC-132 | when a Buk needs them |
+     | `openapi-spec-validator` in CI | DEC-133 | step 20, if the owner asks for it (CLAUDE.md rule 4) |
+
+  4. **Owner actions.** Merge the branch, then sign the tags `bpa-v1.0.0-rc8` to `bpa-v1.0.0-rc12`. Step 7 opened no release candidate.
+  5. **Next.** Step 8 (protection): relation-based authorization, masking and filters, encrypted fields and crypto-shredding, access logs. Its plan goes to the owner first.
+- **Consequences:**
+  - The status table in `docs/reports/ph2-plan-zh.md` marks step 7 as done.
+  - The deferred items are picked up by the steps named in the table above, whose plans cite this decision.
+- **Alternatives considered:**
+  - Leaving the deferred items spread over DEC-127…134 was rejected, as in DEC-104, DEC-111, DEC-118 and DEC-126.
+- **Affects:** DEC-127, DEC-128, DEC-129, DEC-130, DEC-131, DEC-132, DEC-133, DEC-134, CTR-054, DSN-FRG-303, DSN-FRG-304, DSN-FRG-308, DSN-EXC-008, DSN-DVM-121, DSN-DVM-123, FR-PKG-043, FR-PKG-051, FR-AUD-071
