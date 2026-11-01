@@ -7,7 +7,7 @@ assets:
     profile: standard
     state: committed
     capabilities: [read, commit, run, search]
-    exports: [post_invoice, post_receipt, reapply, aging, tax_report, statement]
+    exports: [post_invoice, post_receipt, reapply, aging, tax_report, statement, revalue, fx_report]
     source: |
       fn d(v) { dec(v.to_string()) }
       fn two(x) {
@@ -72,23 +72,67 @@ assets:
         out
       }
 
+      // multi-currency (FIN-FX; PH-2 step 10f, DEC-152): amounts in the functional currency
+      // are the document amounts at the rate, rounded half-even to the cent as fx_convert
+      // does (STD-FND-029)
+      fn fx(x, rate) { round(x * rate, 2, "half_even") }
+      fn rate_where(base, quote, rt) {
+        "this.base == \"" + base + "\" and this.quote == \"" + quote + "\" and this.rate_type == \"" + rt + "\""
+      }
+      // the rate of the FxRate segment valid at a date
+      fn rate_in(segs, date, what) {
+        let r = ();
+        for s in segs {
+          if s.from <= date && (s.to == () || s.to > date) { r = s.fields.rate; }
+        }
+        if r == () { throw "no " + what + " rate at " + date; }
+        d(r)
+      }
+      fn with_original(line, x, cur, fc) {
+        if cur != fc { line.original = usd(x, cur); }
+        line
+      }
+      // the functional amount of part of an open item: its carrying amount in proportion
+      fn carrying(open_f, open_o, x) {
+        if open_o == x { open_f } else if open_o.is_zero() { x } else { div(open_f * x, open_o, 2, "half_even") }
+      }
+
       // an invoice or credit memo: tax per code on the sum of its lines, the journal entry,
-      // the open item, the tax detail and the document's number
+      // the open item, the tax detail and the document's number; a foreign-currency document
+      // keeps both amounts on every line (FIN-FX-003)
       fn post_invoice() {
         if this.state == "posted" { return #{posted: false, reason: "already posted"}; }
         sys.read.get(#{target: self_id});
         let cust = sys.read.get(#{target: this.customer}).fields;
+        let rq = sys.search.query(#{query: #{from: "Receivables"}});
+        let rl = rq.items;
+        let rcv = sys.read.get(#{target: rl[0]}).fields;
+        let fc = rcv.functional_currency;
         let cm = this.kind == "credit_memo";
         let sign = if cm { -1 } else { 1 };
-        let cur = cust.currency;
+        let cur = if this.currency == () { cust.currency } else { this.currency };
+        let rate = dec("1");
+        if cur != fc {
+          if this.rate != () { rate = d(this.rate); } else {
+            let fq = sys.search.query(#{query: #{from: "FxRate", where: rate_where(cur, fc, rcv.rate_type)}});
+            let ids = fq.items;
+            if ids.len() != 1 { throw "no single " + rcv.rate_type + " rate " + cur + "/" + fc; }
+            let segs = sys.read.timeline(#{target: ids[0], valid_from: this.invoice_date,
+                                           valid_to: date_of(days(this.invoice_date) + 1)}).segments;
+            rate = rate_in(segs, this.invoice_date, cur + "/" + fc);
+          }
+        }
         let lines = [];
         let net = #{};
         let codes = [];
         let total = dec("0.00");
+        let ftotal = dec("0.00");
         for l in this.lines {
           let a = d(l.amount.amount);
-          lines.push(#{account: l.account, amount: usd(-a * sign, cur)});
+          let fa = fx(a, rate);
+          lines.push(with_original(#{account: l.account, amount: usd(-fa * sign, fc)}, -a * sign, cur, fc));
           total += a;
+          ftotal += fa;
           if !(l.tax_code in net) { net[l.tax_code] = dec("0.00"); codes.push(l.tax_code); }
           net[l.tax_code] = net[l.tax_code] + a;
         }
@@ -96,21 +140,23 @@ assets:
         let tax_lines = [];
         for uri in codes {
           let tc = sys.read.get(#{target: uri}).fields;
-          let rate = d(tc.rate);
+          let trate = d(tc.rate);
           let base = net[uri];
           // half away from zero to the cent (FIN-TX-003)
-          let tax = div(base * rate, 100, 2, "half_up");
+          let tax = div(base * trate, 100, 2, "half_up");
+          let ftax = fx(tax, rate);
           if !tax.is_zero() {
-            lines.push(#{account: tc.payable_account, amount: usd(-tax * sign, cur)});
+            lines.push(with_original(#{account: tc.payable_account, amount: usd(-ftax * sign, fc)}, -tax * sign, cur, fc));
           }
-          let taxable = if tc.category == "taxable" { base } else { dec("0.00") };
-          let exempt = if tc.category == "taxable" { dec("0.00") } else { base };
-          tax_lines.push(#{code: tc.code, taxable: taxable, exempt: exempt, tax: tax});
+          let fbase = fx(base, rate);
+          let taxable = if tc.category == "taxable" { fbase } else { dec("0.00") };
+          let exempt = if tc.category == "taxable" { dec("0.00") } else { fbase };
+          tax_lines.push(#{code: tc.code, taxable: taxable, exempt: exempt, tax: ftax});
           tax_total += tax;
+          ftotal += ftax;
         }
         let gross = total + tax_total;
-        lines.insert(0, #{account: cust.receivable_account, amount: usd(gross * sign, cur)});
-        let debits = gross;
+        lines.insert(0, with_original(#{account: cust.receivable_account, amount: usd(ftotal * sign, fc)}, gross * sign, cur, fc));
         let due = if this.due_date == () { date_of(days(this.invoice_date) + cust.terms_days) } else { this.due_date };
         // the open item: an invoice opens one, a credit memo reduces the invoice it applies to
         let item = this.number;
@@ -125,58 +171,108 @@ assets:
         let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
           fields: #{number: this.number, source: "receivables", kind: kind, posting_date: this.invoice_date,
                     document_date: this.invoice_date, description: this.description, party: cust.code,
-                    lines: lines, total: usd(debits, cur), state: "draft"}});
+                    lines: lines, total: usd(ftotal, fc), state: "draft"}});
         sys.run.port(#{target: e.object_id, port: "post", params: #{}});
         sys.commit.append(#{class: "ArItem", ledger_key: #{customer: cust.code}, valid_at: this.invoice_date,
-          fields: #{customer: cust.code, document: item, amount: usd(gross * sign, cur), kind: this.kind,
-                    source: this.number, invoice_date: item_date, due: item_due}});
+          fields: #{customer: cust.code, document: item, amount: usd(ftotal * sign, fc), original: usd(gross * sign, cur),
+                    kind: this.kind, source: this.number, invoice_date: item_date, due: item_due}});
         for t in tax_lines {
           sys.commit.append(#{class: "TaxLine", ledger_key: #{tax_code: t.code}, valid_at: this.invoice_date,
             fields: #{tax_code: t.code, document: this.number, customer: cust.code,
-                      taxable: usd(t.taxable * sign, cur), exempt: usd(t.exempt * sign, cur), tax: usd(t.tax * sign, cur)}});
+                      taxable: usd(t.taxable * sign, fc), exempt: usd(t.exempt * sign, fc), tax: usd(t.tax * sign, fc)}});
         }
         sys.commit.append(#{class: "PostingNumber",
           ledger_key: #{fiscal_year: this.invoice_date.sub_string(0, 4), source: "sales-documents"},
           valid_at: this.invoice_date,
           fields: #{fiscal_year: this.invoice_date.sub_string(0, 4), source: "sales-documents", entry: self_id, count: dec("1")}});
-        sys.commit.update(#{target: self_id, set: #{state: "posted", due_date: due,
-          tax: usd(tax_total, cur), total: usd(gross, cur)}});
-        #{posted: true, number: this.number, tax: two(tax_total), total: two(gross), due_date: due}
+        let set = #{state: "posted", due_date: due, tax: usd(tax_total, cur), total: usd(gross, cur),
+                    functional_total: usd(ftotal, fc)};
+        if cur != fc { set.currency = cur; set.rate = rate.to_string(); }
+        sys.commit.update(#{target: self_id, set: set});
+        #{posted: true, number: this.number, tax: two(tax_total), total: two(gross), currency: cur,
+          rate: rate.to_string(), functional_total: two(ftotal), due_date: due}
       }
 
-      // a receipt: cash against receivables; applications reduce open items, the rest stays
-      // unapplied (FIN-AR-007, -008)
+      // a receipt: cash against receivables; applications reduce open items at their carrying
+      // amount, the rest stays unapplied (FIN-AR-007, -008); a foreign-currency receipt is
+      // converted at its date and the difference to the carrying amount is the realized gain
+      // or loss (FIN-FX-004)
       fn post_receipt() {
         if this.state == "posted" { return #{posted: false, reason: "already posted"}; }
         sys.read.get(#{target: self_id});
         let cust = sys.read.get(#{target: this.customer}).fields;
+        let rq = sys.search.query(#{query: #{from: "Receivables"}});
+        let rl = rq.items;
+        let rcv = sys.read.get(#{target: rl[0]}).fields;
+        let fc = rcv.functional_currency;
         let cur = currency(this.amount);
         let a = amount(this.amount);
-        let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
-          fields: #{number: this.number, source: "receivables", kind: "receipt", posting_date: this.receipt_date,
-                    document_date: this.receipt_date, description: "Receipt " + this.number, party: cust.code,
-                    lines: [#{account: this.bank_account, amount: usd(a, cur)},
-                            #{account: cust.receivable_account, amount: usd(-a, cur)}],
-                    total: usd(a, cur), state: "draft"}});
-        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        let rate = dec("1");
+        if cur != fc {
+          if this.rate != () { rate = d(this.rate); } else {
+            let fq = sys.search.query(#{query: #{from: "FxRate", where: rate_where(cur, fc, rcv.rate_type)}});
+            let ids = fq.items;
+            if ids.len() != 1 { throw "no single " + rcv.rate_type + " rate " + cur + "/" + fc; }
+            let segs = sys.read.timeline(#{target: ids[0], valid_from: this.receipt_date,
+                                           valid_to: date_of(days(this.receipt_date) + 1)}).segments;
+            rate = rate_in(segs, this.receipt_date, cur + "/" + fc);
+          }
+        }
+        let fa = fx(a, rate);
         let rest = a;
+        let credited = dec("0.00");
+        let items = [];
+        let gains = [];
         let apps = if this.applications == () { [] } else { this.applications };
         for app in apps {
           let g = sys.read.projection(#{projection: "ar-open", group: #{customer: cust.code, document: app.document}}).groups;
           if g.len() == 0 { throw "no open item " + app.document; }
           let x = d(app.amount.amount);
-          sys.commit.append(#{class: "ArItem", ledger_key: #{customer: cust.code}, valid_at: this.receipt_date,
-            fields: #{customer: cust.code, document: app.document, amount: usd(-x, cur), kind: "receipt",
-                      source: this.number, invoice_date: g[0].values.invoice_date, due: g[0].values.due}});
+          let c = carrying(sum_of(g[0].values, "open"), sum_of(g[0].values, "original"), x);
+          items.push(#{document: app.document, functional: c, original: x,
+                       invoice_date: g[0].values.invoice_date, due: g[0].values.due});
+          let loss = c - fx(x, rate);
+          if !loss.is_zero() { gains.push(#{document: app.document, amount: loss}); }
+          credited += c;
           rest -= x;
+        }
+        let frest = fa - fx(a - rest, rate);
+        credited += frest;
+        let loss_total = credited - fa;
+        let lines = [with_original(#{account: this.bank_account, amount: usd(fa, fc)}, a, cur, fc)];
+        if !loss_total.is_zero() {
+          lines.push(#{account: rcv.realized_account, amount: usd(loss_total, fc)});
+        }
+        lines.push(with_original(#{account: cust.receivable_account, amount: usd(-credited, fc)}, -a, cur, fc));
+        let debits = fa;
+        if loss_total > 0 { debits += loss_total; }
+        let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
+          fields: #{number: this.number, source: "receivables", kind: "receipt", posting_date: this.receipt_date,
+                    document_date: this.receipt_date, description: "Receipt " + this.number, party: cust.code,
+                    lines: lines, total: usd(debits, fc), state: "draft"}});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        for it in items {
+          sys.commit.append(#{class: "ArItem", ledger_key: #{customer: cust.code}, valid_at: this.receipt_date,
+            fields: #{customer: cust.code, document: it.document, amount: usd(-it.functional, fc),
+                      original: usd(-it.original, cur), kind: "receipt", source: this.number,
+                      invoice_date: it.invoice_date, due: it.due}});
+        }
+        for gl in gains {
+          sys.commit.append(#{class: "FxGain", ledger_key: #{document: gl.document}, valid_at: this.receipt_date,
+            fields: #{document: gl.document, customer: cust.code, kind: "realized", source: this.number,
+                      amount: usd(gl.amount, fc), rate: rate.to_string()}});
         }
         if !rest.is_zero() {
           sys.commit.append(#{class: "ArItem", ledger_key: #{customer: cust.code}, valid_at: this.receipt_date,
-            fields: #{customer: cust.code, document: "UNAPPLIED-" + this.number, amount: usd(-rest, cur),
-                      kind: "receipt", source: this.number, invoice_date: this.receipt_date, due: this.receipt_date}});
+            fields: #{customer: cust.code, document: "UNAPPLIED-" + this.number, amount: usd(-frest, fc),
+                      original: usd(-rest, cur), kind: "receipt", source: this.number,
+                      invoice_date: this.receipt_date, due: this.receipt_date}});
         }
-        sys.commit.update(#{target: self_id, set: #{state: "posted"}});
-        #{posted: true, number: this.number, unapplied: two(rest)}
+        let set = #{state: "posted", functional_amount: usd(fa, fc)};
+        if cur != fc { set.rate = rate.to_string(); }
+        sys.commit.update(#{target: self_id, set: set});
+        #{posted: true, number: this.number, unapplied: two(rest), currency: cur, rate: rate.to_string(),
+          functional_amount: two(fa), realized: two(loss_total)}
       }
 
       fn reapply(from_document, to_document, amount) {
@@ -188,13 +284,20 @@ assets:
         for pair in [[from_document, x], [to_document, -x]] {
           let g = sys.read.projection(#{projection: "ar-open", group: #{customer: cust.code, document: pair[0]}}).groups;
           if g.len() == 0 { throw "no open item " + pair[0]; }
+          let o = sum_of(g[0].values, "original");
+          let f = carrying(sum_of(g[0].values, "open"), o, x);
+          let fcur = g[0].values.open[0].currency;
+          let ocur = g[0].values.original[0].currency;
+          if ocur != cur { throw "the amount is not in the currency of " + pair[0]; }
+          let sgn = if pair[1] < 0 { -1 } else { 1 };
           sys.commit.append(#{class: "ArItem", ledger_key: #{customer: cust.code}, valid_at: today,
-            fields: #{customer: cust.code, document: pair[0], amount: usd(pair[1], cur), kind: "reapply",
-                      source: this.number, invoice_date: g[0].values.invoice_date, due: g[0].values.due}});
+            fields: #{customer: cust.code, document: pair[0], amount: usd(f * sgn, fcur), original: usd(pair[1], cur),
+                      kind: "reapply", source: this.number, invoice_date: g[0].values.invoice_date, due: g[0].values.due}});
         }
         #{reapplied: two(x), from: from_document, to: to_document}
       }
 
+      // the open items in the functional currency and in the document currency (FIN-FX-007)
       fn aging(as_of) {
         let groups = sys.read.projection(#{projection: "ar-open", asof: as_of}).groups;
         let control = sys.read.projection(#{projection: "gl-balance", asof: as_of,
@@ -205,7 +308,8 @@ assets:
           let open = sum_of(g.values, "open");
           if open.is_zero() { continue; }
           rows.push(#{customer: g.key.customer, document: g.key.document, date: g.values.invoice_date,
-                      due: g.values.due, bucket: bucket(days(as_of) - days(g.values.due)), open: two(open)});
+                      due: g.values.due, bucket: bucket(days(as_of) - days(g.values.due)), open: two(open),
+                      currency: g.values.original[0].currency, original: two(sum_of(g.values, "original"))});
           total += open;
         }
         let c = if control.len() > 0 { sum_of(control[0].values, "balance") } else { dec("0.00") };
@@ -257,4 +361,123 @@ assets:
         let k = #{};
         for n in kinds.keys() { if !kinds[n].is_zero() { k[n] = two(kinds[n]); } }
         #{customer: customer, opening_balance: two(start), activity: k, closing_balance: two(end)}
+      }
+
+      // the period-end remeasurement of the open foreign-currency items at the rate of the
+      // period end: FXR-<yymm> posts the unrealized gain or loss and reverses on the next day
+      // (through FiscalPeriod.open); the subledger and the gain ledger record the reversal at
+      // the same date. A simulation computes the run and its difference to the posted entry
+      // without posting; the posted run is reproduced by simulating it on its snapshot
+      // (FIN-FX-005)
+      fn revalue(period_end, simulate) {
+        sys.read.get(#{target: self_id});
+        let sim = simulate == true;
+        let fc = this.functional_currency;
+        let number = "FXR-" + period_end.sub_string(2, 2) + period_end.sub_string(5, 2);
+        let eq = sys.search.query(#{query: #{from: "JournalEntry", where: "this.number == \"" + number + "\""}});
+        let existing = eq.items;
+        if !sim && existing.len() > 0 { return #{posted: false, reason: "already posted", number: number}; }
+        if !sim {
+          let pw = "this.start <= d'" + period_end + "' and this.end > d'" + period_end + "'";
+          for id in sys.search.query(#{query: #{from: "FiscalPeriod", where: pw}}).items {
+            if sys.read.get(#{target: id}).fields.state == "closed" { throw "the period of " + period_end + " is closed"; }
+          }
+        }
+        let groups = sys.read.projection(#{projection: "ar-open", asof: period_end}).groups;
+        let rates = #{};
+        let items = [];
+        let total = dec("0.00");
+        let parties = [];
+        for g in groups {
+          let o = sum_of(g.values, "original");
+          if o.is_zero() { continue; }
+          let cur = g.values.original[0].currency;
+          if cur == fc { continue; }
+          if !(cur in rates) {
+            let fq = sys.search.query(#{query: #{from: "FxRate", where: rate_where(cur, fc, this.rate_type)}});
+            let ids = fq.items;
+            if ids.len() != 1 { throw "no single " + this.rate_type + " rate " + cur + "/" + fc; }
+            let segs = sys.read.timeline(#{target: ids[0], valid_from: period_end,
+                                           valid_to: date_of(days(period_end) + 1)}).segments;
+            rates[cur] = rate_in(segs, period_end, cur + "/" + fc);
+          }
+          let f = sum_of(g.values, "open");
+          // a simulation of a posted run starts from the carrying amount before that run
+          if existing.len() > 0 {
+            let pg = sys.read.projection(#{projection: "fx-gains", asof: period_end,
+              group: #{document: g.key.document, kind: "unrealized", source: number}}).groups;
+            if pg.len() > 0 { f += sum_of(pg[0].values, "amount"); }
+          }
+          let target = fx(o, rates[cur]);
+          let diff = target - f;
+          if diff.is_zero() { continue; }
+          items.push(#{customer: g.key.customer, document: g.key.document, currency: cur, original: two(o),
+                       rate: rates[cur].to_string(), carrying: two(f), remeasured: two(target), difference: two(diff),
+                       due: g.values.due, invoice_date: g.values.invoice_date, diff: diff});
+          total += diff;
+          if !parties.contains(g.key.customer) { parties.push(g.key.customer); }
+        }
+        let out_items = [];
+        for it in items {
+          out_items.push(#{customer: it.customer, document: it.document, currency: it.currency, original: it.original,
+                           rate: it.rate, carrying: it.carrying, remeasured: it.remeasured, difference: it.difference});
+        }
+        if sim {
+          let posted = ();
+          if existing.len() > 0 {
+            let pe = sys.read.get(#{target: existing[0]}).fields;
+            let p = dec("0.00");
+            for l in pe.lines { if l.account == this.control_account { p += d(l.amount.amount); } }
+            posted = p;
+          }
+          let r = #{simulated: true, number: number, period_end: period_end, items: out_items, total: two(total)};
+          if posted != () { r.posted = two(posted); r.difference = two(total - posted); }
+          return r;
+        }
+        if items.len() == 0 { return #{posted: false, reason: "nothing to remeasure", number: number}; }
+        let reverse_on = date_of(days(period_end) + 1);
+        let lines = [#{account: this.control_account, amount: usd(total, fc)},
+                     #{account: this.unrealized_account, amount: usd(-total, fc)}];
+        let debit = if total > 0 { total } else { -total };
+        let fields = #{number: number, source: "revaluation", kind: "revaluation", posting_date: period_end,
+                       document_date: period_end, description: "Remeasure open foreign-currency receivables at " + period_end,
+                       lines: lines, total: usd(debit, fc), auto_reverse_on: reverse_on, state: "draft"};
+        if parties.len() == 1 { fields.party = parties[0]; }
+        let e = sys.commit.create(#{class: "JournalEntry", slug: number.to_lower(), fields: fields});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        for it in items {
+          for pair in [[period_end, it.diff, number], [reverse_on, -it.diff, number + "-R"]] {
+            sys.commit.append(#{class: "ArItem", ledger_key: #{customer: it.customer}, valid_at: pair[0],
+              fields: #{customer: it.customer, document: it.document, amount: usd(pair[1], fc),
+                        original: usd(dec("0.00"), it.currency), kind: "revaluation", source: pair[2],
+                        invoice_date: it.invoice_date, due: it.due}});
+            sys.commit.append(#{class: "FxGain", ledger_key: #{document: it.document}, valid_at: pair[0],
+              fields: #{document: it.document, customer: it.customer, kind: "unrealized", source: pair[2],
+                        amount: usd(-pair[1], fc), rate: it.rate}});
+          }
+        }
+        #{posted: true, number: number, reverses_on: reverse_on, items: out_items, total: two(total)}
+      }
+
+      // realized and unrealized gains (negative) and losses (positive) by document and the
+      // entry that posted them, in a period
+      fn fx_report(opening, closing) {
+        let g0 = sys.read.projection(#{projection: "fx-gains", asof: opening}).groups;
+        let g1 = sys.read.projection(#{projection: "fx-gains", asof: closing}).groups;
+        let before = #{};
+        for g in g0 { before[g.key.document + "|" + g.key.kind + "|" + g.key.source] = sum_of(g.values, "amount"); }
+        let rows = [];
+        let realized = dec("0.00");
+        let unrealized = dec("0.00");
+        for g in g1 {
+          let k = g.key.document + "|" + g.key.kind + "|" + g.key.source;
+          let x = sum_of(g.values, "amount");
+          if k in before { x -= before[k]; }
+          if x.is_zero() { continue; }
+          rows.push(#{document: g.key.document, kind: g.key.kind, source: g.key.source, amount: two(x), key: k});
+          if g.key.kind == "realized" { realized += x; } else { unrealized += x; }
+        }
+        let out = [];
+        for r in sorted(rows, "key") { out.push(#{document: r.document, kind: r.kind, source: r.source, amount: r.amount}); }
+        #{opening: opening, closing: closing, rows: out, realized: two(realized), unrealized: two(unrealized)}
       }

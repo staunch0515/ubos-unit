@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (151)
+## DEC (152)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -245,4 +245,5 @@ depends_on: [UBS-IDX-00]
 | DEC-149 | The finance Buk, part 10c: payables and Form 1099 (PH-2 step 10) | `90-decisions/000-index.md` |
 | DEC-150 | The finance Buk, part 10d: bank reconciliation (PH-2 step 10) | `90-decisions/000-index.md` |
 | DEC-151 | The finance Buk, part 10e: fixed assets (PH-2 step 10) | `90-decisions/000-index.md` |
+| DEC-152 | The finance Buk, part 10f: multi-currency (PH-2 step 10) | `90-decisions/000-index.md` |
 

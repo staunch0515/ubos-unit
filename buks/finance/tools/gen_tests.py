@@ -691,8 +691,45 @@ def customer_uri(code):
     return 'ubos://%s/Customer/%s' % (VAE, code.lower())
 
 
+# a foreign-currency document's note in the CSV: "EUR 50,000.00 at 1.0850" (FIN-FX-003)
+FX_NOTE = re.compile(r'([A-Z]{3}) ([\d,]+\.\d{2}) at (\d+\.\d+)')
+FX_SOURCE = 'company'   # the publisher of the rates of fx-rates.csv: the company's rate table
+FX_TYPE = 'spot'
+
+
+def rate_text(text):
+    """A rate in the canonical form of a decimal without a scale: no trailing zeros (STD-FND-022)."""
+    out = text.rstrip('0')
+    return out[:-1] if out.endswith('.') else out
+
+
+def fx_note(text):
+    """(currency, cents, rate text) of a foreign-currency document, or None."""
+    m = FX_NOTE.search(text)
+    return (m.group(1), cents(m.group(2)), m.group(3)) if m else None
+
+
+def fx_rate_steps():
+    """The rates of `fx-rates.csv` as one FxRate object (STD-FND-029) whose versions are valid
+    from their dates (FIN-FX-002)."""
+    oid = uid('fx-rate', 'EUR', 'USD')
+    steps = []
+    for n, r in enumerate(rows('fx-rates.csv')):
+        body = {'source': FX_SOURCE, 'base': 'EUR', 'quote': CURRENCY, 'rate_type': FX_TYPE, 'rate': r['eur_usd']}
+        if n == 0:
+            change = {'op': 'create', 'class': 'FxRate', 'object_id': oid, 'slug': 'company-eur-usd-spot',
+                      'body': body, 'valid': {'from': r['date']}}
+        else:
+            steps.append({'op': 'read', 'input': {'branch': BRANCH, 'object_id': oid, 'asof': r['date']},
+                          'label': 'fx-%d' % n})
+            change = {'op': 'update', 'object_id': oid, 'base': {'$ref': 'fx-%d/version_hash' % n}, 'body': body,
+                      'valid': {'kind': 'supersede_from', 'from': r['date']}}
+        steps.append({'op': 'commit', 'input': {'branch': BRANCH, 'changes': [change]}})
+    return steps
+
+
 def receivables_setup():
-    """Tax codes, customers, the receivables object and the opening open items."""
+    """Tax codes, customers, the receivables object, the opening open items and the rates."""
     changes = []
     for r in rows('tax-codes.csv'):
         changes.append({'op': 'create', 'class': 'TaxCode', 'object_id': uid('tax', r['code']), 'slug': r['code'].lower(),
@@ -701,7 +738,7 @@ def receivables_setup():
                                  'certificate_required': TAX_CATEGORY[r['code']] == 'exempt',
                                  'payable_account': account_uri('2200')}})
     for r in rows('customers.csv'):
-        body = {'code': r['id'], 'name': r['name'], 'location': r['location'], 'currency': 'USD',
+        body = {'code': r['id'], 'name': r['name'], 'location': r['location'], 'currency': r['currency'],
                 'tax_code': tax_uri(r['tax_code']), 'terms_days': int(r['terms_days']),
                 'receivable_account': account_uri('1200')}
         m = re.search(r'(RC-\d+), valid to (\d{4}-\d{2}-\d{2})', r['exemption_certificate'])
@@ -710,14 +747,17 @@ def receivables_setup():
         changes.append({'op': 'create', 'class': 'Customer', 'object_id': uid('customer', r['id']),
                         'slug': r['id'].lower(), 'body': body})
     changes.append({'op': 'create', 'class': 'Receivables', 'object_id': uid('receivables'), 'slug': 'receivables',
-                    'body': {'name': 'Receivables', 'control_account': account_uri('1200')}})
+                    'body': {'name': 'Receivables', 'control_account': account_uri('1200'),
+                             'functional_currency': CURRENCY, 'rate_type': FX_TYPE,
+                             'realized_account': account_uri('7200'), 'unrealized_account': account_uri('7210')}})
     for r in rows('open-receivables.csv'):
         changes.append({'op': 'append', 'class': 'ArItem', 'entry_id': uid('ar-open', r['document']),
                         'ledger_key': {'customer': r['customer']}, 'valid_at': r['date'],
                         'body': {'customer': r['customer'], 'document': r['document'],
-                                 'amount': money(amount(cents(r['amount_usd']))), 'kind': 'opening',
+                                 'amount': money(amount(cents(r['amount_usd']))),
+                                 'original': money(amount(cents(r['amount_usd']))), 'kind': 'opening',
                                  'source': 'opening', 'invoice_date': r['date'], 'due': r['due']}})
-    return [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': changes}}]
+    return [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': changes}}] + fx_rate_steps()
 
 
 def customer_codes():
@@ -729,6 +769,18 @@ def ar_document(doc):
     name, kind, posting, _, lines = doc
     cust = lines[0]['party']
     cdef = customer_codes()[cust]['tax_code']
+    note = fx_note(lines[0]['description'])
+    cur = customer_codes()[cust]['currency']
+    if cur != CURRENCY:
+        assert note and note[0] == cur, name
+
+    def doc_money(c):
+        """An amount in the document currency: the functional amount at the note's rate."""
+        if cur == CURRENCY:
+            return money(amount(c))
+        x = round(c / float(note[2]))
+        assert round(x * float(note[2])) == c, (name, c)
+        return {'amount': amount(x), 'currency': cur}
     if kind in ('invoice', 'credit memo'):
         out = []
         for r in lines:
@@ -736,7 +788,7 @@ def ar_document(doc):
                 continue
             a = cents(r['credit']) - cents(r['debit'])
             out.append({'description': r['description'], 'account': account_uri(r['account']),
-                        'amount': money(amount(abs(a))),
+                        'amount': doc_money(abs(a)),
                         'tax_code': tax_uri(LINE_TAX.get((name, r['account']), cdef))})
         body = {'number': name, 'kind': 'invoice' if kind == 'invoice' else 'credit_memo',
                 'customer': customer_uri(cust), 'invoice_date': posting, 'description': lines[0]['description'],
@@ -745,12 +797,19 @@ def ar_document(doc):
             body['applies_to'] = APPLIES_TO[name]
         return {'op': 'create', 'class': 'Invoice', 'object_id': uid('invoice', name), 'slug': name.lower(), 'body': body}
     cash = next(r for r in lines if r['account'] == '1010')
-    total = cents(cash['debit'])
-    apps = [{'document': d, 'amount': money(amount(total))} for d in re.findall(r'INV-\d+', lines[0]['description'])]
+    received = doc_money(cents(cash['debit'])) if cur == CURRENCY else {'amount': amount(note[1]), 'currency': cur}
+    apps = [{'document': d, 'amount': received} for d in re.findall(r'INV-\d+', lines[0]['description'])]
     return {'op': 'create', 'class': 'Receipt', 'object_id': uid('receipt', name), 'slug': name.lower(),
             'body': {'number': name, 'customer': customer_uri(cust), 'receipt_date': posting,
-                     'amount': money(amount(total)), 'method': 'ACH', 'bank_account': account_uri('1010'),
+                     'amount': received, 'method': 'ACH', 'bank_account': account_uri('1010'),
                      'applications': apps, 'state': 'draft'}}
+
+
+def revalue_step(period_end, number):
+    """The period-end remeasurement of the open foreign-currency receivables (FIN-FX-005)."""
+    return {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('receivables'), 'port': 'revalue',
+                                       'params': {'period_end': period_end}, 'process': {'initiator': PREPARER}},
+            'expect': {'match': 'subset', 'result': {'result': {'posted': True, 'number': number}}}}
 
 
 def ar_steps(month, clock, override=None):
@@ -769,23 +828,26 @@ def ar_steps(month, clock, override=None):
     return steps, clock
 
 
+def ar_aging():
+    """The rows of FIN-EXP-08, each in the functional and the document currency (FIN-FX-007)."""
+    notes = {d[0]: fx_note(d[4][0]['description']) for d in documents('2026-01')}
+    out = []
+    for cells in section('FIN-EXP-08'):
+        if not cells[0]:      # the total line
+            continue
+        note = notes.get(cells[1])
+        cur, orig = (note[0], note[1]) if note else (CURRENCY, cents(cells[5]))
+        out.append({'customer': cells[0], 'document': cells[1], 'date': cells[2], 'due': cells[3],
+                    'bucket': cells[4], 'open': amount(cents(cells[5])), 'currency': cur, 'original': amount(orig)})
+    return out
+
+
 def receivables_tests():
     base = setup_steps() + receivables_setup()
     steps, _ = ar_steps('2026-01', START)
     ar_docs = [d[0] for d in documents('2026-01') if d[1] in ('invoice', 'credit memo', 'receipt')]
     posted = {k: c for k, c in posted_lines('FIN-EXP-02').items() if k[1] in ar_docs}
-    # FIN-EXP-08 before the revaluation of INV-1005 (multi-currency, part 10f): INV-1005 at its
-    # invoice-date amount, the total less the revaluation of FIN-EXP-02 (FXR-2601)
-    reval = posted_lines('FIN-EXP-02')[('1200', 'FXR-2601')]
-    aging = []
-    for cells in section('FIN-EXP-08'):
-        if not cells[0]:      # the total line
-            continue
-        open_ = cents(cells[5])
-        if cells[1] == 'INV-1005':
-            open_ -= reval
-        aging.append({'customer': cells[0], 'document': cells[1], 'date': cells[2], 'due': cells[3],
-                      'bucket': cells[4], 'open': amount(open_)})
+    aging = ar_aging()
     total = amount(sum(cents(r['open']) for r in aging))
     tax = []
     for cells in section('FIN-EXP-13'):
@@ -818,9 +880,9 @@ def receivables_tests():
              'expect': {'match': 'subset', 'result': {'groups': document_groups(
                  {k: c for k, c in posted.items() if k[1] == d})}}} for d in ar_docs],
     }, {
-        'name': 'FIN-AR-010 FIN-RP-007 the aging at 2026-01-31 equals FIN-EXP-08 (INV-1005 before revaluation) and the control account',
+        'name': 'FIN-AR-010 FIN-RP-007 FIN-FX-007 after the revaluation the aging at 2026-01-31 equals FIN-EXP-08 and the control account',
         'kind': 'scenario',
-        'steps': base + steps + [report('aging', {'as_of': '2026-01-31'},
+        'steps': base + steps + [revalue_step('2026-01-31', 'FXR-2601'), report('aging', {'as_of': '2026-01-31'},
                                         {'rows': aging, 'total': total, 'control_balance': total, 'difference': '0.00'})],
     }, {
         'name': 'FIN-TX-008 the sales tax report of January equals FIN-EXP-13',
@@ -839,6 +901,7 @@ def receivables_tests():
             {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('receipt', 'RCPT-0003'), 'port': 'reapply',
                                         'params': {'from_document': 'INV-1007', 'to_document': 'INV-1003',
                                                    'amount': money('20000.00')}}},
+            revalue_step('2026-01-31', 'FXR-2601'),
             report('aging', {'as_of': '2026-01-31'}, {'rows': aging, 'total': total, 'difference': '0.00'}),
             {'op': 'read_ledger', 'input': {'branch': BRANCH, 'class': 'ArItem', 'ledger_key': {'customer': 'C300'}},
              'expect': {'match': 'subset', 'result': {'entries': [
@@ -855,6 +918,129 @@ def receivables_tests():
             {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [resale]}},
             {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('invoice', 'INV-9001'), 'port': 'post',
                                         'params': {}}, 'expect': {'error_code': 'RULE.DECISION_DENIED'}},
+        ],
+    }]
+
+
+# ---- multi-currency (PH-2 step 10f, DEC-152) ----
+
+def fx_tests():
+    """INV-1005 in euros from invoice to receipt: conversion at the document date, the January
+    remeasurement and its reversal, the realized loss, the currency reports and the simulation of
+    a corrected rate in a test copy (FIN-FX-002…005, -007; FIN-SCN-09, SCN-510; FIN-EXP-12, -17)."""
+    base = setup_steps() + receivables_setup()
+    jan, clock = ar_steps('2026-01', START)
+    exp_jan = posted_lines('FIN-EXP-02')
+    exp_feb = posted_feb()
+    run = lambda target, port, params, exp=None: dict(
+        {'op': 'execute', 'input': {'branch': BRANCH, 'target': target, 'port': port, 'params': params,
+                                    'process': {'initiator': PREPARER}}},
+        **({'expect': {'match': 'subset', 'result': {'result': exp}}} if exp is not None else {}))
+    doc_groups = lambda doc, lines: {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document',
+                                                                     'group': {'document': doc}},
+                                     'expect': {'match': 'subset', 'result': {'groups': document_groups(
+                                         {k: c for k, c in lines.items() if k[1] == doc})}}}
+    inv = fx_note(document_named('INV-1005')[4][0]['description'])
+    rcpt = fx_note(document_named('RCPT-0005')[4][0]['description'])
+    eur = lambda c: {'amount': amount(c), 'currency': inv[0]}
+    item = lambda asof, usd, orig: {
+        'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'ar-open', 'asof': asof,
+                                           'group': {'customer': 'C400', 'document': 'INV-1005'}},
+        'expect': {'match': 'subset', 'result': {'groups': [
+            {'key': {'customer': 'C400', 'document': 'INV-1005'},
+             'values': {'open': [money(amount(usd))], 'original': [eur(orig)]}}]}}}
+    # FIN-EXP-12: the carrying amount of INV-1005 at each date, and the gains and losses
+    events = []
+    for cells in section('FIN-EXP-12'):
+        m = re.search(r'(realized|unrealized) (gain|loss) ([\d,.]+)', cells[3])
+        gain = None
+        if m:
+            gain = cents(m.group(3)) * (1 if m.group(2) == 'loss' else -1)
+        events.append((cells[0], cents(cells[2]), m.group(1) if m else None, gain))
+    (d_inv, c_inv, _, _), (d_rev, c_rev, _, g_rev), (d_back, c_back, _, _), (d_rcpt, c_rcpt, _, g_rcpt) = events
+    rate_close = rows('fx-rates.csv')[1]
+    reval = {'customer': 'C400', 'document': 'INV-1005', 'currency': inv[0], 'original': amount(inv[1]),
+             'rate': rate_text(rate_close['eur_usd']), 'carrying': amount(c_inv), 'remeasured': amount(c_rev),
+             'difference': amount(c_rev - c_inv)}
+    receipt = ar_document(document_named('RCPT-0005'))
+    feb = advance(clock, datetime.datetime(2026, 1, 31, 12))[0] + [
+        run(uid('receivables'), 'revalue', {'period_end': d_rev},
+            {'posted': True, 'number': 'FXR-2601', 'reverses_on': d_back, 'items': [reval],
+             'total': amount(c_rev - c_inv)}),
+        # once per period
+        run(uid('receivables'), 'revalue', {'period_end': d_rev}, {'posted': False, 'number': 'FXR-2601'}),
+        doc_groups('FXR-2601', exp_jan),
+        item(d_rev, c_rev, inv[1]),
+        {'advance': '1440m'},
+        run(uid('period', '2026-02'), 'open', {}, {'reversed': ['FXR-2601-R']}),
+        doc_groups('FXR-2601-R', exp_feb),
+        item(d_back, c_back, inv[1]),
+        {'advance': '%dm' % ((datetime.datetime.fromisoformat(d_rcpt) - datetime.datetime(2026, 2, 1)).days * 1440)},
+        {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [receipt]}},
+        run(receipt['object_id'], 'post', {},
+            {'posted': True, 'currency': rcpt[0], 'rate': rate_text(rcpt[2]), 'functional_amount': amount(c_rcpt),
+             'realized': amount(g_rcpt)}),
+        doc_groups('RCPT-0005', exp_feb),
+        item(d_rcpt, 0, 0),
+    ]
+    fin17 = {cells[0]: cents(cells[2]) for cells in section('FIN-EXP-17') if cells[0] in ('7200', '7210')}
+    report = lambda opening, closing, rows_, realized, unrealized: run(
+        uid('receivables'), 'fx_report', {'opening': opening, 'closing': closing},
+        {'rows': rows_, 'realized': amount(realized), 'unrealized': amount(unrealized)})
+    copy = 'feature/fx-copy'
+    corrected = '1.0930'
+    remeasured = round(inv[1] * float(corrected))
+    fx_oid = uid('fx-rate', 'EUR', 'USD')
+    simulate = lambda branch, total, posted: {
+        'op': 'execute', 'input': {'branch': branch, 'target': uid('receivables'), 'port': 'revalue',
+                                   'params': {'period_end': d_rev, 'simulate': True},
+                                   'process': {'initiator': PREPARER}},
+        'expect': {'match': 'subset', 'result': {'result': {
+            'simulated': True, 'number': 'FXR-2601', 'total': amount(total), 'posted': amount(posted),
+            'difference': amount(total - posted)}}}}
+    return [{
+        'name': 'SCN-510 FIN-SCN-09 FIN-EXP-12 INV-1005 in euros: invoice, revaluation, reversal and receipt',
+        'kind': 'scenario',
+        'steps': base + jan + [
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': uid('invoice', 'INV-1005')},
+             'expect': {'match': 'subset', 'result': {'body': {
+                 'currency': inv[0], 'rate': rate_text(inv[2]), 'total': eur(inv[1]), 'functional_total': money(amount(c_inv))}}}},
+            {'op': 'resolve', 'input': {'uri': 'ubos://%s/JournalEntry/inv-1005?branch=%s' % (VAE, BRANCH)},
+             'expect': {'match': 'subset', 'result': {'body': {'lines': [
+                 {'account': account_uri('1200'), 'amount': money(amount(c_inv)), 'original': eur(inv[1])},
+                 {'account': account_uri('4000'), 'amount': money(amount(-c_inv)), 'original': eur(-inv[1])}]}}}},
+            doc_groups('INV-1005', exp_jan),
+            item(d_inv, c_inv, inv[1]),
+        ] + feb + account_reads('2026-02-28', fin17) + [
+            run(uid('receivables'), 'statement', {'customer': 'C400', 'opening': '2026-01-31', 'closing': '2026-02-28'},
+                {'opening_balance': amount(c_rev), 'closing_balance': '0.00'}),
+            report('2025-12-31', '2026-01-31',
+                   [{'document': 'INV-1005', 'kind': 'unrealized', 'source': 'FXR-2601', 'amount': amount(-(c_rev - c_inv))}],
+                   0, -(c_rev - c_inv)),
+            report('2026-01-31', '2026-02-28',
+                   [{'document': 'INV-1005', 'kind': 'realized', 'source': 'RCPT-0005', 'amount': amount(g_rcpt)},
+                    {'document': 'INV-1005', 'kind': 'unrealized', 'source': 'FXR-2601-R', 'amount': amount(c_rev - c_inv)}],
+                   g_rcpt, c_rev - c_inv),
+        ],
+    }, {
+        'name': 'FIN-FX-005 FIN-FX-002 FIN-SCN-09 a corrected 2026-01-31 rate in a test copy: the simulation shows the difference, the posted run is reproduced',
+        'kind': 'scenario',
+        'steps': base + jan + feb + [
+            simulate(BRANCH, c_rev - c_inv, c_rev - c_inv),
+            {'op': 'create_branch', 'input': {'name': copy, 'from': BRANCH}},
+            # an update names the head version as its base: the latest rate's
+            {'op': 'read', 'input': {'branch': copy, 'object_id': fx_oid, 'asof': d_rcpt}, 'label': 'fx-copy'},
+            {'op': 'commit', 'input': {'branch': copy, 'changes': [
+                {'op': 'update', 'object_id': fx_oid, 'base': {'$ref': 'fx-copy/version_hash'},
+                 'body': {'source': FX_SOURCE, 'base': 'EUR', 'quote': CURRENCY, 'rate_type': FX_TYPE, 'rate': corrected},
+                 'valid': {'kind': 'supersede_from', 'from': d_rev}}]}},
+            simulate(copy, remeasured - c_inv, c_rev - c_inv),
+            # the correction keeps the rate of the original and the later rate of the copy
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': fx_oid, 'asof': d_rev},
+             'expect': {'match': 'subset', 'result': {'body': {'rate': rate_text(rate_close['eur_usd'])}}}},
+            {'op': 'read', 'input': {'branch': copy, 'object_id': fx_oid, 'asof': d_rcpt},
+             'expect': {'match': 'subset', 'result': {'body': {'rate': rate_text(rcpt[2])}}}},
+            doc_groups('FXR-2601', exp_jan),
         ],
     }]
 
@@ -1045,6 +1231,8 @@ def month_steps(month, clock, skip=()):
                       {'op': 'execute', 'input': {'branch': BRANCH, 'target': obj['object_id'], 'port': 'post',
                                                   'params': {}, 'process': {'initiator': PREPARER}},
                        'expect': {'match': 'subset', 'result': {'result': {'posted': True}}}}]
+        elif doc[1] == 'revaluation':
+            steps.append(revalue_step(doc[2], doc[0]))
         else:
             steps += entry_steps(entry_of(doc))
     return steps, clock
@@ -1306,7 +1494,8 @@ def main():
              'tests/sample-receivables.yaml': dump(receivables_tests()),
              'tests/sample-payables.yaml': dump(payables_tests()),
              'tests/sample-bank.yaml': dump(bank_tests()),
-             'tests/sample-assets.yaml': dump(asset_tests())}
+             'tests/sample-assets.yaml': dump(asset_tests()),
+             'tests/sample-fx.yaml': dump(fx_tests())}
     check = '--check' in sys.argv
     stale = []
     for rel, text in files.items():

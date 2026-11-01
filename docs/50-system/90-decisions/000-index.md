@@ -225,3 +225,40 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); those of DEC-127 … DEC-14
   - impairment (FIN-FA-008, Could) and the tax book (FIN-FA-010, Could): PH-3;
   - the projected depreciation schedule as a report: step 15.
 - **Affects:** DEC-146, FIN-FA-001…007, FIN-FA-009
+
+### DEC-152 — The finance Buk, part 10f: multi-currency (PH-2 step 10)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 10f of step 10 (DEC-146) builds multi-currency receivables (FIN-FX, ASC 830) and FIN-SCN-09 (SCN-510). INV-1005 becomes a euro invoice from invoice to receipt. The tests tie out FIN-EXP-12, the published aging FIN-EXP-08 with INV-1005 at its revalued amount, the lines of FXR-2601, FXR-2601-R and RCPT-0005 (FIN-EXP-02, -15), and the FX balances of FIN-EXP-17.
+- **Decision:**
+  1. **Rates are kernel objects.** The rates of `fx-rates.csv` are one `FxRate` object (STD-FND-029) of source `company`, pair EUR/USD and type `spot`. Each rate is a version valid from its date, so the rate of a date is the version valid then. A correction is a new version from its date that keeps the old one (FIN-FX-002). The `Receivables` object names the functional currency, the rate type, and the realized and unrealized gain-or-loss accounts (7200, 7210).
+  2. **Conversion at the document date.** L2 has no `fx_convert`, and a process's `asof` is its start date, not the document's date. The logic therefore finds the `FxRate` object of the key with `search.query` and reads the version valid at the document date with `read.timeline`. The read is pinned to the process snapshot and recorded like every other read. The functional amount is the document amount times the rate, rounded half-even to the cent, as `fx_convert` rounds. A rate entered on the document takes precedence (FIN-FX-003).
+  3. **Both amounts everywhere.**
+     - Invoices keep the document currency, the rate and the functional total.
+     - Every journal line of a foreign-currency document carries `original` beside its functional `amount`.
+     - Open items (`ArItem`) carry `original`, and the projection `ar-open` sums it.
+     - The aging shows each item in both currencies (FIN-FX-007).
+     - The sales-tax detail is kept in the functional currency, so FIN-EXP-13 shows the export sale at 54,250.00.
+     - On an invoice, the receivable line is the sum of the converted lines, so the entry balances.
+  4. **Settlement** (FIN-FX-004). A receipt applies its document-currency amount to an open item at the item's carrying amount, which is proportional when the item is settled in part. The difference to the receipt's functional amount is posted to the realized account and recorded in the ledger `FxGain`. RCPT-0005 thus posts 1010 54,000.00, 7200 250.00 and 1200 (54,250.00).
+  5. **Remeasurement** (FIN-FX-005). `Receivables.revalue(period_end)` remeasures every open item whose document currency differs from the functional currency, at the rate of the period end.
+     - It posts one entry `FXR-<yymm>` of source `revaluation`, between the control account and the unrealized account, with `auto_reverse_on` the next day; `FiscalPeriod.open` posts the reversal (DEC-147).
+     - The open item and the `FxGain` ledger record the remeasurement at the period end and its reversal on the next day, so the subledger agrees with the control account on both dates.
+     - A second run of the period posts nothing, and a closed period is refused.
+     - With `simulate`, the run is computed without posting, from the carrying amounts before the posted run of the period. It shows the posted total and the difference. On the original branch the simulation reproduces the posted run (difference 0.00). In a test-copy branch with a corrected rate, it shows the difference.
+  6. **Report.** `fx_report(opening, closing)` lists realized and unrealized gains and losses by document and posting entry for a period (FIN-FX-007).
+  7. **The month from documents.** The generator builds INV-1005 and RCPT-0005 in euros from the notes of the sample ("EUR 50,000.00 at 1.0850"), and the January revaluation through `revalue`.
+- **Consequences:**
+  - Two new tests (`tests/sample-fx.yaml`) pass in memory and on PostgreSQL 16:
+    - FIN-SCN-09 from invoice to receipt with FIN-EXP-12 at each date: 54,250.00, 54,600.00 with the gain of 350.00, 54,250.00 after the reversal, and the receipt at 54,000.00 with the loss of 250.00;
+    - the lines of INV-1005, FXR-2601, FXR-2601-R and RCPT-0005;
+    - 7200 at 250.00 and 7210 at 0.00 on 2026-02-28 (FIN-EXP-17), and C400's balance at 0.00;
+    - the January and February FX reports;
+    - the simulation in the test copy with a corrected rate of 1.0930: total 400.00 against 350.00 posted.
+  - The aging test now runs the revaluation and equals the published FIN-EXP-08 (total 158,735.00 = account 1200). The adjustment of 10b is gone.
+  - All 39 finance tests pass, with script coverage 1.0. No kernel code was added.
+- **Open, assigned:**
+  - foreign-currency payables and bank accounts (FIN-FX-003 for bills and payments, FIN-FX-006, Should): the sample has none, so they go to 10g with the review of the other FIN-AP gaps;
+  - `fx_convert` and explicit coordinates in L2, so that logic converts at a given date without reading the rate object itself: the next BPA release candidate, with the items of DEC-147;
+  - the currency columns of the reports in the workbench: step 15.
+- **Affects:** DEC-146, DEC-147, DEC-148, FIN-FX-001…005, FIN-FX-007, STD-FND-029
+

@@ -31,6 +31,7 @@ assets:
           let f = #{account: l.account, amount: l.amount, document: this.number, kind: this.kind,
                     description: this.description};
           if this.party != () { f.party = this.party; }
+          if "original" in l { f.original = l.original; }
           sys.commit.append(#{class: "JournalLine", ledger_key: #{account: l.account},
                               valid_at: this.posting_date, posting_group: this.number, fields: f});
         }

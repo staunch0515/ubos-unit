@@ -16,6 +16,7 @@ classes:
         required: true
         constraints: {target_class: GlAccount}
       - {name: amount, label: amount, description: signed amount, debit positive, type: money, required: true}
+      - {name: original, label: original, description: the amount in the document currency of a foreign-currency document (FIN-FX-003), type: money}
       - {name: document, label: document, description: the source document number, type: text, required: true}
       - {name: kind, label: kind, description: the kind of source document, type: text, required: true}
       - {name: party, label: party, description: the customer or vendor code, type: text}

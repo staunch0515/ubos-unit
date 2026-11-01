@@ -1325,7 +1325,7 @@
          "code": "C400",
          "name": "Bayer Feinmechanik GmbH",
          "location": "Germany",
-         "currency": "USD",
+         "currency": "EUR",
          "tax_code": "ubos://acme/TaxCode/export",
          "terms_days": 30,
          "receivable_account": "ubos://acme/GlAccount/1200"
@@ -1338,7 +1338,11 @@
         "slug": "receivables",
         "body": {
          "name": "Receivables",
-         "control_account": "ubos://acme/GlAccount/1200"
+         "control_account": "ubos://acme/GlAccount/1200",
+         "functional_currency": "USD",
+         "rate_type": "spot",
+         "realized_account": "ubos://acme/GlAccount/7200",
+         "unrealized_account": "ubos://acme/GlAccount/7210"
         }
        },
        {
@@ -1353,6 +1357,10 @@
          "customer": "C100",
          "document": "INV-1001",
          "amount": {
+          "amount": "32475.00",
+          "currency": "USD"
+         },
+         "original": {
           "amount": "32475.00",
           "currency": "USD"
          },
@@ -1377,6 +1385,10 @@
           "amount": "24025.00",
           "currency": "USD"
          },
+         "original": {
+          "amount": "24025.00",
+          "currency": "USD"
+         },
          "kind": "opening",
          "source": "opening",
          "invoice_date": "2025-11-20",
@@ -1398,10 +1410,108 @@
           "amount": "30000.00",
           "currency": "USD"
          },
+         "original": {
+          "amount": "30000.00",
+          "currency": "USD"
+         },
          "kind": "opening",
          "source": "opening",
          "invoice_date": "2025-12-15",
          "due": "2026-01-14"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
+        "op": "create",
+        "class": "FxRate",
+        "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+        "slug": "company-eur-usd-spot",
+        "body": {
+         "source": "company",
+         "base": "EUR",
+         "quote": "USD",
+         "rate_type": "spot",
+         "rate": "1.0850"
+        },
+        "valid": {
+         "from": "2026-01-12"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "read",
+     "input": {
+      "branch": "feature/forge",
+      "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+      "asof": "2026-01-31"
+     },
+     "label": "fx-1"
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
+        "op": "update",
+        "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+        "base": {
+         "$ref": "fx-1/version_hash"
+        },
+        "body": {
+         "source": "company",
+         "base": "EUR",
+         "quote": "USD",
+         "rate_type": "spot",
+         "rate": "1.0920"
+        },
+        "valid": {
+         "kind": "supersede_from",
+         "from": "2026-01-31"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "read",
+     "input": {
+      "branch": "feature/forge",
+      "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+      "asof": "2026-02-20"
+     },
+     "label": "fx-2"
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
+        "op": "update",
+        "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+        "base": {
+         "$ref": "fx-2/version_hash"
+        },
+        "body": {
+         "source": "company",
+         "base": "EUR",
+         "quote": "USD",
+         "rate_type": "spot",
+         "rate": "1.0800"
+        },
+        "valid": {
+         "kind": "supersede_from",
+         "from": "2026-02-20"
         }
        }
       ]
@@ -3874,7 +3984,7 @@
          "code": "C400",
          "name": "Bayer Feinmechanik GmbH",
          "location": "Germany",
-         "currency": "USD",
+         "currency": "EUR",
          "tax_code": "ubos://acme/TaxCode/export",
          "terms_days": 30,
          "receivable_account": "ubos://acme/GlAccount/1200"
@@ -3887,7 +3997,11 @@
         "slug": "receivables",
         "body": {
          "name": "Receivables",
-         "control_account": "ubos://acme/GlAccount/1200"
+         "control_account": "ubos://acme/GlAccount/1200",
+         "functional_currency": "USD",
+         "rate_type": "spot",
+         "realized_account": "ubos://acme/GlAccount/7200",
+         "unrealized_account": "ubos://acme/GlAccount/7210"
         }
        },
        {
@@ -3902,6 +4016,10 @@
          "customer": "C100",
          "document": "INV-1001",
          "amount": {
+          "amount": "32475.00",
+          "currency": "USD"
+         },
+         "original": {
           "amount": "32475.00",
           "currency": "USD"
          },
@@ -3926,6 +4044,10 @@
           "amount": "24025.00",
           "currency": "USD"
          },
+         "original": {
+          "amount": "24025.00",
+          "currency": "USD"
+         },
          "kind": "opening",
          "source": "opening",
          "invoice_date": "2025-11-20",
@@ -3947,10 +4069,108 @@
           "amount": "30000.00",
           "currency": "USD"
          },
+         "original": {
+          "amount": "30000.00",
+          "currency": "USD"
+         },
          "kind": "opening",
          "source": "opening",
          "invoice_date": "2025-12-15",
          "due": "2026-01-14"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
+        "op": "create",
+        "class": "FxRate",
+        "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+        "slug": "company-eur-usd-spot",
+        "body": {
+         "source": "company",
+         "base": "EUR",
+         "quote": "USD",
+         "rate_type": "spot",
+         "rate": "1.0850"
+        },
+        "valid": {
+         "from": "2026-01-12"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "read",
+     "input": {
+      "branch": "feature/forge",
+      "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+      "asof": "2026-01-31"
+     },
+     "label": "fx-1"
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
+        "op": "update",
+        "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+        "base": {
+         "$ref": "fx-1/version_hash"
+        },
+        "body": {
+         "source": "company",
+         "base": "EUR",
+         "quote": "USD",
+         "rate_type": "spot",
+         "rate": "1.0920"
+        },
+        "valid": {
+         "kind": "supersede_from",
+         "from": "2026-01-31"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "read",
+     "input": {
+      "branch": "feature/forge",
+      "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+      "asof": "2026-02-20"
+     },
+     "label": "fx-2"
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
+        "op": "update",
+        "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+        "base": {
+         "$ref": "fx-2/version_hash"
+        },
+        "body": {
+         "source": "company",
+         "base": "EUR",
+         "quote": "USD",
+         "rate_type": "spot",
+         "rate": "1.0800"
+        },
+        "valid": {
+         "kind": "supersede_from",
+         "from": "2026-02-20"
         }
        }
       ]
@@ -6081,7 +6301,7 @@
          "code": "C400",
          "name": "Bayer Feinmechanik GmbH",
          "location": "Germany",
-         "currency": "USD",
+         "currency": "EUR",
          "tax_code": "ubos://acme/TaxCode/export",
          "terms_days": 30,
          "receivable_account": "ubos://acme/GlAccount/1200"
@@ -6094,7 +6314,11 @@
         "slug": "receivables",
         "body": {
          "name": "Receivables",
-         "control_account": "ubos://acme/GlAccount/1200"
+         "control_account": "ubos://acme/GlAccount/1200",
+         "functional_currency": "USD",
+         "rate_type": "spot",
+         "realized_account": "ubos://acme/GlAccount/7200",
+         "unrealized_account": "ubos://acme/GlAccount/7210"
         }
        },
        {
@@ -6109,6 +6333,10 @@
          "customer": "C100",
          "document": "INV-1001",
          "amount": {
+          "amount": "32475.00",
+          "currency": "USD"
+         },
+         "original": {
           "amount": "32475.00",
           "currency": "USD"
          },
@@ -6133,6 +6361,10 @@
           "amount": "24025.00",
           "currency": "USD"
          },
+         "original": {
+          "amount": "24025.00",
+          "currency": "USD"
+         },
          "kind": "opening",
          "source": "opening",
          "invoice_date": "2025-11-20",
@@ -6154,10 +6386,108 @@
           "amount": "30000.00",
           "currency": "USD"
          },
+         "original": {
+          "amount": "30000.00",
+          "currency": "USD"
+         },
          "kind": "opening",
          "source": "opening",
          "invoice_date": "2025-12-15",
          "due": "2026-01-14"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
+        "op": "create",
+        "class": "FxRate",
+        "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+        "slug": "company-eur-usd-spot",
+        "body": {
+         "source": "company",
+         "base": "EUR",
+         "quote": "USD",
+         "rate_type": "spot",
+         "rate": "1.0850"
+        },
+        "valid": {
+         "from": "2026-01-12"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "read",
+     "input": {
+      "branch": "feature/forge",
+      "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+      "asof": "2026-01-31"
+     },
+     "label": "fx-1"
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
+        "op": "update",
+        "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+        "base": {
+         "$ref": "fx-1/version_hash"
+        },
+        "body": {
+         "source": "company",
+         "base": "EUR",
+         "quote": "USD",
+         "rate_type": "spot",
+         "rate": "1.0920"
+        },
+        "valid": {
+         "kind": "supersede_from",
+         "from": "2026-01-31"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "read",
+     "input": {
+      "branch": "feature/forge",
+      "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+      "asof": "2026-02-20"
+     },
+     "label": "fx-2"
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
+        "op": "update",
+        "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+        "base": {
+         "$ref": "fx-2/version_hash"
+        },
+        "body": {
+         "source": "company",
+         "base": "EUR",
+         "quote": "USD",
+         "rate_type": "spot",
+         "rate": "1.0800"
+        },
+        "valid": {
+         "kind": "supersede_from",
+         "from": "2026-02-20"
         }
        }
       ]
@@ -8268,7 +8598,7 @@
          "code": "C400",
          "name": "Bayer Feinmechanik GmbH",
          "location": "Germany",
-         "currency": "USD",
+         "currency": "EUR",
          "tax_code": "ubos://acme/TaxCode/export",
          "terms_days": 30,
          "receivable_account": "ubos://acme/GlAccount/1200"
@@ -8281,7 +8611,11 @@
         "slug": "receivables",
         "body": {
          "name": "Receivables",
-         "control_account": "ubos://acme/GlAccount/1200"
+         "control_account": "ubos://acme/GlAccount/1200",
+         "functional_currency": "USD",
+         "rate_type": "spot",
+         "realized_account": "ubos://acme/GlAccount/7200",
+         "unrealized_account": "ubos://acme/GlAccount/7210"
         }
        },
        {
@@ -8296,6 +8630,10 @@
          "customer": "C100",
          "document": "INV-1001",
          "amount": {
+          "amount": "32475.00",
+          "currency": "USD"
+         },
+         "original": {
           "amount": "32475.00",
           "currency": "USD"
          },
@@ -8320,6 +8658,10 @@
           "amount": "24025.00",
           "currency": "USD"
          },
+         "original": {
+          "amount": "24025.00",
+          "currency": "USD"
+         },
          "kind": "opening",
          "source": "opening",
          "invoice_date": "2025-11-20",
@@ -8341,10 +8683,108 @@
           "amount": "30000.00",
           "currency": "USD"
          },
+         "original": {
+          "amount": "30000.00",
+          "currency": "USD"
+         },
          "kind": "opening",
          "source": "opening",
          "invoice_date": "2025-12-15",
          "due": "2026-01-14"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
+        "op": "create",
+        "class": "FxRate",
+        "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+        "slug": "company-eur-usd-spot",
+        "body": {
+         "source": "company",
+         "base": "EUR",
+         "quote": "USD",
+         "rate_type": "spot",
+         "rate": "1.0850"
+        },
+        "valid": {
+         "from": "2026-01-12"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "read",
+     "input": {
+      "branch": "feature/forge",
+      "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+      "asof": "2026-01-31"
+     },
+     "label": "fx-1"
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
+        "op": "update",
+        "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+        "base": {
+         "$ref": "fx-1/version_hash"
+        },
+        "body": {
+         "source": "company",
+         "base": "EUR",
+         "quote": "USD",
+         "rate_type": "spot",
+         "rate": "1.0920"
+        },
+        "valid": {
+         "kind": "supersede_from",
+         "from": "2026-01-31"
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "read",
+     "input": {
+      "branch": "feature/forge",
+      "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+      "asof": "2026-02-20"
+     },
+     "label": "fx-2"
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
+        "op": "update",
+        "object_id": "3be6ffcb-5e46-8c67-84ef-3e24efc7654a",
+        "base": {
+         "$ref": "fx-2/version_hash"
+        },
+        "body": {
+         "source": "company",
+         "base": "EUR",
+         "quote": "USD",
+         "rate_type": "spot",
+         "rate": "1.0800"
+        },
+        "valid": {
+         "kind": "supersede_from",
+         "from": "2026-02-20"
         }
        }
       ]

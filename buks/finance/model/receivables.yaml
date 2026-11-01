@@ -58,10 +58,13 @@ classes:
       - {name: invoice_date, label: invoice date, description: the document and posting date, type: date, required: true}
       - {name: due_date, label: due date, description: computed from the terms when absent, type: date}
       - {name: description, label: description, description: the document's description, type: text, required: true}
-      - {name: lines, label: lines, description: "the lines: {description, amount (money, positive), account (revenue or returns account), tax_code (URI of a TaxCode)}", type: json, required: true}
+      - {name: currency, label: currency, description: "the document currency; the customer's invoicing currency when absent (FIN-FX-003)", type: text}
+      - {name: rate, label: rate, description: "the rate to the functional currency entered for the document; the spot rate of the invoice date when absent (FIN-FX-003)", type: decimal}
+      - {name: lines, label: lines, description: "the lines: {description, amount (money in the document currency, positive), account (revenue or returns account), tax_code (URI of a TaxCode)}", type: json, required: true}
       - {name: applies_to, label: applies to, description: the invoice a credit memo is applied to, type: text}
       - {name: tax, label: tax, description: the tax computed on posting, type: money}
       - {name: total, label: total, description: the total with tax, computed on posting, type: money}
+      - {name: functional_total, label: functional total, description: the total in the functional currency, computed on posting (FIN-FX-003), type: money}
       - name: state
         label: state
         description: draft until posted; a posted document is not changed (FIN-AR-004)
@@ -81,11 +84,13 @@ classes:
       - {name: number, label: number, description: the receipt number, type: text, required: true}
       - {name: customer, label: customer, description: the customer, type: reference, required: true, constraints: {target_class: Customer}}
       - {name: receipt_date, label: date, description: the date received, type: date, required: true}
-      - {name: amount, label: amount, description: the amount received, type: money, required: true}
+      - {name: amount, label: amount, description: the amount received, in the receipt currency, type: money, required: true}
+      - {name: rate, label: rate, description: "the rate to the functional currency entered for the receipt; the spot rate of the receipt date when absent (FIN-FX-003)", type: decimal}
+      - {name: functional_amount, label: functional amount, description: the amount in the functional currency, computed on posting, type: money}
       - {name: method, label: method, description: check, ACH, wire or card, type: text}
       - {name: reference, label: reference, description: the payer's reference, type: text}
       - {name: bank_account, label: bank account, description: the deposit account, type: reference, required: true, constraints: {target_class: GlAccount}}
-      - {name: applications, label: applications, description: "{document, amount}; the rest stays unapplied", type: json}
+      - {name: applications, label: applications, description: "{document, amount in the receipt currency}; the rest stays unapplied", type: json}
       - name: state
         label: state
         description: draft until posted
@@ -112,6 +117,10 @@ classes:
     fields:
       - {name: name, label: name, description: the subledger's name, type: text, required: true}
       - {name: control_account, label: control account, description: the receivables control account (FIN-RP-007), type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: functional_currency, label: functional currency, description: the functional currency of the company (FIN-FX-001), type: text, required: true}
+      - {name: rate_type, label: rate type, description: "the type of the FxRate objects the subledger converts with (FIN-FX-002)", type: text, required: true}
+      - {name: realized_account, label: realized FX account, description: the realized exchange gain or loss account (FIN-FX-004), type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: unrealized_account, label: unrealized FX account, description: the unrealized exchange gain or loss account (FIN-FX-005), type: reference, required: true, constraints: {target_class: GlAccount}}
     ports:
       - name: aging
         description: the open items by due-date bucket as of a date, with the control account (FIN-AR-010, FIN-RP-007)
@@ -137,6 +146,22 @@ classes:
           - {name: closing, label: closing, description: the last day of the period, type: date, required: true}
         permission: read
         impl: ubos.finance.receivables#statement
+      - name: revalue
+        description: "remeasure the open foreign-currency items at the rate of the period end, post the unrealized gain or loss as FXR-<yymm> reversing on the next day; with simulate, show the run and its difference to the posted one without posting (FIN-FX-005)"
+        kind: command
+        params:
+          - {name: period_end, label: period end, description: the last day of the period, type: date, required: true}
+          - {name: simulate, label: simulate, description: compute without posting, type: boolean}
+        permission: post
+        impl: ubos.finance.receivables#revalue
+      - name: fx_report
+        description: realized and unrealized exchange gains and losses by document for a period (FIN-FX-007)
+        kind: query
+        params:
+          - {name: opening, label: opening, description: the last day before the period, type: date, required: true}
+          - {name: closing, label: closing, description: the last day of the period, type: date, required: true}
+        permission: read
+        impl: ubos.finance.receivables#fx_report
   - name: ArItem
     label: receivable item
     description: The receivables subledger; an item's balance is the sum of its document's entries
@@ -148,8 +173,9 @@ classes:
     fields:
       - {name: customer, label: customer, description: the customer code, type: text, required: true}
       - {name: document, label: document, description: the open item (invoice number, or UNAPPLIED-<receipt>), type: text, required: true}
-      - {name: amount, label: amount, description: positive for invoices, negative for credits and receipts, type: money, required: true}
-      - {name: kind, label: kind, description: opening, invoice, credit_memo, receipt or reapply, type: text, required: true}
+      - {name: amount, label: amount, description: "in the functional currency: positive for invoices, negative for credits and receipts", type: money, required: true}
+      - {name: original, label: original, description: the amount in the document currency (FIN-FX-007), type: money, required: true}
+      - {name: kind, label: kind, description: "opening, invoice, credit_memo, receipt, reapply or revaluation", type: text, required: true}
       - {name: source, label: source, description: the document that wrote the entry, type: text, required: true}
       - {name: invoice_date, label: invoice date, description: the item's document date, type: date, required: true}
       - {name: due, label: due, description: the item's due date, type: date, required: true}
@@ -168,3 +194,23 @@ classes:
       - {name: taxable, label: taxable, description: taxable sales, type: money, required: true}
       - {name: exempt, label: exempt, description: exempt or non-taxable sales, type: money, required: true}
       - {name: tax, label: tax, description: tax collected, type: money, required: true}
+  - name: FxGain
+    label: exchange gain or loss
+    description: "The realized and unrealized exchange gains and losses of foreign-currency items, by document (FIN-FX-004, -005, -007); gains negative, as on the gain-or-loss accounts"
+    namespace: ubos.finance
+    parent: DataObject
+    kind: ledger
+    schema_version: 1
+    ledger: {key: [document], amounts: [amount], double_entry: false}
+    fields:
+      - {name: document, label: document, description: the foreign-currency item, type: text, required: true}
+      - {name: customer, label: customer, description: the customer code, type: text, required: true}
+      - name: kind
+        label: kind
+        description: realized or unrealized
+        type: enum
+        required: true
+        constraints: {allowed_values: [realized, unrealized]}
+      - {name: source, label: source, description: the journal entry that posted it, type: text, required: true}
+      - {name: amount, label: amount, description: "the gain (negative) or loss (positive) in the functional currency", type: money, required: true}
+      - {name: rate, label: rate, description: the rate applied, type: decimal}

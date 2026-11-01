@@ -10,6 +10,7 @@ changes:
       group_by: [customer, document]
       aggregates:
         - {fn: sum, field: amount, as: open}
+        - {fn: sum, field: original, as: original}
         - {fn: last, field: invoice_date, as: invoice_date}
         - {fn: last, field: due, as: due}
         - {fn: sum, field: amount, as: amount}
@@ -35,3 +36,14 @@ changes:
         - {fn: sum, field: taxable, as: taxable}
         - {fn: sum, field: exempt, as: exempt}
         - {fn: sum, field: tax, as: tax}
+  # the exchange gains and losses by document, kind and posting document (FIN-FX-007)
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-00000000000c
+    slug: fx-gains
+    body:
+      name: fx-gains
+      source: FxGain
+      group_by: [document, kind, source]
+      aggregates:
+        - {fn: sum, field: amount, as: amount}

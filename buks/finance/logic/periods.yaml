@@ -13,7 +13,11 @@ assets:
         let out = [];
         for l in lines {
           let a = -dec(l.amount.amount);
-          out.push(#{account: l.account, amount: #{amount: a.to_string(), currency: l.amount.currency}});
+          let n = #{account: l.account, amount: #{amount: a.to_string(), currency: l.amount.currency}};
+          if "original" in l {
+            n.original = #{amount: (-dec(l.original.amount)).to_string(), currency: l.original.currency};
+          }
+          out.push(n);
         }
         out
       }
