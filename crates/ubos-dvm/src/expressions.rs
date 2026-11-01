@@ -149,7 +149,49 @@ impl Engine {
     /// every candidate. `states` filters by lifecycle state, `select` returns field
     /// values (`rows`), `group_by` and `aggregates` return `groups` (DSN-DVM-905).
     pub fn query(&mut self, i: &Value) -> Result<Value, BpaError> {
-        self.query_in(i, None, None)
+        let mut out = self.query_in(i, None, None)?;
+        // STD-LGS-052 (1.0-rc8; PH-2 step 8b): the selected values are masked for a viewer
+        if let Some(v) = crate::access::viewer_of(i)?
+            && let Some(rows) = out.get("rows").and_then(Value::as_array).cloned()
+        {
+            let branch = s(i, "branch").unwrap_or("main").to_string();
+            let sel = crate::access::selectors(i);
+            let mut masked = Vec::with_capacity(rows.len());
+            for mut r in rows {
+                let oid = s(&r, "object_id").unwrap_or_default().to_string();
+                let mut ri = sel.clone();
+                ri["branch"] = json!(branch);
+                ri["object_id"] = json!(oid);
+                let (_, class) = self.read_classed(&ri)?;
+                let modes = self.mask_modes(&branch, &sel, &oid, &class, &v)?;
+                let mut fields = r["fields"].as_object().cloned().unwrap_or_default();
+                let mut out_fields = serde_json::Map::new();
+                for (p, val) in std::mem::take(&mut fields) {
+                    let field = crate::masking::this_members(&p, true)
+                        .into_iter()
+                        .next()
+                        .unwrap_or_default();
+                    let simple = p == field || p == format!("this.{field}");
+                    match modes.get(&field) {
+                        None => {
+                            out_fields.insert(p, val);
+                        }
+                        Some(_) if simple => {
+                            let mut one = serde_json::Map::from_iter([(field.clone(), val)]);
+                            self.mask_body(&mut one, &modes)?;
+                            if let Some(x) = one.remove(&field) {
+                                out_fields.insert(p, x);
+                            }
+                        }
+                        Some(_) => {}
+                    }
+                }
+                r["fields"] = Value::Object(out_fields);
+                masked.push(r);
+            }
+            out["rows"] = Value::Array(masked);
+        }
+        Ok(out)
     }
 
     /// `query` with the number of index rows the order-by pushdown reads (step 13d): when
@@ -310,7 +352,15 @@ impl Engine {
                 if let Some(a) = &asof {
                     asel["asof"] = json!(a);
                 }
-                self.unreadable(&branch, &asel, &cls, only, &v)?
+                // the members of `this` the query filters or sorts on (STD-LGS-052)
+                let mut names = BTreeSet::new();
+                if let Some(w) = &spec.where_ {
+                    names.extend(crate::masking::this_members(w, false));
+                }
+                for o in &spec.order_by {
+                    names.extend(crate::masking::this_members(&o.path, true));
+                }
+                self.unreadable(&branch, &asel, &cls, only, &v, &names)?
             }
             None => BTreeSet::new(),
         };

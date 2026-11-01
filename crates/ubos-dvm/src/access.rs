@@ -312,7 +312,9 @@ impl Engine {
     }
 
     /// The objects of a class (and its subclasses unless `only`) at the snapshot that a
-    /// viewer may not read: a query made as the viewer leaves them out (FR-IAM-062).
+    /// viewer may not read: a query made as the viewer leaves them out (FR-IAM-062). A query
+    /// that filters or sorts on `names` fails with `QRY.INVALID_QUERY` when one of them is
+    /// masked for the viewer on an object it may read (STD-LGS-052).
     pub(crate) fn unreadable(
         &mut self,
         branch: &str,
@@ -320,9 +322,11 @@ impl Engine {
         class: &str,
         only: bool,
         viewer: &Value,
+        names: &BTreeSet<String>,
     ) -> Result<BTreeSet<String>, BpaError> {
         let mut out = BTreeSet::new();
-        if !self.has_access_rules(branch, sel)? {
+        let rules = self.has_access_rules(branch, sel)?;
+        if !rules && names.is_empty() {
             return Ok(out);
         }
         let classes: Vec<String> = self
@@ -365,12 +369,25 @@ impl Engine {
         let principal = s(viewer, "principal").unwrap_or_default().to_string();
         let ctx = viewer.get("ctx").cloned().unwrap_or(Value::Null);
         for oid in oids {
-            if self.body_at(branch, sel, &oid)?.is_none() {
+            let Some((oclass, _)) = self.body_at(branch, sel, &oid)? else {
                 continue;
+            };
+            if rules {
+                let (ok, _) = self.access_allows(branch, sel, &oid, &principal, "read", &ctx)?;
+                if !ok {
+                    out.insert(oid);
+                    continue;
+                }
             }
-            let (ok, _) = self.access_allows(branch, sel, &oid, &principal, "read", &ctx)?;
-            if !ok {
-                out.insert(oid);
+            if !names.is_empty() {
+                let modes = self.mask_modes(branch, sel, &oid, &oclass, viewer)?;
+                let hidden: Vec<&String> = names.iter().filter(|n| modes.contains_key(*n)).collect();
+                if !hidden.is_empty() {
+                    return Err(BpaError::with_details(
+                        "QRY.INVALID_QUERY",
+                        json!({ "masked": hidden }),
+                    ));
+                }
             }
         }
         Ok(out)

@@ -23,6 +23,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-134 | PH-2 step 7, part 7f, second half: the genesis `ontology` Buk 0.2.0 with the content of FR-MODEL-091; fixture classes that collided with it renamed (option A) | Accepted |
 | DEC-135 | PH-2 step 7 closed: models and packages (parts 7a–7f, DEC-127…134) — schema evolution and lenses, upstream changes, the Buk format and Forge commands, installation, upgrade, migration, rollback, removal, deprecation, genesis upgrades, model export and the ontology Buk; 61 step-7 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 | DEC-136 | PH-2 step 8 opened in parts 8a–8e; part 8a: authorization relations and relation-based access rules in the kernel; STD-LGS-050 and -051 claimed | Accepted |
+| DEC-137 | PH-2 step 8, part 8b: field masking for viewers (reads, query rows, outbox payloads), clearances, the tenant lookup key, and masked fields refused in query filters and sorts; STD-LGS-052 claimed with part 8c | Accepted |
 
 ---
 
@@ -399,3 +400,28 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
 - **Alternatives considered:**
   - Keeping relation tuples in an index maintained by the flush (DSN-DVM-810's `relationship_index`) was deferred. Deriving them from the versions at the snapshot is what STD-LGS-050 requires and needs no second store; an index is an optimisation for step 18.
 - **Affects:** STD-LGS-050, STD-LGS-051, DSN-DVM-810, DSN-DVM-811, DSN-DVM-812, DSN-DVM-813, DSN-DVM-840, DSN-DVM-841, DSN-DVM-808, DEC-093
+
+### DEC-137 — Protection, part 8b: field masking (PH-2 step 8)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 8b of step 8 (DEC-136) covers field masking and masked fields in queries (STD-LGS-052; DSN-DVM-821, -822). STD-LGS-052 has 11 vectors. One of them (VER-CONF-5364) masks an erased value and needs `erase_subject`, which part 8c builds.
+- **Decision:**
+  1. **Viewer outputs** (`crates/ubos-dvm/src/masking.rs`). Outputs made `as` a viewer `{principal, clearances, ctx}` are masked after authorization:
+     - read bodies;
+     - the selected values of query rows;
+     - outbox payloads, by the masks of each effect's object.
+  2. **Modes.** The sheet property `mask` (and `mask.<field>`) is resolved by the cascade with the viewer's `ctx`.
+     - `hide` removes the field.
+     - `partial` keeps the last four characters of a text and stars the rest.
+     - `hash` gives `hmac-sha256:` and the keyed hash of the canonical value under the tenant lookup key.
+     - `partial` on a value that is not a text, and `hash` without a lookup key or on an erased marker, hide the field.
+  3. **Clearances.** A field whose classification the viewer's clearances do not cover is hidden unless a mask declares another mode. Clearances default to `internal`; an unknown level is `MODEL.INVALID_VALUE`.
+  4. **Lookup key.** The adapter operation `lookup_key {key}` sets the tenant lookup key (32 bytes in lowercase hexadecimal, kernel metadata `lookup_key`). Part 8c uses the same key for equality lookups on encrypted fields (STD-OBJ-012).
+  5. **Queries.** A query made as a viewer that filters or sorts on a field masked for the viewer on an object it may read fails with `QRY.INVALID_QUERY`, with the masked names in its details. The check runs in the same pass as the access check of DEC-136.
+  6. **Claim.** STD-LGS-052 is claimed by the conformance test with part 8c, when VER-CONF-5364 can run.
+  7. **Design notes.** DSN-DVM-821 and -822 get phase notes. Diffs and explanations have no viewer form in the adapter yet. They are masked when they gain one; the access export is masked with part 8d.
+- **Consequences:**
+  - 10 of the 11 vectors pass in memory and on PostgreSQL 16; VER-CONF-5364 is not applicable until part 8c.
+  - Without a live sheet declaring `mask`, only classifications are checked.
+- **Alternatives considered:**
+  - Masking query rows inside the query execution was rejected: the selected values are masked after the page is built, as for reads, and only filters and sorts need the check inside, to stop inference by probing.
+- **Affects:** STD-LGS-052, STD-OBJ-012, DSN-DVM-821, DSN-DVM-822, DSN-DVM-823, DEC-136

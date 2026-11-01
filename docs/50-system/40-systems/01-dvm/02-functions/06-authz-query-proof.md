@@ -172,6 +172,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a masked tax ID, when read through every output path, then the value never appears unmasked.
 - **Verification:** SEC, CONF
 - **Origin:** FR-IAM-061, FR-IAM-063, FR-AUD-033, AR-022
+- **Phase note:** DEC-137: built in PH-2 step 8b as STD-LGS-052 states it: reads, the selected values of query rows and outbox payloads made `as` a viewer are masked by the sheet property `mask` (`hide`, `partial`, `hash` under the tenant lookup key) and by the viewer's clearances; diffs and explanations are masked when they gain a viewer form, and the access export with part 8d.
 
 ### DSN-DVM-822 — Masked fields in expressions
 - **Statement:** Filters and sorts on fields the caller cannot see MUST be rejected (`QRY.INVALID_QUERY`) rather than allowing inference by probing.
@@ -182,6 +183,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a filter on a masked salary field, when submitted, then it is rejected.
 - **Verification:** SEC
 - **Origin:** FR-IAM-061
+- **Phase note:** DEC-137: built in PH-2 step 8b: a query made `as` a viewer that filters or sorts on a field masked for the viewer on an object it may read fails with `QRY.INVALID_QUERY`, the masked names in its details.
 
 ### DSN-DVM-823 — Personal-data read logging
 - **Statement:** Reads of fields classified as personal or sensitive by principals other than the subject MUST emit read-log records (FR-AUD-051, NR-PRIV-005), batched per process.

@@ -778,7 +778,7 @@ impl Engine {
 
     /// `read` (STD-TIME-012, -013, -015, STD-VER-080, -081, -090).
     pub fn read(&mut self, input: &Value) -> Result<Value, BpaError> {
-        let (r, _) = self.read_classed(input)?;
+        let (mut r, class) = self.read_classed(input)?;
         // STD-LGS-051 (1.0-rc8; PH-2 step 8a): a read made as a viewer is refused when no
         // access rule allows it
         if let Some(v) = crate::access::viewer_of(input)? {
@@ -794,6 +794,14 @@ impl Engine {
             )?;
             if !ok {
                 return Err(BpaError::new("IAM.NOT_FOUND", "not visible"));
+            }
+            // STD-LGS-052 (1.0-rc8; PH-2 step 8b): the body is masked for the viewer
+            let modes =
+                self.mask_modes(&branch, &crate::access::selectors(input), &oid, &class, &v)?;
+            if let Some(b) = r.get_mut("body").and_then(Value::as_object_mut) {
+                let mut body = std::mem::take(b);
+                self.mask_body(&mut body, &modes)?;
+                r["body"] = Value::Object(body);
             }
         }
         Ok(r)
@@ -1035,7 +1043,7 @@ impl Engine {
             }
             "outbox" => {
                 drop(repo);
-                self.outbox()
+                self.outbox_for(input)
             }
             "ack" => {
                 drop(repo);
