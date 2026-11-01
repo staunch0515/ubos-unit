@@ -25,6 +25,9 @@ pub struct Engine {
     pub registry: Registry,
     /// Set by `system_commit` for the one commit it makes.
     pub(crate) system_write: bool,
+    /// The classes of uninstalled Buks, read-only (class → Buk ID; DSN-DVM-134, DEC-132);
+    /// read from the kernel metadata on the first commit.
+    pub(crate) read_only: Option<std::collections::BTreeMap<String, String>>,
     /// Adapter clock.
     pub now: String,
     /// Classes that have instances on some branch (STD-KIND-080).
@@ -88,6 +91,7 @@ impl Engine {
         crate::lenses::install();
         let mut e = Engine {
             system_write: false,
+            read_only: None,
             store,
             registry: crate::expressions::registry(),
             now: DEFAULT_NOW.into(),
@@ -117,6 +121,7 @@ impl Engine {
         crate::lenses::install();
         let mut e = Engine {
             system_write: false,
+            read_only: None,
             store,
             registry: crate::expressions::registry(),
             now: DEFAULT_NOW.into(),
@@ -143,6 +148,7 @@ impl Engine {
     /// `reset`: empty store, genesis `main` at cseq 0.
     pub fn reset(&mut self) -> Result<(), BpaError> {
         self.store.reset()?;
+        self.read_only = None;
         self.registry = crate::expressions::registry();
         self.max_scan = None;
         self.authz.clear();
@@ -259,6 +265,7 @@ impl Engine {
         crate::lenses::install();
         let mut e = Engine {
             system_write: false,
+            read_only: None,
             store,
             registry: crate::expressions::registry(),
             now: DEFAULT_NOW.into(),
@@ -540,6 +547,13 @@ impl Engine {
                 "a change does not carry the platform's mark",
             ));
         }
+        // the data of uninstalled Buks is read-only except for the platform (DEC-132)
+        let ro = if platform {
+            Default::default()
+        } else {
+            self.read_only_classes()?
+        };
+        crate::packages::READ_ONLY.with(|r| *r.borrow_mut() = ro);
         let branch = s(input, "branch").unwrap_or("main").to_string();
         let mut next = self.next_process;
         // the principal of a host input is the initiator unless the process names one
@@ -1709,6 +1723,7 @@ pub(crate) fn commit_on(
         crate::lenses::note_overrides(&mut repo, &mut tx, &written)?;
         // DSN-DVM-134 (PH-2 step 7d): the registry record written with the Buk object
         crate::packages::marks(&mut tx);
+        crate::packages::check_read_only(&mut repo, &mut tx, &written)?;
     }
     // STD-CLS-004: the shape and the extension rule of the lifecycle objects written
     {

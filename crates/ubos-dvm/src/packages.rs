@@ -38,6 +38,40 @@ thread_local! {
         const { std::cell::RefCell::new(Vec::new()) };
 }
 
+thread_local! {
+    /// The read-only classes of the commit in progress (class → Buk ID), empty for the
+    /// platform's commits (DEC-132).
+    pub(crate) static READ_ONLY: std::cell::RefCell<BTreeMap<String, String>> =
+        const { std::cell::RefCell::new(BTreeMap::new()) };
+}
+
+/// Kernel metadata key of the read-only classes of uninstalled Buks.
+pub const READ_ONLY_KEY: &str = "read_only_classes";
+
+/// The data of an uninstalled Buk is read-only (FR-PKG-051): a commit that writes an
+/// object of one of its classes is refused, except the platform's.
+pub(crate) fn check_read_only(
+    repo: &mut ubos_version::state::Repo,
+    tx: &mut ubos_version::state::Tx,
+    written: &[(String, String)],
+) -> Result<(), BpaError> {
+    let ro = READ_ONLY.with(|r| r.borrow().clone());
+    if ro.is_empty() {
+        return Ok(());
+    }
+    for (oid, vh) in written {
+        let v = repo.version_in(tx, vh)?;
+        if let Some(buk) = s(&v, "class").and_then(|c| ro.get(c)) {
+            return Err(BpaError::with_details(
+                "MODEL.CONSTRAINT_VIOLATED",
+                json!({"reason": "read_only", "object_id": oid, "class": v["class"], "buk": buk,
+                       "message": "the data of an uninstalled Buk is read-only"}),
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// Add the pending metadata of this thread to a commit on its branch.
 pub(crate) fn marks(tx: &mut ubos_version::state::Tx) {
     MARKS.with(|m| {
@@ -157,7 +191,10 @@ impl Engine {
 
     /// Adapter operation `buks` (DSN-DVM-134): the installation registry.
     pub fn buks(&mut self, _: &Value) -> Result<Value, BpaError> {
-        let items: Vec<Value> = self.registry_records()?.into_values().collect();
+        let mut items: Vec<Value> = self.registry_records()?.into_values().collect();
+        for r in items.iter_mut() {
+            r["support"] = json!(self.support_of(r));
+        }
         Ok(json!({ "items": items }))
     }
 
@@ -218,7 +255,12 @@ impl Engine {
         let mut status = "new";
         let mut from: Option<Value> = None;
         if let Some(r) = reg.get(&id) {
-            if r["root"] == json!(root) {
+            if r["state"] == "uninstalled" && !r["pending"].is_object() {
+                // a reinstall goes through the upgrade path (DEC-132)
+                status = "upgrade";
+                from =
+                    Some(json!({"version": r["version"], "root": r["root"], "uninstalled": true}));
+            } else if r["root"] == json!(root) {
                 status = if r["state"] == "installed" {
                     "present"
                 } else {
@@ -333,7 +375,9 @@ impl Engine {
             }
             match self.read(&json!({"branch": target, "object_id": asset_object_id(&name)})) {
                 Err(_) => a_add.push(name),
-                Ok(r) if same_asset(&r["body"], x)? => a_same.push(name),
+                Ok(r) if same_asset(&r["body"], x)? && r["body"]["state"] != "retired" => {
+                    a_same.push(name)
+                }
                 Ok(_) if upgrading => a_change.push(name),
                 Ok(_) => problems.push(problem(
                     "PKG.MANIFEST_INVALID",
@@ -405,6 +449,14 @@ impl Engine {
             }
             deps.push(json!({"id": d, "range": r, "installed": installed, "satisfied": ok}));
         }
+        // deprecation (FR-PKG-052): shown, not blocking
+        let mut warnings = Vec::new();
+        if let Some(d) = m.get("deprecation").filter(|d| !d.is_null()) {
+            match crate::removal::check_deprecation(d) {
+                Ok(()) => warnings.push(json!({"code": "deprecated", "deprecation": d})),
+                Err(e) => problems.push(problem(e.code, e.message)),
+            }
+        }
         // required configuration (manifest member `configuration`: keys to be set)
         let configuration = m.get("configuration").cloned().unwrap_or(json!([]));
         let plan = json!({
@@ -422,7 +474,7 @@ impl Engine {
             "connectors": by_class.iter().filter(|(k, _)| k.contains("Connector")).map(|(_, n)| n).sum::<u64>(),
             "sheets": files_in(a, "sheets"), "views": files_in(a, "views"), "components": files_in(a, "components"),
             "configuration": configuration, "permissions": m.get("capabilities").cloned().unwrap_or(json!([])),
-            "dependencies": deps, "problems": problems,
+            "dependencies": deps, "problems": problems, "warnings": warnings,
         });
         Ok(plan)
     }
@@ -453,9 +505,13 @@ impl Engine {
                 .get(&id)
                 .cloned()
                 .unwrap_or_default();
-            return Ok(
-                json!({"plan": plan, "change_set": rec["change_set"], "state": rec["state"]}),
-            );
+            // a pending upgrade carries its change set on the installed record
+            let (cs, state) = if rec["pending"].is_object() {
+                (rec["pending"]["change_set"].clone(), json!("pending"))
+            } else {
+                (rec["change_set"].clone(), rec["state"].clone())
+            };
+            return Ok(json!({"plan": plan, "change_set": cs, "state": state}));
         }
         let target = plan["target"].as_str().unwrap_or_default().to_string();
         // a loader branch of its own per attempt: one left by a failed attempt is kept
@@ -549,6 +605,7 @@ impl Engine {
             "dependencies": m.get("dependencies").cloned().unwrap_or(json!({})),
             "capabilities": m.get("capabilities").cloned().unwrap_or(json!([])),
             "target": target, "loader": loader, "change_set": cs, "state": "pending",
+            "deprecation": m.get("deprecation").cloned().unwrap_or(Value::Null),
             "object_id": stable_id(&json!({"buk_record": id}), '8')?});
         let mut reg = self.registry_records()?;
         reg.insert(id, rec);
@@ -569,6 +626,9 @@ impl Engine {
         let mut rec = self.registry_records()?.get(&id).cloned().ok_or_else(|| {
             BpaError::new("IAM.NOT_FOUND", format!("{id} is not being installed"))
         })?;
+        if rec["pending"]["kind"] == "uninstall" {
+            return self.complete_uninstall(&id, rec, i);
+        }
         if rec["pending"].is_object() {
             return self.complete_upgrade(&id, rec, i);
         }

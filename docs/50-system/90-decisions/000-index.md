@@ -35,6 +35,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-129 | PH-2 step 7, part 7c: the Buk format `ubos.buk.v1` (UBS-SYS-FRG-09) and Forge `new`, `pack`, `sign`, `verify` with dependency resolution into `forge.lock` | Accepted |
 | DEC-130 | PH-2 step 7, part 7d: Buk installation — plan, loader branch, node-verified assets, change set, registry record with the `Buk` object; Server routes and `forge install` | Accepted |
 | DEC-131 | PH-2 step 7, part 7e-1: Buk upgrades with class changes by lens or migration, overlays' upstream report, migrations as one-way lenses rewritten by bulk process, rollback by revert; step 7e split into 7e-1 and 7e-2 | Accepted |
+| DEC-132 | PH-2 step 7, part 7e-2: Buk uninstall with dependency protection and read-only data, reinstall, deprecation notices, genesis upgrades as proposed change sets (`system` 0.2.0) | Accepted |
 
 ---
 
@@ -690,3 +691,50 @@ follow.
   - Several schema steps per upgrade were deferred: one step per class per upgrade keeps the lens and migration checks exact; a Buk that skips versions is upgraded through each one.
   - Passing a parent line through UBTP `create_branch` was left out: it is a protocol change (STD-PROTO), not a package change.
 - **Affects:** DSN-DVM-123, DSN-NOD-407, DSN-FRG-307, FR-PKG-041, FR-PKG-042, FR-PKG-044, FR-TEN-032, STD-CLS-050, STD-TXN-070, STD-VER-071, STD-VER-082, UBS-SYS-FRG-09, DEC-127, DEC-128, DEC-130
+
+### DEC-132 — Models and packages, part 7e-2: removal, deprecation and genesis upgrades (PH-2 step 7)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 7e-2 of step 7 (DEC-127, DEC-131) completes upgrade and removal. Before it:
+  - an installed Buk could not be removed (FR-PKG-051, -053);
+  - deprecations could not be expressed (FR-PKG-052);
+  - a node carrying a newer genesis Buk refused to start on a VAE holding the older one (DEC-077), although genesis Buks must upgrade through the normal process (FR-PKG-073, DSN-NOD-421);
+  - the registry members of DSN-DVM-134 were kept in kernel metadata only, because the `Buk` class could not change without a genesis upgrade (DEC-130).
+
+  The owner confirmed part 7e-2 with the default suggestions.
+- **Decision:**
+  1. **Uninstall** (`buk_uninstall`, UBS-SYS-FRG-09 §9).
+     - **Refused** while installed Buks depend on the Buk (they are named), for the genesis Buks, and for a Buk without a recorded archive.
+     - **Behaviour goes:** the Buk's logic assets are retired, except those another installed Buk's class implements a port by; the configuration objects its seed created of classes not its own are ended.
+     - **Data stays:** the Buk's classes and data stay readable and exportable but read-only (`retention: read_only`, FR-PKG-051). The platform's commits may still write them, for the disposal that retention will allow. The read-only classes are kept in the kernel metadata and held by the engine, so a commit pays no extra read.
+     - **Flow:** the changes go through a loader branch and a change set; completion marks the classes read-only and records the Buk as `uninstalled` in one commit.
+  2. **Reinstall.** Installing an uninstalled Buk takes the upgrade path. Retired assets are restored and verified, and the classes become writable again. Ended objects stay ended and are reported.
+  3. **Deprecation** (FR-PKG-052).
+     - A version's manifest may carry `deprecation` (`message`, `end_of_support`, `replacement`), from `forge.toml`.
+     - A publisher may deprecate installed versions later with a notice signed with its key (`forge deprecate`, `POST /api/v1/admin/buks/deprecation`); the notice is accepted only from the Buk's publisher.
+     - Plans warn, and the registry shows `supported`, `deprecated` or `end_of_support`.
+     - Distribution through the exchange stays in PH-4 (DSN-EXC-008).
+  4. **Genesis upgrades** (FR-PKG-073, DSN-NOD-421).
+     - A genesis Buk is also a `ubos.buk.v1` archive (ID `ubos.platform/<name>`), signed with the genesis publisher key.
+     - When a node process first opens a VAE holding an older version, it registers that version (`buk_register`) and stages the newer one as a normal upgrade with a submitted change set, which an administrator completes. `main` does not change until then.
+     - A VAE holding a newer version than the node's is refused.
+     - The check only proposes upgrades of genesis Buks the VAE records. It never installs one, because installing the genesis Buks is provisioning's work; the node suites showed that a fuller check broke VAEs that hold their own classes.
+     - The proposal is made on first use and not by a sweep at start, because a sweep opened every VAE with its own connections and exhausted PostgreSQL's limit.
+  5. **`system` 0.2.0.** The `Buk` class goes to schema version 2 with the registry members as optional fields (namespace, state, dependencies, capabilities, target, change set, deprecation). They are written once a VAE has completed its genesis upgrade, and the kernel metadata stays the registry. The manifest is re-signed; the `ontology` signature is unchanged.
+  6. **Server and Forge.**
+     - New routes `POST /api/v1/admin/buks/uninstall` and `…/deprecation`, both audited.
+     - `forge install --uninstall` and `--notice`, and `forge deprecate`.
+  7. **Design notes.** DSN-DVM-134, DSN-NOD-421 and DSN-EXC-008 get phase notes.
+- **Consequences:**
+  - On a Server over PostgreSQL:
+    - a tenant created with `system` 0.1.0 got its upgrade proposed on first use; it was completed, the `Buk` object carries the new members, and a restart proposes nothing;
+    - with `contoso/app` depending on `contoso/crm`, uninstalling `crm` was refused naming `app`;
+    - `app` and then `crm` were uninstalled. Their data stayed readable, a write was refused as read-only, and the retired port no longer ran;
+    - reinstalling `crm` restored and verified its asset, the port ran, and `Customer` was writable again while `app`'s `Account` stayed read-only;
+    - a signed notice set `crm` to `end_of_support`, and a notice signed by another key was refused;
+    - a version with a manifest deprecation is flagged in its plan.
+  - No new tests were written (DEC-127).
+- **Alternatives considered:**
+  - Deleting a Buk's classes and data on uninstall was rejected: records are never lost by removing software (FR-PKG-051).
+  - A sweep of every VAE at node start was replaced by the check on first use (above).
+  - Keeping genesis Buks outside the Buk registry was rejected: FR-PKG-073 asks for no special paths.
+- **Affects:** DSN-DVM-134, DSN-NOD-421, DSN-EXC-008, FR-PKG-051, FR-PKG-052, FR-PKG-053, FR-PKG-073, UBS-SYS-FRG-06, UBS-SYS-FRG-09, DEC-077, DEC-127, DEC-130, DEC-131

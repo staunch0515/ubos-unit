@@ -59,6 +59,7 @@ An archive is one JSON document in canonical form (RFC 8785), stored as
 | `contents` | counts of classes, value types, assets, seed changes and tests |
 | `gates` | `script_coverage`, the coverage gate verification applies, as a decimal string |
 | `dev` | `vae` and `branch` of the development fixture the tests run against |
+| `deprecation` | optional: `message`, `end_of_support` (a date), `replacement` (a Buk ID) — this version is deprecated (FR-PKG-052, §9) |
 | `description`, `licence` | optional |
 
 The Buk ID is `<namespace>/<name>`. The manifest is built from `forge.toml` (UBS-SYS-FRG-06).
@@ -190,8 +191,8 @@ commit and state. Installing the same root again reports `present`.
 
 **Registry and audit.** `GET /api/v1/admin/buks` lists the registry. Installing and
 completing are audited as `admin.buk_install` and `admin.buk_complete`. The registry
-answers which Buks depend on a Buk; refusing an uninstall or downgrade on that answer
-comes with part 7e.
+answers which Buks depend on a Buk; uninstalls and downgrades are refused on that answer
+(§8, §9).
 
 ## 8. Upgrades, migrations and rollback
 
@@ -244,4 +245,64 @@ registry record and `Buk` object come back. A conflict with later changes is ret
 the administrator's resolutions; one on the change set's own state keeps its current
 state. Class changes and rewritten instances stay: data written under the new schema reads
 through the lenses (FR-PKG-044). One upgrade is kept for a rollback.
+
+## 9. Removal and deprecation
+
+Built in PH-2 step 7e-2 (DEC-132) in `crates/ubos-dvm/src/removal.rs`.
+
+**Uninstall** (`POST /api/v1/admin/buks/uninstall`, `forge install --uninstall <ID>
+[--plan] [--approve]`). An uninstall is refused, with the reason in the plan:
+- while installed Buks depend on the Buk, naming them (FR-PKG-053);
+- for the genesis Buks;
+- for a Buk whose archive is not recorded.
+
+The plan lists what goes and what stays:
+- the logic assets to retire; an asset that another installed Buk's class implements a
+  port by is kept;
+- the configuration objects to end: objects the seed created of classes that are not the
+  Buk's own, such as subscriptions, schedules, sheets and views;
+- the Buk's classes with their object counts, which stay read-only (`retention:
+  read_only`).
+
+The retirements and ends are staged on a loader branch (`…-uninstall`) and submitted as a
+change set. Completion (`buk_complete`) merges it, marks the classes read-only, and
+records the Buk as `uninstalled`, in one commit. The data of a read-only class stays
+readable and exportable. A commit that writes it is refused with
+`MODEL.CONSTRAINT_VIOLATED` (reason `read_only`), except the platform's own commits, until
+retention allows its disposal (FR-PKG-051).
+
+**Reinstall.** Installing an uninstalled Buk again takes the upgrade path (§8):
+- its retired assets are restored and verified;
+- its classes are writable again;
+- objects that were ended stay ended and are reported in the seed plan (`ended`).
+
+**Deprecation** (FR-PKG-052).
+- A version deprecates itself in its manifest (`[deprecation]` in `forge.toml`).
+- A publisher deprecates installed versions later with a notice: `forge deprecate <ID>
+  --versions <range> --message … [--end-of-support <date>] [--replacement <ID>] --key …`
+  writes it, and `forge install --notice <file>` delivers it.
+- A notice is `{buk, versions, message, end_of_support?, replacement?}` with a
+  DAT-Signature over its content ID. It is accepted only from the Buk's publisher, and it
+  applies when the installed version is in `versions`.
+- Install plans warn about a deprecated version.
+- The registry shows each Buk as `supported`, `deprecated` or `end_of_support` (the date
+  has passed).
+
+## 10. Genesis Buks
+
+The genesis Buks `system` and `ontology` (DEC-077) are also `ubos.buk.v1` archives (Buk IDs
+`ubos.platform/system` and `ubos.platform/ontology`): their classes are under
+`model/classes.json`, and they are signed with the genesis publisher key.
+
+A new VAE gets the node's genesis Buks at bootstrap. When a node process first opens a VAE
+that holds an older version:
+- it registers the installed version;
+- it stages the newer one as an upgrade (§8) with a submitted change set
+  (DSN-NOD-421, FR-PKG-073);
+- an administrator completes it (`forge install --complete ubos.platform/system`);
+- `main` does not change until then.
+
+A VAE holding a newer version than the node's is refused. `system` 0.2.0 adds the registry
+members to the `Buk` class (schema version 2), so a VAE that has completed the upgrade
+records its Buks with them.
 

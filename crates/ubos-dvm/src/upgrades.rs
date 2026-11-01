@@ -142,16 +142,24 @@ impl Engine {
         let prev: Vec<Value> = previous
             .map(|p| items(p, "seed", "changes").0)
             .unwrap_or_default();
-        let (mut create, mut update, mut kept, mut same, mut skipped) =
-            (Vec::new(), Vec::new(), Vec::new(), 0, 0);
+        let (mut create, mut update, mut kept, mut ended, mut same, mut skipped) =
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new(), 0, 0);
         for ch in seed {
             let Some(oid) = s(ch, "object_id") else {
                 skipped += 1;
                 continue;
             };
-            let Ok(cur) = self.read(&json!({"branch": target, "object_id": oid})) else {
-                create.push(json!(oid));
-                continue;
+            let cur = match self.read(&json!({"branch": target, "object_id": oid})) {
+                Ok(c) => c,
+                // an object that was ended (an uninstall) stays ended
+                Err(e) if e.code == "QRY.NOT_FOUND_AT_TIME" => {
+                    ended.push(json!(oid));
+                    continue;
+                }
+                Err(_) => {
+                    create.push(json!(oid));
+                    continue;
+                }
             };
             if canonical(&cur["body"])? == canonical(&ch["body"])? {
                 same += 1;
@@ -167,8 +175,8 @@ impl Engine {
             }
         }
         Ok(
-            json!({"create": create, "update": update, "kept": kept, "unchanged": same,
-                  "skipped": skipped}),
+            json!({"create": create, "update": update, "kept": kept, "ended": ended,
+                  "unchanged": same, "skipped": skipped}),
         )
     }
 
@@ -361,6 +369,8 @@ impl Engine {
             "dependencies": m.get("dependencies").cloned().unwrap_or(json!({})),
             "capabilities": m.get("capabilities").cloned().unwrap_or(json!([])),
             "loader": loader, "change_set": cs,
+            "deprecation": m.get("deprecation").cloned().unwrap_or(Value::Null),
+            "reinstall": plan["from"]["uninstalled"] == json!(true),
             "migrations": changes.iter().filter(|c| c["via"] == "migration").cloned().collect::<Vec<_>>(),
             "later": later});
         reg.insert(id, rec);
@@ -463,12 +473,21 @@ impl Engine {
             "name",
             "dependencies",
             "capabilities",
+            "deprecation",
         ] {
             next[k] = p[k].clone();
         }
         next.as_object_mut().map(|m| m.remove("pending"));
         next["state"] = json!("installed");
-        next["previous"] = previous;
+        next["change_set"] = json!(cs);
+        // a reinstall makes the Buk's classes writable again and keeps no rollback
+        if p["reinstall"] == json!(true) {
+            self.lift_read_only(id, &target)?;
+            next["previous"] = Value::Null;
+            next.as_object_mut().map(|m| m.remove("uninstalled"));
+        } else {
+            next["previous"] = previous;
+        }
         next["upgrade"] = json!({"change_set": cs, "loader": p["loader"], "merged_commit": merged,
                                  "migrated": migrated});
         self.record_buk(id, &target, next.clone(), "update")?;
@@ -498,8 +517,29 @@ impl Engine {
             m.borrow_mut()
                 .push((target.to_string(), REGISTRY.to_string(), Value::Object(reg)))
         });
-        let body = json!({"name": id, "version": rec["version"], "content_hash": rec["root"],
+        let mut body = json!({"name": id, "version": rec["version"], "content_hash": rec["root"],
                           "publisher": rec["publisher"], "signature": rec["signature"]});
+        // the registry members, once the `Buk` class has them (`system` 0.2.0, DEC-132)
+        let has = |f: &str| {
+            self.registry
+                .class("Buk")
+                .is_ok_and(|c| c.fields.contains_key(f))
+        };
+        if has("namespace") {
+            for (k, v) in [
+                ("namespace", &rec["namespace"]),
+                ("state", &rec["state"]),
+                ("dependencies", &rec["dependencies"]),
+                ("capabilities", &rec["capabilities"]),
+                ("target", &rec["target"]),
+                ("change_set", &rec["change_set"]),
+                ("deprecation", &rec["deprecation"]),
+            ] {
+                if !v.is_null() {
+                    body[k] = v.clone();
+                }
+            }
+        }
         let change = if op == "create" {
             json!({"op": "create", "class": "Buk", "object_id": rec["object_id"],
                    "slug": format!("buk-{}", id.replace('/', "-")), "body": body})
@@ -667,5 +707,39 @@ impl Engine {
             json!({"buk": id, "state": "installed", "version": prev["version"], "reverted": reverted,
                   "kept": {"class_changes": rec["upgrade"]["migrated"], "note": "class changes and migrated instances stay; they read through the lenses"}}),
         )
+    }
+
+    /// Adapter operation `buk_register` (DEC-132): register an installed Buk that has no
+    /// registry record, a genesis Buk installed in its PH-1 form, so that it upgrades
+    /// through the normal process (FR-PKG-073). A record that exists is left as it is.
+    pub fn buk_register(&mut self, i: &Value) -> Result<Value, BpaError> {
+        let id = s(i, "id")
+            .ok_or_else(|| BpaError::new("MODEL.DECLARATION_INCOMPLETE", "id names the Buk ID"))?
+            .to_string();
+        crate::buk::split_id(&id)?;
+        let mut reg = self.registry_records()?;
+        if let Some(r) = reg.get(&id) {
+            return Ok(json!({"id": id, "registered": false, "record": r}));
+        }
+        let mut rec =
+            json!({"id": id, "state": "installed", "dependencies": {}, "capabilities": []});
+        for k in [
+            "name",
+            "namespace",
+            "version",
+            "root",
+            "publisher",
+            "signature",
+            "object_id",
+            "target",
+        ] {
+            rec[k] = i.get(k).cloned().unwrap_or(Value::Null);
+        }
+        if rec["target"].is_null() {
+            rec["target"] = json!("main");
+        }
+        reg.insert(id.clone(), rec.clone());
+        self.store.put_meta(REGISTRY, &Value::Object(reg))?;
+        Ok(json!({"id": id, "registered": true, "record": rec}))
     }
 }

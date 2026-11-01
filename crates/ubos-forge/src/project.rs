@@ -77,6 +77,9 @@ pub struct Manifest {
     pub capabilities: Option<Vec<String>>,
     /// Coverage gate of the logic assets (`gates.script_coverage`, DSN-FRG-104).
     pub script_coverage: f64,
+    /// The deprecation notice of this version (`[deprecation]`: `message`,
+    /// `end_of_support`, `replacement`; FR-PKG-052).
+    pub deprecation: Option<serde_json::Value>,
 }
 
 /// A loaded project.
@@ -253,6 +256,18 @@ impl Project {
                 .and_then(|g| g.get("script_coverage"))
                 .and_then(|x| x.as_float().or_else(|| x.as_integer().map(|i| i as f64)))
                 .unwrap_or(0.80),
+            deprecation: t
+                .get("deprecation")
+                .and_then(toml::Value::as_table)
+                .map(|d| {
+                    serde_json::Value::Object(
+                        d.iter()
+                            .filter_map(|(k, v)| {
+                                v.as_str().map(|x| (k.clone(), serde_json::json!(x)))
+                            })
+                            .collect(),
+                    )
+                }),
         };
         let mut findings = Vec::new();
         let (classes, value_types) = load_folder(root, "model", "classes", &mut findings);

@@ -328,6 +328,7 @@ AI implementer:
 - **Verification:** CONF
 - **Origin:** FR-PKG-051, FR-PKG-053, FR-PKG-031
 - **Phase note:** DEC-130: built in PH-2 step 7d with the `Buk` class of the `system` genesis Buk unchanged (name = Buk ID, `content_hash` = archive root): the registry record (namespace, dependencies, capabilities, target, loader branch, change set, state) is kept in the kernel metadata, written with the commit of the `Buk` object, until the genesis upgrades of part 7e add these members to the class; refusing an uninstall or downgrade while dependents exist comes with part 7e, on the dependents the registry reports.
+- **Phase note:** DEC-132: in PH-2 step 7e-2 the `Buk` class of the `system` genesis Buk 0.2.0 (schema version 2) gains the registry members as optional fields (namespace, state, dependencies, capabilities, target, change set, deprecation), written once a VAE has completed its genesis upgrade; the kernel metadata stays the registry. Uninstall (`buk_uninstall`) is refused while installed Buks depend on the Buk, naming them, and for the genesis Buks; it retires the Buk's logic assets (unless another installed Buk's class implements a port by them), ends the configuration objects its seed created of classes not its own, and keeps its classes and data read-only (`retention: read_only`): readable and exportable, written only by the platform until retention allows disposal. Reinstalling goes through the upgrade path and makes the classes writable again.
 
 ## Commits and branches
 

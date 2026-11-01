@@ -100,6 +100,9 @@ pub fn check_manifest(m: &Value) -> Result<(), BpaError> {
             Range::parse(r.as_str().ok_or_else(|| invalid("a range is a string"))?)?;
         }
     }
+    if let Some(d) = m.get("deprecation").filter(|d| !d.is_null()) {
+        crate::removal::check_deprecation(d)?;
+    }
     if let Some(c) = m.get("capabilities").filter(|c| !c.is_null())
         && !c.as_array().is_some_and(|a| a.iter().all(Value::is_string))
     {

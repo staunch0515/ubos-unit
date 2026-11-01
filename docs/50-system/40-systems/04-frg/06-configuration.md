@@ -16,6 +16,7 @@ depends_on: [UBS-SYS-FRG-02]
 | `project.description`, `project.licence` | empty | DSN-FRG-301 |
 | `project.capabilities` | the union of the assets' capabilities | DSN-FRG-301, DSN-FRG-305 |
 | `dependencies."<namespace>/<name>"` | — (a version range) | DSN-FRG-303 |
+| `deprecation.message`, `deprecation.end_of_support`, `deprecation.replacement` | — | DSN-EXC-008 (FR-PKG-052) |
 | `gates.script_coverage` | 0.80 | DSN-FRG-104 |
 | `gates.rule_row_coverage` | 1.00 | DSN-FRG-104 |
 | `gates.fail_on_warning` | false | DSN-FRG-101 |

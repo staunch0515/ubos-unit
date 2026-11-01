@@ -765,7 +765,30 @@ impl Node {
         // keeps them off (DEC-082: found by the scenarios over UBTP)
         engine.l2 = true;
         let services = self.vae_services(tenant, &vae_id)?;
-        Ok(Vae::open(engine, services))
+        let mut vae = Vae::open(engine, services);
+        // the genesis Buks, once per VAE and process (DSN-NOD-421, FR-PKG-073; DEC-132): a
+        // VAE holding an older version gets a proposed upgrade change set on its first
+        // use after a node upgrade; `main` is not changed directly
+        static CHECKED: std::sync::Mutex<std::collections::BTreeSet<String>> =
+            std::sync::Mutex::new(std::collections::BTreeSet::new());
+        let first = CHECKED
+            .lock()
+            .map(|mut c| c.insert(vae_id.clone()))
+            .unwrap_or(false);
+        if first {
+            match genesis::propose_upgrades(&mut vae) {
+                Ok(list) => {
+                    for x in list.iter().filter(|x| x["status"] == "upgrade_proposed") {
+                        eprintln!(
+                            "genesis upgrade proposed in {}/{authority}: {x}",
+                            tenant.slug
+                        );
+                    }
+                }
+                Err(e) => eprintln!("genesis Buks of {}/{authority}: {e}", tenant.slug),
+            }
+        }
+        Ok(vae)
     }
 
     /// The local identity of a tenant (DSN-NOD-101…-153): records in the tenant tables,

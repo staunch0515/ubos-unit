@@ -167,6 +167,7 @@ Reading order:
   1. Given a node upgrade, when started, then each VAE has a pending genesis upgrade change set.
 - **Verification:** CONF
 - **Origin:** FR-PKG-073
+- **Phase note:** DEC-132: built in PH-2 step 7e-2: a genesis Buk is also a `ubos.buk.v1` archive (its classes under `model/`, signed with the genesis publisher key); when a node process first opens a VAE that holds an older version, it registers the installed version and stages the newer one as a normal Buk upgrade (FR-PKG-073) with a submitted change set, which an administrator completes (`forge install --complete ubos.platform/system`); `main` is not changed directly, and a VAE holding a newer version than the node's is refused. The proposal is made on a VAE's first use after the node upgrade, not by opening every VAE at start, because each opened VAE holds its own database connections.
 
 ### DSN-NOD-422 — Buk retrieval and verification
 - **Statement:** The node MUST fetch Buks from EXC (CTR-054) or local files, verify signatures and manifests (`PKG.SIGNATURE_INVALID`, `PKG.MANIFEST_INVALID`), and install them through a change set.

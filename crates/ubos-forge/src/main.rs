@@ -26,6 +26,10 @@ const USAGE: &str = "usage:
 [--repo <dir>] [--plan] [--approve] [--json]
   forge install --complete <namespace/name> --server <host:port> --token <bearer> [--vae <name>] [--json]
   forge install --rollback <namespace/name> --server <host:port> --token <bearer> [--vae <name>] [--json]
+  forge install --uninstall <namespace/name> --server <host:port> --token <bearer> [--vae <name>] [--plan] [--approve] [--json]
+  forge install --notice <notice file> --server <host:port> --token <bearer> [--vae <name>] [--json]
+  forge deprecate <namespace/name> --versions <range> --message <text> --key <seed file> \
+[--end-of-support <date>] [--replacement <namespace/name>] [--out <notice file>] [--json]
   forge check [<project dir>] [--json]
   forge types [<project dir>] [--out <dir>] [--sdk <module>] [--json]
   forge test [<project dir>] [--report <json file>] [--junit <xml file>] [--records <dir>] \
@@ -412,6 +416,34 @@ fn verify_cmd(args: &[String]) -> Result<bool, String> {
     Ok(rec["result"] == "pass")
 }
 
+fn deprecate_cmd(args: &[String]) -> Result<bool, String> {
+    let (id, opts, json_out) = options(args);
+    let id = id.display().to_string();
+    let n = ubos_forge::package::deprecation_notice(
+        &id,
+        opts.get("versions").ok_or("--versions is required")?,
+        opts.get("message").ok_or("--message is required")?,
+        opts.get("end-of-support").map(String::as_str),
+        opts.get("replacement").map(String::as_str),
+        &seed(Some(opts.get("key").ok_or("--key is required")?))?,
+    )?;
+    let out = opts
+        .get("out")
+        .cloned()
+        .unwrap_or_else(|| format!("{}-deprecation.json", id.replace('/', ".")));
+    std::fs::write(
+        &out,
+        serde_json::to_string_pretty(&n).unwrap_or_default() + "\n",
+    )
+    .map_err(|e| e.to_string())?;
+    emit(
+        json_out,
+        &n,
+        &format!("forge deprecate: notice for {id} written to {out}"),
+    );
+    Ok(true)
+}
+
 fn install_cmd(args: &[String]) -> Result<bool, String> {
     let mut flags = std::collections::BTreeSet::new();
     let mut rest = Vec::new();
@@ -432,6 +464,57 @@ fn install_cmd(args: &[String]) -> Result<bool, String> {
         approve: flags.contains("--approve"),
         repo: opts.get("repo").map(PathBuf::from),
     };
+    if let Some(id) = opts.get("uninstall") {
+        let r = ubos_forge::package::uninstall(id, &o)?;
+        let p = &r["plan"];
+        let mut text = format!(
+            "uninstall plan of {id} {}: classes kept read-only {}; assets retired {}; configuration ended {}\n",
+            p["version"].as_str().unwrap_or_default(),
+            p["classes"]["read_only"],
+            p["assets"]["retire"],
+            p["configuration"]["by_class"]
+        );
+        for x in p["problems"].as_array().into_iter().flatten() {
+            text.push_str(&format!(
+                "  problem [{}] {}\n",
+                x["code"].as_str().unwrap_or_default(),
+                x["message"].as_str().unwrap_or_default()
+            ));
+        }
+        match (r.get("uninstall"), r.get("complete")) {
+            (_, Some(c)) => text.push_str(&format!(
+                "forge install: {id} {}",
+                c["state"].as_str().unwrap_or_default()
+            )),
+            (Some(u), None) => text.push_str(&format!(
+                "staged: change set {}; complete with `forge install --complete {id}`",
+                u["change_set"].as_str().unwrap_or_default()
+            )),
+            _ => {}
+        }
+        emit(json_out, &r, &text);
+        return Ok(r["result"] == "pass");
+    }
+    if let Some(f) = opts.get("notice") {
+        let n: Value =
+            serde_json::from_str(&std::fs::read_to_string(f).map_err(|e| format!("{f}: {e}"))?)
+                .map_err(|e| format!("{f}: {e}"))?;
+        let r = ubos_forge::package::deliver_notice(&n, &o)?;
+        emit(
+            json_out,
+            &r,
+            &format!(
+                "forge install: notice for {} recorded{}",
+                r["buk"].as_str().unwrap_or_default(),
+                if r["applies"] == json!(true) {
+                    ""
+                } else {
+                    " (the installed version is not in its range)"
+                }
+            ),
+        );
+        return Ok(true);
+    }
     if let Some(id) = opts.get("rollback") {
         let r = ubos_forge::package::rollback(id, &o)?;
         emit(
@@ -880,6 +963,7 @@ fn main() -> ExitCode {
         Some("sign") => project_cmd(sign_cmd(&args[1..])),
         Some("verify") => project_cmd(verify_cmd(&args[1..])),
         Some("install") => project_cmd(install_cmd(&args[1..])),
+        Some("deprecate") => project_cmd(deprecate_cmd(&args[1..])),
         Some("check") => project_cmd(check(&args[1..])),
         Some("types") => project_cmd(types(&args[1..])),
         Some("test") => project_cmd(test(&args[1..])),

@@ -26,6 +26,7 @@ pub mod process;
 pub mod projections;
 pub mod proofs;
 pub mod relations;
+pub mod removal;
 pub mod restate;
 pub mod ruleops;
 pub mod rules;

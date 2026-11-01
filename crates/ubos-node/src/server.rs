@@ -3351,9 +3351,12 @@ fn buk_request(cfg: &crate::config::Config, body: &Value) -> Result<Value, BpaEr
 /// | `POST buks/install` | `{archive \| file, branch?}` | stage on the loader branch, open and submit the change set |
 /// | `POST buks/complete` | `{buk}` | approve (by the administrator) and merge the change set, record the Buk |
 /// | `POST buks/rollback` | `{buk, resolutions?}` | revert the merge of the Buk's last upgrade and restore the previous version (FR-PKG-044) |
+/// | `POST buks/uninstall` | `{buk, plan?, retention?}` | the uninstall plan, or the change set that retires the Buk's behaviour; its data stays read-only (PH-2 step 7e-2) |
+/// | `POST buks/deprecation` | `{notice, signature}` | a deprecation notice signed by the Buk's publisher (FR-PKG-052) |
 ///
-/// Installing, completing and rolling back are audited as `admin.buk_install`,
-/// `admin.buk_complete` and `admin.buk_rollback`.
+/// Installing, completing, rolling back, uninstalling and deprecating are audited
+/// (`admin.buk_install`, `admin.buk_complete`, `admin.buk_rollback`, `admin.buk_uninstall`,
+/// `admin.buk_deprecate`).
 #[allow(clippy::too_many_arguments)]
 async fn admin_buks(
     s: &Shared,
@@ -3373,6 +3376,14 @@ async fn admin_buks(
         ("POST", ["buks", "complete"]) => {
             ("buk_complete", json!({"buk": body["buk"], "approver": by}))
         }
+        ("POST", ["buks", "uninstall"]) => (
+            "buk_uninstall",
+            json!({"buk": body["buk"], "plan": body.get("plan"), "retention": body.get("retention")}),
+        ),
+        ("POST", ["buks", "deprecation"]) => (
+            "buk_deprecate",
+            json!({"notice": body["notice"], "signature": body["signature"]}),
+        ),
         ("POST", ["buks", "rollback"]) => (
             "buk_rollback",
             json!({"buk": body["buk"], "resolutions": body.get("resolutions")}),
@@ -3380,7 +3391,11 @@ async fn admin_buks(
         _ => return Err(BpaError::new("IAM.NOT_FOUND", "unknown Buk route")),
     };
     let r = h.call(op, input).await;
-    if matches!(op, "buk_install" | "buk_complete" | "buk_rollback")
+    let planning = body.get("plan") == Some(&json!(true));
+    if matches!(
+        op,
+        "buk_install" | "buk_complete" | "buk_rollback" | "buk_uninstall" | "buk_deprecate"
+    ) && !planning
         && let Ok(id) = s.identity_async(tenant).await
     {
         let (buk, version, root) = match &r {
@@ -3398,6 +3413,8 @@ async fn admin_buks(
         let event = match op {
             "buk_install" => "admin.buk_install",
             "buk_complete" => "admin.buk_complete",
+            "buk_uninstall" => "admin.buk_uninstall",
+            "buk_deprecate" => "admin.buk_deprecate",
             _ => "admin.buk_rollback",
         };
         let _ = blocking(move || id.log(event, entry)).await;

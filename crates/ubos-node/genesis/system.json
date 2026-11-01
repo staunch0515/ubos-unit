@@ -1,6 +1,6 @@
 {
  "name": "system",
- "version": "0.1.0",
+ "version": "0.2.0",
  "publisher": "ubos",
  "description": "The platform classes of the node: subscriptions, schedules, jobs, the tenant projection and the installed Buks (DEC-076, DEC-077)",
  "classes": [
@@ -325,10 +325,10 @@
    "name": "Buk",
    "label": "Buk",
    "namespace": "ubos.platform",
-   "description": "An installed Buk: name, version, content hash, publisher and signature (FR-PKG-071, DEC-077)",
+   "description": "An installed Buk: name (Buk ID), version, content hash (archive root), publisher and signature (FR-PKG-071, DEC-077), with its registry members (DSN-DVM-134, DEC-132)",
    "parent": "SystemObject",
    "kind": "system",
-   "schema_version": 1,
+   "schema_version": 2,
    "fields": [
     {
      "name": "name",
@@ -364,6 +364,48 @@
      "description": "signature",
      "type": "text",
      "required": true
+    },
+    {
+     "name": "namespace",
+     "label": "namespace",
+     "description": "the namespace the Buk owns",
+     "type": "text"
+    },
+    {
+     "name": "state",
+     "label": "state",
+     "description": "installed, pending or uninstalled",
+     "type": "text"
+    },
+    {
+     "name": "dependencies",
+     "label": "dependencies",
+     "description": "Buk ID to version range",
+     "type": "json"
+    },
+    {
+     "name": "capabilities",
+     "label": "capabilities",
+     "description": "the capabilities requested",
+     "type": "json"
+    },
+    {
+     "name": "target",
+     "label": "target",
+     "description": "the branch the Buk is installed on",
+     "type": "text"
+    },
+    {
+     "name": "change_set",
+     "label": "change set",
+     "description": "the change set of the last installation, upgrade or removal",
+     "type": "text"
+    },
+    {
+     "name": "deprecation",
+     "label": "deprecation",
+     "description": "the publisher's deprecation notice",
+     "type": "json"
     }
    ]
   }

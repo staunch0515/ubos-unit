@@ -87,6 +87,7 @@ depends_on: [UBS-SYS-EXC-01]
   1. Given a yanked version, when a node checks advisories, then administrators of affected tenants see the advisory.
 - **Verification:** CONF
 - **Origin:** FR-PKG-052, NR-SEC-008
+- **Phase note:** DEC-132: the node side of publisher deprecations is built in PH-2 step 7e-2 (FR-PKG-052 is a PH-2 requirement): a version's manifest carries its `deprecation` (`message`, `end_of_support`, `replacement`), and a notice signed with the Buk's publisher key (`forge deprecate`) is recorded on an installed Buk (`POST /api/v1/admin/buks/deprecation`); install plans warn, and the registry shows each Buk as `supported`, `deprecated` or `end_of_support`. Publishing notices through EXC, yanking and advisories stay in PH-4.
 
 ### DSN-EXC-009 — Data is never held hostage
 - **Statement:** Licence expiry MUST never block reads, exports or uninstalls with data retention (FR-PKG-082, FR-PKG-051).

@@ -112,6 +112,9 @@ pub fn manifest(project: &Project, lock: &Lock) -> Value {
     if !lock.entries.is_empty() {
         out["locked"] = lock.to_json();
     }
+    if let Some(d) = &m.deprecation {
+        out["deprecation"] = d.clone();
+    }
     out
 }
 
@@ -1177,6 +1180,57 @@ pub fn install(a: &Archive, o: &InstallOptions) -> Result<Value, String> {
     Ok(out)
 }
 
+/// `forge install --uninstall <Buk ID>`: the uninstall plan with `plan_only`, otherwise the
+/// staged uninstall, approved and merged with `approve` (FR-PKG-051, -053).
+pub fn uninstall(id: &str, o: &InstallOptions) -> Result<Value, String> {
+    let plan = call(o, "uninstall", &json!({"buk": id, "plan": true}))?;
+    let mut out = json!({ "plan": plan });
+    let blocked = out["plan"]["problems"]
+        .as_array()
+        .is_some_and(|p| !p.is_empty());
+    if o.plan_only || blocked {
+        out["result"] = json!(if blocked { "fail" } else { "pass" });
+        return Ok(out);
+    }
+    out["uninstall"] = call(o, "uninstall", &json!({ "buk": id }))?;
+    if o.approve {
+        out["complete"] = call(o, "complete", &json!({ "buk": id }))?;
+    }
+    out["result"] = json!("pass");
+    Ok(out)
+}
+
+/// A deprecation notice of versions of a Buk, signed with the publisher's key (FR-PKG-052).
+pub fn deprecation_notice(
+    id: &str,
+    versions: &str,
+    message: &str,
+    end_of_support: Option<&str>,
+    replacement: Option<&str>,
+    seed: &[u8; 32],
+) -> Result<Value, String> {
+    ubos_dvm::buk::split_id(id).map_err(err)?;
+    Range::parse(versions).map_err(err)?;
+    let mut notice = json!({"buk": id, "versions": versions, "message": message});
+    if let Some(e) = end_of_support {
+        notice["end_of_support"] = json!(e);
+    }
+    if let Some(r) = replacement {
+        notice["replacement"] = json!(r);
+    }
+    ubos_dvm::removal::check_deprecation(&notice).map_err(err)?;
+    let key = crate::records::VerifierKey::new(*seed).map_err(err)?;
+    let kid = format!("{}#{}", key.did, key.did.trim_start_matches("did:ubos:k:"));
+    let rid = ubos_dvm::content_id("ubos.chunk.v1", &notice).map_err(err)?;
+    let sig = ubos_dvm::crypto::sign(seed, &rid, &key.did, &kid, "signer").map_err(err)?;
+    Ok(json!({"notice": notice, "signature": sig}))
+}
+
+/// `forge install --notice <file>`: deliver a signed deprecation notice to the Server.
+pub fn deliver_notice(notice: &Value, o: &InstallOptions) -> Result<Value, String> {
+    call(o, "deprecation", notice)
+}
+
 /// `forge install --rollback <Buk ID>`: revert the Buk's last upgrade (FR-PKG-044).
 pub fn rollback(id: &str, o: &InstallOptions) -> Result<Value, String> {
     call(o, "rollback", &json!({ "buk": id }))
@@ -1202,14 +1256,30 @@ pub fn plan_text(p: &Value) -> String {
             format!("{} ({})", a.len(), a.join(", "))
         }
     };
-    let mut t = format!(
+    let mut t = String::new();
+    for w in p["warnings"].as_array().into_iter().flatten() {
+        let d = &w["deprecation"];
+        t.push_str(&format!(
+            "warning: this version is deprecated: {}{}{}\n",
+            d["message"].as_str().unwrap_or_default(),
+            d["end_of_support"]
+                .as_str()
+                .map(|e| format!("; end of support {e}"))
+                .unwrap_or_default(),
+            d["replacement"]
+                .as_str()
+                .map(|r| format!("; replaced by {r}"))
+                .unwrap_or_default()
+        ));
+    }
+    t.push_str(&format!(
         "install plan of {} {} into {} (root {}, signed by {}):\n",
         p["buk"].as_str().unwrap_or_default(),
         p["version"].as_str().unwrap_or_default(),
         p["target"].as_str().unwrap_or_default(),
         p["root"].as_str().unwrap_or_default(),
         list(&p["signers"])
-    );
+    ));
     if let Some(f) = p["from"].as_object() {
         t.push_str(&format!(
             "  upgrade from {} (root {})\n",

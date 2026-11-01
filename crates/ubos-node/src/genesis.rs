@@ -222,21 +222,73 @@ pub fn record_id(name: &str) -> Result<String, BpaError> {
     ))
 }
 
+/// The namespace of the genesis Buks.
+pub const NAMESPACE: &str = "ubos.platform";
+
+/// A genesis Buk as a `ubos.buk.v1` archive (DEC-132): its classes under `model/`, signed
+/// with the publisher key the node trusts for genesis Buks, so that it upgrades through
+/// the normal Buk upgrade (FR-PKG-073).
+pub fn archive(buk: &Buk) -> Result<ubos_dvm::buk::Archive, BpaError> {
+    let manifest = json!({"name": buk.name(), "namespace": NAMESPACE, "version": buk.version(),
+        "abi": "1.0", "description": buk.manifest["description"], "capabilities": [], "dependencies": {}});
+    let files = std::collections::BTreeMap::from([(
+        "model/classes.json".to_string(),
+        json!({"classes": buk.manifest["classes"]}),
+    )]);
+    let mut a = ubos_dvm::buk::Archive::new(manifest, files)?;
+    a.sign(&dev_publisher_seed())?;
+    Ok(a)
+}
+
+/// The key-form DID of the genesis publisher key.
+pub fn publisher_did() -> Result<String, BpaError> {
+    let public = ubos_dvm::types::addr::b64u(&crypto::ed25519_public(&dev_publisher_seed()));
+    ubos_dvm::types::addr::key_did(&json!(public))
+}
+
 /// Install a Buk into a VAE (FR-PKG-071, -072): `{buk, version, status}` where `status`
-/// is `installed`, or `present` when the same content is recorded already.
+/// is `installed`, `present` when the same content is recorded already, or
+/// `upgrade_proposed` when the VAE holds an older version: the newer one is staged as a Buk
+/// upgrade with a change set that an administrator completes (DSN-NOD-421, FR-PKG-073;
+/// `main` is not changed directly). A VAE holding a newer version than the node's is
+/// refused.
 pub fn install(vae: &mut Vae, buk: &Buk) -> Result<Value, BpaError> {
     buk.verify()?;
     let rid = record_id(buk.name())?;
     if let Ok(r) = vae.call("read", &json!({"branch": "main", "object_id": rid})) {
         let b = &r["body"];
-        if b["content_hash"] == json!(buk.hash) {
+        let a = archive(buk)?;
+        let root = a.root()?;
+        if b["content_hash"] == json!(buk.hash) || b["content_hash"] == json!(root) {
             return Ok(json!({"buk": buk.name(), "version": buk.version(), "status": "present"}));
         }
-        return Err(BpaError::with_details(
-            "PKG.MANIFEST_INVALID",
-            json!({"buk": buk.name(), "reason": "another version is installed; genesis upgrades come in PH-2 (FR-PKG-073)",
-                "installed": b["version"]}),
-        ));
+        let installed = b["version"].as_str().unwrap_or_default();
+        let newer = ubos_dvm::buk::Version::parse(buk.version())
+            .ok()
+            .zip(ubos_dvm::buk::Version::parse(installed).ok())
+            .is_some_and(|(n, o)| n > o);
+        if !newer {
+            return Err(BpaError::with_details(
+                "PKG.MANIFEST_INVALID",
+                json!({"buk": buk.name(), "reason": "the VAE holds a newer version than this node",
+                    "installed": installed, "node": buk.version()}),
+            ));
+        }
+        let id = format!("{NAMESPACE}/{}", buk.name());
+        vae.call(
+            "buk_register",
+            &json!({"id": id, "name": buk.name(), "namespace": NAMESPACE, "version": installed,
+                "root": b["content_hash"], "publisher": b["publisher"], "signature": b["signature"],
+                "object_id": rid, "target": "main"}),
+        )?;
+        let r = vae.call(
+            "buk_install",
+            &json!({"archive": a.to_json()?, "branch": "main", "trust": [publisher_did()?]}),
+        )?;
+        return Ok(
+            json!({"buk": buk.name(), "version": buk.version(), "status": "upgrade_proposed",
+            "installed": installed, "change_set": r["change_set"]}),
+        );
     }
     // the classes the VAE lacks; one of the same name in a foreign namespace is refused
     let mut missing = Vec::new();
@@ -264,6 +316,23 @@ pub fn install(vae: &mut Vae, buk: &Buk) -> Result<Value, BpaError> {
             "process": {"kind": "import", "message": format!("genesis Buk {} {}", buk.name(), buk.version())}}),
     )?;
     Ok(json!({"buk": buk.name(), "version": buk.version(), "status": "installed"}))
+}
+
+/// Propose the upgrades of the embedded genesis Buks that a VAE records in an older version
+/// (DSN-NOD-421, DEC-132): `install` of each Buk the VAE records already; a Buk the VAE does
+/// not record is left alone, since installing it is the business of provisioning.
+pub fn propose_upgrades(vae: &mut Vae) -> Result<Vec<Value>, BpaError> {
+    let mut out = Vec::new();
+    for b in embedded()? {
+        let rid = record_id(b.name())?;
+        if vae
+            .call("read", &json!({"branch": "main", "object_id": rid}))
+            .is_ok()
+        {
+            out.push(install(vae, &b)?);
+        }
+    }
+    Ok(out)
 }
 
 /// Install the embedded genesis Buks into a VAE, `system` first.
