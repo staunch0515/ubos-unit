@@ -599,3 +599,39 @@ Conventions used below:
 - **Idempotency:** —
 - **Authorization:** —
 - **Satisfies:** NR-PORT-003, CST-002
+
+## Model export formats (DSN-DVM-132)
+
+Built in PH-2 step 7f (DEC-133) in `crates/ubos-dvm/src/export.rs`. The adapter operations
+are `export_openapi {scope?}` and `export_model_graph {scope?}`. The Server serves them at
+`POST /api/v1/admin/model/export {format: openapi | graph, scope?}`, and `forge export`
+runs them on a project's model (offline) or on a Server. A scope is a namespace and the
+namespaces below it; without one, every class outside the kernel's genesis model is
+exported.
+
+**OpenAPI 3.1.** The document describes the Server's REST binding under
+`/api/v1/<authority>`:
+- `GET /<Class>`: a criteria query in `q`, on `branch`;
+- `GET /<Class>/{slug}`: a read;
+- `POST /<Class>/{slug}/<port>`: one per port of a concrete class, with the port's
+  parameters as the request body and `PortResult` as the response.
+
+Every class has a `<Class>Body` schema: its effective fields as JSON Schema, with the value
+types of STD-FND-020 mapped as `money` → `{amount, currency}`, `date` → `format: date`,
+`reference` → `format: uri`, and so on. Concrete classes also get a `<Class>Object` schema
+for the stored version. Errors are `application/problem+json` (RFC 9457), and the
+security scheme is a bearer token. The extensions `x-ubos-namespace`,
+`x-ubos-schema-version`, `x-ubos-port-kind` and `x-ubos-impl` carry what OpenAPI has no
+member for. The `info.version` is derived from the schemas, so the same model gives the
+same document.
+
+**Model graph `ubos.model-graph.v1`.** A JSON object `{format, scope, nodes, edges}`:
+- **Node:** `{id, kind (a kind or "trait"), namespace, abstract, schema_version,
+  description, fields (own), ports (effective), linearization}`.
+- **Edge:** `{from, to, type}`, where `type` is:
+  - `extends`: the parent class;
+  - `has_trait`: a trait the class takes;
+  - `references`: a reference field to its `target_class`, with `field`;
+  - `implemented_by`: a port the class declares and the logic asset that implements it,
+    with `port`.
+

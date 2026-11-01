@@ -28,6 +28,8 @@ const USAGE: &str = "usage:
   forge install --rollback <namespace/name> --server <host:port> --token <bearer> [--vae <name>] [--json]
   forge install --uninstall <namespace/name> --server <host:port> --token <bearer> [--vae <name>] [--plan] [--approve] [--json]
   forge install --notice <notice file> --server <host:port> --token <bearer> [--vae <name>] [--json]
+  forge export [<project dir>] [--format openapi|graph] [--scope <namespace>] [--out <file>] \
+[--server <host:port> --token <bearer> [--vae <name>]] [--json]
   forge deprecate <namespace/name> --versions <range> --message <text> --key <seed file> \
 [--end-of-support <date>] [--replacement <namespace/name>] [--out <notice file>] [--json]
   forge check [<project dir>] [--json]
@@ -414,6 +416,51 @@ fn verify_cmd(args: &[String]) -> Result<bool, String> {
     ));
     emit(json_out, &rec, &text);
     Ok(rec["result"] == "pass")
+}
+
+fn export_cmd(args: &[String]) -> Result<bool, String> {
+    let (dir, opts, json_out) = options(args);
+    let format = opts.get("format").map(String::as_str).unwrap_or("openapi");
+    let server = match (opts.get("server"), opts.get("token")) {
+        (Some(s), Some(t)) => Some((s.as_str(), t.as_str(), opts.get("vae").map(String::as_str))),
+        (Some(_), None) => return Err("--token is required with --server".into()),
+        _ => None,
+    };
+    let doc = ubos_forge::package::export(
+        if server.is_some() {
+            None
+        } else {
+            Some(dir.as_path())
+        },
+        server,
+        format,
+        opts.get("scope").map(String::as_str),
+    )?;
+    let text = serde_json::to_string_pretty(&doc).unwrap_or_default() + "\n";
+    match opts.get("out") {
+        Some(f) => {
+            std::fs::write(f, &text).map_err(|e| format!("{f}: {e}"))?;
+            let n = if format == "openapi" {
+                doc["paths"].as_object().map_or(0, Map::len)
+            } else {
+                doc["nodes"].as_array().map_or(0, Vec::len)
+            };
+            emit(
+                json_out,
+                &json!({"command": "export", "format": format, "file": f, "count": n}),
+                &format!(
+                    "forge export: {format} written to {f} ({n} {})",
+                    if format == "openapi" {
+                        "paths"
+                    } else {
+                        "classes"
+                    }
+                ),
+            );
+        }
+        None => print!("{text}"),
+    }
+    Ok(true)
 }
 
 fn deprecate_cmd(args: &[String]) -> Result<bool, String> {
@@ -964,6 +1011,7 @@ fn main() -> ExitCode {
         Some("verify") => project_cmd(verify_cmd(&args[1..])),
         Some("install") => project_cmd(install_cmd(&args[1..])),
         Some("deprecate") => project_cmd(deprecate_cmd(&args[1..])),
+        Some("export") => project_cmd(export_cmd(&args[1..])),
         Some("check") => project_cmd(check(&args[1..])),
         Some("types") => project_cmd(types(&args[1..])),
         Some("test") => project_cmd(test(&args[1..])),

@@ -36,6 +36,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-130 | PH-2 step 7, part 7d: Buk installation — plan, loader branch, node-verified assets, change set, registry record with the `Buk` object; Server routes and `forge install` | Accepted |
 | DEC-131 | PH-2 step 7, part 7e-1: Buk upgrades with class changes by lens or migration, overlays' upstream report, migrations as one-way lenses rewritten by bulk process, rollback by revert; step 7e split into 7e-1 and 7e-2 | Accepted |
 | DEC-132 | PH-2 step 7, part 7e-2: Buk uninstall with dependency protection and read-only data, reinstall, deprecation notices, genesis upgrades as proposed change sets (`system` 0.2.0) | Accepted |
+| DEC-133 | PH-2 step 7, part 7f, first half: model export as OpenAPI 3.1 and the `ubos.model-graph.v1` graph; the ontology Buk waits for a decision on its class names | Accepted |
 
 ---
 
@@ -738,3 +739,28 @@ follow.
   - A sweep of every VAE at node start was replaced by the check on first use (above).
   - Keeping genesis Buks outside the Buk registry was rejected: FR-PKG-073 asks for no special paths.
 - **Affects:** DSN-DVM-134, DSN-NOD-421, DSN-EXC-008, FR-PKG-051, FR-PKG-052, FR-PKG-053, FR-PKG-073, UBS-SYS-FRG-06, UBS-SYS-FRG-09, DEC-077, DEC-127, DEC-130, DEC-131
+
+### DEC-133 — Models and packages, part 7f, first half: model export (PH-2 step 7)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 7f of step 7 (DEC-127) covers the full ontology Buk (DSN-NOD-424, FR-MODEL-091) and the model export (DSN-DVM-132). The owner confirmed it with the default suggestions.
+
+  While preparing the ontology, a conflict appeared. FR-MODEL-091 gives the ontology the class names `Account`, `Document`, `Agreement`, `Location`, `Calendar`, `Address` and others. Class names are global within a VAE, and the Server refuses a project class whose name a genesis Buk holds in another namespace (DEC-083). FR-MODEL-093 also says tenants extend ontology classes and never redefine them. Fixtures in CI declare some of these names:
+  - the SDK fixture declares `Account` and `Document`;
+  - `verify/scenarios` declares `Agreement`;
+  - the node, events and edge suites declare `Account`.
+
+  Shipping the ontology as specified would make those fixtures fail on the Server. This is a consequence the confirmed plan did not name.
+- **Decision:**
+  1. **Split.** Part 7f is done in two halves. The model export is done now. The ontology Buk follows the owner's decision on the class names.
+  2. **Export** (UBS-SYS-DVM-03, Model export formats).
+     - `export_openapi` gives an OpenAPI 3.1 description of a model scope's REST binding: queries, reads and the ports of concrete classes, with class bodies as JSON Schema and problem details for errors.
+     - `export_model_graph` gives the documented `ubos.model-graph.v1` graph: classes and traits with `extends`, `has_trait`, `references` and `implemented_by` edges.
+     - Both are served by the Server at `POST /api/v1/admin/model/export` and run by `forge export`, offline on a project's model or against a Server.
+  3. **Design note.** DSN-DVM-132 gets a phase note.
+- **Consequences:**
+  - The OpenAPI documents of the SDK fixture (13 paths), the scenario model (42 paths), a Buk's model and a Server VAE pass `openapi-spec-validator` with no errors.
+  - The linter is not added to CI.
+  - No new tests were written (DEC-127).
+- **Alternatives considered:**
+  - Describing the UBTP operations in OpenAPI was rejected: they are not HTTP operations. The REST binding is what OpenAPI tools can call.
+- **Affects:** DSN-DVM-132, DSN-NOD-424, FR-MODEL-091, FR-MODEL-093, FR-MODEL-103, FR-MODEL-104, UBS-SYS-DVM-03, DEC-083, DEC-127

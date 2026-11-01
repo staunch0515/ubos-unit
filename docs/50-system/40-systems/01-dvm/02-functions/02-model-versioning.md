@@ -306,6 +306,7 @@ AI implementer:
   1. Given a fixture model, when exported, then the OpenAPI document passes a standard linter with no errors.
 - **Verification:** CONF
 - **Origin:** FR-MODEL-103, FR-MODEL-104
+- **Phase note:** DEC-133: built in PH-2 step 7f with the formats of UBS-SYS-DVM-03 (Model export formats): the OpenAPI document describes the Server's REST binding (queries, reads and port calls) rather than the UBTP operations, which have no HTTP form; the acceptance was run with `openapi-spec-validator` on the SDK fixture, the scenario model and a Buk's model (no errors). The linter is not part of CI.
 
 ### DSN-DVM-133 — Genesis bootstrap
 - **Statement:** A new VAE MUST be created by a genesis commit that contains the kernel root and base classes (STD-CLS-010), the kernel property registry (STD-LGS-011) and the system-kind objects (STD-KIND-040). The genesis content MUST be a fixed, versioned kernel artefact, so that all conformant kernels of the same ABI produce the same genesis root.

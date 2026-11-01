@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (132)
+## DEC (133)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -226,4 +226,5 @@ depends_on: [UBS-IDX-00]
 | DEC-130 | Models and packages, part 7d: Buk installation (PH-2 step 7) | `90-decisions/000-index.md` |
 | DEC-131 | Models and packages, part 7e-1: upgrades, migrations and rollback (PH-2 step 7) | `90-decisions/000-index.md` |
 | DEC-132 | Models and packages, part 7e-2: removal, deprecation and genesis upgrades (PH-2 step 7) | `90-decisions/000-index.md` |
+| DEC-133 | Models and packages, part 7f, first half: model export (PH-2 step 7) | `90-decisions/000-index.md` |
 

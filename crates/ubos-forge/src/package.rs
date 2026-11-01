@@ -1383,3 +1383,50 @@ pub fn plan_text(p: &Value) -> String {
     ));
     t
 }
+
+// ---- export (DSN-DVM-132; PH-2 step 7f, DEC-133) ----
+
+/// `forge export`: the model as OpenAPI 3.1 (`format` `openapi`) or as a model graph
+/// (`graph`), from a project's model (offline, on the development fixture) or from a Server
+/// (`server`, `token`, `vae`).
+pub fn export(
+    project: Option<&Path>,
+    server: Option<(&str, &str, Option<&str>)>,
+    format: &str,
+    scope: Option<&str>,
+) -> Result<Value, String> {
+    if !matches!(format, "openapi" | "graph") {
+        return Err("--format is openapi or graph".into());
+    }
+    if let Some((addr, token, vae)) = server {
+        let path = match vae {
+            Some(v) => format!("/api/v1/admin/model/export?vae={v}"),
+            None => "/api/v1/admin/model/export".to_string(),
+        };
+        let (status, reply) = crate::simulate::post(
+            addr,
+            &path,
+            &json!({"format": format, "scope": scope}),
+            token,
+        )?;
+        if status != 200 {
+            return Err(format!(
+                "export: {status} {} {}",
+                reply["code"].as_str().unwrap_or("NOD.UNAVAILABLE"),
+                reply["detail"].as_str().unwrap_or_default()
+            ));
+        }
+        return Ok(reply);
+    }
+    let root = project.unwrap_or(Path::new("."));
+    let p = Project::load(root)?;
+    let (mut vae, _, _) = crate::check::seed_vae(&p).map_err(err)?;
+    // the project's own classes: every class outside the kernel's genesis model, unless
+    // a scope narrows it
+    let op = if format == "openapi" {
+        "export_openapi"
+    } else {
+        "export_model_graph"
+    };
+    vae.call(op, &json!({ "scope": scope })).map_err(err)
+}

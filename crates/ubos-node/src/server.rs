@@ -3555,6 +3555,27 @@ async fn admin_api(
     }
     // DSN-NOD-422, DSN-DVM-134 (PH-2 step 7d): Buk installation by an administrator,
     // audited
+    // DSN-DVM-132 (PH-2 step 7f): the model of the VAE as OpenAPI 3.1 or as a model graph
+    if (method.as_str(), p.as_slice()) == ("POST", &["model", "export"][..]) {
+        let h = match s.vae_async(&tenant, &vae).await {
+            Ok(h) => h,
+            Err(e) => return problem_response(&e),
+        };
+        let op = match body["format"].as_str() {
+            Some("openapi") | None => "export_openapi",
+            Some("graph") => "export_model_graph",
+            Some(_) => {
+                return problem_response(&BpaError::new(
+                    "MODEL.INVALID_VALUE",
+                    "format is openapi or graph",
+                ));
+            }
+        };
+        return match h.call(op, json!({"scope": body.get("scope")})).await {
+            Ok(v) => Json(v).into_response(),
+            Err(e) => problem_response(&e),
+        };
+    }
     if p.first() == Some(&"buks") {
         return match admin_buks(&s, &tenant, &vae, &key, &method, &p, &body, &me.did).await {
             Ok(v) => Json(v).into_response(),
