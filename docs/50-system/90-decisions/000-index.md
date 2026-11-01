@@ -18,6 +18,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-148 | PH-2 step 10, part 10b: receivables and sales tax — customers, tax codes, invoices and credit memos with tax, receipts with application and reapplication, the open-item and tax subledgers, aging with the control account, the sales tax report and customer statements | Accepted |
 | DEC-149 | PH-2 step 10, part 10c: payables and Form 1099 — vendors, bills with use tax, payment runs, the open-item subledger, aging with the control account, and the 1099 summary on a cash basis against a threshold table by tax year | Accepted |
 | DEC-150 | PH-2 step 10, part 10d: the bank — idempotent statement import, bank items recorded from statement lines, document-level reconciliation with prior outstanding items; January driven entirely by documents ties out FIN-EXP-03 and FIN-EXP-10 | Accepted |
+| DEC-151 | PH-2 step 10, part 10e: fixed assets — asset classes, the register with capitalisation from bills, straight-line and double-declining schedules with cumulative rounding, an idempotent depreciation run, disposal with gain or loss, register and roll-forward; FIN-EXP-11 ties out | Accepted |
 
 ---
 
@@ -190,3 +191,37 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); those of DEC-127 … DEC-14
   - automatic rules for recurring bank items, reconciliation sign-off with approval, and statement file formats (BAI2, camt): step 12 (bank file formats) and 10g for the rules;
   - a logic instruction for kernel matching: the next BPA release candidate, with the two items of DEC-147.
 - **Affects:** DEC-146, DEC-147, FIN-CB-001…011, FIN-TX-006, STD-KIND-027, STD-KIND-028, STD-KIND-030
+
+### DEC-151 — The finance Buk, part 10e: fixed assets (PH-2 step 10)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 10e of step 10 (DEC-146) builds fixed assets (FIN-FA). It ties out the depreciation entry DEP-2601 against FIN-EXP-02, the register against FIN-EXP-11, and the acceptance figures of FIN-FA-005, -007 and -009.
+- **Decision:**
+  1. **Model.**
+     - `AssetClass` holds the cost, accumulated-depreciation, expense and disposal accounts, the default method and life, the full-month convention and the capitalisation threshold.
+     - `FixedAsset` holds the code, class, cost, salvage, in-service date, method (straight line or double-declining balance), life, acquisition, location, custodian and status.
+     - The ledger `AssetBook` holds the cost and accumulated depreciation per asset by entry, with the kinds opening, addition, depreciation and disposal.
+     - The projections are `fa-book` (by asset) and `fa-roll` (by kind).
+     - The `AssetRegister` object carries the runs and reports.
+  2. **Schedule** (FIN-FA-003, -004).
+     - The depreciation of each asset year is computed first. Straight line takes cost less salvage over the years. Double-declining takes twice the net book value at the year's start over the years, or the straight-line rest over the remaining years when that is more. The last year takes the rest.
+     - Month *m* of an asset year depreciates round(year · m / 12) − round(year · (m − 1) / 12), half away from zero. The residue of rounding thus falls in the year's last month, and the life's total is cost less salvage.
+     - This reproduces the sample: FA-002 has 10,000.00 after six months of its first asset year and 1,666.67 in January. Rounding each month instead would give 10,000.02.
+     - The full-month convention counts the month placed in service as month 1.
+  3. **Runs and documents.**
+     - `capitalize` creates an asset from the lines of a posted bill on the class's cost account, refused below the class's threshold. FA-003 comes from BILL-TS-5520 (FIN-FA-002).
+     - `run_depreciation(period_end)` posts one entry `DEP-<yymm>` of source `fixed_assets`, summarised per expense and accumulated-depreciation account, and an `AssetBook` entry per asset. A second run of the month creates nothing, and a run for a closed period is refused (FIN-FA-005).
+     - `FixedAsset.dispose` depreciates up to the disposal month as far as not yet run, removes cost and accumulated depreciation, books the proceeds and posts the gain or loss to the class's disposal account (FIN-FA-007).
+  4. **Reports.** `register(opening, closing)` lists each asset with cost, accumulated depreciation at both dates, the period's depreciation and the net book value. `roll_forward(opening, closing)` gives cost and accumulated depreciation as opening, additions, disposals, depreciation and closing (FIN-FA-009).
+  5. **Test data.** Classes, the assets in service before 2026 and their opening book come from `fixed-assets.csv`. The sample chart has no disposal account, so the disposal test adds 7400 to its copy of the books.
+- **Consequences:**
+  - Three new tests pass in memory and on PostgreSQL 16:
+    - the January run posts the lines of FIN-EXP-02 once; the register equals FIN-EXP-11; the roll-forward gives cost 190,000.00 + 12,000.00 = 202,000.00 and accumulated depreciation 58,000.00 + 4,000.00 = 62,000.00;
+    - selling FA-002 for 60,000.00 gives the gain of 1,666.67;
+    - a run for a closed period is refused.
+  - All 37 finance tests pass, with script coverage 1.0. No kernel code was added.
+  - The refusal of a closed period is raised by the script and reads as `LOGIC.TYPE_ERROR`. A decision cannot look up the period of a parameter date; a clearer error code goes to 10g.
+- **Open, assigned:**
+  - changes in estimates (FIN-FA-006) and 150% declining balance: 10g;
+  - impairment (FIN-FA-008, Could) and the tax book (FIN-FA-010, Could): PH-3;
+  - the projected depreciation schedule as a report: step 15.
+- **Affects:** DEC-146, FIN-FA-001…007, FIN-FA-009

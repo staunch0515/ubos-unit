@@ -1,0 +1,243 @@
+# Fixed assets (FIN-FA-001…009; PH-2 step 10e, DEC-151).
+#
+# The schedule is per asset year: straight line, or double-declining balance on the net book
+# value at the start of the asset year with the switch to straight line when that yields more;
+# the last year takes the rest. Month m of an asset year depreciates
+# round(year · m / 12) − round(year · (m − 1) / 12), so the residue of rounding falls in the
+# year's last month and the life's total is cost less salvage (FIN-FA-004). The full-month
+# convention counts the month placed in service as month 1.
+assets:
+  - name: ubos.finance.assets
+    abi: "1.0"
+    tier: l2
+    profile: standard
+    state: committed
+    capabilities: [read, commit, run, search]
+    exports: [capitalize, run_depreciation, register, roll_forward, dispose]
+    source: |
+      fn d(v) { dec(v.to_string()) }
+      fn two(x) {
+        let s = x.to_string();
+        if !s.contains(".") { return s + ".00"; }
+        let p = s.split(".");
+        let f = p[1];
+        if f.len() == 1 { f += "0"; }
+        if f.len() > 2 { f = f.sub_string(0, 2); }
+        let out = p[0] + "." + f;
+        if out == "-0.00" { "0.00" } else { out }
+      }
+      fn m(x, cur) { #{amount: two(x), currency: cur} }
+      fn num(s) {
+        let n = 0;
+        for c in s.chars() { n = n * 10 + "0123456789".index_of(c); }
+        n
+      }
+      fn month_no(s) { num(s.sub_string(0, 4)) * 12 + num(s.sub_string(5, 2)) - 1 }
+      fn code_of(uri) { let p = uri.split("/"); p[p.len() - 1] }
+      fn sum_of(values, name) {
+        let t = dec("0.00");
+        for x in values[name] { t += dec(x.amount); }
+        t
+      }
+      fn schedule(cost, salvage, life, method) {
+        let years = life / 12;
+        let nbv = cost;
+        let out = [];
+        for j in 0..years {
+          let rest = nbv - salvage;
+          let y = rest;
+          if j < years - 1 {
+            if method == "DDB" {
+              let ddb = div(nbv * 2, years, 2, "half_up");
+              let sl = div(rest, years - j, 2, "half_up");
+              y = if ddb > sl { ddb } else { sl };
+            } else {
+              y = div(cost - salvage, years, 2, "half_up");
+            }
+            if y > rest { y = rest; }
+          }
+          out.push(y);
+          nbv -= y;
+        }
+        out
+      }
+      // accumulated depreciation after n months of service
+      fn cum(n, sched) {
+        let acc = dec("0.00");
+        if n <= 0 { return acc; }
+        if n >= sched.len() * 12 {
+          for y in sched { acc += y; }
+          return acc;
+        }
+        let k = (n - 1) / 12;
+        let mm = n - 12 * k;
+        for j in 0..k { acc += sched[j]; }
+        acc + div(sched[k] * mm, 12, 2, "half_up")
+      }
+      fn asset_schedule(fa) {
+        let salvage = if fa.salvage == () { dec("0.00") } else { d(fa.salvage.amount) };
+        schedule(d(fa.cost.amount), salvage, fa.life_months, fa.method)
+      }
+
+      fn capitalize(bill, code, description, asset_class, in_service) {
+        let bq = sys.search.query(#{query: #{from: "Bill", where: "this.number == \"" + bill + "\" and this.state == \"posted\""}});
+        if bq.items.len() == 0 { throw "no posted bill " + bill; }
+        let b = sys.read.get(#{target: bq.items[0]}).fields;
+        let cls = sys.read.get(#{target: asset_class}).fields;
+        let cost = dec("0.00");
+        let cur = "USD";
+        for l in b.lines { if l.account == cls.cost_account { cost += d(l.amount.amount); cur = l.amount.currency; } }
+        if cost < d(cls.threshold.amount) { throw "the cost is below the class's capitalisation threshold"; }
+        sys.commit.create(#{class: "FixedAsset", slug: code.to_lower(),
+          fields: #{code: code, description: description, asset_class: asset_class, cost: m(cost, cur),
+                    in_service: in_service, method: cls.method, life_months: cls.life_months, acquisition: bill,
+                    status: "in_service"}});
+        sys.commit.append(#{class: "AssetBook", ledger_key: #{asset: code}, valid_at: in_service,
+          fields: #{asset: code, kind: "addition", document: bill, cost: m(cost, cur), accumulated: m(dec("0.00"), cur)}});
+        #{capitalized: code, cost: two(cost)}
+      }
+
+      fn run_depreciation(period_end) {
+        sys.read.get(#{target: self_id});
+        let number = "DEP-" + period_end.sub_string(2, 2) + period_end.sub_string(5, 2);
+        let existing = sys.search.query(#{query: #{from: "JournalEntry", where: "this.number == \"" + number + "\""}});
+        if existing.items.len() > 0 {
+          return #{created: false, number: number};
+        }
+        let pw = "this.start <= d'" + period_end + "' and this.end > d'" + period_end + "'";
+        for id in sys.search.query(#{query: #{from: "FiscalPeriod", where: pw}}).items {
+          if sys.read.get(#{target: id}).fields.state == "closed" { throw "the period of " + period_end + " is closed"; }
+        }
+        let per = #{};
+        let keys = [];
+        let details = [];
+        let total = dec("0.00");
+        let cur = "USD";
+        for id in sys.search.query(#{query: #{from: "FixedAsset", where: "this.status == \"in_service\""}}).items {
+          let fa = sys.read.get(#{target: id}).fields;
+          if fa.in_service > period_end { continue; }
+          let n = month_no(period_end) - month_no(fa.in_service) + 1;
+          let sched = asset_schedule(fa);
+          let dep = cum(n, sched) - cum(n - 1, sched);
+          if dep.is_zero() { continue; }
+          cur = fa.cost.currency;
+          let cls = sys.read.get(#{target: fa.asset_class}).fields;
+          let k = cls.expense_account + "|" + cls.accumulated_account;
+          if !(k in per) { per[k] = dec("0.00"); keys.push(k); }
+          per[k] = per[k] + dep;
+          total += dep;
+          details.push(#{asset: fa.code, depreciation: two(dep)});
+          sys.commit.append(#{class: "AssetBook", ledger_key: #{asset: fa.code}, valid_at: period_end,
+            fields: #{asset: fa.code, kind: "depreciation", document: number, cost: m(dec("0.00"), cur),
+                      accumulated: m(dep, cur)}});
+        }
+        if keys.is_empty() { return #{created: false, number: number, details: []}; }
+        let lines = [];
+        for k in keys {
+          let a = k.split("|");
+          lines.push(#{account: a[0], amount: m(per[k], cur)});
+          lines.push(#{account: a[1], amount: m(-per[k], cur)});
+        }
+        let e = sys.commit.create(#{class: "JournalEntry", slug: number.to_lower(),
+          fields: #{number: number, source: "fixed_assets", kind: "depreciation", posting_date: period_end,
+                    description: "Depreciation " + period_end.sub_string(0, 7), lines: lines,
+                    total: m(total, cur), state: "draft"}});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        #{created: true, number: number, total: two(total), details: details}
+      }
+
+      fn dispose(disposal_date, proceeds, kind, proceeds_account, number) {
+        sys.read.get(#{target: self_id});
+        if this.status == "disposed" { throw "the asset is disposed"; }
+        let cls = sys.read.get(#{target: this.asset_class}).fields;
+        let g = sys.read.projection(#{projection: "fa-book", group: #{asset: this.code}}).groups;
+        let cost = sum_of(g[0].values, "cost");
+        let acc = sum_of(g[0].values, "accumulated");
+        let cur = currency(this.cost);
+        // depreciation up to the disposal month, as far as not yet run
+        let salvage = if this.salvage == () { dec("0.00") } else { amount(this.salvage) };
+        let sched = schedule(amount(this.cost), salvage, this.life_months, this.method);
+        let catch_up = cum(month_no(disposal_date) - month_no(this.in_service) + 1, sched) - acc;
+        if catch_up < 0 { catch_up = dec("0.00"); }
+        let acc2 = acc + catch_up;
+        let p = d(proceeds.amount);
+        let gain = p - (cost - acc2);
+        let lines = [];
+        let debits = dec("0.00");
+        if !catch_up.is_zero() {
+          lines.push(#{account: cls.expense_account, amount: m(catch_up, cur)});
+          lines.push(#{account: cls.accumulated_account, amount: m(-catch_up, cur)});
+          debits += catch_up;
+        }
+        if !p.is_zero() { lines.push(#{account: proceeds_account, amount: m(p, cur)}); debits += p; }
+        lines.push(#{account: cls.accumulated_account, amount: m(acc2, cur)});
+        debits += acc2;
+        lines.push(#{account: cls.cost_account, amount: m(-cost, cur)});
+        if !gain.is_zero() {
+          if cls.disposal_account == () { throw "the asset class has no disposal account"; }
+          lines.push(#{account: cls.disposal_account, amount: m(-gain, cur)});
+          if gain < 0 { debits -= gain; }
+        }
+        let e = sys.commit.create(#{class: "JournalEntry", slug: number.to_lower(),
+          fields: #{number: number, source: "fixed_assets", kind: "disposal", posting_date: disposal_date,
+                    description: kind + " of " + this.code, lines: lines, total: m(debits, cur), state: "draft"}});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        if !catch_up.is_zero() {
+          sys.commit.append(#{class: "AssetBook", ledger_key: #{asset: this.code}, valid_at: disposal_date,
+            fields: #{asset: this.code, kind: "depreciation", document: number, cost: m(dec("0.00"), cur), accumulated: m(catch_up, cur)}});
+        }
+        sys.commit.append(#{class: "AssetBook", ledger_key: #{asset: this.code}, valid_at: disposal_date,
+          fields: #{asset: this.code, kind: "disposal", document: number, cost: m(-cost, cur), accumulated: m(-acc2, cur)}});
+        sys.commit.update(#{target: self_id, set: #{status: "disposed", disposed_on: disposal_date}});
+        #{disposed: this.code, net_book_value: two(cost - acc2), proceeds: two(p), gain: two(gain)}
+      }
+
+      fn register(opening, closing) {
+        let g0 = sys.read.projection(#{projection: "fa-book", asof: opening}).groups;
+        let g1 = sys.read.projection(#{projection: "fa-book", asof: closing}).groups;
+        let before = #{};
+        for g in g0 { before[g.key.asset] = sum_of(g.values, "accumulated"); }
+        let fas = #{};
+        for id in sys.search.query(#{query: #{from: "FixedAsset"}}).items {
+          let fa = sys.read.get(#{target: id}).fields;
+          fas[fa.code] = fa;
+        }
+        let rows = [];
+        for g in g1 {
+          let code = g.key.asset;
+          let fa = fas[code];
+          let cls = sys.read.get(#{target: fa.asset_class}).fields;
+          let cost = sum_of(g.values, "cost");
+          let acc = sum_of(g.values, "accumulated");
+          let acc0 = if code in before { before[code] } else { dec("0.00") };
+          rows.push(#{asset: code, description: fa.description, account: code_of(cls.cost_account), cost: two(cost),
+                      in_service: fa.in_service, method: fa.method, life_months: fa.life_months,
+                      accumulated_opening: two(acc0), depreciation: two(acc - acc0), accumulated_closing: two(acc),
+                      net_book_value: two(cost - acc), status: fa.status});
+        }
+        #{opening: opening, closing: closing, rows: rows}
+      }
+
+      fn roll_forward(opening, closing) {
+        let g0 = sys.read.projection(#{projection: "fa-roll", asof: opening}).groups;
+        let g1 = sys.read.projection(#{projection: "fa-roll", asof: closing}).groups;
+        let c0 = dec("0.00"); let a0 = dec("0.00"); let c1 = dec("0.00"); let a1 = dec("0.00");
+        let delta = #{};
+        for g in g1 {
+          c1 += sum_of(g.values, "cost"); a1 += sum_of(g.values, "accumulated");
+          delta[g.key.kind] = #{cost: sum_of(g.values, "cost"), acc: sum_of(g.values, "accumulated")};
+        }
+        for g in g0 {
+          c0 += sum_of(g.values, "cost"); a0 += sum_of(g.values, "accumulated");
+          let x = delta[g.key.kind];
+          x.cost -= sum_of(g.values, "cost"); x.acc -= sum_of(g.values, "accumulated");
+          delta[g.key.kind] = x;
+        }
+        let add_c = if "addition" in delta { delta.addition.cost } else { dec("0.00") };
+        let dis_c = if "disposal" in delta { delta.disposal.cost } else { dec("0.00") };
+        let dep_a = if "depreciation" in delta { delta.depreciation.acc } else { dec("0.00") };
+        let dis_a = if "disposal" in delta { delta.disposal.acc } else { dec("0.00") };
+        #{opening: opening, closing: closing,
+          cost: #{opening: two(c0), additions: two(add_c), disposals: two(dis_c), closing: two(c1)},
+          accumulated: #{opening: two(a0), depreciation: two(dep_a), disposals: two(dis_a), closing: two(a1)}}
+      }

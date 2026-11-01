@@ -1,0 +1,133 @@
+# Fixed assets (FIN-FA; PH-2 step 10e, DEC-151).
+classes:
+  - name: AssetClass
+    label: asset class
+    description: An asset class with its accounts and defaults (FIN-FA-001)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[code]]
+    fields:
+      - {name: code, label: code, description: the class code, type: text, required: true}
+      - {name: description, label: description, description: the class, type: text, required: true}
+      - {name: cost_account, label: cost account, description: the asset cost account, type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: accumulated_account, label: accumulated depreciation account, description: the accumulated depreciation account, type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: expense_account, label: expense account, description: the depreciation expense account, type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: disposal_account, label: disposal account, description: the account of gains and losses on disposal, type: reference, constraints: {target_class: GlAccount}}
+      - name: method
+        label: method
+        description: the default method
+        type: enum
+        required: true
+        constraints: {allowed_values: [SL, DDB]}
+      - {name: life_months, label: life, description: the default useful life in months, type: integer, required: true}
+      - name: convention
+        label: convention
+        description: full month in the month placed in service
+        type: enum
+        required: true
+        constraints: {allowed_values: [full_month]}
+      - {name: threshold, label: capitalisation threshold, description: the smallest cost capitalised, type: money, required: true}
+  - name: FixedAsset
+    label: fixed asset
+    description: An asset of the register (FIN-FA-002)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[code]]
+    fields:
+      - {name: code, label: code, description: the asset ID, type: text, required: true}
+      - {name: description, label: description, description: the asset, type: text, required: true}
+      - {name: asset_class, label: class, description: the asset class, type: reference, required: true, constraints: {target_class: AssetClass}}
+      - {name: cost, label: cost, description: the cost, type: money, required: true}
+      - {name: salvage, label: salvage, description: the salvage value, type: money}
+      - {name: in_service, label: in service, description: the date placed in service, type: date, required: true}
+      - name: method
+        label: method
+        description: straight line or double-declining balance with the switch to straight line (FIN-FA-003)
+        type: enum
+        required: true
+        constraints: {allowed_values: [SL, DDB]}
+      - {name: life_months, label: life, description: the useful life in months, type: integer, required: true}
+      - {name: acquisition, label: acquisition, description: the bill or entry the asset came from, type: text}
+      - {name: location, label: location, description: where the asset is, type: text}
+      - {name: custodian, label: custodian, description: who is responsible for it, type: text}
+      - name: status
+        label: status
+        description: the asset's status
+        type: enum
+        required: true
+        constraints: {allowed_values: [in_service, fully_depreciated, disposed]}
+      - {name: disposed_on, label: disposed on, description: the disposal date, type: date}
+    ports:
+      - name: dispose
+        description: sell, scrap or write off the asset (FIN-FA-007)
+        kind: command
+        params:
+          - {name: disposal_date, label: date, description: the disposal date, type: date, required: true}
+          - {name: proceeds, label: proceeds, description: the proceeds, type: money, required: true}
+          - {name: kind, label: kind, description: sale, scrap or write-off, type: text, required: true}
+          - {name: proceeds_account, label: proceeds account, description: the account the proceeds go to, type: text, required: true}
+          - {name: number, label: number, description: the entry's number, type: text, required: true}
+        permission: dispose
+        impl: ubos.finance.assets#dispose
+  - name: AssetRegister
+    label: asset register
+    description: The fixed-asset register's runs and reports
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    fields:
+      - {name: name, label: name, description: the register's name, type: text, required: true}
+    ports:
+      - name: capitalize
+        description: create an asset from the lines of a posted bill on the class's cost account (FIN-FA-002)
+        kind: command
+        params:
+          - {name: bill, label: bill, description: the bill's number, type: text, required: true}
+          - {name: code, label: code, description: the asset ID, type: text, required: true}
+          - {name: description, label: description, description: the asset, type: text, required: true}
+          - {name: asset_class, label: class, description: the asset class (URI), type: text, required: true}
+          - {name: in_service, label: in service, description: the date placed in service, type: date, required: true}
+        permission: capitalize
+        impl: ubos.finance.assets#capitalize
+      - name: run_depreciation
+        description: depreciate every asset for the month ending on period_end, once (FIN-FA-005)
+        kind: command
+        params:
+          - {name: period_end, label: period end, description: the last day of the month, type: date, required: true}
+        permission: run
+        impl: ubos.finance.assets#run_depreciation
+      - name: register
+        description: the register with the period's depreciation (FIN-FA-009)
+        kind: query
+        params:
+          - {name: opening, label: opening, description: the last day before the period, type: date, required: true}
+          - {name: closing, label: closing, description: the last day of the period, type: date, required: true}
+        permission: read
+        impl: ubos.finance.assets#register
+      - name: roll_forward
+        description: cost and accumulated depreciation from opening to closing (FIN-FA-009)
+        kind: query
+        params:
+          - {name: opening, label: opening, description: the last day before the period, type: date, required: true}
+          - {name: closing, label: closing, description: the last day of the period, type: date, required: true}
+        permission: read
+        impl: ubos.finance.assets#roll_forward
+  - name: AssetBook
+    label: asset book
+    description: The cost and accumulated depreciation of each asset, by entry
+    namespace: ubos.finance
+    parent: DataObject
+    kind: ledger
+    schema_version: 1
+    ledger: {key: [asset], amounts: [cost, accumulated], double_entry: false}
+    fields:
+      - {name: asset, label: asset, description: the asset ID, type: text, required: true}
+      - {name: kind, label: kind, description: opening, addition, depreciation or disposal, type: text, required: true}
+      - {name: document, label: document, description: the entry that posted it, type: text, required: true}
+      - {name: cost, label: cost, description: the change of cost, type: money, required: true}
+      - {name: accumulated, label: accumulated, description: the change of accumulated depreciation (positive increases it), type: money, required: true}

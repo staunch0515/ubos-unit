@@ -1136,6 +1136,136 @@ def bank_tests():
     }]
 
 
+# ---- fixed assets (PH-2 step 10e, DEC-151) ----
+
+ASSET_CLASS = {'1500': 'MACH', '1510': 'VEH', '1520': 'COMP'}
+
+
+def class_uri(code):
+    return 'ubos://%s/AssetClass/%s' % (VAE, code.lower())
+
+
+def assets_setup(disposal=False):
+    """Asset classes (one per cost account of the sample assets), the register and the
+    assets in service before 2026 with their opening book."""
+    changes = []
+    if disposal:
+        changes.append({'op': 'create', 'class': 'GlAccount', 'object_id': uid('account', '7400'), 'slug': '7400',
+                        'valid': {'from': '2025-01-01'},
+                        'body': {'number': '7400', 'name': 'Gain or loss on disposal of assets', 'type': 'income',
+                                 'category': 'Other', 'normal_balance': 'C',
+                                 'statement_line': 'Other income (expense), net'}})
+    for r in rows('fixed-assets.csv'):
+        body = {'code': ASSET_CLASS[r['account']], 'description': 'class of ' + r['description'],
+                'cost_account': account_uri(r['account']), 'accumulated_account': account_uri('1590'),
+                'expense_account': account_uri('6700'), 'method': r['method'], 'life_months': int(r['life_months']),
+                'convention': 'full_month', 'threshold': money('1000.00')}
+        if disposal:
+            body['disposal_account'] = account_uri('7400')
+        changes.append({'op': 'create', 'class': 'AssetClass', 'object_id': uid('class', body['code']),
+                        'slug': body['code'].lower(), 'body': body})
+    changes.append({'op': 'create', 'class': 'AssetRegister', 'object_id': uid('register'), 'slug': 'register',
+                    'body': {'name': 'Fixed assets'}})
+    for r in rows('fixed-assets.csv'):
+        if r['in_service'] >= '2026-01-01':
+            continue
+        changes.append({'op': 'create', 'class': 'FixedAsset', 'object_id': uid('asset', r['id']), 'slug': r['id'].lower(),
+                        'body': {'code': r['id'], 'description': r['description'],
+                                 'asset_class': class_uri(ASSET_CLASS[r['account']]),
+                                 'cost': money(amount(cents(r['cost']))), 'in_service': r['in_service'],
+                                 'method': r['method'], 'life_months': int(r['life_months']), 'status': 'in_service'}})
+        changes.append({'op': 'append', 'class': 'AssetBook', 'entry_id': uid('fa-open', r['id']),
+                        'ledger_key': {'asset': r['id']}, 'valid_at': '2025-12-31',
+                        'body': {'asset': r['id'], 'kind': 'opening', 'document': 'opening',
+                                 'cost': money(amount(cents(r['cost']))),
+                                 'accumulated': money(amount(cents(r['accumulated_at_2025_12_31'])))}})
+    return [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': changes}}]
+
+
+def asset_steps():
+    """The bill of FA-003, its capitalisation and the January run."""
+    fa3 = next(r for r in rows('fixed-assets.csv') if r['in_service'] >= '2026-01-01')
+    bill = next(d for d in documents('2026-01') if d[1] == 'bill' and any(r['account'] == fa3['account'] for r in d[4]))
+    obj = ap_document(bill)
+    at = datetime.datetime.fromisoformat(bill[3]) + datetime.timedelta(hours=12)
+    steps, clock = advance(START, at)
+    steps += [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': [obj]}},
+              {'op': 'execute', 'input': {'branch': BRANCH, 'target': obj['object_id'], 'port': 'post', 'params': {}}},
+              {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('register'), 'port': 'capitalize', 'params': {
+                  'bill': bill[0], 'code': fa3['id'], 'description': fa3['description'],
+                  'asset_class': class_uri(ASSET_CLASS[fa3['account']]), 'in_service': fa3['in_service']}},
+               'expect': {'match': 'subset', 'result': {'result': {'capitalized': fa3['id'],
+                                                                   'cost': amount(cents(fa3['cost']))}}}}]
+    more, clock = advance(clock, datetime.datetime(2026, 1, 31, 15))
+    return steps + more, clock
+
+
+def asset_tests():
+    base = setup_steps() + payables_setup() + assets_setup()
+    steps, clock = asset_steps()
+    run = lambda exp: {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('register'), 'port': 'run_depreciation',
+                                                  'params': {'period_end': '2026-01-31'}}, 'expect': exp}
+    dep = next(d for d in documents('2026-01') if d[1] == 'depreciation')[0]
+    posted = {k: c for k, c in posted_lines('FIN-EXP-02').items() if k[1] == dep}
+    reg = []
+    for c in section('FIN-EXP-11'):
+        reg.append({'asset': c[0], 'description': c[1], 'account': c[2], 'cost': amount(cents(c[3])), 'in_service': c[4],
+                    'method': c[5], 'life_months': int(c[6]), 'accumulated_opening': amount(cents(c[7])),
+                    'depreciation': amount(cents(c[8])), 'accumulated_closing': amount(cents(c[9])),
+                    'net_book_value': amount(cents(c[10])), 'status': 'in_service'})
+    opening_cost = sum(cents(r['cost']) for r in reg if r['in_service'] < '2026-01-01')
+    roll = {'cost': {'opening': amount(opening_cost), 'additions': amount(sum(cents(r['cost']) for r in reg) - opening_cost),
+                     'disposals': '0.00', 'closing': amount(sum(cents(r['cost']) for r in reg))},
+            'accumulated': {'opening': amount(sum(cents(r['accumulated_opening']) for r in reg)),
+                            'depreciation': amount(sum(cents(r['depreciation']) for r in reg)), 'disposals': '0.00',
+                            'closing': amount(sum(cents(r['accumulated_closing']) for r in reg))}}
+    report = lambda port, result: {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('register'), 'port': port,
+                                                              'params': {'opening': '2025-12-31', 'closing': '2026-01-31'}},
+                                   'expect': {'match': 'subset', 'result': {'result': result}}}
+    fa2 = next(r for r in reg if r['method'] == 'DDB')
+    proceeds = 6000000
+    gain = proceeds - cents(fa2['net_book_value'])
+    period = uid('period', '2026-01')
+    return [{
+        'name': 'FIN-FA-005 FIN-EXP-11 the January run posts DEP-2601 once; the register and the roll-forward tie out',
+        'kind': 'scenario',
+        'steps': base + steps + [
+            run({'match': 'subset', 'result': {'result': {'created': True, 'number': dep}}}),
+            run({'match': 'subset', 'result': {'result': {'created': False, 'number': dep}}}),
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document', 'group': {'document': dep}},
+             'expect': {'match': 'subset', 'result': {'groups': document_groups(posted)}}},
+            report('register', {'rows': reg}),
+            report('roll_forward', roll),
+        ],
+    }, {
+        'name': 'FIN-FA-007 selling FA-002 for 60,000.00 after the January run posts the gain over its net book value',
+        'kind': 'scenario',
+        'steps': setup_steps() + payables_setup() + assets_setup(disposal=True) + steps + [
+            run({'match': 'subset', 'result': {'result': {'created': True}}}),
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('asset', fa2['asset']), 'port': 'dispose',
+                                        'params': {'disposal_date': '2026-01-31', 'proceeds': money(amount(proceeds)),
+                                                   'kind': 'sale', 'proceeds_account': account_uri('1010'),
+                                                   'number': 'FAD-0001'}},
+             'expect': {'match': 'subset', 'result': {'result': {'net_book_value': fa2['net_book_value'],
+                                                                 'gain': amount(gain)}}}},
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document', 'group': {'document': 'FAD-0001'}},
+             'expect': {'match': 'subset', 'result': {'groups': document_groups({
+                 ('1010', 'FAD-0001'): proceeds, ('1590', 'FAD-0001'): cents(fa2['accumulated_closing']),
+                 (fa2['account'], 'FAD-0001'): -cents(fa2['cost']), ('7400', 'FAD-0001'): -gain})}}},
+        ],
+    }, {
+        'name': 'FIN-FA-005 a run for a closed period is refused',
+        'kind': 'scenario',
+        'steps': base + steps + [
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': period}, 'label': 'p'},
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                {'op': 'update', 'object_id': period, 'base': {'$ref': 'p/version_hash'}, 'body': {'state': 'closing'}}]}},
+            {'op': 'close_period', 'input': {'branch': BRANCH, 'period': period, 'artefact_id': uid('artefact', 'fa')}},
+            run({'error_code': 'LOGIC.TYPE_ERROR'}),
+        ],
+    }]
+
+
 def asset_id(name):
     """The object id `forge test` gives a logic asset (`ubos_dvm::packages::asset_object_id`)."""
     h = hashlib.sha256(b'ubos.chunk.v1\x00' + json.dumps(name).encode()).hexdigest()
@@ -1143,7 +1273,8 @@ def asset_id(name):
 
 
 ASSETS = ('ubos.finance.statements', 'ubos.finance.entries', 'ubos.finance.periods', 'ubos.finance.years',
-          'ubos.finance.recurring', 'ubos.finance.receivables', 'ubos.finance.payables', 'ubos.finance.bank')
+          'ubos.finance.recurring', 'ubos.finance.receivables', 'ubos.finance.payables', 'ubos.finance.bank',
+          'ubos.finance.assets')
 
 
 def verified_on(branch):
@@ -1174,7 +1305,8 @@ def main():
              'tests/sample-periods.yaml': dump(period_tests()),
              'tests/sample-receivables.yaml': dump(receivables_tests()),
              'tests/sample-payables.yaml': dump(payables_tests()),
-             'tests/sample-bank.yaml': dump(bank_tests())}
+             'tests/sample-bank.yaml': dump(bank_tests()),
+             'tests/sample-assets.yaml': dump(asset_tests())}
     check = '--check' in sys.argv
     stale = []
     for rel, text in files.items():

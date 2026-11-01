@@ -1,0 +1,24 @@
+# The fixed-asset projections (STD-TIME-021): per asset, and per kind for the roll-forward.
+changes:
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-00000000000a
+    slug: fa-book
+    body:
+      name: fa-book
+      source: AssetBook
+      group_by: [asset]
+      aggregates:
+        - {fn: sum, field: cost, as: cost}
+        - {fn: sum, field: accumulated, as: accumulated}
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-00000000000b
+    slug: fa-roll
+    body:
+      name: fa-roll
+      source: AssetBook
+      group_by: [kind]
+      aggregates:
+        - {fn: sum, field: cost, as: cost}
+        - {fn: sum, field: accumulated, as: accumulated}
