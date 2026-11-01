@@ -36,6 +36,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-147 | PH-2 step 10, part 10a-2: recurring entries, automatic reversal on opening a period, governed reopening, the fiscal-year close with superseded closes; two gaps of BPA 1.0 for the next release candidate (a ledger's posting-date field, explicit coordinates of `read.projection`) | Accepted |
 | DEC-148 | PH-2 step 10, part 10b: receivables and sales tax — customers, tax codes, invoices and credit memos with tax, receipts with application and reapplication, the open-item and tax subledgers, aging with the control account, the sales tax report and customer statements | Accepted |
 | DEC-149 | PH-2 step 10, part 10c: payables and Form 1099 — vendors, bills with use tax, payment runs, the open-item subledger, aging with the control account, and the 1099 summary on a cash basis against a threshold table by tax year | Accepted |
+| DEC-150 | PH-2 step 10, part 10d: the bank — idempotent statement import, bank items recorded from statement lines, document-level reconciliation with prior outstanding items; January driven entirely by documents ties out FIN-EXP-03 and FIN-EXP-10 | Accepted |
 
 ---
 
@@ -796,3 +797,32 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
   - early-payment discounts, three-way matching and vendor statements, wherever FIN-AP asks for them (10g reviews FIN-AP-001…019 against the record);
   - 1099 forms as documents, and their e-filing (step 15 and step 12).
 - **Affects:** DEC-146, DEC-140, FIN-AP-001…019, FIN-TX-007, FIN-GL-021, FIN-RP-007, DSN-DVM-833
+
+### DEC-150 — The finance Buk, part 10d: bank reconciliation (PH-2 step 10)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 10d of step 10 (DEC-146) builds the bank (FIN-CB) and SCN-505. It ties out the reconciliation of the operating account 1010 for January against FIN-EXP-10, whose statement is `bank-statement-2026-01.csv`.
+- **Decision:**
+  1. **Import.** `BankStatementLine` is a ledger with `ledger.statement` (STD-KIND-030). A statement is imported with the kernel's `ingest_statement`, so a second import of the same statement appends nothing (FIN-CB-002). The statement's opening and closing balances are members of the reconciliation.
+  2. **Reconciliation.** `BankReconciliation` belongs to one bank account and one statement. It holds the period, the statement balances, the items outstanding at the previous reconciliation, and a date window.
+     - `record(line, number, account, description)` posts a bank-originated item (interest, fees) from a statement line as an entry of source `bank` (FIN-CB-004).
+     - `reconcile()` matches each statement line, in date order, to a posted entry on the bank account with the same amount within the window; failing that, to an item outstanding before.
+     - It reports the statement's balances and activity, the outstanding entries, the adjusted bank balance, the book balance from `gl-balance` and the difference. It keeps the matches, and the state becomes `reconciled` when nothing is left.
+  3. **Document level, not kernel matching.** The kernel's matching (STD-KIND-027, -028) pairs ledger entries and records them by entry id, and it is an adapter operation. The reconciliation needs documents and their dates, and logic cannot read an entry by its id. The Buk therefore matches statement lines with posted entries. Kernel matching remains available for line-level matching of subledgers, and a logic instruction for it is a candidate for a later release of BPA.
+  4. **The month from documents.** The test generator now builds a whole month from its documents:
+     - receivables and payables documents through their subledgers;
+     - the others as journal entries: journal (manual, or import when the description says so), depreciation (fixed assets), bank and tax payments (bank), and revaluation with its automatic reversal date;
+     - manual and imported entries over 10,000.00 are approved by a controller;
+     - manual entries touching a control account carry a logged exception.
+
+     The approval rule of `ubos.finance.controls` now covers imported entries too, as FIN-EXP-02 says for the payroll import.
+  5. **Sales-tax payment.** STX-PAY-2512 is an entry of source `bank` with kind `tax payment` (FIN-TX-006).
+- **Consequences:**
+  - Two new tests pass in memory and on PostgreSQL 16. The first imports the statement, records interest and fee from it, and reconciles. The result equals FIN-EXP-10: outstanding PAYROLL-2601 (45,000.00), CHK-1045 matched as outstanding before, difference 0.00. The two recorded entries post the lines of FIN-EXP-02.
+  - In that test, January built entirely from documents gives the trial balance FIN-EXP-03.
+  - The second test shows that a repeated import appends nothing.
+  - All 34 finance tests pass, with script coverage 1.0. No kernel code was added.
+- **Open, assigned:**
+  - the savings account's statement (no sample statement): not needed;
+  - automatic rules for recurring bank items, reconciliation sign-off with approval, and statement file formats (BAI2, camt): step 12 (bank file formats) and 10g for the rules;
+  - a logic instruction for kernel matching: the next BPA release candidate, with the two items of DEC-147.
+- **Affects:** DEC-146, DEC-147, FIN-CB-001…011, FIN-TX-006, STD-KIND-027, STD-KIND-028, STD-KIND-030

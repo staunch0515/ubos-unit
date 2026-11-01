@@ -1,0 +1,55 @@
+# Bank statements and reconciliation (FIN-CB; PH-2 step 10d, DEC-150).
+classes:
+  - name: BankStatementLine
+    label: bank statement line
+    description: A line of a bank statement, ingested idempotently (STD-KIND-030, FIN-CB-002)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: ledger
+    schema_version: 1
+    ledger: {key: [bank_account], amounts: [amount], double_entry: false, statement: {source: source, account: bank_account, statement: statement, line: line}}
+    fields:
+      - {name: source, label: source, description: the bank or file the statement came from, type: text, required: true}
+      - {name: bank_account, label: bank account, description: the GL bank account, type: text, required: true}
+      - {name: statement, label: statement, description: the statement's identifier, type: text, required: true}
+      - {name: line, label: line, description: the line number, type: integer, required: true}
+      - {name: date, label: date, description: the booking date, type: date, required: true}
+      - {name: amount, label: amount, description: deposits positive, withdrawals negative, type: money, required: true}
+      - {name: reference, label: reference, description: the bank's reference, type: text}
+      - {name: description, label: description, description: the bank's description, type: text}
+  - name: BankReconciliation
+    label: bank reconciliation
+    description: The reconciliation of a bank account with one statement (FIN-CB-003…006)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[bank_account, statement]]
+    fields:
+      - {name: bank_account, label: bank account, description: the GL bank account, type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: statement, label: statement, description: the statement reconciled, type: text, required: true}
+      - {name: period_start, label: period start, description: the first day of the statement, type: date, required: true}
+      - {name: period_end, label: period end, description: the last day of the statement, type: date, required: true}
+      - {name: opening_balance, label: opening balance, description: the statement's opening balance, type: money, required: true}
+      - {name: closing_balance, label: closing balance, description: the statement's closing balance, type: money, required: true}
+      - {name: prior_outstanding, label: prior outstanding, description: "the items outstanding at the previous reconciliation: {reference, amount}", type: json}
+      - {name: window_days, label: window, description: the largest distance in days between a book date and a bank date that still match, type: integer, required: true}
+      - {name: matches, label: matches, description: "the matches of the last run: {line, document}", type: json}
+      - {name: result, label: result, description: the reconciliation as last computed, type: json}
+      - name: state
+        label: state
+        description: open until reconciled with no difference
+        type: enum
+        constraints: {allowed_values: [open, reconciled]}
+    ports:
+      - name: record
+        description: post a bank-originated item (interest, fees) from a statement line (FIN-CB-004)
+        kind: command
+        params:
+          - {name: line, label: line, description: the statement line, type: integer, required: true}
+          - {name: number, label: number, description: the entry's number, type: text, required: true}
+          - {name: account, label: account, description: the account against the bank, type: text, required: true}
+          - {name: description, label: description, description: the entry's description, type: text, required: true}
+        permission: post
+        impl: ubos.finance.bank#record
+      - {name: reconcile, description: match the statement with the book and compute the reconciliation, kind: command, params: [], permission: reconcile, impl: ubos.finance.bank#reconcile}

@@ -1,0 +1,150 @@
+# Bank reconciliation (FIN-CB-003…006; PH-2 step 10d, DEC-150): statement lines are matched with
+# the posted entries on the bank account by amount within a date window, then with the items
+# outstanding at the previous reconciliation; unmatched entries are outstanding.
+assets:
+  - name: ubos.finance.bank
+    abi: "1.0"
+    tier: l2
+    profile: standard
+    state: committed
+    capabilities: [read, commit, run, search]
+    exports: [record, reconcile]
+    source: |
+      fn d(v) { dec(v.to_string()) }
+      fn two(x) {
+        let s = x.to_string();
+        if !s.contains(".") { return s + ".00"; }
+        let p = s.split(".");
+        let f = p[1];
+        if f.len() == 1 { f += "0"; }
+        if f.len() > 2 { f = f.sub_string(0, 2); }
+        let out = p[0] + "." + f;
+        if out == "-0.00" { "0.00" } else { out }
+      }
+      fn num(s) {
+        let n = 0;
+        for c in s.chars() { n = n * 10 + "0123456789".index_of(c); }
+        n
+      }
+      fn days(s) {
+        let y = num(s.sub_string(0, 4));
+        let m = num(s.sub_string(5, 2));
+        let dd = num(s.sub_string(8, 2));
+        if m <= 2 { y -= 1; }
+        let era = y / 400;
+        let yoe = y - era * 400;
+        let mp = (m + 9) % 12;
+        let doy = (153 * mp + 2) / 5 + dd - 1;
+        era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy
+      }
+      fn sum_of(values, name) {
+        let t = dec("0.00");
+        for m in values[name] { t += dec(m.amount); }
+        t
+      }
+      fn sorted(rows, key) {
+        let out = [];
+        for r in rows {
+          let i = 0;
+          while i < out.len() && out[i][key] <= r[key] { i += 1; }
+          out.insert(i, r);
+        }
+        out
+      }
+
+      // a bank-originated item from a statement line: the entry of source bank
+      fn record(line, number, account, description) {
+        sys.read.get(#{target: self_id});
+        let g = sys.read.projection(#{projection: "bank-lines",
+          group: #{bank_account: this.bank_account, statement: this.statement, line: line}}).groups;
+        if g.len() == 0 { throw "no statement line " + line.to_string(); }
+        let a = sum_of(g[0].values, "amount");
+        let cur = g[0].values.amount[0].currency;
+        let abs = if a < 0 { -a } else { a };
+        let e = sys.commit.create(#{class: "JournalEntry", slug: number.to_lower(),
+          fields: #{number: number, source: "bank", kind: "bank", posting_date: g[0].values.date,
+                    document_date: g[0].values.date, description: description,
+                    lines: [#{account: this.bank_account, amount: #{amount: two(a), currency: cur}},
+                            #{account: account, amount: #{amount: two(-a), currency: cur}}],
+                    total: #{amount: two(abs), currency: cur}, state: "draft"}});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        #{recorded: number, amount: two(a)}
+      }
+
+      fn reconcile() {
+        sys.read.get(#{target: self_id});
+        let cur = currency(this.opening_balance);
+        // the statement's lines
+        let lines = [];
+        for g in sys.read.projection(#{projection: "bank-lines", group: #{bank_account: this.bank_account,
+                                                                            statement: this.statement}}).groups {
+          lines.push(#{line: g.key.line, date: g.values.date, reference: g.values.reference,
+                       amount: sum_of(g.values, "amount"), order: g.values.date + "|" + (100000 + g.key.line).to_string()});
+        }
+        lines = sorted(lines, "order");
+        // the posted entries on the bank account up to the period's end
+        let w = "this.state == \"posted\" and this.posting_date <= d'" + this.period_end + "'";
+        let book = [];
+        for id in sys.search.query(#{query: #{from: "JournalEntry", where: w}}).items {
+          let e = sys.read.get(#{target: id}).fields;
+          let a = dec("0.00");
+          for l in e.lines { if l.account == this.bank_account { a += d(l.amount.amount); } }
+          if a.is_zero() || e.posting_date < this.period_start { continue; }
+          book.push(#{document: e.number, date: e.posting_date, amount: a, matched: false});
+        }
+        book = sorted(book, "date");
+        let prior = if this.prior_outstanding == () { [] } else { this.prior_outstanding };
+        let prior_open = [];
+        for p in prior { prior_open.push(#{reference: p.reference, amount: d(p.amount.amount), matched: false}); }
+        let matches = [];
+        let breaks = [];
+        let activity = dec("0.00");
+        for l in lines {
+          activity += l.amount;
+          let found = false;
+          for i in 0..book.len() {
+            let b = book[i];
+            let gap = days(l.date) - days(b.date);
+            if gap < 0 { gap = -gap; }
+            if !b.matched && b.amount == l.amount && gap <= this.window_days {
+              b.matched = true; book[i] = b; found = true;
+              matches.push(#{line: l.line, document: b.document});
+              break;
+            }
+          }
+          if !found {
+            for i in 0..prior_open.len() {
+              let p = prior_open[i];
+              if !p.matched && p.amount == l.amount {
+                p.matched = true; prior_open[i] = p; found = true;
+                matches.push(#{line: l.line, document: p.reference});
+                break;
+              }
+            }
+          }
+          if !found { breaks.push(#{line: l.line, reference: l.reference, amount: two(l.amount)}); }
+        }
+        let outstanding = [];
+        let pending = dec("0.00");
+        for b in book {
+          if !b.matched { outstanding.push(#{document: b.document, date: b.date, amount: two(b.amount)}); pending += b.amount; }
+        }
+        for p in prior_open {
+          if !p.matched { outstanding.push(#{document: p.reference, date: this.period_start, amount: two(p.amount)}); pending += p.amount; }
+        }
+        let closing = amount(this.closing_balance);
+        let opening = amount(this.opening_balance);
+        let adjusted = closing + pending;
+        let g = sys.read.projection(#{projection: "gl-balance", asof: this.period_end,
+                                      group: #{account: this.bank_account}}).groups;
+        let books = if g.len() > 0 { sum_of(g[0].values, "balance") } else { dec("0.00") };
+        let result = #{statement_opening: two(opening), statement_activity: two(activity),
+                       statement_closing: two(closing), activity_difference: two(opening + activity - closing),
+                       outstanding: outstanding, adjusted_bank_balance: two(adjusted), book_balance: two(books),
+                       difference: two(adjusted - books), unmatched_statement_lines: breaks};
+        let state = if (adjusted - books).is_zero() && breaks.is_empty() { "reconciled" } else { "open" };
+        sys.commit.update(#{target: self_id, set: #{matches: matches, result: result, state: state}});
+        result.state = state;
+        result.matches = matches;
+        result
+      }

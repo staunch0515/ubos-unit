@@ -1,0 +1,15 @@
+# The statement lines by statement and line (STD-TIME-021).
+changes:
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-000000000009
+    slug: bank-lines
+    body:
+      name: bank-lines
+      source: BankStatementLine
+      group_by: [bank_account, statement, line]
+      aggregates:
+        - {fn: sum, field: amount, as: amount}
+        - {fn: last, field: date, as: date}
+        - {fn: last, field: reference, as: reference}
+        - {fn: last, field: description, as: description}

@@ -986,6 +986,156 @@ def payables_tests():
     }]
 
 
+# ---- the month from documents, and the bank (PH-2 step 10d, DEC-150) ----
+
+# the source of the journal entries that are not subledger documents, by the CSV's kind
+SOURCE = {'journal': 'manual', 'depreciation': 'fixed_assets', 'bank': 'bank', 'tax payment': 'bank',
+          'revaluation': 'revaluation', 'revaluation reversal': 'revaluation'}
+APPROVAL_LIMIT = 1000000   # cents: the rule of the sheet ubos.finance.controls
+
+
+def entry_of(doc):
+    """The JournalEntry of a document that no subledger posts."""
+    name, kind, posting, _, rows_ = doc
+    source = SOURCE[kind]
+    if kind == 'journal' and 'imported' in rows_[0]['description']:
+        source = 'import'
+    extra = {}
+    if source == 'manual' and any(r['account'] in CONTROL for r in rows_):
+        extra['control_exception'] = 'paid from the operating account by the controller'
+    if kind == 'revaluation':
+        extra['auto_reverse_on'] = '2026-02-01'
+    obj = je(name, source=source, **extra)
+    if rows_[0]['party']:
+        obj['body']['party'] = rows_[0]['party']
+    return obj
+
+
+def entry_steps(obj):
+    """Create and post an entry; manual and imported entries over the limit wait for a
+    controller's approval."""
+    b = obj['body']
+    pid = uid('process', 'post', b['number'])
+    big = b['source'] in ('manual', 'import') and cents(b['total']['amount']) > APPROVAL_LIMIT
+    i = {'branch': BRANCH, 'target': obj['object_id'], 'port': 'post', 'params': {},
+         'process': {'initiator': PREPARER, 'process_id': pid}}
+    if big:
+        i['defer'] = True
+    steps = [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': [obj]}}, {'op': 'execute', 'input': i}]
+    if big:
+        steps.append({'op': 'approve', 'input': {'pending_change_id': pid, 'approver': CONTROLLER,
+                                                 'roles': ['controller']},
+                      'expect': {'match': 'subset', 'result': {'state': 'applied'}}})
+    return steps
+
+
+def month_steps(month, clock, skip=()):
+    """Every document of a month from its document: receivables and payables through their
+    subledgers, the others as journal entries; each at noon of its recording date."""
+    steps = []
+    for doc in documents(month):
+        if doc[0] in skip:
+            continue
+        at = datetime.datetime.fromisoformat(doc[3]) + datetime.timedelta(hours=12)
+        more, clock = advance(clock, at)
+        steps += more
+        if doc[1] in ('invoice', 'credit memo', 'receipt', 'bill', 'payment'):
+            obj = ar_document(doc) if doc[1] in ('invoice', 'credit memo', 'receipt') else ap_document(doc)
+            steps += [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': [obj]}},
+                      {'op': 'execute', 'input': {'branch': BRANCH, 'target': obj['object_id'], 'port': 'post',
+                                                  'params': {}, 'process': {'initiator': PREPARER}},
+                       'expect': {'match': 'subset', 'result': {'result': {'posted': True}}}}]
+        else:
+            steps += entry_steps(entry_of(doc))
+    return steps, clock
+
+
+def statement_lines():
+    out = []
+    for n, r in enumerate(rows('bank-statement-2026-01.csv')):
+        if r['bank_reference'] in ('OPENING', 'CLOSING'):
+            continue
+        out.append({'ledger_key': {'bank_account': account_uri('1010')}, 'valid_at': r['date'],
+                    'body': {'source': 'Lakeside National Bank', 'bank_account': account_uri('1010'),
+                             'statement': '2026-01', 'line': n, 'date': r['date'],
+                             'amount': money(amount(cents(r['amount']))), 'reference': r['bank_reference'],
+                             'description': r['description']}})
+    return out
+
+
+def bank_tests():
+    base = setup_steps() + receivables_setup() + payables_setup()
+    recorded = ('BANK-INT-2601', 'BANK-FEE-2601')
+    steps, clock = month_steps('2026-01', START, skip=recorded)
+    stmt = rows('bank-statement-2026-01.csv')
+    line_of = {r['expected_match']: n for n, r in enumerate(stmt)}
+    opening = next(r for r in stmt if r['bank_reference'] == 'OPENING')
+    closing = next(r for r in stmt if r['bank_reference'] == 'CLOSING')
+    prior = [{'reference': m.group(1), 'amount': money(amount(cents(r['amount'])))} for r in stmt
+             for m in [re.match(r'(\S+) \(outstanding at', r['expected_match'])] if m]
+    recon = {'op': 'create', 'class': 'BankReconciliation', 'object_id': uid('recon', '1010', '2026-01'),
+             'slug': '1010-2026-01',
+             'body': {'bank_account': account_uri('1010'), 'statement': '2026-01', 'period_start': '2026-01-01',
+                      'period_end': '2026-01-31', 'opening_balance': money(amount(cents(opening['amount']))),
+                      'closing_balance': money(amount(cents(closing['amount']))), 'prior_outstanding': prior,
+                      'window_days': 3, 'state': 'open'}}
+    exp = {}
+    outstanding = []
+    for label, value in section('FIN-EXP-10'):
+        label = label.strip('*')
+        m = re.match(r'Less: outstanding (\S+) dated (\S+)', label)
+        if m:
+            outstanding.append({'document': m.group(1), 'date': m.group(2), 'amount': amount(cents(value))})
+        elif label.startswith('Balance per bank statement') and 'statement_opening' not in exp:
+            exp['statement_opening'] = amount(cents(value))
+        elif label.startswith('Balance per bank statement'):
+            exp['statement_closing'] = amount(cents(value))
+        elif label.startswith('Net statement activity'):
+            exp['statement_activity'] = amount(cents(value))
+        elif label.startswith('Adjusted bank balance'):
+            exp['adjusted_bank_balance'] = amount(cents(value))
+        elif label.startswith('Balance per books'):
+            exp['book_balance'] = amount(cents(value))
+        elif label.startswith('Difference'):
+            exp['difference'] = amount(cents(value))
+    exp.update({'outstanding': outstanding, 'unmatched_statement_lines': [], 'state': 'reconciled',
+                'activity_difference': '0.00'})
+    at = datetime.datetime(2026, 2, 3, 10)
+    more, _ = advance(clock, at)
+    record = lambda doc, account: {'op': 'execute', 'input': {
+        'branch': BRANCH, 'target': uid('recon', '1010', '2026-01'), 'port': 'record',
+        'params': {'line': line_of[doc], 'number': doc, 'account': account_uri(account),
+                   'description': document_named(doc)[4][0]['description']}},
+        'expect': {'match': 'subset', 'result': {'result': {'recorded': doc}}}}
+    ingest = {'op': 'ingest_statement', 'input': {'branch': BRANCH, 'class': 'BankStatementLine',
+                                                  'lines': statement_lines()}}
+    posted = posted_lines('FIN-EXP-02')
+    return [{
+        'name': 'SCN-505 FIN-EXP-10 the January statement is imported, interest and fee recorded from it, and the reconciliation equals FIN-EXP-10',
+        'kind': 'scenario',
+        'steps': base + steps + more + [
+            dict(ingest, expect={'match': 'subset', 'result': {'duplicates': []}}),
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [recon]}},
+            record('BANK-INT-2601', next(r['account'] for r in document_named('BANK-INT-2601')[4] if r['account'] != '1010')),
+            record('BANK-FEE-2601', next(r['account'] for r in document_named('BANK-FEE-2601')[4] if r['account'] != '1010')),
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('recon', '1010', '2026-01'), 'port': 'reconcile',
+                                        'params': {}}, 'expect': {'match': 'subset', 'result': {'result': exp}}},
+            ] + [{'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document', 'group': {'document': d}},
+                  'expect': {'match': 'subset', 'result': {'groups': document_groups(
+                      {k: c for k, c in posted.items() if k[1] == d})}}} for d in recorded] + [
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-balance', 'asof': '2026-01-31'},
+             'expect': {'match': 'subset', 'result': {'groups': balance_groups(trial_balance('FIN-EXP-03'))}}},
+        ],
+    }, {
+        'name': 'FIN-CB-002 importing the same statement again appends nothing',
+        'kind': 'scenario',
+        'steps': base + [
+            dict(ingest, label='first'),
+            dict(ingest, expect={'match': 'subset', 'result': {'appended': [], 'duplicates': {'$ref': 'first/appended'}}}),
+        ],
+    }]
+
+
 def asset_id(name):
     """The object id `forge test` gives a logic asset (`ubos_dvm::packages::asset_object_id`)."""
     h = hashlib.sha256(b'ubos.chunk.v1\x00' + json.dumps(name).encode()).hexdigest()
@@ -993,7 +1143,7 @@ def asset_id(name):
 
 
 ASSETS = ('ubos.finance.statements', 'ubos.finance.entries', 'ubos.finance.periods', 'ubos.finance.years',
-          'ubos.finance.recurring', 'ubos.finance.receivables', 'ubos.finance.payables')
+          'ubos.finance.recurring', 'ubos.finance.receivables', 'ubos.finance.payables', 'ubos.finance.bank')
 
 
 def verified_on(branch):
@@ -1023,7 +1173,8 @@ def main():
              'tests/sample-entries.yaml': dump(entry_tests()),
              'tests/sample-periods.yaml': dump(period_tests()),
              'tests/sample-receivables.yaml': dump(receivables_tests()),
-             'tests/sample-payables.yaml': dump(payables_tests())}
+             'tests/sample-payables.yaml': dump(payables_tests()),
+             'tests/sample-bank.yaml': dump(bank_tests())}
     check = '--check' in sys.argv
     stale = []
     for rel, text in files.items():
