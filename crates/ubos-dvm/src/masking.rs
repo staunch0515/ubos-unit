@@ -59,9 +59,7 @@ pub(crate) fn clearances_of(viewer: &Value) -> Result<Vec<String>, BpaError> {
 /// Whether a value is an erased marker (STD-OBJ-011).
 fn is_marker(v: &Value) -> bool {
     v.as_object().is_some_and(|o| {
-        o.get("erased") == Some(&json!(true))
-            && o.len() == 2
-            && o.contains_key("commitment")
+        o.get("erased") == Some(&json!(true)) && o.len() == 2 && o.contains_key("commitment")
     })
 }
 
@@ -88,7 +86,8 @@ pub(crate) fn this_members(text: &str, bare: bool) -> BTreeSet<String> {
     let mut i = 0;
     while let Some(pos) = t[i..].find("this") {
         let start = i + pos;
-        let before_ok = start == 0 || !(bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_');
+        let before_ok =
+            start == 0 || !(bytes[start - 1].is_ascii_alphanumeric() || bytes[start - 1] == b'_');
         let mut j = start + 4;
         if before_ok && j < bytes.len() && bytes[j] == b'?' {
             j += 1;
@@ -239,7 +238,9 @@ impl Engine {
                 .into_iter()
                 .flatten()
                 .flat_map(|b| b["declarations"].as_array().cloned().unwrap_or_default())
-                .any(|d| s(&d, "property").is_some_and(|p| p == property || p.starts_with(&dotted)));
+                .any(|d| {
+                    s(&d, "property").is_some_and(|p| p == property || p.starts_with(&dotted))
+                });
             if declares {
                 return Ok(true);
             }

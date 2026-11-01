@@ -381,7 +381,8 @@ impl Engine {
             }
             if !names.is_empty() {
                 let modes = self.mask_modes(branch, sel, &oid, &oclass, viewer)?;
-                let hidden: Vec<&String> = names.iter().filter(|n| modes.contains_key(*n)).collect();
+                let hidden: Vec<&String> =
+                    names.iter().filter(|n| modes.contains_key(*n)).collect();
                 if !hidden.is_empty() {
                     return Err(BpaError::with_details(
                         "QRY.INVALID_QUERY",

@@ -217,6 +217,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a personal field, when the stored version is inspected, then only ciphertext and a commitment are present.
 - **Verification:** SEC, CONF
 - **Origin:** FR-PROOF-071, FR-PROOF-072, FR-IAM-092, STD-OBJ-010, AR-020
+- **Phase note:** DEC-138: built in PH-2 step 8c as STD-OBJ-010 states it: a class with `subject_key` stores its protected fields as AES-256-GCM items with a random nonce, a random salt inside the ciphertext and the field commitment; the version hash, trees and archives cover the stored form, and reads, merges, rules and logic see the plaintext. Subject keys are kernel metadata outside the business data and archives; wrapping them with the tenant key through the node's key service is open and assigned when step 8 closes (8e).
 
 ### DSN-DVM-831 — Erasure by key destruction
 - **Statement:** Erasure of a subject MUST destroy the subject key through the host key service, after checking holds and retention (FR-PROOF-075, `AUD.LEGAL_HOLD_ACTIVE`). Afterwards, reads MUST return the erased marker (`PROOF.VALUE_ERASED`, STD-OBJ-011), and proofs MUST still verify.
@@ -228,6 +229,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   2. Given an active legal hold, when erasure is requested, then it is refused.
 - **Verification:** SEC, CONF
 - **Origin:** FR-PROOF-073, FR-PROOF-075, STD-OBJ-011, NR-PRIV-001
+- **Phase note:** DEC-138: built in PH-2 step 8c: `erase_subject` destroys the subject key, fields encrypted under it read as `{erased, commitment}` in every version, disclosures and new values for the subject fail with `PROOF.VALUE_ERASED`, and versions, hashes and proofs are unchanged; the check of legal holds and retention before erasure is open and assigned when step 8 closes (8e).
 
 ### DSN-DVM-832 — Backups honour erasure
 - **Statement:** Subject keys MUST NOT be stored in business backups; they MUST live in the key service, whose own backups apply a tombstone list on restore (FR-PROOF-074).
@@ -248,6 +250,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given an encrypted email key, when looked up by value, then the object is found; after erasure it is not.
 - **Verification:** CONF, SEC
 - **Origin:** STD-OBJ-012, AR-021
+- **Phase note:** DEC-138: in PH-2 step 8c the lookup token is the pure operation `blind_index` under the tenant lookup key of DEC-137 (STD-OBJ-012); no tokens are stored yet, so erasure has none to drop.
 
 ### DSN-DVM-834 — Key unavailability
 - **Statement:** When a key is temporarily unavailable, reads MUST fail with `IAM.KEY_UNAVAILABLE` (retryable), distinct from erased values.
@@ -258,6 +261,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given the key service down, when reading an encrypted field, then `IAM.KEY_UNAVAILABLE` is returned.
 - **Verification:** FAULT
 - **Origin:** FR-IAM-093
+- **Phase note:** DEC-138: built in PH-2 step 8c: a subject key the key service cannot provide (`key_availability`, or no key on the node, as after importing an archive) makes reads of its fields fail with `IAM.KEY_UNAVAILABLE`, distinct from the erased marker.
 
 ### DSN-DVM-835 — Content disposal
 - **Statement:** Disposal of RawDocument content under retention (STD-PROOF-060) MUST delete chunks while keeping their IDs and a disposal certificate, so proofs over the IDs still verify.

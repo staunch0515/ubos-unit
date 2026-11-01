@@ -89,6 +89,7 @@ impl Engine {
     /// A new engine over a store, reset.
     pub fn new(store: Box<dyn Store>) -> Result<Engine, BpaError> {
         crate::lenses::install();
+        crate::protection::install();
         let mut e = Engine {
             system_write: false,
             read_only: None,
@@ -119,6 +120,7 @@ impl Engine {
     /// dataset), with the given class declarations; nothing is reset.
     pub fn attach(store: Box<dyn Store>, classes: &Value) -> Result<Engine, BpaError> {
         crate::lenses::install();
+        crate::protection::install();
         let mut e = Engine {
             system_write: false,
             read_only: None,
@@ -263,6 +265,7 @@ impl Engine {
     /// without `main` is initialised (CTR-001 `open_vae`, step 7a).
     pub fn open_existing(store: Box<dyn Store>) -> Result<Engine, BpaError> {
         crate::lenses::install();
+        crate::protection::install();
         let mut e = Engine {
             system_write: false,
             read_only: None,
@@ -1358,8 +1361,14 @@ fn update(
         }
         body.extend(repo.reg.check_body(&o.class, &given, true)?);
         crate::sheets::sheet_body(&o.class, &mut body)?;
+        // STD-OBJ-011 (1.0-rc8; PH-2 step 8c): an erased field is kept as stored
+        let checked: Map<String, Value> = body
+            .iter()
+            .filter(|(_, v)| !crate::protection::is_marker(v))
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
         repo.reg
-            .check_body(&o.class, &Value::Object(body.clone()), false)?;
+            .check_body(&o.class, &Value::Object(checked), false)?;
         let slug = s(ch, "slug").unwrap_or(&o.slug).to_string();
         names::check_name("slug", &slug)?;
         let kind = s(&valid, "kind").unwrap_or("supersede_from");

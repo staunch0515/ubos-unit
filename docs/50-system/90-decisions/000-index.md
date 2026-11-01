@@ -24,6 +24,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-135 | PH-2 step 7 closed: models and packages (parts 7a–7f, DEC-127…134) — schema evolution and lenses, upstream changes, the Buk format and Forge commands, installation, upgrade, migration, rollback, removal, deprecation, genesis upgrades, model export and the ontology Buk; 61 step-7 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
 | DEC-136 | PH-2 step 8 opened in parts 8a–8e; part 8a: authorization relations and relation-based access rules in the kernel; STD-LGS-050 and -051 claimed | Accepted |
 | DEC-137 | PH-2 step 8, part 8b: field masking for viewers (reads, query rows, outbox payloads), clearances, the tenant lookup key, and masked fields refused in query filters and sorts; STD-LGS-052 claimed with part 8c | Accepted |
+| DEC-138 | PH-2 step 8, part 8c: encrypted fields under subject keys, disclosure, key rotation, crypto-shredding and key unavailability; STD-OBJ-010, -011, -012 and STD-LGS-052 claimed | Accepted |
 
 ---
 
@@ -425,3 +426,41 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
 - **Alternatives considered:**
   - Masking query rows inside the query execution was rejected: the selected values are masked after the page is built, as for reads, and only filters and sorts need the check inside, to stop inference by probing.
 - **Affects:** STD-LGS-052, STD-OBJ-012, DSN-DVM-821, DSN-DVM-822, DSN-DVM-823, DEC-136
+
+### DEC-138 — Protection, part 8c: encrypted fields and crypto-shredding (PH-2 step 8)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 8c of step 8 (DEC-136) covers encrypted fields under subject keys, equality lookups, crypto-shredding and key unavailability (STD-OBJ-010, -011, -012; DSN-DVM-830, -831, -833, -834). Their 20 vectors and VER-CONF-5364 of STD-LGS-052 (DEC-137) needed it; the 5 vectors of STD-OBJ-012 already passed.
+- **Decision:**
+  1. **Field codec** (`ubos-version`). `set_field_codec` installs a sealer and an opener, as `set_aligner` installs the aligner of merges.
+     - `Repo::new_version` seals the body before the version is hashed.
+     - `Repo::version`, `versions` and `version_in` open what they read.
+     - `Repo::stored_version` reads a version as stored; archives read the store directly.
+  2. **Stored form** (`crates/ubos-dvm/src/protection.rs`).
+     - Protected fields are those of effective classification `personal` or `sensitive_personal` (the field's, else the class's `classification_default`), in a class whose linearization declares `subject_key`.
+     - Each is stored as AES-256-GCM under the subject's current key: a random 12-byte nonce, the object and field as associated data, and the ciphertext of `canonical({salt, value})` with a random 16-byte salt. The commitment is `H(ubos.field-commit.v1 || salt || canonical(value))`.
+     - The subject is the object (`self`), the text of the subject key field, or the object its reference names, resolved in the transaction. A missing subject value is `MODEL.CONSTRAINT_VIOLATED`.
+     - `ubos-model` refuses a `subject_key` that is not `self` or an unprotected text or reference field of the class (`MODEL.INVALID_VALUE`).
+  3. **Key service.**
+     - Subject keys are kernel metadata `subject_key/<subject_id>` with their versions, outside the business data and archives.
+     - A key is created on the first protected write; `subject_key {subject_id, rotate}` creates or rotates one, and earlier versions stay readable under their key version.
+     - `key_availability` marks a key unavailable. Reads of its fields, and reads without a key on the node, fail with `IAM.KEY_UNAVAILABLE`.
+  4. **Erasure.**
+     - `erase_subject {subject_id, reason}` destroys the key versions and records the erasure. It reports the versions and fields encrypted under the key, found from every branch's objects through their timelines and predecessors.
+     - Fields under a destroyed key read as `{erased, commitment}`, and the versions, hashes and proofs are unchanged.
+     - A new value for the subject fails with `PROOF.VALUE_ERASED`. An update of other fields keeps the erased fields as their predecessor stored them, and its body check leaves the markers out.
+  5. **Disclosure.**
+     - `disclose {branch, object_id, field}` returns `{field, value, salt, commitment}`. A field that is not encrypted is `MODEL.INVALID_VALUE`; an erased one is `PROOF.VALUE_ERASED`.
+     - The pure operation `verify_disclosure` checks a disclosure against a commitment.
+     - `stored_form` returns the body as stored.
+  6. **Claim.** The conformance test claims STD-OBJ-010, -011, -012 and STD-LGS-052.
+  7. **Open, assigned when step 8 closes (8e):**
+     - wrapping subject keys with the tenant key through the node's key service, and keeping them out of node backups (DSN-DVM-830, -832);
+     - the check of legal holds and retention before an erasure (DSN-DVM-831);
+     - stored lookup tokens, dropped on erasure (DSN-DVM-833).
+- **Consequences:**
+  - The 31 vectors of STD-OBJ-010…012 and STD-LGS-052 pass in memory and on PostgreSQL 16.
+  - Opening costs one metadata read per encrypted field read; classes without `subject_key` are unaffected.
+  - A unique key on a protected field compares stored forms, which differ for equal values; such keys wait for stored lookup tokens.
+- **Alternatives considered:**
+  - Decrypting in each reader (reads, queries, merges, rules, logic) was rejected: the codec at the version layer gives every reader the opened form and every writer the stored form, with archives and proofs on the stored form by construction.
+- **Affects:** STD-OBJ-010, STD-OBJ-011, STD-OBJ-012, STD-LGS-052, DSN-DVM-830, DSN-DVM-831, DSN-DVM-832, DSN-DVM-833, DSN-DVM-834, DEC-137

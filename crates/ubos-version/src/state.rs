@@ -398,6 +398,31 @@ pub fn aligned_body(repo: &mut Repo<'_>, v: &Value) -> Result<Map<String, Value>
     }
 }
 
+/// The sealer of encrypted fields (STD-OBJ-010): turns a body into its stored form
+/// before the version is hashed; it gets the object, its class and the predecessor
+/// version. The DVM installs it; without one a body is stored as it is.
+pub type Sealer = fn(
+    &mut Repo<'_>,
+    &Tx,
+    &str,
+    &str,
+    &mut Map<String, Value>,
+    Option<&str>,
+) -> Result<(), BpaError>;
+
+/// The opener of encrypted fields (STD-OBJ-010, -011): turns a stored version record
+/// into the record that reads, merges, rules and logic see.
+pub type Opener = fn(&mut dyn Store, &mut Value) -> Result<(), BpaError>;
+
+static SEALER: std::sync::OnceLock<Sealer> = std::sync::OnceLock::new();
+static OPENER: std::sync::OnceLock<Opener> = std::sync::OnceLock::new();
+
+/// Install the sealer and opener of encrypted fields (once per process).
+pub fn set_field_codec(seal: Sealer, open: Opener) {
+    let _ = SEALER.set(seal);
+    let _ = OPENER.set(open);
+}
+
 /// Access to the stored branches, commits and versions.
 pub struct Repo<'a> {
     /// The store.
@@ -445,7 +470,13 @@ impl<'a> Repo<'a> {
 
     /// Several versions at once, by hash (the candidates of a query; step 13d).
     pub fn versions(&mut self, hashes: &[String]) -> Result<HashMap<String, Value>, BpaError> {
-        Ok(self.store.versions(hashes)?.into_iter().collect())
+        let mut out: HashMap<String, Value> = self.store.versions(hashes)?.into_iter().collect();
+        if let Some(open) = OPENER.get() {
+            for v in out.values_mut() {
+                open(&mut *self.store, v)?;
+            }
+        }
+        Ok(out)
     }
 
     /// The small members of a commit record, without its write set (step 13d).
@@ -1007,8 +1038,17 @@ impl<'a> Repo<'a> {
             .collect())
     }
 
-    /// A version record by hash.
+    /// A version record by hash, with its encrypted fields opened (STD-OBJ-010).
     pub fn version(&mut self, hash: &str) -> Result<Value, BpaError> {
+        let mut v = self.store.version(hash)?;
+        if let Some(open) = OPENER.get() {
+            open(&mut *self.store, &mut v)?;
+        }
+        Ok(v)
+    }
+
+    /// A version record by hash as stored and hashed (STD-OBJ-010).
+    pub fn stored_version(&mut self, hash: &str) -> Result<Value, BpaError> {
         self.store.version(hash)
     }
 
@@ -1316,7 +1356,7 @@ impl<'a> Repo<'a> {
     /// Create a version record and remember it for the flush (STD-OBJ-002).
     #[allow(clippy::too_many_arguments)]
     pub fn new_version(
-        &self,
+        &mut self,
         tx: &mut Tx,
         oid: &str,
         class: &str,
@@ -1329,12 +1369,16 @@ impl<'a> Repo<'a> {
         provenance: Option<&str>,
         state: Option<&str>,
     ) -> Result<String, BpaError> {
+        let mut stored = body.clone();
+        if let Some(seal) = SEALER.get() {
+            seal(self, tx, oid, class, &mut stored, predecessor)?;
+        }
         let (vh, rec) = version_record(
             self.reg,
             oid,
             class,
             slug,
-            body,
+            &stored,
             from,
             to,
             predecessor,
@@ -1350,7 +1394,13 @@ impl<'a> Repo<'a> {
     /// A version record, looking first at the versions of an open transaction.
     pub fn version_in(&mut self, tx: &Tx, hash: &str) -> Result<Value, BpaError> {
         match tx.version_ix.get(hash) {
-            Some(i) => Ok(tx.versions[*i].1.clone()),
+            Some(i) => {
+                let mut v = tx.versions[*i].1.clone();
+                if let Some(open) = OPENER.get() {
+                    open(&mut *self.store, &mut v)?;
+                }
+                Ok(v)
+            }
             None => self.version(hash),
         }
     }

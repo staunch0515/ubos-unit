@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (137)
+## DEC (138)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -231,4 +231,5 @@ depends_on: [UBS-IDX-00]
 | DEC-135 | PH-2 step 7 closed: models and packages (PH-2 step 7, part 7g) | `90-decisions/000-index.md` |
 | DEC-136 | Protection, part 8a: relation-based authorization (PH-2 step 8) | `90-decisions/000-index.md` |
 | DEC-137 | Protection, part 8b: field masking (PH-2 step 8) | `90-decisions/000-index.md` |
+| DEC-138 | Protection, part 8c: encrypted fields and crypto-shredding (PH-2 step 8) | `90-decisions/000-index.md` |
 

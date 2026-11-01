@@ -138,6 +138,35 @@ pub fn open(
         .map_err(|_| integrity("authentication failed"))
 }
 
+/// Encrypt with AES-256-GCM: ciphertext with the tag appended (encrypted fields,
+/// STD-OBJ-010).
+pub fn gcm_seal(
+    key: &[u8; 32],
+    nonce: &[u8; 12],
+    aad: &[u8],
+    plain: &[u8],
+) -> Result<Vec<u8>, BpaError> {
+    use aes_gcm::{Aes256Gcm, Nonce};
+    Aes256Gcm::new(key.into())
+        .encrypt(Nonce::from_slice(nonce), Payload { msg: plain, aad })
+        .map_err(|_| BpaError::new("NOD.STORAGE_UNAVAILABLE", "encryption failed"))
+}
+
+/// Decrypt and authenticate an AES-256-GCM ciphertext; a wrong key, nonce, associated
+/// data or a modified ciphertext fails with `NOD.BLOB_UNAVAILABLE` and `{"integrity":
+/// true}`.
+pub fn gcm_open(
+    key: &[u8; 32],
+    nonce: &[u8; 12],
+    aad: &[u8],
+    sealed: &[u8],
+) -> Result<Vec<u8>, BpaError> {
+    use aes_gcm::{Aes256Gcm, Nonce};
+    Aes256Gcm::new(key.into())
+        .decrypt(Nonce::from_slice(nonce), Payload { msg: sealed, aad })
+        .map_err(|_| integrity("authentication failed"))
+}
+
 /// `NOD.BLOB_UNAVAILABLE` with the integrity flag (DSN-DVM-002).
 pub fn integrity(reason: &str) -> BpaError {
     let mut e = BpaError::with_details("NOD.BLOB_UNAVAILABLE", json!({"integrity": true}));

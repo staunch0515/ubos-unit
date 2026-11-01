@@ -103,6 +103,11 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "relations",
     "check_access",
     "lookup_key",
+    "stored_form",
+    "disclose",
+    "subject_key",
+    "key_availability",
+    "erase_subject",
     "projection_status",
     "close_period",
     "reopen_period",
@@ -418,6 +423,11 @@ impl Adapter {
             "relations" => self.engine.relations(i)?,
             "check_access" => self.engine.check_access(i)?,
             "lookup_key" => self.engine.set_lookup_key(i)?,
+            "stored_form" => self.engine.stored_form(i)?,
+            "disclose" => self.engine.disclose(i)?,
+            "subject_key" => self.engine.subject_key(i)?,
+            "key_availability" => self.engine.key_availability(i)?,
+            "erase_subject" => self.engine.erase_subject(i)?,
             "projection_status" => self.engine.projection_status(i)?,
             "close_period" => self.engine.close_period(i)?,
             "reopen_period" => self.engine.reopen_period(i)?,
@@ -564,6 +574,7 @@ impl Adapter {
                     i.get("only").and_then(Value::as_bool).unwrap_or(false),
                 )?
             }
+            "verify_disclosure" => crate::protection::verify_disclosure(i)?,
             "blind_index" => {
                 let key = text(i, "key")?;
                 let hex_ok = key.len() == 64

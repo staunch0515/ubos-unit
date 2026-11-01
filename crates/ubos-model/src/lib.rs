@@ -1033,6 +1033,28 @@ pub fn check_decl(d: &Value, custom: &BTreeSet<String>) -> Result<(), BpaError> 
             ));
         }
     }
+    // STD-OBJ-010 (1.0-rc8; PH-2 step 8c): the subject key is `self` or an unprotected
+    // text or reference field
+    if let Some(sk) = d.get("subject_key").filter(|p| !p.is_null()) {
+        let default = s(d, "classification_default").unwrap_or("internal");
+        let ok = sk.as_str().is_some_and(|n| {
+            n == "self"
+                || members(d, "fields").any(|f| {
+                    s(f, "name") == Some(n)
+                        && matches!(s(f, "type"), Some("text" | "reference"))
+                        && !matches!(
+                            s(f, "classification").unwrap_or(default),
+                            "personal" | "sensitive_personal"
+                        )
+                })
+        });
+        if !ok {
+            return Err(err(
+                "MODEL.INVALID_VALUE",
+                "subject_key is self or an unprotected text or reference field",
+            ));
+        }
+    }
     check_overlay_policy(d)
 }
 
