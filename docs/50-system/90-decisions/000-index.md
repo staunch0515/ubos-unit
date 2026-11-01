@@ -26,6 +26,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-137 | PH-2 step 8, part 8b: field masking for viewers (reads, query rows, outbox payloads), clearances, the tenant lookup key, and masked fields refused in query filters and sorts; STD-LGS-052 claimed with part 8c | Accepted |
 | DEC-138 | PH-2 step 8, part 8c: encrypted fields under subject keys, disclosure, key rotation, crypto-shredding and key unavailability; STD-OBJ-010, -011, -012 and STD-LGS-052 claimed | Accepted |
 | DEC-139 | PH-2 step 8, part 8d: personal-data read logging in the security log, the subject access export, and security-log records of key rotations and erasures | Accepted |
+| DEC-140 | PH-2 step 8 closed: protection (parts 8a–8d, DEC-136…139) — relation-based authorization, field masking, encrypted fields and crypto-shredding, read logging and the subject export; 48 vectors in memory and on PostgreSQL; open items assigned to steps | Accepted |
 
 ---
 
@@ -490,3 +491,36 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
 - **Alternatives considered:**
   - A separate read-log store was rejected: the hash-chained security log already gives append-only, verifiable records (FR-AUD-014), and `security_log` reads them.
 - **Affects:** DSN-DVM-823, DSN-DVM-837, FR-AUD-051, FR-AUD-012, NR-PRIV-005, NR-PRIV-002, DEC-073, DEC-136, DEC-138
+
+### DEC-140 — PH-2 step 8 closed: protection (PH-2 step 8, part 8e)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** PH-2 step 8 (DEC-136) was done in parts 8a–8d, recorded in DEC-136…139. Part 8e closes the step: it records what the step delivered and lists, in one place, what the parts left open. The owner confirmed the part with the default suggestions.
+- **Decision:**
+  1. **Delivered.**
+     - **8a (DEC-136).** Relation-based authorization: `authz_relation` and `principal_field` in the model, the sheet property `access`, `relations` and `check_access`, reads and queries `as` a viewer, port calls refused with `IAM.DENIED`.
+     - **8b (DEC-137).** Field masking for viewers: reads, query rows and outbox payloads masked by `mask` (`hide`, `partial`, `hash` under the tenant lookup key) and by clearances; filters and sorts on masked fields refused.
+     - **8c (DEC-138).** Encrypted fields under subject keys: a field codec in `ubos-version` that seals before hashing and opens on reads; key rotation, erasure with markers, key unavailability; `disclose`, `verify_disclosure` and `stored_form`.
+     - **8d (DEC-139).** Personal-data read logging in the security log, the subject access export with a manifest, and security-log records of key rotations, erasures and exports.
+  2. **Verification.**
+     - The 48 current vectors of the step-8 clauses pass in one run in memory and on PostgreSQL 16: STD-LGS-050 and -051 (17), STD-LGS-052 (11), STD-OBJ-010 and -011 (15), and STD-OBJ-012 (5).
+     - The kernel conformance test claims these clauses.
+     - Read logging and the export, which have no vectors, were run on the data of VER-CONF-0380 (DEC-139).
+  3. **Open.** Each item keeps its ID and moves to the target named:
+
+     | Item | Source | Target |
+     |---|---|---|
+     | The group-expansion cache (DSN-DVM-813), a relation index maintained by the flush (DSN-DVM-810), and relation paths evaluated by index lookups (DSN-DVM-811) | DEC-136 | step 18, if the benchmarks need them |
+     | Masking of diffs and explanations, and read logging of reads without a viewer and of other outputs (DSN-DVM-821, -823) | DEC-137, DEC-139 | step 14, where the Workspace shows history, change review and explanations to users |
+     | Break-glass (DSN-DVM-808) | DEC-136 | step 12, with the identity boundary |
+     | Subject keys wrapped by the tenant key through the node's key service and kept out of node backups (DSN-DVM-830, -832) | DEC-138 | step 12, with the KMS adapter |
+     | Stored lookup tokens, dropped on erasure (DSN-DVM-833); personal fields of ledger entries, which are stored as they are | DEC-138, DEC-139 | step 10, if the finance Buk's vendor tax IDs or ledgers need them; otherwise step 19 |
+     | The check of legal holds and retention before an erasure (DSN-DVM-831); the approval of export requests, the NR-PRIV-002 deadline and exports on branches with a parent line (DSN-DVM-837) | DEC-138, DEC-139 | step 19, with the privacy scenario SCN-016 |
+     | Who-can and policy impact (DSN-DVM-840, -841) | DEC-136 | PH-3, with access review (CAP-IAM-08) |
+  4. **Owner actions.** Merge the branch, then sign the tags `bpa-v1.0.0-rc8` to `bpa-v1.0.0-rc12`. Step 8 opened no release candidate.
+  5. **Next.** Step 9 (the `finance` Buk, part 1: chart of accounts, journals, periods and close, general ledger and financial statements of the sample company, tied out in process; EXIT-2-04 by inspection). Its plan goes to the owner first.
+- **Consequences:**
+  - The status table in `docs/reports/ph2-plan-zh.md` marks step 8 as done.
+  - The open items are picked up by the steps named in the table above, whose plans cite this decision.
+- **Alternatives considered:**
+  - Leaving the open items spread over DEC-136…139 was rejected, as in DEC-104, DEC-111, DEC-118, DEC-126 and DEC-135.
+- **Affects:** DEC-136, DEC-137, DEC-138, DEC-139, DSN-DVM-808, DSN-DVM-810, DSN-DVM-811, DSN-DVM-813, DSN-DVM-821, DSN-DVM-823, DSN-DVM-830, DSN-DVM-831, DSN-DVM-832, DSN-DVM-833, DSN-DVM-837, DSN-DVM-840, DSN-DVM-841

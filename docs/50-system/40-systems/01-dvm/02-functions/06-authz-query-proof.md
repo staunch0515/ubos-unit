@@ -172,7 +172,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a masked tax ID, when read through every output path, then the value never appears unmasked.
 - **Verification:** SEC, CONF
 - **Origin:** FR-IAM-061, FR-IAM-063, FR-AUD-033, AR-022
-- **Phase note:** DEC-137: built in PH-2 step 8b as STD-LGS-052 states it: reads, the selected values of query rows and outbox payloads made `as` a viewer are masked by the sheet property `mask` (`hide`, `partial`, `hash` under the tenant lookup key) and by the viewer's clearances; diffs and explanations are masked when they gain a viewer form, and the access export with part 8d.
+- **Phase note:** DEC-137: built in PH-2 step 8b as STD-LGS-052 states it: reads, the selected values of query rows and outbox payloads made `as` a viewer are masked by the sheet property `mask` (`hide`, `partial`, `hash` under the tenant lookup key) and by the viewer's clearances; diffs and explanations are masked when they gain a viewer form in step 14 (DEC-140); the subject export leaves out other subjects' encrypted fields (DEC-139).
 
 ### DSN-DVM-822 — Masked fields in expressions
 - **Statement:** Filters and sorts on fields the caller cannot see MUST be rejected (`QRY.INVALID_QUERY`) rather than allowing inference by probing.
@@ -194,7 +194,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a list query returning 50 personal records, when completed, then one batched read-log record lists 50 IDs.
 - **Verification:** CONF
 - **Origin:** FR-AUD-051, NR-PRIV-005
-- **Phase note:** DEC-139: built in PH-2 step 8d: a read or query made `as` a viewer whose output, after masking, shows personal or sensitive personal fields of objects whose subject is not the viewer appends one `pii.read` record per operation to the security log, with the objects and the field names, never values; the viewer is the subject when its principal is the subject ID or the subject object's principal field. Reads without a viewer and other outputs (outbox, diffs) are open and assigned when step 8 closes (8e).
+- **Phase note:** DEC-139: built in PH-2 step 8d: a read or query made `as` a viewer whose output, after masking, shows personal or sensitive personal fields of objects whose subject is not the viewer appends one `pii.read` record per operation to the security log, with the objects and the field names, never values; the viewer is the subject when its principal is the subject ID or the subject object's principal field. Reads without a viewer and other outputs (outbox, diffs) move to step 14 (DEC-140).
 
 ### DSN-DVM-824 — Privacy by default
 - **Statement:** New fields without an explicit classification MUST be classified `internal` by default; personal-data field types (name, email, tax ID) MUST default to `personal`.
@@ -218,7 +218,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a personal field, when the stored version is inspected, then only ciphertext and a commitment are present.
 - **Verification:** SEC, CONF
 - **Origin:** FR-PROOF-071, FR-PROOF-072, FR-IAM-092, STD-OBJ-010, AR-020
-- **Phase note:** DEC-138: built in PH-2 step 8c as STD-OBJ-010 states it: a class with `subject_key` stores its protected fields as AES-256-GCM items with a random nonce, a random salt inside the ciphertext and the field commitment; the version hash, trees and archives cover the stored form, and reads, merges, rules and logic see the plaintext. Subject keys are kernel metadata outside the business data and archives; wrapping them with the tenant key through the node's key service is open and assigned when step 8 closes (8e).
+- **Phase note:** DEC-138: built in PH-2 step 8c as STD-OBJ-010 states it: a class with `subject_key` stores its protected fields as AES-256-GCM items with a random nonce, a random salt inside the ciphertext and the field commitment; the version hash, trees and archives cover the stored form, and reads, merges, rules and logic see the plaintext. Subject keys are kernel metadata outside the business data and archives; wrapping them with the tenant key through the node's key service moves to step 12 (DEC-140).
 
 ### DSN-DVM-831 — Erasure by key destruction
 - **Statement:** Erasure of a subject MUST destroy the subject key through the host key service, after checking holds and retention (FR-PROOF-075, `AUD.LEGAL_HOLD_ACTIVE`). Afterwards, reads MUST return the erased marker (`PROOF.VALUE_ERASED`, STD-OBJ-011), and proofs MUST still verify.
@@ -230,7 +230,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   2. Given an active legal hold, when erasure is requested, then it is refused.
 - **Verification:** SEC, CONF
 - **Origin:** FR-PROOF-073, FR-PROOF-075, STD-OBJ-011, NR-PRIV-001
-- **Phase note:** DEC-138: built in PH-2 step 8c: `erase_subject` destroys the subject key, fields encrypted under it read as `{erased, commitment}` in every version, disclosures and new values for the subject fail with `PROOF.VALUE_ERASED`, and versions, hashes and proofs are unchanged; the check of legal holds and retention before erasure is open and assigned when step 8 closes (8e).
+- **Phase note:** DEC-138: built in PH-2 step 8c: `erase_subject` destroys the subject key, fields encrypted under it read as `{erased, commitment}` in every version, disclosures and new values for the subject fail with `PROOF.VALUE_ERASED`, and versions, hashes and proofs are unchanged; the check of legal holds and retention before erasure moves to step 19 (DEC-140).
 
 ### DSN-DVM-832 — Backups honour erasure
 - **Statement:** Subject keys MUST NOT be stored in business backups; they MUST live in the key service, whose own backups apply a tombstone list on restore (FR-PROOF-074).
@@ -294,7 +294,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given an investor linked to 3 funds and 200 transactions, when exported, then all linked records are present, and co-investors' personal fields are masked.
 - **Verification:** CONF, SEC
 - **Origin:** CR-CCPA-001, CR-GDPR-002, NR-PRIV-002
-- **Phase note:** DEC-139: built in PH-2 step 8d as the operation `subject_export {subject_id, branch?}`: the objects linked to the subject through `subject_key` with all their versions, and the entries of ledger classes linked the same way, in JSON with a manifest (`ubos.subject-export.v1`, counts and the content ID); fields encrypted under another subject's key are left out, and the export is recorded in the security log. The approval of a request and the NR-PRIV-002 deadline belong to the node and are assigned when step 8 closes (8e).
+- **Phase note:** DEC-139: built in PH-2 step 8d as the operation `subject_export {subject_id, branch?}`: the objects linked to the subject through `subject_key` with all their versions, and the entries of ledger classes linked the same way, in JSON with a manifest (`ubos.subject-export.v1`, counts and the content ID); fields encrypted under another subject's key are left out, and the export is recorded in the security log. The approval of a request and the NR-PRIV-002 deadline belong to the node and move to step 19 (DEC-140).
 
 ## Access analysis
 
