@@ -291,7 +291,7 @@ retention allows its disposal (FR-PKG-051).
 ## 10. Genesis Buks
 
 The genesis Buks `system` and `ontology` (DEC-077) are also `ubos.buk.v1` archives (Buk IDs
-`ubos.platform/system` and `ubos.platform/ontology`): their classes are under
+`ubos.platform/system` and `ubos.ontology/ontology`, the namespace of their classes): their classes are under
 `model/classes.json`, and they are signed with the genesis publisher key.
 
 A new VAE gets the node's genesis Buks at bootstrap. When a node process first opens a VAE
@@ -302,7 +302,9 @@ that holds an older version:
 - an administrator completes it (`forge install --complete ubos.platform/system`);
 - `main` does not change until then.
 
-A VAE holding a newer version than the node's is refused. `system` 0.2.0 adds the registry
+A VAE holding a newer version than the node's is refused. A proposal that cannot be made, for
+example because the VAE declares a class of the same name in its own namespace, leaves the
+VAE on its version; the node reports it as `upgrade_blocked` with the plan's problems. `system` 0.2.0 adds the registry
 members to the `Buk` class (schema version 2), so a VAE that has completed the upgrade
 records its Buks with them.
 

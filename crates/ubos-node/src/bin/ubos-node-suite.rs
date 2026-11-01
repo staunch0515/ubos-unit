@@ -39,7 +39,7 @@ fn code(r: &Result<Value, BpaError>) -> &str {
 
 fn classes() -> Value {
     json!([
-        {"name": "Account", "label": "Account", "description": "Account", "namespace": "acme.suite",
+        {"name": "Wallet", "label": "Wallet", "description": "Wallet", "namespace": "acme.suite",
          "parent": "DataObject", "kind": "definition", "schema_version": 1, "fields": [
             {"name": "name", "label": "name", "description": "name", "type": "text", "required": true},
             {"name": "note", "label": "note", "description": "note", "type": "text"}]}
@@ -161,7 +161,7 @@ fn run(url: &str) -> Result<Suite, BpaError> {
         let t = s.tenant("sign")?;
         let mut vae = s.open(&t, "signco")?;
         check(ubos_node::has_signer(vae.engine_mut().store.as_ref()), "node signer installed")?;
-        let r = vae.commit(&ctx, json!({"branch": "main", "changes": [{"op": "create", "class": "Account",
+        let r = vae.commit(&ctx, json!({"branch": "main", "changes": [{"op": "create", "class": "Wallet",
             "object_id": "01890a5d-ac96-7001-8000-000000000001", "slug": "a-1", "body": {"name": "Acme"}}]}))?;
         check(r["cseq"] == json!(1), "first commit cseq 1")?;
         let rec = vae.call("commit_record", &json!({"branch": "main"}))?;
@@ -179,7 +179,7 @@ fn run(url: &str) -> Result<Suite, BpaError> {
     s.case("reopen_vae", |s| {
         let t = s.tenant("reopen")?;
         let mut vae = s.open(&t, "reopenco")?;
-        vae.commit(&ctx, json!({"branch": "main", "changes": [{"op": "create", "class": "Account",
+        vae.commit(&ctx, json!({"branch": "main", "changes": [{"op": "create", "class": "Wallet",
             "object_id": "01890a5d-ac96-7001-8000-000000000001", "slug": "a-1", "body": {"name": "Acme"}}]}))?;
         let p1 = vae.begin_process(&ctx, "action")?;
         drop(vae);
@@ -187,7 +187,7 @@ fn run(url: &str) -> Result<Suite, BpaError> {
         check(!again.engine_mut().registry.declarations().is_empty(), "declarations restored from the store")?;
         let read = again.read(&ctx, json!({"branch": "main", "object_id": "01890a5d-ac96-7001-8000-000000000001"}))?;
         check(read["body"]["name"] == json!("Acme"), "object readable after reopen")?;
-        let r = again.commit(&ctx, json!({"branch": "main", "changes": [{"op": "create", "class": "Account",
+        let r = again.commit(&ctx, json!({"branch": "main", "changes": [{"op": "create", "class": "Wallet",
             "object_id": "01890a5d-ac96-7002-8000-000000000002", "slug": "a-2", "body": {"name": "Beta"}}]}))?;
         check(r["cseq"] == json!(2), "commits continue")?;
         let p2 = again.begin_process(&ctx, "action")?;
@@ -198,13 +198,13 @@ fn run(url: &str) -> Result<Suite, BpaError> {
     s.case("node_key_rotation", |s| {
         let t = s.tenant("rotate")?;
         let mut vae = s.open(&t, "rotco")?;
-        vae.commit(&ctx, json!({"branch": "main", "changes": [{"op": "create", "class": "Account",
+        vae.commit(&ctx, json!({"branch": "main", "changes": [{"op": "create", "class": "Wallet",
             "object_id": "01890a5d-ac96-7001-8000-000000000001", "slug": "a-1", "body": {"name": "Acme"}}]}))?;
         let r1 = vae.call("commit_record", &json!({"branch": "main"}))?;
         let doc = vae.call("rotate_node_key", &json!({"seed": "00".repeat(32)}))?;
         check(doc["keys"].as_array().map(Vec::len) == Some(2), "two keys after rotation")?;
         check(doc["keys"][0]["valid_to"] == doc["keys"][1]["valid_from"], "history is contiguous")?;
-        vae.commit(&ctx, json!({"branch": "main", "changes": [{"op": "create", "class": "Account",
+        vae.commit(&ctx, json!({"branch": "main", "changes": [{"op": "create", "class": "Wallet",
             "object_id": "01890a5d-ac96-7002-8000-000000000002", "slug": "a-2", "body": {"name": "Beta"}}]}))?;
         let r2 = vae.call("commit_record", &json!({"branch": "main"}))?;
         check(r2["signatures"][0]["key_id"].as_str().is_some_and(|k| k.ends_with("#k2")), "new commits use #k2")?;
@@ -230,7 +230,7 @@ fn run(url: &str) -> Result<Suite, BpaError> {
         let blobs = PgBlobs::new(s.node.tenant_db(&t)?, &t.id);
         check(blobs.count()? >= 1, "a large record went to the blob service")?;
         check(vae.engine_mut().store.record(&id)? == Some(record.clone()), "large record read back through the blob service")?;
-        vae.commit(&ctx, json!({"branch": "main", "changes": [{"op": "create", "class": "Account",
+        vae.commit(&ctx, json!({"branch": "main", "changes": [{"op": "create", "class": "Wallet",
             "object_id": "01890a5d-ac96-7001-8000-000000000001", "slug": "a-1", "body": {"name": "Acme", "note": big}}]}))?;
         let read = vae.read(&ctx, json!({"branch": "main", "object_id": "01890a5d-ac96-7001-8000-000000000001"}))?;
         check(read["body"]["note"].as_str() == Some(big.as_str()), "large body read back")?;

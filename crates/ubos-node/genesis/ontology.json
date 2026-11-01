@@ -1,8 +1,8 @@
 {
  "name": "ontology",
- "version": "0.1.0",
+ "version": "0.2.0",
  "publisher": "ubos",
- "description": "The party–role core of the base business ontology; its full content (FR-MODEL-091) follows in PH-2 (DEC-077)",
+ "description": "The base business ontology (FR-MODEL-091, DEC-134): the party–role core, addresses, contact points, identifiers, accounts, calendars, documents, agreements and locations, and the traits Addressable, Approvable, Classifiable and Attachable; money is the standard value type money",
  "classes": [
   {
    "name": "Party",
@@ -140,6 +140,502 @@
      "constraints": {
       "target_class": "Role"
      }
+    }
+   ]
+  },
+  {
+   "name": "Addressable",
+   "label": "Addressable",
+   "namespace": "ubos.ontology",
+   "description": "Has postal addresses (FR-MODEL-091)",
+   "trait": true,
+   "abstract": true,
+   "applies_to": [
+    "definition",
+    "ledger",
+    "raw_document"
+   ],
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "addresses",
+     "label": "addresses",
+     "description": "the postal addresses",
+     "type": "list",
+     "constraints": {
+      "item_type": {
+       "type": "reference",
+       "constraints": {
+        "target_class": "Address"
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Approvable",
+   "label": "Approvable",
+   "namespace": "ubos.ontology",
+   "description": "Goes through an approval (FR-MODEL-091)",
+   "trait": true,
+   "abstract": true,
+   "applies_to": [
+    "definition",
+    "ledger",
+    "raw_document"
+   ],
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "approval_state",
+     "label": "approval state",
+     "description": "the approval state",
+     "type": "enum",
+     "constraints": {
+      "allowed_values": [
+       "draft",
+       "submitted",
+       "approved",
+       "rejected"
+      ]
+     }
+    },
+    {
+     "name": "approved_by",
+     "label": "approved by",
+     "description": "who approved it",
+     "type": "text"
+    },
+    {
+     "name": "approved_at",
+     "label": "approved at",
+     "description": "when it was approved",
+     "type": "instant"
+    }
+   ]
+  },
+  {
+   "name": "Classifiable",
+   "label": "Classifiable",
+   "namespace": "ubos.ontology",
+   "description": "Carries classifications such as categories or tags (FR-MODEL-091)",
+   "trait": true,
+   "abstract": true,
+   "applies_to": [
+    "definition",
+    "ledger",
+    "raw_document"
+   ],
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "classifications",
+     "label": "classifications",
+     "description": "the classifications",
+     "type": "list",
+     "constraints": {
+      "item_type": {
+       "type": "text"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Attachable",
+   "label": "Attachable",
+   "namespace": "ubos.ontology",
+   "description": "Carries attached files (FR-MODEL-091)",
+   "trait": true,
+   "abstract": true,
+   "applies_to": [
+    "definition",
+    "ledger",
+    "raw_document"
+   ],
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "attachments",
+     "label": "attachments",
+     "description": "the attached files",
+     "type": "list",
+     "constraints": {
+      "item_type": {
+       "type": "blob"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Address",
+   "label": "Address",
+   "namespace": "ubos.ontology",
+   "description": "A postal address (FR-MODEL-091)",
+   "parent": "DataObject",
+   "kind": "definition",
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "line1",
+     "label": "line1",
+     "description": "the first address line",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "line2",
+     "label": "line2",
+     "description": "the second address line",
+     "type": "text"
+    },
+    {
+     "name": "city",
+     "label": "city",
+     "description": "the city or locality",
+     "type": "text"
+    },
+    {
+     "name": "region",
+     "label": "region",
+     "description": "the region, state or province",
+     "type": "text"
+    },
+    {
+     "name": "postal_code",
+     "label": "postal code",
+     "description": "the postal code",
+     "type": "text"
+    },
+    {
+     "name": "country",
+     "label": "country",
+     "description": "the country (ISO 3166-1 alpha-2)",
+     "type": "text",
+     "constraints": {
+      "pattern": "^[A-Z]{2}$"
+     }
+    }
+   ]
+  },
+  {
+   "name": "ContactPoint",
+   "label": "Contact point",
+   "namespace": "ubos.ontology",
+   "description": "A way to reach a party: email, telephone, web or post (FR-MODEL-091)",
+   "parent": "DataObject",
+   "kind": "definition",
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "party",
+     "label": "party",
+     "description": "the party it belongs to",
+     "type": "reference",
+     "required": true,
+     "constraints": {
+      "target_class": "Party"
+     }
+    },
+    {
+     "name": "channel",
+     "label": "channel",
+     "description": "the channel",
+     "type": "enum",
+     "required": true,
+     "constraints": {
+      "allowed_values": [
+       "email",
+       "phone",
+       "web",
+       "postal"
+      ]
+     }
+    },
+    {
+     "name": "value",
+     "label": "value",
+     "description": "the address, number or URL",
+     "type": "text",
+     "required": true
+    }
+   ]
+  },
+  {
+   "name": "Identifier",
+   "label": "Identifier",
+   "namespace": "ubos.ontology",
+   "description": "An identifier of a party issued by a scheme: LEI, tax ID or registration number (FR-MODEL-091)",
+   "parent": "DataObject",
+   "kind": "definition",
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "party",
+     "label": "party",
+     "description": "the party it identifies",
+     "type": "reference",
+     "required": true,
+     "constraints": {
+      "target_class": "Party"
+     }
+    },
+    {
+     "name": "scheme",
+     "label": "scheme",
+     "description": "the identifier scheme",
+     "type": "enum",
+     "required": true,
+     "constraints": {
+      "allowed_values": [
+       "lei",
+       "tax_id",
+       "registration_number",
+       "other"
+      ]
+     }
+    },
+    {
+     "name": "value",
+     "label": "value",
+     "description": "the identifier",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "issuer",
+     "label": "issuer",
+     "description": "the issuing authority or country",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "name": "Account",
+   "label": "Account",
+   "namespace": "ubos.ontology",
+   "description": "A financial account held by a party, such as a bank or customer account (FR-MODEL-091)",
+   "parent": "DataObject",
+   "kind": "definition",
+   "traits": [
+    "Classifiable"
+   ],
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "name",
+     "label": "name",
+     "description": "the account name",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "number",
+     "label": "number",
+     "description": "the account number",
+     "type": "text"
+    },
+    {
+     "name": "currency",
+     "label": "currency",
+     "description": "the currency (ISO 4217)",
+     "type": "text",
+     "constraints": {
+      "pattern": "^[A-Z]{3}$"
+     }
+    },
+    {
+     "name": "holder",
+     "label": "holder",
+     "description": "the party holding the account",
+     "type": "reference",
+     "constraints": {
+      "target_class": "Party"
+     }
+    },
+    {
+     "name": "opened_on",
+     "label": "opened on",
+     "description": "when the account was opened",
+     "type": "date"
+    }
+   ]
+  },
+  {
+   "name": "Calendar",
+   "label": "Calendar",
+   "namespace": "ubos.ontology",
+   "description": "A business calendar: working days and holidays in a time zone (FR-MODEL-091)",
+   "parent": "DataObject",
+   "kind": "definition",
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "name",
+     "label": "name",
+     "description": "the calendar name",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "time_zone",
+     "label": "time zone",
+     "description": "the IANA time zone",
+     "type": "text"
+    },
+    {
+     "name": "working_days",
+     "label": "working days",
+     "description": "the working days of the week",
+     "type": "list",
+     "constraints": {
+      "item_type": {
+       "type": "enum",
+       "constraints": {
+        "allowed_values": [
+         "mon",
+         "tue",
+         "wed",
+         "thu",
+         "fri",
+         "sat",
+         "sun"
+        ]
+       }
+      }
+     }
+    },
+    {
+     "name": "holidays",
+     "label": "holidays",
+     "description": "the holidays",
+     "type": "list",
+     "constraints": {
+      "item_type": {
+       "type": "date"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Document",
+   "label": "Document",
+   "namespace": "ubos.ontology",
+   "description": "A business document with its file (FR-MODEL-091)",
+   "parent": "DataObject",
+   "kind": "definition",
+   "traits": [
+    "Classifiable",
+    "Attachable"
+   ],
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "title",
+     "label": "title",
+     "description": "the title",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "file",
+     "label": "file",
+     "description": "the document file",
+     "type": "blob"
+    },
+    {
+     "name": "issued_on",
+     "label": "issued on",
+     "description": "when it was issued",
+     "type": "date"
+    }
+   ]
+  },
+  {
+   "name": "Agreement",
+   "label": "Agreement",
+   "namespace": "ubos.ontology",
+   "description": "An agreement between parties; concrete agreements extend it (FR-MODEL-091)",
+   "parent": "DataObject",
+   "kind": "definition",
+   "abstract": true,
+   "traits": [
+    "Approvable",
+    "Attachable"
+   ],
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "title",
+     "label": "title",
+     "description": "the title",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "parties",
+     "label": "parties",
+     "description": "the parties to the agreement",
+     "type": "list",
+     "constraints": {
+      "item_type": {
+       "type": "reference",
+       "constraints": {
+        "target_class": "Party"
+       }
+      }
+     }
+    },
+    {
+     "name": "effective",
+     "label": "effective",
+     "description": "when the agreement is in effect",
+     "type": "period"
+    }
+   ]
+  },
+  {
+   "name": "Location",
+   "label": "Location",
+   "namespace": "ubos.ontology",
+   "description": "A place: a site, a branch or a warehouse (FR-MODEL-091)",
+   "parent": "DataObject",
+   "kind": "definition",
+   "traits": [
+    "Classifiable"
+   ],
+   "schema_version": 1,
+   "fields": [
+    {
+     "name": "name",
+     "label": "name",
+     "description": "the name",
+     "type": "text",
+     "required": true
+    },
+    {
+     "name": "address",
+     "label": "address",
+     "description": "the postal address",
+     "type": "reference",
+     "constraints": {
+      "target_class": "Address"
+     }
+    },
+    {
+     "name": "latitude",
+     "label": "latitude",
+     "description": "the latitude in degrees",
+     "type": "decimal"
+    },
+    {
+     "name": "longitude",
+     "label": "longitude",
+     "description": "the longitude in degrees",
+     "type": "decimal"
     }
    ]
   }

@@ -48,6 +48,17 @@ fn scope_classes(reg: &Registry, scope: Option<&str>) -> Vec<String> {
 
 /// The JSON Schema of a field or parameter declaration (STD-FND-020 value types).
 pub fn field_schema(f: &Value) -> Value {
+    // constraints may sit under `constraints` (STD-CLS-001) or on the declaration itself
+    let mut merged = f.clone();
+    if let (Some(m), Some(c)) = (
+        merged.as_object_mut(),
+        f.get("constraints").and_then(Value::as_object),
+    ) {
+        for (k, v) in c {
+            m.entry(k.clone()).or_insert_with(|| v.clone());
+        }
+    }
+    let f = &merged;
     let t = s(f, "type").unwrap_or("json");
     let mut out = match t {
         "text" => json!({"type": "string"}),
@@ -286,9 +297,21 @@ pub fn model_graph(reg: &Registry, scope: Option<&str>) -> Result<Value, BpaErro
             edges.push(json!({"from": name, "to": t, "type": "has_trait"}));
         }
         for f in d["fields"].as_array().into_iter().flatten() {
-            if s(f, "type") == Some("reference")
-                && let Some(tc) = s(f, "target_class")
-            {
+            // a reference field, or a list of references
+            let item = f
+                .get("constraints")
+                .and_then(|c| c.get("item_type"))
+                .or_else(|| f.get("item_type"));
+            let r = if s(f, "type") == Some("reference") {
+                Some(f)
+            } else {
+                item.filter(|i| s(i, "type") == Some("reference"))
+            };
+            let target = r.and_then(|r| {
+                s(r, "target_class")
+                    .or_else(|| r.get("constraints").and_then(|c| s(c, "target_class")))
+            });
+            if let Some(tc) = target {
                 edges.push(
                     json!({"from": name, "to": tc, "type": "references", "field": f["name"]}),
                 );

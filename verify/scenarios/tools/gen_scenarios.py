@@ -56,7 +56,7 @@ def port(name, impl, params=None):
 # Counterparty and BatchJob: the platform genesis Buks hold Party (ontology) and Job (system)
 # on every Server (DEC-077), so the scenario model uses other names (DEC-082)
 PARTY = cls('Counterparty', [field('name', 'text', True)])
-AGREEMENT = cls('Agreement', [
+AGREEMENT = cls('Contract', [
     field('title', 'text', True),
     field('effective_from', 'date'),
     field('parties', 'list', constraints={'item_type': {'type': 'reference', 'constraints': {'target_class': 'Counterparty'}},
@@ -68,7 +68,7 @@ SERVICE = cls('ServiceAgreement', [
     field('title', 'text', True, constraints={'max_length': 120}),
     field('service_level', 'enum', constraints={'allowed_values': ['gold', 'silver']}),
     field('in_notice_period', 'boolean'),
-], parent='Agreement', ports=[port('terminate', 'acme.agreements#terminate_service')])
+], parent='Contract', ports=[port('terminate', 'acme.agreements#terminate_service')])
 PRODUCT = cls('Product', [field('name', 'text', True), field('price', 'decimal'), field('category', 'text')])
 CUSTOMER = cls('Customer', [field('name', 'text', True), field('email', 'text'), field('country', 'text')])
 PRICELIST = cls('PriceList', [field('price', 'decimal', True)], emit_became_effective=True)
@@ -116,7 +116,7 @@ AGREEMENTS = asset('acme.agreements', ['terminate', 'terminate_service'], tier='
                        'fn terminate() { sys.read.get(#{target: self_id}); sys.commit.update(#{target: self_id, set: #{state: "terminated"}}); "terminated" }\n'
                        'fn terminate_service() {\n'
                        '  if this.in_notice_period == true {\n'
-                       '    return #{denied: true, guard: "notice period", rule: "ServiceAgreement.terminate overrides Agreement.terminate"};\n'
+                       '    return #{denied: true, guard: "notice period", rule: "ServiceAgreement.terminate overrides Contract.terminate"};\n'
                        '  }\n'
                        '  sys.read.get(#{target: self_id}); sys.commit.update(#{target: self_id, set: #{state: "terminated"}}); "terminated"\n'
                        '}\n'))
@@ -206,21 +206,21 @@ tests_file('tests/scn-002.yaml', [
         step('read', {'branch': 'main', 'object_id': SA},
              subset({'body': {'title': 'Service agreement one', 'parties': [PU1, PU2]}, 'valid': {'from': '2026-03-15', 'to': None}})),
         step('commit_info', {'branch': 'main'}, subset({'cseq': 2})),
-        step('commit', {'branch': 'main', 'changes': [create(uid(3, 5), 'Agreement', 'a-bad',
+        step('commit', {'branch': 'main', 'changes': [create(uid(3, 5), 'Contract', 'a-bad',
              {'title': 'One party only', 'parties': [PU1]})]}, err('MODEL.CONSTRAINT_VIOLATED')),
     ], clock='2026-03-15T10:00:00.000000Z'),
     test('SCN-002 A1: widening title in the subclass is a narrowing violation', [
         step('effective_class', {'class': 'ServiceAgreement', 'classes': [PARTY, AGREEMENT, sa_widened]},
              err('MODEL.NARROWING_VIOLATION')),
     ]),
-    test('SCN-002 post: querying Agreement includes the ServiceAgreement instance', [
+    test('SCN-002 post: querying Contract includes the ServiceAgreement instance', [
         step('commit', {'branch': 'main', 'changes': [create(SA, 'ServiceAgreement', 'sa-1',
              {'title': 'Service agreement one', 'parties': [PU1, PU2], 'service_level': 'gold'}),
-             create(AG, 'Agreement', 'a-1', {'title': 'Plain agreement', 'parties': [PU1, PU3]})]}, subset({})),
-        step('query', {'branch': 'main', 'from': 'Agreement'}, subset({'objects': [SA, AG]})),
-        step('query', {'branch': 'main', 'from': 'Agreement', 'only': True}, subset({'objects': [AG]})),
+             create(AG, 'Contract', 'a-1', {'title': 'Plain agreement', 'parties': [PU1, PU3]})]}, subset({})),
+        step('query', {'branch': 'main', 'from': 'Contract'}, subset({'objects': [SA, AG]})),
+        step('query', {'branch': 'main', 'from': 'Contract', 'only': True}, subset({'objects': [AG]})),
         step('effective_class', {'class': 'ServiceAgreement', 'classes': CLASSES_ALL},
-             subset({'linearization': ['ServiceAgreement', 'Agreement', 'DataObject', 'Object'],
+             subset({'linearization': ['ServiceAgreement', 'Contract', 'DataObject', 'Object'],
                      'fields': {'title': {'constraints': {'max_length': 120}, 'required': True}}})),
     ], clock='2026-03-15T10:00:00.000000Z'),
 ], 'SCN-002 — Define a class hierarchy and create instances (FR-MODEL-011, -021, -041, -061, -101, FR-QRY-011)')
@@ -234,11 +234,11 @@ tests_file('tests/scn-003.yaml', [
     test('SCN-003 main: the override guard fails inside the notice period; the base logic terminates a plain agreement', [
         step('commit', {'branch': 'feature/forge', 'changes': [
             create(SA, 'ServiceAgreement', 'sa-1', {'title': 'Service agreement one', 'parties': [PU1, PU2], 'service_level': 'gold', 'in_notice_period': True}),
-            create(AG, 'Agreement', 'a-1', {'title': 'Plain agreement', 'parties': [PU1, PU3]})]}, subset({})),
+            create(AG, 'Contract', 'a-1', {'title': 'Plain agreement', 'parties': [PU1, PU3]})]}, subset({})),
         step('dispatch', {'class': 'ServiceAgreement', 'classes': CLASSES_ALL, 'port': 'terminate'},
              {'match': 'exact', 'result': {'class': 'ServiceAgreement', 'impl': 'acme.agreements#terminate_service'}}),
-        step('dispatch', {'class': 'Agreement', 'classes': CLASSES_ALL, 'port': 'terminate'},
-             {'match': 'exact', 'result': {'class': 'Agreement', 'impl': 'acme.agreements#terminate'}}),
+        step('dispatch', {'class': 'Contract', 'classes': CLASSES_ALL, 'port': 'terminate'},
+             {'match': 'exact', 'result': {'class': 'Contract', 'impl': 'acme.agreements#terminate'}}),
         step('execute', {'branch': 'feature/forge', 'target': SA, 'port': 'terminate', 'params': {}},
              subset({'result': {'denied': True, 'guard': 'notice period'}}), label='g'),
         step('read', {'branch': 'feature/forge', 'object_id': SA}, subset({'body': {'in_notice_period': True, 'title': 'Service agreement one'}})),

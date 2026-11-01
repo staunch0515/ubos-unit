@@ -1,83 +1,9 @@
 {
   "project": "gate-1a-scenarios",
   "branch": "main",
-  "model_hash": "sha256:84b5e999844fc32d381cf0b51d87fe2789a7f0c3fd5ca6f13841680fbdbbb9ed",
+  "model_hash": "sha256:d5c99dd64a1d54aef32a3d12f8d0bc3e5369caa24a9405a01ece89eebf3dcb5e",
   "vae": "acme",
   "classes": [
-    {
-      "name": "Agreement",
-      "label": "Agreement",
-      "parent": "DataObject",
-      "kind": "definition",
-      "linearization": [
-        "Agreement",
-        "DataObject",
-        "Object"
-      ],
-      "fields": [
-        {
-          "name": "effective_from",
-          "type": "date",
-          "required": false,
-          "label": "effective_from",
-          "constraints": null,
-          "default": null,
-          "classification": null,
-          "declared_by": "Agreement"
-        },
-        {
-          "name": "parties",
-          "type": "list",
-          "required": false,
-          "label": "parties",
-          "constraints": {
-            "item_type": {
-              "type": "reference",
-              "constraints": {
-                "target_class": "Counterparty"
-              }
-            },
-            "min_items": 2
-          },
-          "default": null,
-          "classification": null,
-          "declared_by": "Agreement"
-        },
-        {
-          "name": "state",
-          "type": "enum",
-          "required": false,
-          "label": "state",
-          "constraints": {
-            "allowed_values": [
-              "active",
-              "terminated"
-            ]
-          },
-          "default": "active",
-          "classification": null,
-          "declared_by": "Agreement"
-        },
-        {
-          "name": "title",
-          "type": "text",
-          "required": true,
-          "label": "title",
-          "constraints": null,
-          "default": null,
-          "classification": null,
-          "declared_by": "Agreement"
-        }
-      ],
-      "ports": [
-        {
-          "name": "terminate",
-          "kind": "command",
-          "params": [],
-          "declared_by": "Agreement"
-        }
-      ]
-    },
     {
       "name": "BatchJob",
       "label": "BatchJob",
@@ -232,6 +158,80 @@
         }
       ],
       "ports": []
+    },
+    {
+      "name": "Contract",
+      "label": "Contract",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Contract",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "effective_from",
+          "type": "date",
+          "required": false,
+          "label": "effective_from",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Contract"
+        },
+        {
+          "name": "parties",
+          "type": "list",
+          "required": false,
+          "label": "parties",
+          "constraints": {
+            "item_type": {
+              "type": "reference",
+              "constraints": {
+                "target_class": "Counterparty"
+              }
+            },
+            "min_items": 2
+          },
+          "default": null,
+          "classification": null,
+          "declared_by": "Contract"
+        },
+        {
+          "name": "state",
+          "type": "enum",
+          "required": false,
+          "label": "state",
+          "constraints": {
+            "allowed_values": [
+              "active",
+              "terminated"
+            ]
+          },
+          "default": "active",
+          "classification": null,
+          "declared_by": "Contract"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "label": "title",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Contract"
+        }
+      ],
+      "ports": [
+        {
+          "name": "terminate",
+          "kind": "command",
+          "params": [],
+          "declared_by": "Contract"
+        }
+      ]
     },
     {
       "name": "Counterparty",
@@ -436,6 +436,71 @@
       ]
     },
     {
+      "name": "PreferredSupplier",
+      "label": "PreferredSupplier",
+      "parent": "Supplier",
+      "kind": "definition",
+      "linearization": [
+        "PreferredSupplier",
+        "Supplier",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "code",
+          "type": "text",
+          "required": false,
+          "label": "code",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Supplier"
+        },
+        {
+          "name": "country",
+          "type": "text",
+          "required": false,
+          "label": "country",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Supplier"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Supplier"
+        },
+        {
+          "name": "tax_id",
+          "type": "text",
+          "required": false,
+          "label": "tax_id",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Supplier"
+        },
+        {
+          "name": "tier",
+          "type": "text",
+          "required": false,
+          "label": "tier",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "PreferredSupplier"
+        }
+      ],
+      "ports": []
+    },
+    {
       "name": "PriceList",
       "label": "PriceList",
       "parent": "DataObject",
@@ -582,11 +647,11 @@
     {
       "name": "ServiceAgreement",
       "label": "ServiceAgreement",
-      "parent": "Agreement",
+      "parent": "Contract",
       "kind": "definition",
       "linearization": [
         "ServiceAgreement",
-        "Agreement",
+        "Contract",
         "DataObject",
         "Object"
       ],
@@ -599,7 +664,7 @@
           "constraints": null,
           "default": null,
           "classification": null,
-          "declared_by": "Agreement"
+          "declared_by": "Contract"
         },
         {
           "name": "in_notice_period",
@@ -627,7 +692,7 @@
           },
           "default": null,
           "classification": null,
-          "declared_by": "Agreement"
+          "declared_by": "Contract"
         },
         {
           "name": "service_level",
@@ -657,7 +722,7 @@
           },
           "default": "active",
           "classification": null,
-          "declared_by": "Agreement"
+          "declared_by": "Contract"
         },
         {
           "name": "title",
@@ -669,7 +734,7 @@
           },
           "default": null,
           "classification": null,
-          "declared_by": "Agreement"
+          "declared_by": "Contract"
         }
       ],
       "ports": [
@@ -680,6 +745,60 @@
           "declared_by": "ServiceAgreement"
         }
       ]
+    },
+    {
+      "name": "Supplier",
+      "label": "Supplier",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Supplier",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "code",
+          "type": "text",
+          "required": false,
+          "label": "code",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Supplier"
+        },
+        {
+          "name": "country",
+          "type": "text",
+          "required": false,
+          "label": "country",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Supplier"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Supplier"
+        },
+        {
+          "name": "tax_id",
+          "type": "text",
+          "required": false,
+          "label": "tax_id",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Supplier"
+        }
+      ],
+      "ports": []
     },
     {
       "name": "VipContact",

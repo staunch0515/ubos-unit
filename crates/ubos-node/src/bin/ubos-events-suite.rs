@@ -68,11 +68,11 @@ fn port(name: &str, params: &[&str], emits: &[&str]) -> Value {
     p
 }
 
-/// The genesis classes: `Account` with its ports and events, `Statement` with a personal
+/// The genesis classes: `Wallet` with its ports and events, `Statement` with a personal
 /// `blob` field, `Rate` (instant valid time, emitting `BecameEffective`).
 fn classes() -> Value {
     json!([
-        {"name": "Account", "label": "Account", "description": "Account", "namespace": "suite.events", "parent": "DataObject",
+        {"name": "Wallet", "label": "Wallet", "description": "Wallet", "namespace": "suite.events", "parent": "DataObject",
          "kind": "definition", "schema_version": 1,
          "events": [{"name": "AccountClosed", "description": "an account was closed"}, {"name": "Pinged", "description": "an account was pinged"}],
          "fields": [field("name", "text", true), field("status", "text", false), field("tag", "text", false)],
@@ -288,18 +288,18 @@ impl Client {
         Ok(r["body"].clone())
     }
     fn port(&self, slug: &str, name: &str, params: Value) -> Result<Value, BpaError> {
-        let r = self.mutate(json!({"vae": "acme", "branch": BR, "port": {"target": format!("ubos://acme/Account/{slug}"), "name": name, "params": params}}))?;
+        let r = self.mutate(json!({"vae": "acme", "branch": BR, "port": {"target": format!("ubos://acme/Wallet/{slug}"), "name": name, "params": params}}))?;
         check_v(r["type"] == "result", &format!("port {name}"), &r)?;
         Ok(r["body"].clone())
     }
     fn account(&self, slug: &str) -> Result<Option<Value>, BpaError> {
-        let r = self.get(&format!("/api/v1/acme/Account/{slug}?branch={BR}"))?;
+        let r = self.get(&format!("/api/v1/acme/Wallet/{slug}?branch={BR}"))?;
         Ok(r["items"].get(0).map(|x| x["body"].clone()))
     }
     fn accounts(&self, slugs: &[String]) -> Result<(), BpaError> {
         let changes: Vec<Value> = slugs
             .iter()
-            .map(|s| json!({"op": "create", "class": "Account", "object_id": uuid(), "slug": s, "body": {"name": s, "status": "open"}}))
+            .map(|s| json!({"op": "create", "class": "Wallet", "object_id": uuid(), "slug": s, "body": {"name": s, "status": "open"}}))
             .collect();
         self.commit(BR, json!(changes)).map(|_| ())
     }
@@ -623,7 +623,7 @@ fn pings(c: &Client, events: &[Value], oid: &str) -> Vec<String> {
 }
 
 fn object_id(c: &Client, slug: &str) -> Result<String, BpaError> {
-    let r = c.get(&format!("/api/v1/acme/Account/{slug}?branch={BR}"))?;
+    let r = c.get(&format!("/api/v1/acme/Wallet/{slug}?branch={BR}"))?;
     Ok(r["items"][0]["object_id"]
         .as_str()
         .or_else(|| r["items"][0]["id"].as_str())
@@ -686,14 +686,14 @@ fn outbox_claims(_e: &Env) -> Result<Value, BpaError> {
     let ids: Vec<String> = (0..4).map(|_| uuid()).collect();
     let mut changes = vec![logic(&uuid())];
     for (i, id) in ids.iter().enumerate() {
-        changes.push(json!({"op": "create", "class": "Account", "object_id": id, "slug": format!("c-{i}"), "body": {"name": "c", "status": "open"}}));
+        changes.push(json!({"op": "create", "class": "Wallet", "object_id": id, "slug": format!("c-{i}"), "body": {"name": "c", "status": "open"}}));
     }
     v.call("commit", &json!({"branch": BR, "changes": changes}))?;
     for (i, _) in ids.iter().enumerate() {
         for n in 0..2 {
             v.call(
                 "execute",
-                &json!({"branch": BR, "target": format!("ubos://acme/Account/c-{i}"), "port": "ping", "params": {"n": format!("{n}")},
+                &json!({"branch": BR, "target": format!("ubos://acme/Wallet/c-{i}"), "port": "ping", "params": {"n": format!("{n}")},
                     "process": {"process_id": uuid()}}),
             )?;
         }
@@ -866,7 +866,7 @@ fn dead_letters(e: &Env) -> Result<Value, BpaError> {
         &format!("dl-{target}"),
         &["Pinged"],
         &["feature/*"],
-        json!({"kind": "port", "port": "mark", "target": format!("ubos://acme/Account/{target}"), "params": {"tag": "fixed"}}),
+        json!({"kind": "port", "port": "mark", "target": format!("ubos://acme/Wallet/{target}"), "params": {"tag": "fixed"}}),
         &e.svc,
         json!({"max_attempts": 2, "backoff_ms": 100, "jitter": false}),
     )?;
@@ -920,7 +920,7 @@ fn dead_letters(e: &Env) -> Result<Value, BpaError> {
         &name2,
         &["Pinged"],
         &["feature/*"],
-        json!({"kind": "port", "port": "mark", "target": format!("ubos://acme/Account/{target2}"), "params": {"tag": "x"}}),
+        json!({"kind": "port", "port": "mark", "target": format!("ubos://acme/Wallet/{target2}"), "params": {"tag": "x"}}),
         &e.svc,
         json!({"max_attempts": 1}),
     )?;
@@ -1235,7 +1235,7 @@ fn traces(e: &Env) -> Result<Value, BpaError> {
     let tp = format!("00-{trace_id}-{client_span}-01");
     let canary = format!("canary{}", &uuid().replace('-', "")[..12]);
     let r = e.c.mutate_traced(
-        json!({"vae": "acme", "branch": BR, "port": {"target": format!("ubos://acme/Account/{slug}"), "name": "ping", "params": {"n": canary}}}),
+        json!({"vae": "acme", "branch": BR, "port": {"target": format!("ubos://acme/Wallet/{slug}"), "name": "ping", "params": {"n": canary}}}),
         Some(&tp),
     )?;
     check_v(r["type"] == "result", "the traced ping", &r)?;
@@ -1603,7 +1603,7 @@ fn idempotency_retention(e: &Env) -> Result<Value, BpaError> {
     check_v(st != 200, "fewer than 7 days refused", &r)?;
     let request = |key: &str, slug: &str| {
         json!({"vae": "acme", "branch": BR, "idempotency_key": key, "commit": {"changes": [
-            {"op": "create", "class": "Account", "object_id": uuid(), "slug": slug,
+            {"op": "create", "class": "Wallet", "object_id": uuid(), "slug": slug,
              "body": {"name": slug, "status": "open"}}]}})
     };
     let (first, other) = (request("retry-1", "idem-a"), request("retry-1", "idem-b"));
@@ -1883,7 +1883,7 @@ fn sweeper_restores(e: &Env) -> Result<Value, BpaError> {
     )?;
     check(st == 200, "pause")?;
     let (st, r) = e.c.call("POST", "/api/v1/admin/jobs", &json!({"kind": "port", "queue": q,
-        "payload": {"branch": BR, "target": format!("ubos://acme/Account/{slug}"), "port": "mark", "params": {"tag": "swept"}}}))?;
+        "payload": {"branch": BR, "target": format!("ubos://acme/Wallet/{slug}"), "port": "mark", "params": {"tag": "swept"}}}))?;
     check_v(st == 200, "operator job", &r)?;
     let jid = r["job_id"].as_str().unwrap_or_default().to_string();
     let open = e.host("host.jobs_open", json!({}))?;
@@ -1948,7 +1948,7 @@ fn sweeper_restores(e: &Env) -> Result<Value, BpaError> {
 fn bulk_cancel(e: &Env) -> Result<Value, BpaError> {
     let tag = e.slug("bk");
     let changes: Vec<Value> = (0..200)
-        .map(|n| json!({"op": "create", "class": "Account", "object_id": uuid(), "slug": format!("{tag}-{n}"), "body": {"name": "b", "status": "open"}}))
+        .map(|n| json!({"op": "create", "class": "Wallet", "object_id": uuid(), "slug": format!("{tag}-{n}"), "body": {"name": "b", "status": "open"}}))
         .collect();
     let (st, r) = e.c.call(
         "POST",
@@ -1998,7 +1998,7 @@ fn idempotent_execution(e: &Env) -> Result<Value, BpaError> {
     let slug = e.slug("idem");
     e.c.accounts(std::slice::from_ref(&slug))?;
     let key = format!("job:{}", uuid());
-    let input = json!({"branch": BR, "target": format!("ubos://acme/Account/{slug}"), "port": "mark", "params": {"tag": "once"},
+    let input = json!({"branch": BR, "target": format!("ubos://acme/Wallet/{slug}"), "port": "mark", "params": {"tag": "once"},
         "process": {"process_id": uuid(), "idempotency_key": key}});
     let a = e.host("execute", input.clone())?;
     let mut again = input.clone();
@@ -2097,7 +2097,7 @@ fn vae_id(e: &Env) -> Result<String, BpaError> {
 
 fn sched_body(rule: &str, misfire: &str) -> Value {
     json!({"name": "s", "rule": {"cron": rule}, "misfire": misfire, "run_as": "did:svc",
-        "target": {"kind": "port", "branch": BR, "port": "mark", "target": "ubos://acme/Account/x", "params": {"tag": "$event.slot"}}})
+        "target": {"kind": "port", "branch": BR, "port": "mark", "target": "ubos://acme/Wallet/x", "params": {"tag": "$event.slot"}}})
 }
 
 /// DSN-NOD-224, FR-EVT-043: two leaders evaluating at once (a lease handover) create one
@@ -2301,7 +2301,7 @@ fn schedule_hot_change(e: &Env) -> Result<Value, BpaError> {
     // through the Server
     let id = uuid();
     let body = json!({"name": "hot", "rule": {"cron": "0 6 * * *"}, "time_zone": "UTC", "run_as": e.svc,
-        "target": {"kind": "port", "branch": BR, "port": "mark", "target": "ubos://acme/Account/none", "params": {}}});
+        "target": {"kind": "port", "branch": BR, "port": "mark", "target": "ubos://acme/Wallet/none", "params": {}}});
     e.c.commit("main", json!([{"op": "create", "class": "Schedule", "object_id": id, "slug": format!("hot-{}", &id[..8]), "body": body}]))?;
     let next = |c: &Client| -> Result<Value, BpaError> {
         Ok(c.get("/api/v1/admin/schedules")?["items"]
@@ -2344,7 +2344,7 @@ fn schedule_through_server(e: &Env) -> Result<Value, BpaError> {
     let id = uuid();
     e.c.commit("main", json!([{"op": "create", "class": "Schedule", "object_id": id, "slug": format!("tick-{}", &id[..8]),
         "body": {"name": "tick", "rule": {"cron": "* * * * *"}, "run_as": e.svc,
-            "target": {"kind": "port", "branch": BR, "port": "mark", "target": format!("ubos://acme/Account/{slug}"), "params": {"tag": "$event.slot"}}}}]))?;
+            "target": {"kind": "port", "branch": BR, "port": "mark", "target": format!("ubos://acme/Wallet/{slug}"), "params": {"tag": "$event.slot"}}}}]))?;
     let job = wait(75.0, || {
         Ok(e.c
             .jobs("kind=schedule&state=done")?
@@ -2633,13 +2633,13 @@ fn bench_recovery(database: Option<&str>, n: usize) -> Result<Value, BpaError> {
         v.set_server_mode(true, false);
         let mut changes = vec![logic(&uuid())];
         for i in 0..10 {
-            changes.push(json!({"op": "create", "class": "Account", "object_id": uuid(), "slug": format!("r-{i}"), "body": {"name": "r", "status": "open"}}));
+            changes.push(json!({"op": "create", "class": "Wallet", "object_id": uuid(), "slug": format!("r-{i}"), "body": {"name": "r", "status": "open"}}));
         }
         v.call("commit", &json!({"branch": BR, "changes": changes}))?;
         for k in 0..n {
             v.call(
                 "execute",
-                &json!({"branch": BR, "target": format!("ubos://acme/Account/r-{}", k % 10), "port": "ping", "params": {"n": format!("{k:05}")},
+                &json!({"branch": BR, "target": format!("ubos://acme/Wallet/r-{}", k % 10), "port": "ping", "params": {"n": format!("{k:05}")},
                     "process": {"process_id": uuid()}}),
             )?;
         }

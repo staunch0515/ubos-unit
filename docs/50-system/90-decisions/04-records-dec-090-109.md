@@ -9,7 +9,8 @@ depends_on: [UBS-DEC-000]
 # Decision Records DEC-090 … DEC-109
 
 The table rows and records of the decisions DEC-090 … DEC-109 (PH-2 steps 1–4). The
-decisions from DEC-110 on are in `000-index.md`. Moved here unchanged on 2026-10-25 when the
+decisions DEC-110 … DEC-126 are in `05-records-dec-110-126.md`, those from DEC-127 on in
+`000-index.md`. Moved here unchanged on 2026-10-25 when the
 log passed 800 lines (the checker's size warning); IDs are permanent.
 
 | ID | Title | Status |

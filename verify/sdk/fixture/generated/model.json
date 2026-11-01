@@ -1,98 +1,9 @@
 {
   "project": "sdk-suite",
   "branch": "main",
-  "model_hash": "sha256:77b646db2d63d822c79d926ff6c7eea62fe1589fd89cbf1e8e9b9355546c31d6",
+  "model_hash": "sha256:2ea36abb279fbb7455e572ef15d81df4d447e0d7a5346b192c37ae0eaadcc1f5",
   "vae": "acme",
   "classes": [
-    {
-      "name": "Account",
-      "label": "Account",
-      "parent": "DataObject",
-      "kind": "definition",
-      "linearization": [
-        "Account",
-        "DataObject",
-        "Object"
-      ],
-      "fields": [
-        {
-          "name": "balance",
-          "type": "decimal",
-          "required": false,
-          "label": "balance",
-          "constraints": null,
-          "default": null,
-          "classification": null,
-          "declared_by": "Account"
-        },
-        {
-          "name": "name",
-          "type": "text",
-          "required": true,
-          "label": "name",
-          "constraints": null,
-          "default": null,
-          "classification": null,
-          "declared_by": "Account"
-        },
-        {
-          "name": "status",
-          "type": "text",
-          "required": false,
-          "label": "status",
-          "constraints": null,
-          "default": null,
-          "classification": null,
-          "declared_by": "Account"
-        },
-        {
-          "name": "tag",
-          "type": "text",
-          "required": false,
-          "label": "tag",
-          "constraints": null,
-          "default": null,
-          "classification": null,
-          "declared_by": "Account"
-        }
-      ],
-      "ports": [
-        {
-          "name": "close",
-          "kind": "command",
-          "params": [],
-          "declared_by": "Account"
-        },
-        {
-          "name": "mark",
-          "kind": "command",
-          "params": [
-            {
-              "name": "tag",
-              "label": "tag",
-              "description": "tag",
-              "type": "text",
-              "required": true
-            }
-          ],
-          "declared_by": "Account"
-        },
-        {
-          "name": "rename",
-          "kind": "command",
-          "params": [
-            {
-              "name": "name",
-              "label": "name",
-              "description": "name",
-              "type": "text",
-              "required": true
-            }
-          ],
-          "declared_by": "Account"
-        }
-      ]
-    },
     {
       "name": "Counterparty",
       "label": "Counterparty",
@@ -193,12 +104,12 @@
       "ports": []
     },
     {
-      "name": "Document",
-      "label": "Document",
+      "name": "Dossier",
+      "label": "Dossier",
       "parent": "DataObject",
       "kind": "definition",
       "linearization": [
-        "Document",
+        "Dossier",
         "DataObject",
         "Object"
       ],
@@ -211,7 +122,7 @@
           "constraints": null,
           "default": null,
           "classification": "personal",
-          "declared_by": "Document"
+          "declared_by": "Dossier"
         },
         {
           "name": "title",
@@ -221,7 +132,7 @@
           "constraints": null,
           "default": null,
           "classification": null,
-          "declared_by": "Document"
+          "declared_by": "Dossier"
         }
       ],
       "ports": []
@@ -270,6 +181,95 @@
         }
       ],
       "ports": []
+    },
+    {
+      "name": "Wallet",
+      "label": "Wallet",
+      "parent": "DataObject",
+      "kind": "definition",
+      "linearization": [
+        "Wallet",
+        "DataObject",
+        "Object"
+      ],
+      "fields": [
+        {
+          "name": "balance",
+          "type": "decimal",
+          "required": false,
+          "label": "balance",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Wallet"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "label": "name",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Wallet"
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "required": false,
+          "label": "status",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Wallet"
+        },
+        {
+          "name": "tag",
+          "type": "text",
+          "required": false,
+          "label": "tag",
+          "constraints": null,
+          "default": null,
+          "classification": null,
+          "declared_by": "Wallet"
+        }
+      ],
+      "ports": [
+        {
+          "name": "close",
+          "kind": "command",
+          "params": [],
+          "declared_by": "Wallet"
+        },
+        {
+          "name": "mark",
+          "kind": "command",
+          "params": [
+            {
+              "name": "tag",
+              "label": "tag",
+              "description": "tag",
+              "type": "text",
+              "required": true
+            }
+          ],
+          "declared_by": "Wallet"
+        },
+        {
+          "name": "rename",
+          "kind": "command",
+          "params": [
+            {
+              "name": "name",
+              "label": "name",
+              "description": "name",
+              "type": "text",
+              "required": true
+            }
+          ],
+          "declared_by": "Wallet"
+        }
+      ]
     }
   ]
 }

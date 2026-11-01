@@ -146,7 +146,7 @@ impl Env {
             ..CallOptions::default()
         };
         self.c
-            .commit(json!([{"op": "create", "class": "Account", "object_id": id, "slug": slug, "body": {"name": "acct", "balance": "0"}}]), &o)
+            .commit(json!([{"op": "create", "class": "Wallet", "object_id": id, "slug": slug, "body": {"name": "acct", "balance": "0"}}]), &o)
             .await?;
         Ok((id, slug))
     }
@@ -465,7 +465,7 @@ async fn run(e: &Env, id: &str) -> Case {
                 k.check("diff: commits known", false, "no commit identifiers");
             }
             if let Ok((_, aslug)) = e.account().await {
-                let x = c.explain(json!({"target": e.uri("Account", &aslug), "kind": "decision", "port": "close"}), &Selectors::branch("feature/sdk")).await;
+                let x = c.explain(json!({"target": e.uri("Wallet", &aslug), "kind": "decision", "port": "close"}), &Selectors::branch("feature/sdk")).await;
                 k.check("explain: the decision of a port", x.is_ok(), x.err());
             }
         }
@@ -474,7 +474,7 @@ async fn run(e: &Env, id: &str) -> Case {
                 k.check("setup", false, "");
                 return k;
             };
-            let target = e.uri("Account", &slug);
+            let target = e.uri("Wallet", &slug);
             let o = CallOptions {
                 branch: Some("feature/sdk".into()),
                 ..CallOptions::default()
@@ -782,7 +782,7 @@ async fn run(e: &Env, id: &str) -> Case {
             if let Ok((_, aslug)) = e.account().await {
                 let _ = c
                     .invoke(
-                        &e.uri("Account", &aslug),
+                        &e.uri("Wallet", &aslug),
                         "close",
                         json!({}),
                         &CallOptions {
@@ -867,9 +867,9 @@ async fn run(e: &Env, id: &str) -> Case {
             );
             if let Ok((reference, _)) = up {
                 let (oid, slug) = e.oid();
-                let r = c.commit(json!([{"op": "create", "class": "Document", "object_id": oid, "slug": slug, "body": {"title": "p13", "passport": reference}}]), &none).await;
+                let r = c.commit(json!([{"op": "create", "class": "Dossier", "object_id": oid, "slug": slug, "body": {"title": "p13", "passport": reference}}]), &none).await;
                 k.check("referred to by a blob field", r.is_ok(), r.err());
-                let doc = e.uri("Document", &slug);
+                let doc = e.uri("Dossier", &slug);
                 let whole = c.download(&doc, "passport", None, None).await;
                 k.check(
                     "the whole file downloaded and verified",
@@ -889,11 +889,9 @@ async fn run(e: &Env, id: &str) -> Case {
         "P14" => {
             let big = "12345678901234567890.1234567891";
             let (oid, slug) = e.oid();
-            let r = c.commit(json!([{"op": "create", "class": "Account", "object_id": oid, "slug": slug, "body": {"name": "p14", "balance": Decimal::new(big).unwrap()}}]), &none).await;
+            let r = c.commit(json!([{"op": "create", "class": "Wallet", "object_id": oid, "slug": slug, "body": {"name": "p14", "balance": Decimal::new(big).unwrap()}}]), &none).await;
             k.check("a 30-digit decimal committed", r.is_ok(), r.as_ref().err());
-            let back = c
-                .read(&e.uri("Account", &slug), &Selectors::default())
-                .await;
+            let back = c.read(&e.uri("Wallet", &slug), &Selectors::default()).await;
             k.check(
                 "read back exactly",
                 back.as_ref().is_ok_and(|i| i.body()["balance"] == big),
@@ -1008,7 +1006,7 @@ async fn run(e: &Env, id: &str) -> Case {
                     ..CallOptions::default()
                 };
                 let r =
-                    types::account::rename(c, &e.uri("Account", &aslug), "p15 renamed".into(), &o)
+                    types::wallet::rename(c, &e.uri("Wallet", &aslug), "p15 renamed".into(), &o)
                         .await;
                 k.check(
                     "a typed port call",
@@ -1259,11 +1257,11 @@ async fn run(e: &Env, id: &str) -> Case {
                     .is_ok_and(|v| v["linearization"][0] == "Customer"),
                 &cls,
             );
-            let d = c.dispatch("Account", "rename", &sel).await;
+            let d = c.dispatch("Wallet", "rename", &sel).await;
             k.check(
                 "dispatch names the implementing class",
                 d.as_ref()
-                    .is_ok_and(|v| v["class"] == "Account" && v["impl"].is_string()),
+                    .is_ok_and(|v| v["class"] == "Wallet" && v["impl"].is_string()),
                 &d,
             );
             let ci = c.commit_info(&sel).await;
@@ -1276,7 +1274,7 @@ async fn run(e: &Env, id: &str) -> Case {
                 }),
                 &ci,
             );
-            let l = c.ledger("Account", json!({"account": "none"}), &sel).await;
+            let l = c.ledger("Wallet", json!({"account": "none"}), &sel).await;
             k.check(
                 "a ledger key without entries is empty",
                 l.as_ref().is_ok_and(Vec::is_empty),
@@ -1288,7 +1286,7 @@ async fn run(e: &Env, id: &str) -> Case {
             };
             let r = c
                 .invoke(
-                    &e.uri("Account", &aslug),
+                    &e.uri("Wallet", &aslug),
                     "rename",
                     json!({"name": "p19"}),
                     &sdk,
@@ -1316,7 +1314,7 @@ async fn run(e: &Env, id: &str) -> Case {
             );
             // BPA 1.0-rc5: a failed port call names its process
             let bad = c
-                .invoke(&e.uri("Account", &aslug), "rename", json!({}), &sdk)
+                .invoke(&e.uri("Wallet", &aslug), "rename", json!({}), &sdk)
                 .await;
             let failed_pid = bad.as_ref().err().and_then(|x| x.process_id.clone());
             let failed = match &failed_pid {

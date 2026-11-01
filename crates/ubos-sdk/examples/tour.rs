@@ -7,7 +7,7 @@
 //! ```
 //!
 //! The VAE needs the classes `Customer` (`name`, `email`, `credit_limit` money) and
-//! `Document` (`title`, `passport` blob). With `--restart` the tour prints `RESTART` and
+//! `Dossier` (`title`, `passport` blob). With `--restart` the tour prints `RESTART` and
 //! waits for a line on standard input while the node is restarted, then checks that the
 //! client reconnected and the subscription resumed.
 
@@ -246,10 +246,10 @@ async fn main() {
     if let Ok((reference, _)) = &up {
         let slug = format!("doc{base}");
         let r = c
-            .commit(json!([{"op": "create", "class": "Document", "object_id": oid(base + 50), "slug": slug, "body": {"title": "tour", "passport": reference}}]), &CallOptions::default())
+            .commit(json!([{"op": "create", "class": "Dossier", "object_id": oid(base + 50), "slug": slug, "body": {"title": "tour", "passport": reference}}]), &CallOptions::default())
             .await;
         t.check("the file referred to by a blob field", r.is_ok(), r.err());
-        let doc = format!("ubos://{vae}/Document/{slug}");
+        let doc = format!("ubos://{vae}/Dossier/{slug}");
         let whole = c.download(&doc, "passport", None, None).await;
         t.check(
             "the whole file downloaded and verified",

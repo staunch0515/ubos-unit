@@ -222,14 +222,25 @@ pub fn record_id(name: &str) -> Result<String, BpaError> {
     ))
 }
 
-/// The namespace of the genesis Buks.
+/// The namespace of the `system` genesis Buk.
 pub const NAMESPACE: &str = "ubos.platform";
+
+/// The namespace a genesis Buk owns: the namespace of its classes (`ubos.platform` for
+/// `system`, `ubos.ontology` for `ontology`).
+pub fn namespace_of(buk: &Buk) -> String {
+    buk.manifest["classes"]
+        .as_array()
+        .and_then(|c| c.first())
+        .and_then(|c| c["namespace"].as_str())
+        .unwrap_or(NAMESPACE)
+        .to_string()
+}
 
 /// A genesis Buk as a `ubos.buk.v1` archive (DEC-132): its classes under `model/`, signed
 /// with the publisher key the node trusts for genesis Buks, so that it upgrades through
 /// the normal Buk upgrade (FR-PKG-073).
 pub fn archive(buk: &Buk) -> Result<ubos_dvm::buk::Archive, BpaError> {
-    let manifest = json!({"name": buk.name(), "namespace": NAMESPACE, "version": buk.version(),
+    let manifest = json!({"name": buk.name(), "namespace": namespace_of(buk), "version": buk.version(),
         "abi": "1.0", "description": buk.manifest["description"], "capabilities": [], "dependencies": {}});
     let files = std::collections::BTreeMap::from([(
         "model/classes.json".to_string(),
@@ -274,20 +285,30 @@ pub fn install(vae: &mut Vae, buk: &Buk) -> Result<Value, BpaError> {
                     "installed": installed, "node": buk.version()}),
             ));
         }
-        let id = format!("{NAMESPACE}/{}", buk.name());
+        let ns = namespace_of(buk);
+        let id = format!("{ns}/{}", buk.name());
         vae.call(
             "buk_register",
-            &json!({"id": id, "name": buk.name(), "namespace": NAMESPACE, "version": installed,
+            &json!({"id": id, "name": buk.name(), "namespace": ns, "version": installed,
                 "root": b["content_hash"], "publisher": b["publisher"], "signature": b["signature"],
                 "object_id": rid, "target": "main"}),
         )?;
-        let r = vae.call(
-            "buk_install",
-            &json!({"archive": a.to_json()?, "branch": "main", "trust": [publisher_did()?]}),
-        )?;
+        // a proposal that cannot be made leaves the VAE on its version, reported
         return Ok(
-            json!({"buk": buk.name(), "version": buk.version(), "status": "upgrade_proposed",
-            "installed": installed, "change_set": r["change_set"]}),
+            match vae.call(
+                "buk_install",
+                &json!({"archive": a.to_json()?, "branch": "main", "trust": [publisher_did()?]}),
+            ) {
+                Ok(r) => {
+                    json!({"buk": buk.name(), "version": buk.version(), "status": "upgrade_proposed",
+                    "installed": installed, "change_set": r["change_set"]})
+                }
+                Err(e) => {
+                    json!({"buk": buk.name(), "version": buk.version(), "status": "upgrade_blocked",
+                    "installed": installed, "error": e.code,
+                    "problems": e.details.as_ref().and_then(|d| d.get("problems").cloned())})
+                }
+            },
         );
     }
     // the classes the VAE lacks; one of the same name in a foreign namespace is refused

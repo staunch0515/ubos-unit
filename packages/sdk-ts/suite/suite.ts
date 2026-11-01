@@ -37,7 +37,7 @@ import {
   uuid7,
   withRetry,
 } from "../src/index.js";
-import { Account, Customer, Counterparty, type CounterpartyItem } from "./generated/types.js";
+import { Wallet, Customer, Counterparty, type CounterpartyItem } from "./generated/types.js";
 
 type Json = Record<string, unknown>;
 
@@ -95,7 +95,7 @@ async function rename(c: Client, id: string, slug: string, name: string, o?: Cal
 
 async function account(c: Client): Promise<[string, string]> {
   const [id, slug] = oid();
-  await c.commit([{ op: "create", class: "Account", object_id: id, slug, body: { name: "acct", balance: "0" } }], { branch: BR });
+  await c.commit([{ op: "create", class: "Wallet", object_id: id, slug, body: { name: "acct", balance: "0" } }], { branch: BR });
   return [id, slug];
 }
 
@@ -225,13 +225,13 @@ async function run(c: Client, direct: Client, id: string): Promise<Case> {
       const d = await attempt(c.diff({ cseq: created.cseq ?? 0 }, { cseq: upd.cseq ?? 0 }));
       k.check("diff: the change between the two commits names the object", !(d instanceof Error) && JSON.stringify(d).includes(id2), d);
       const [, aslug] = await account(c);
-      const x = await attempt(c.explain({ target: uri("Account", aslug), kind: "decision", port: "close" }, { branch: BR }));
+      const x = await attempt(c.explain({ target: uri("Wallet", aslug), kind: "decision", port: "close" }, { branch: BR }));
       k.check("explain: the decision of a port", !(x instanceof Error), x);
       break;
     }
     case "P07": {
       const [, slug] = await account(c);
-      const target = uri("Account", slug);
+      const target = uri("Wallet", slug);
       const r = await attempt(c.invoke(target, "mark", { tag: "p07" }, { branch: BR }));
       k.check("the port's result", r instanceof MutateResult && r.result === "p07" && !!r.processId, r);
       const item = await attempt(c.get<Json>(target, { branch: BR }));
@@ -327,7 +327,7 @@ async function run(c: Client, direct: Client, id: string): Promise<Case> {
       const [qid] = await customer(c, "p12 q", { country: `${tag}-p12q` });
       k.check("query: a new matching object emitted", await untilEmit(qsub, (b) => JSON.stringify(b).includes(qid), 10000), qid);
       const [, aslug] = await account(c);
-      await c.invoke(uri("Account", aslug), "close", {}, { branch: BR });
+      await c.invoke(uri("Wallet", aslug), "close", {}, { branch: BR });
       k.check("events: the released AccountClosed emitted", await untilEmit(esub, (b) => JSON.stringify(b).includes("AccountClosed"), 10000));
       // a handler instead of iteration
       const seen: Update[] = [];
@@ -360,9 +360,9 @@ async function run(c: Client, direct: Client, id: string): Promise<Case> {
       k.check("resumed from its location, completed and verified by SHA-256", !(up instanceof Error) && up.reference.size === d.length && seen === d.length, up);
       if (!(up instanceof Error)) {
         const [id2, slug] = oid();
-        const r = await attempt(c.commit([{ op: "create", class: "Document", object_id: id2, slug, body: { title: "p13", passport: up.reference } }]));
+        const r = await attempt(c.commit([{ op: "create", class: "Dossier", object_id: id2, slug, body: { title: "p13", passport: up.reference } }]));
         k.check("referred to by a blob field", !(r instanceof Error), r);
-        const doc = uri("Document", slug);
+        const doc = uri("Dossier", slug);
         const whole = await attempt(c.files.download(doc, "passport"));
         k.check("the whole file downloaded and verified", whole instanceof Uint8Array && equal(whole, d), whole);
         const part = await attempt(c.files.download(doc, "passport", { range: [100_000, 300_000] }));
@@ -373,9 +373,9 @@ async function run(c: Client, direct: Client, id: string): Promise<Case> {
     case "P14": {
       const big = "12345678901234567890.1234567891";
       const [id2, slug] = oid();
-      const r = await attempt(c.commit([{ op: "create", class: "Account", object_id: id2, slug, body: { name: "p14", balance: new Decimal(big) } }]));
+      const r = await attempt(c.commit([{ op: "create", class: "Wallet", object_id: id2, slug, body: { name: "p14", balance: new Decimal(big) } }]));
       k.check("a 30-digit decimal committed", !(r instanceof Error), r);
-      const back = await attempt(c.get<Json>(uri("Account", slug)));
+      const back = await attempt(c.get<Json>(uri("Wallet", slug)));
       k.check("read back exactly", back instanceof Item && back.body.balance === big, back);
       k.check("money in canonical form", JSON.stringify(new Money("1250.50", "USD")) === '{"amount":"1250.5","currency":"USD"}');
       k.check("negative zero is zero", new Decimal("-0.000").toString() === "0");
@@ -407,7 +407,7 @@ async function run(c: Client, direct: Client, id: string): Promise<Case> {
       const ibans = all.map((x) => (x.class === "Supplier" ? x.body.iban : undefined)).filter(Boolean);
       k.check("a variant's own fields", ibans[0] === "DE00", ibans);
       const [, aslug] = await account(c);
-      const r = await attempt(Account.ports.rename(c, uri("Account", aslug), { name: "p15 renamed" }, { branch: BR }));
+      const r = await attempt(Wallet.ports.rename(c, uri("Wallet", aslug), { name: "p15 renamed" }, { branch: BR }));
       k.check("a typed port call", r instanceof MutateResult && r.result === "p15 renamed", r);
       break;
     }
@@ -489,20 +489,20 @@ async function run(c: Client, direct: Client, id: string): Promise<Case> {
       const sel = { branch: BR };
       const cls = await attempt(c.inspect.class("Customer", sel));
       k.check("the effective class with its linearization", !(cls instanceof Error) && (cls.linearization as string[])[0] === "Customer", cls);
-      const d = await attempt(c.inspect.dispatch("Account", "rename", sel));
-      k.check("dispatch names the implementing class", !(d instanceof Error) && d.class === "Account" && typeof d.impl === "string", d);
+      const d = await attempt(c.inspect.dispatch("Wallet", "rename", sel));
+      k.check("dispatch names the implementing class", !(d instanceof Error) && d.class === "Wallet" && typeof d.impl === "string", d);
       const ci = await attempt(c.inspect.commit(sel));
       k.check("the head commit with its state root", !(ci instanceof Error) && ci.branch === BR && typeof ci.root === "string" && typeof ci.commit_id === "string", ci);
-      const l = await attempt(c.inspect.ledger("Account", { account: "none" }, sel));
+      const l = await attempt(c.inspect.ledger("Wallet", { account: "none" }, sel));
       k.check("a ledger key without entries is empty", Array.isArray(l) && l.length === 0, l);
       const [, aslug] = await account(c);
-      const r = await c.invoke(uri("Account", aslug), "rename", { name: "p19" }, { branch: BR });
+      const r = await c.invoke(uri("Wallet", aslug), "rename", { name: "p19" }, { branch: BR });
       const rec = await attempt(c.inspect.process(r.processId, { journal: true, metering: true }));
       k.check("the process record with its journal and metering", !(rec instanceof Error) && rec.state === "committed" && typeof (rec.journal as Json).context === "object" && typeof (rec.metering as Json).units === "number", rec);
       const rp = await attempt(c.inspect.replay(r.processId));
       k.check("the replay is identical", !(rp instanceof Error) && rp.outcome === "identical", rp);
       // BPA 1.0-rc5: a failed port call names its process
-      const bad = await attempt(c.invoke(uri("Account", aslug), "rename", {}, { branch: BR }));
+      const bad = await attempt(c.invoke(uri("Wallet", aslug), "rename", {}, { branch: BR }));
       const failedPid = bad instanceof UbosError ? bad.processId : undefined;
       const failed = failedPid ? await attempt(c.inspect.process(failedPid, { metering: true })) : undefined;
       k.check("a failed port call names its process, whose record is failed", failed !== undefined && !(failed instanceof Error) && failed.state === "failed" && typeof failed.metering === "object", [bad, failed]);

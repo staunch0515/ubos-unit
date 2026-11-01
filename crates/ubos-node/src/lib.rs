@@ -778,11 +778,13 @@ impl Node {
         if first {
             match genesis::propose_upgrades(&mut vae) {
                 Ok(list) => {
-                    for x in list.iter().filter(|x| x["status"] == "upgrade_proposed") {
-                        eprintln!(
-                            "genesis upgrade proposed in {}/{authority}: {x}",
-                            tenant.slug
-                        );
+                    for x in list.iter().filter(|x| {
+                        matches!(
+                            x["status"].as_str(),
+                            Some("upgrade_proposed" | "upgrade_blocked")
+                        )
+                    }) {
+                        eprintln!("genesis upgrade of {}/{authority}: {x}", tenant.slug);
                     }
                 }
                 Err(e) => eprintln!("genesis Buks of {}/{authority}: {e}", tenant.slug),

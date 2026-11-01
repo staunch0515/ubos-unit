@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (133)
+## DEC (134)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -203,23 +203,23 @@ depends_on: [UBS-IDX-00]
 | DEC-107 | Governed reopening of periods in the kernel (PH-2 step 4, part 4c) | `90-decisions/04-records-dec-090-109.md` |
 | DEC-108 | Delegations in the kernel (PH-2 step 4, part 4d) | `90-decisions/04-records-dec-090-109.md` |
 | DEC-109 | Tasks, work queues and the inbox in the kernel (PH-2 step 4, part 4e) | `90-decisions/04-records-dec-090-109.md` |
-| DEC-110 | Escalation, service levels and the node's sweeps (PH-2 step 4, part 4f) | `90-decisions/000-index.md` |
-| DEC-111 | PH-2 step 4 closed: approvals and work (PH-2 step 4, part 4g) | `90-decisions/000-index.md` |
-| DEC-112 | Decision tables and rule operations, part 5a: BPA 1.0-rc11 (PH-2 step 5) | `90-decisions/000-index.md` |
-| DEC-113 | Decision tables in the kernel (PH-2 step 5, part 5b) | `90-decisions/000-index.md` |
-| DEC-114 | Simulation in the kernel (PH-2 step 5, part 5c) | `90-decisions/000-index.md` |
-| DEC-115 | The end of attachments and the live impact count in the kernel (PH-2 step 5, part 5d) | `90-decisions/000-index.md` |
-| DEC-116 | Rule tests and the merge gate in the kernel (PH-2 step 5, part 5e) | `90-decisions/000-index.md` |
-| DEC-117 | `forge simulate` (PH-2 step 5, part 5f) | `90-decisions/000-index.md` |
-| DEC-118 | PH-2 step 5 closed: decision tables and rule operations (PH-2 step 5, part 5g) | `90-decisions/000-index.md` |
-| DEC-119 | Durable work, part 6a: BPA 1.0-rc12 (PH-2 step 6) | `90-decisions/000-index.md` |
-| DEC-120 | Workflows in the kernel (PH-2 step 6, part 6b) | `90-decisions/000-index.md` |
-| DEC-121 | Workflow timer rows and the node's timer service (PH-2 step 6, part 6c) | `90-decisions/000-index.md` |
-| DEC-122 | Sagas and quarantine in the kernel (PH-2 step 6, part 6d) | `90-decisions/000-index.md` |
-| DEC-123 | Workflow tasks, approvals, calendars and timeouts in the kernel (PH-2 step 6, part 6e) | `90-decisions/000-index.md` |
-| DEC-124 | Actions that ask for input in the kernel (PH-2 step 6, part 6f-1) | `90-decisions/000-index.md` |
-| DEC-125 | Projection maintenance, backfill and event replay on the node (PH-2 step 6, part 6f-2) | `90-decisions/000-index.md` |
-| DEC-126 | PH-2 step 6 closed: durable work (PH-2 step 6, part 6g) | `90-decisions/000-index.md` |
+| DEC-110 | Escalation, service levels and the node's sweeps (PH-2 step 4, part 4f) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-111 | PH-2 step 4 closed: approvals and work (PH-2 step 4, part 4g) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-112 | Decision tables and rule operations, part 5a: BPA 1.0-rc11 (PH-2 step 5) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-113 | Decision tables in the kernel (PH-2 step 5, part 5b) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-114 | Simulation in the kernel (PH-2 step 5, part 5c) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-115 | The end of attachments and the live impact count in the kernel (PH-2 step 5, part 5d) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-116 | Rule tests and the merge gate in the kernel (PH-2 step 5, part 5e) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-117 | `forge simulate` (PH-2 step 5, part 5f) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-118 | PH-2 step 5 closed: decision tables and rule operations (PH-2 step 5, part 5g) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-119 | Durable work, part 6a: BPA 1.0-rc12 (PH-2 step 6) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-120 | Workflows in the kernel (PH-2 step 6, part 6b) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-121 | Workflow timer rows and the node's timer service (PH-2 step 6, part 6c) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-122 | Sagas and quarantine in the kernel (PH-2 step 6, part 6d) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-123 | Workflow tasks, approvals, calendars and timeouts in the kernel (PH-2 step 6, part 6e) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-124 | Actions that ask for input in the kernel (PH-2 step 6, part 6f-1) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-125 | Projection maintenance, backfill and event replay on the node (PH-2 step 6, part 6f-2) | `90-decisions/05-records-dec-110-126.md` |
+| DEC-126 | PH-2 step 6 closed: durable work (PH-2 step 6, part 6g) | `90-decisions/05-records-dec-110-126.md` |
 | DEC-127 | Models and packages, part 7a: schema evolution in the kernel (PH-2 step 7) | `90-decisions/000-index.md` |
 | DEC-128 | Models and packages, part 7b: upstream change detection (PH-2 step 7) | `90-decisions/000-index.md` |
 | DEC-129 | Models and packages, part 7c: the Buk format and its Forge commands (PH-2 step 7) | `90-decisions/000-index.md` |
@@ -227,4 +227,5 @@ depends_on: [UBS-IDX-00]
 | DEC-131 | Models and packages, part 7e-1: upgrades, migrations and rollback (PH-2 step 7) | `90-decisions/000-index.md` |
 | DEC-132 | Models and packages, part 7e-2: removal, deprecation and genesis upgrades (PH-2 step 7) | `90-decisions/000-index.md` |
 | DEC-133 | Models and packages, part 7f, first half: model export (PH-2 step 7) | `90-decisions/000-index.md` |
+| DEC-134 | Models and packages, part 7f, second half: the ontology Buk (PH-2 step 7) | `90-decisions/000-index.md` |
 

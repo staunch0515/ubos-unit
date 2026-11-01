@@ -3,7 +3,7 @@
 // paged queries, subscriptions that survive a restart of the node, and files.
 //
 // The VAE needs the classes `Customer` (`name`, `email`, `credit_limit` money) and
-// `Document` (`title`, `passport` blob).
+// `Dossier` (`title`, `passport` blob).
 
 import {
   type Binding,
@@ -141,10 +141,10 @@ export async function tour(o: TourOptions): Promise<{ ok: number; failed: number
     const slug = `doc${n0}`;
     const reference = (up as { reference: unknown }).reference;
     const d = await c
-      .commit([{ op: "create", class: "Document", object_id: oid(n0 + 50), slug, body: { title: "tour", passport: reference } }])
+      .commit([{ op: "create", class: "Dossier", object_id: oid(n0 + 50), slug, body: { title: "tour", passport: reference } }])
       .catch((e: unknown) => e);
     check("the file referred to by a blob field", !(d instanceof Error), d);
-    const doc = `ubos://${o.vae}/Document/${slug}`;
+    const doc = `ubos://${o.vae}/Dossier/${slug}`;
     const whole = await c.files.download(doc, "passport").catch((e: unknown) => e);
     check("the whole file downloaded and verified", whole instanceof Uint8Array && whole.length === data.length && whole.every((x, i) => x === data[i]), whole);
     const part = await c.files.download(doc, "passport", { range: [1000, 5000] }).catch((e: unknown) => e);

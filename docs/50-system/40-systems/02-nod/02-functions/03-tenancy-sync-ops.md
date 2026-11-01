@@ -199,6 +199,7 @@ Reading order:
   1. Given the fund and contract Buks, when installed, then both extend the same party and role classes without redefining them.
 - **Verification:** CONF, SCN
 - **Origin:** FR-MODEL-091, FR-MODEL-092, FR-MODEL-093, FR-MODEL-094
+- **Phase note:** DEC-134: built in PH-2 step 7f as the genesis `ontology` Buk 0.2.0 (namespace `ubos.ontology`, Buk ID `ubos.ontology/ontology`): the party–role core of PH-1 unchanged, the classes `Address`, `ContactPoint`, `Identifier`, `Account`, `Calendar`, `Document`, `Agreement` (abstract) and `Location`, and the traits `Addressable`, `Approvable`, `Classifiable` and `Attachable` (for the concrete kinds), each with a description. `Money` is the standard value type `money` (STD-FND-020), not a second declaration. The statement's further names (instrument, obligation, event) are not in FR-MODEL-091's list and are left to domain Buks. Existing VAEs receive it as a genesis upgrade (DSN-NOD-421); a VAE that declares one of these class names in its own namespace keeps the previous version and is reported (`upgrade_blocked`), since tenants extend the ontology and never redefine it (FR-MODEL-093). The CI fixtures that declared these names were renamed (DEC-134).
 
 ## Usage metering and licences on the node
 

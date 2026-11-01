@@ -138,7 +138,7 @@ try {
   await shot("3-polymorphic-list");
 
   // a port call
-  await page.click("nav >> text=Account");
+  await page.click("nav >> text=Wallet");
   await page.click('[data-test="new"]', T);
   await page.fill('input[name="__slug"]', "acct-1");
   await page.fill('input[name="name"]', "Ops");
@@ -152,7 +152,7 @@ try {
   check("a port invoked with its parameters; its effect shown", pr && (await page.textContent('[data-field="name"]')).includes("Operating"), pr && (await pr.textContent()));
 
   // a file
-  await page.click("nav >> text=Document");
+  await page.click("nav >> text=Dossier");
   await page.click('[data-test="new"]', T);
   await page.fill('input[name="__slug"]', "doc-1");
   await page.fill('input[name="title"]', "Passport");

@@ -11,7 +11,7 @@
 //! the VAE `acme` and the classes below:
 //!
 //! 1. **Indexed queries** (MET-PERF-016, NR-PERF-008): the dataset of `ubos-bench query`
-//!    (`Account` with the indexed `country` and `balance` and the unique key `number`; 13d,
+//!    (`Wallet` with the indexed `country` and `balance` and the unique key `number`; 13d,
 //!    DEC-074) loaded on `feature/bench`, and the branch `feature/policy` with a policy that
 //!    denies one country in ten. The first page (`limit 100`) of `eq`, `page2`, `range` and
 //!    `key`, `eq_filter` (a mostly permitted page) and `eq_denied` (a page the policy denies
@@ -111,11 +111,11 @@ fn port(name: &str, params: &[&str], emits: &[&str]) -> Value {
         "emits": emits})
 }
 
-/// `Account` of the query dataset, `Item` of the mixed workload with its ports, and the
+/// `Wallet` of the query dataset, `Item` of the mixed workload with its ports, and the
 /// ledger `Movement`.
 fn classes() -> Value {
     json!([
-        {"name": "Account", "label": "Account", "description": "Account", "namespace": "bench.edge", "parent": "DataObject",
+        {"name": "Wallet", "label": "Wallet", "description": "Wallet", "namespace": "bench.edge", "parent": "DataObject",
          "kind": "definition", "schema_version": 1, "keys": [["number"]],
          "fields": [field("number", "text", true), field("name", "text", true), field("country", "text", true),
                     field("balance", "decimal", true), field("region", "text", false), field("note", "text", false)]},
@@ -148,8 +148,8 @@ fn logic() -> Value {
 }
 
 fn account(k: u64, r: u64) -> Value {
-    json!({"op": "create", "class": "Account", "object_id": format!("01890a5d-ac96-7000-8000-{k:012x}"), "slug": format!("a-{k}"),
-        "body": {"number": format!("A-{k:09}"), "name": format!("Account {k}"),
+    json!({"op": "create", "class": "Wallet", "object_id": format!("01890a5d-ac96-7000-8000-{k:012x}"), "slug": format!("a-{k}"),
+        "body": {"number": format!("A-{k:09}"), "name": format!("Wallet {k}"),
             "country": format!("C{:02}", r % 100), "balance": format!("{}.{:02}", (r >> 8) % 10_000, (r >> 24) % 100),
             "region": format!("R{}", (r >> 32) % 7), "note": "bench"}})
 }
@@ -449,11 +449,11 @@ fn seed(
     if objects > 0 {
         v.call(
             "declare_index",
-            &json!({"class": "Account", "field": "country"}),
+            &json!({"class": "Wallet", "field": "country"}),
         )?;
         v.call(
             "declare_index",
-            &json!({"class": "Account", "field": "balance"}),
+            &json!({"class": "Wallet", "field": "balance"}),
         )?;
         v.call("create_branch", &json!({"name": BENCH, "from": "main"}))?;
         let mut rng = Rng(20_261_015 | 1);
@@ -483,7 +483,7 @@ fn seed(
         v.call("create_branch", &json!({"name": POLICY, "from": BENCH}))?;
         v.call("commit", &json!({"branch": POLICY, "changes": [{"op": "create", "class": "Policy",
             "object_id": uuid(), "slug": "readable", "body": {"name": "readable", "description": "bench",
-            "source": "permit(principal, action, resource) when { !(resource is UBOS::Model::Account) || (resource has country && !(resource.country like \"C*0\")) };"}}]}))?;
+            "source": "permit(principal, action, resource) when { !(resource is UBOS::Model::Wallet) || (resource has country && !(resource.country like \"C*0\")) };"}}]}))?;
     }
     Ok((t, ids, load_s))
 }
@@ -596,7 +596,7 @@ fn round_queries(r: u64, objects: u64) -> Vec<(&'static str, &'static str, Strin
     let lo = ((seed + r * 13) % 99) * 100;
     let k = (seed + r * 101) % objects.max(1);
     let eq = |c: &str| {
-        format!("from Account where this.country == \"{c}\" order by this.country limit 100")
+        format!("from Wallet where this.country == \"{c}\" order by this.country limit 100")
     };
     vec![
         ("eq", BENCH, eq(&c)),
@@ -604,14 +604,14 @@ fn round_queries(r: u64, objects: u64) -> Vec<(&'static str, &'static str, Strin
             "range",
             BENCH,
             format!(
-                "from Account where this.balance >= {lo}.00 and this.balance < {}.00 order by this.balance limit 100",
+                "from Wallet where this.balance >= {lo}.00 and this.balance < {}.00 order by this.balance limit 100",
                 lo + 100
             ),
         ),
         (
             "key",
             BENCH,
-            format!("from Account where this.number == \"A-{k:09}\" limit 100"),
+            format!("from Wallet where this.number == \"A-{k:09}\" limit 100"),
         ),
         ("eq_filter", POLICY, eq(&cp)),
         ("eq_denied", POLICY, eq(&cd)),
