@@ -25,6 +25,7 @@ pub mod masking;
 pub mod matching;
 pub mod packages;
 pub mod periods;
+pub mod privacy;
 pub mod process;
 pub mod projections;
 pub mod proofs;

@@ -806,6 +806,16 @@ impl Engine {
                 self.mask_body(&mut body, &modes)?;
                 r["body"] = Value::Object(body);
             }
+            // DSN-DVM-823 (PH-2 step 8d): personal fields shown to another principal are logged
+            let principal = s(&v, "principal").unwrap_or_default().to_string();
+            let vh = s(&r, "version_hash").unwrap_or_default().to_string();
+            let body = r["body"].as_object().cloned().unwrap_or_default();
+            let sel = crate::access::selectors(input);
+            let fields = self.personal_shown(&branch, &sel, &class, &vh, &body, &principal)?;
+            if !fields.is_empty() {
+                let shown = BTreeMap::from([(oid.clone(), fields)]);
+                self.log_personal_reads("read", &branch, &r["evaluated_at"], &principal, shown)?;
+            }
         }
         Ok(r)
     }

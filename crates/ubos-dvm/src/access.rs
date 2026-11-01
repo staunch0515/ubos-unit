@@ -70,7 +70,7 @@ impl Engine {
     }
 
     /// The principal field of a class, the nearest one its linearization declares.
-    fn principal_field(&self, class: &str) -> Option<String> {
+    pub(crate) fn principal_field(&self, class: &str) -> Option<String> {
         let lin = self.registry.class(class).ok()?.linearization.clone();
         lin.iter().find_map(|c| {
             self.registry

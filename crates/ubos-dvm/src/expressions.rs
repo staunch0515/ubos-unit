@@ -157,12 +157,14 @@ impl Engine {
             let branch = s(i, "branch").unwrap_or("main").to_string();
             let sel = crate::access::selectors(i);
             let mut masked = Vec::with_capacity(rows.len());
+            let principal = s(&v, "principal").unwrap_or_default().to_string();
+            let mut shown = std::collections::BTreeMap::new();
             for mut r in rows {
                 let oid = s(&r, "object_id").unwrap_or_default().to_string();
                 let mut ri = sel.clone();
                 ri["branch"] = json!(branch);
                 ri["object_id"] = json!(oid);
-                let (_, class) = self.read_classed(&ri)?;
+                let (whole, class) = self.read_classed(&ri)?;
                 let modes = self.mask_modes(&branch, &sel, &oid, &class, &v)?;
                 let mut fields = r["fields"].as_object().cloned().unwrap_or_default();
                 let mut out_fields = serde_json::Map::new();
@@ -186,10 +188,29 @@ impl Engine {
                         Some(_) => {}
                     }
                 }
+                // DSN-DVM-823 (PH-2 step 8d): the personal values shown are logged
+                let shown_fields: serde_json::Map<String, Value> = out_fields
+                    .iter()
+                    .map(|(p, x)| {
+                        let f = crate::masking::this_members(p, true)
+                            .into_iter()
+                            .next()
+                            .unwrap_or_default();
+                        (f, x.clone())
+                    })
+                    .collect();
+                let vh = s(&whole, "version_hash").unwrap_or_default().to_string();
+                let fields =
+                    self.personal_shown(&branch, &sel, &class, &vh, &shown_fields, &principal)?;
+                if !fields.is_empty() {
+                    shown.insert(oid.clone(), fields);
+                }
                 r["fields"] = Value::Object(out_fields);
                 masked.push(r);
             }
             out["rows"] = Value::Array(masked);
+            let ev = out["evaluated_at"].clone();
+            self.log_personal_reads("query", &branch, &ev, &principal, shown)?;
         }
         Ok(out)
     }

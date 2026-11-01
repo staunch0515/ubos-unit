@@ -25,6 +25,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-136 | PH-2 step 8 opened in parts 8a–8e; part 8a: authorization relations and relation-based access rules in the kernel; STD-LGS-050 and -051 claimed | Accepted |
 | DEC-137 | PH-2 step 8, part 8b: field masking for viewers (reads, query rows, outbox payloads), clearances, the tenant lookup key, and masked fields refused in query filters and sorts; STD-LGS-052 claimed with part 8c | Accepted |
 | DEC-138 | PH-2 step 8, part 8c: encrypted fields under subject keys, disclosure, key rotation, crypto-shredding and key unavailability; STD-OBJ-010, -011, -012 and STD-LGS-052 claimed | Accepted |
+| DEC-139 | PH-2 step 8, part 8d: personal-data read logging in the security log, the subject access export, and security-log records of key rotations and erasures | Accepted |
 
 ---
 
@@ -464,3 +465,28 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
 - **Alternatives considered:**
   - Decrypting in each reader (reads, queries, merges, rules, logic) was rejected: the codec at the version layer gives every reader the opened form and every writer the stored form, with archives and proofs on the stored form by construction.
 - **Affects:** STD-OBJ-010, STD-OBJ-011, STD-OBJ-012, STD-LGS-052, DSN-DVM-830, DSN-DVM-831, DSN-DVM-832, DSN-DVM-833, DSN-DVM-834, DEC-137
+
+### DEC-139 — Protection, part 8d: read logging and subject access export (PH-2 step 8)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 8d of step 8 (DEC-136) covers personal-data read logging (DSN-DVM-823; FR-AUD-051, NR-PRIV-005) and the subject access export (DSN-DVM-837; CR-GDPR-002, CR-CCPA-001). BPA 1.0-rc8 has no clause or vector for either, so the kernel builds them on the security log of PH-1 (DEC-073) and the subjects of part 8c (DEC-138).
+- **Decision:**
+  1. **Read log** (`crates/ubos-dvm/src/privacy.rs`).
+     - A read or query made `as` a viewer whose output, after masking, shows personal or sensitive personal fields appends one `pii.read` record to the security log per operation. The record holds the principal, the operation, the branch and its evaluated commit, and the objects with the field names shown. It never holds values.
+     - Objects whose subject is the viewer are not logged. The viewer is the subject when its principal is the subject ID, or is the value of the principal field (DEC-136) of the subject object.
+     - Null and erased values are not personal data shown.
+  2. **Subject export.** The adapter operation `subject_export {subject_id, branch?}` returns `{manifest, objects, entries}`.
+     - `objects`: every object of the branch whose class links it to the subject through `subject_key` (DEC-138), with all its versions (timeline and predecessors), ordered by valid time.
+     - `entries`: the entries of ledger classes linked the same way.
+     - Fields encrypted under another subject's key are left out; erased fields appear as markers.
+     - `manifest`: format `ubos.subject-export.v1`, the subject, branch, commit, time, the counts, and the content ID of the exported content.
+  3. **Security log.** Exports (`subject.export`), key rotations (`key.rotate`) and erasures (`subject.erase`, with the reason) are recorded, as FR-AUD-012 asks for key operations and exports.
+  4. **Open, assigned when step 8 closes (8e):**
+     - read logging for reads without a viewer and for other outputs (outbox, diffs, explanations);
+     - the approval of export requests and the NR-PRIV-002 deadline on the node;
+     - exports on branches with a parent line.
+- **Consequences:**
+  - The ad hoc run on the data of VER-CONF-0380 behaved as specified. Another principal's read logged `email` and `tax_id`. The subject's own read and a masked read logged nothing. A query logged one record for its rows. The export gave the subject's person and agreement.
+  - The security log grows with every logged read; batching per operation keeps a list query to one record.
+- **Alternatives considered:**
+  - A separate read-log store was rejected: the hash-chained security log already gives append-only, verifiable records (FR-AUD-014), and `security_log` reads them.
+- **Affects:** DSN-DVM-823, DSN-DVM-837, FR-AUD-051, FR-AUD-012, NR-PRIV-005, NR-PRIV-002, DEC-073, DEC-136, DEC-138

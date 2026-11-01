@@ -203,22 +203,35 @@ fn open_field(
 }
 
 /// `(subject_key, protected fields)` of a class, `None` without `subject_key`.
-fn subject_decl(reg: &ubos_model::Registry, class: &str) -> Option<(String, Vec<String>)> {
+pub(crate) fn subject_decl(
+    reg: &ubos_model::Registry,
+    class: &str,
+) -> Option<(String, Vec<String>)> {
+    let sk = class_decl(reg, class, "subject_key")?;
+    Some((sk, protected_fields(reg, class)))
+}
+
+/// A member of the nearest declaration along a class's linearization.
+fn class_decl(reg: &ubos_model::Registry, class: &str, key: &str) -> Option<String> {
     let c = reg.class(class).ok()?;
-    let decl = |key: &str| {
-        c.linearization
-            .iter()
-            .find_map(|n| reg.decl(n).ok().and_then(|d| s(d, key)).map(str::to_string))
+    c.linearization
+        .iter()
+        .find_map(|n| reg.decl(n).ok().and_then(|d| s(d, key)).map(str::to_string))
+}
+
+/// The fields of a class whose effective classification is `personal` or
+/// `sensitive_personal`: the field's own, else the class's `classification_default`.
+pub(crate) fn protected_fields(reg: &ubos_model::Registry, class: &str) -> Vec<String> {
+    let Ok(c) = reg.class(class) else {
+        return Vec::new();
     };
-    let sk = decl("subject_key")?;
-    let default = decl("classification_default").unwrap_or_else(|| "internal".into());
-    let fields = c
-        .fields
+    let default =
+        class_decl(reg, class, "classification_default").unwrap_or_else(|| "internal".into());
+    c.fields
         .iter()
         .filter(|(_, d)| PROTECTED.contains(&s(d, "classification").unwrap_or(&default)))
         .map(|(f, _)| f.clone())
-        .collect();
-    Some((sk, fields))
+        .collect()
 }
 
 /// The subject of an object: itself, the text of the subject key field, or the object a
@@ -394,6 +407,11 @@ impl Engine {
             rec["versions"][n.to_string()] = json!(new_key()?);
             rec["current"] = json!(n);
             put_key_record(self.store.as_mut(), &subject, &rec)?;
+            // DSN-DVM-823 (PH-2 step 8d): key operations go to the security log
+            self.security_append(
+                "key.rotate",
+                json!({"subject_id": subject, "key_version": n}),
+            )?;
         }
         Ok(json!({"subject_id": subject, "key_version": n}))
     }
@@ -428,6 +446,11 @@ impl Engine {
         rec["versions"] = json!({});
         rec["erasure"] = json!({"reason": reason, "at": self.now});
         put_key_record(self.store.as_mut(), &subject, &rec)?;
+        self.security_append(
+            "subject.erase",
+            json!({"subject_id": subject, "reason": reason, "erased_versions": versions,
+                   "erased_fields": fields}),
+        )?;
         Ok(
             json!({"subject_id": subject, "erased": true, "erased_versions": versions,
                   "erased_fields": fields}),

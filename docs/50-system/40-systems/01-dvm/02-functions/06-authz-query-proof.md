@@ -194,6 +194,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a list query returning 50 personal records, when completed, then one batched read-log record lists 50 IDs.
 - **Verification:** CONF
 - **Origin:** FR-AUD-051, NR-PRIV-005
+- **Phase note:** DEC-139: built in PH-2 step 8d: a read or query made `as` a viewer whose output, after masking, shows personal or sensitive personal fields of objects whose subject is not the viewer appends one `pii.read` record per operation to the security log, with the objects and the field names, never values; the viewer is the subject when its principal is the subject ID or the subject object's principal field. Reads without a viewer and other outputs (outbox, diffs) are open and assigned when step 8 closes (8e).
 
 ### DSN-DVM-824 — Privacy by default
 - **Statement:** New fields without an explicit classification MUST be classified `internal` by default; personal-data field types (name, email, tax ID) MUST default to `personal`.
@@ -293,6 +294,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given an investor linked to 3 funds and 200 transactions, when exported, then all linked records are present, and co-investors' personal fields are masked.
 - **Verification:** CONF, SEC
 - **Origin:** CR-CCPA-001, CR-GDPR-002, NR-PRIV-002
+- **Phase note:** DEC-139: built in PH-2 step 8d as the operation `subject_export {subject_id, branch?}`: the objects linked to the subject through `subject_key` with all their versions, and the entries of ledger classes linked the same way, in JSON with a manifest (`ubos.subject-export.v1`, counts and the content ID); fields encrypted under another subject's key are left out, and the export is recorded in the security log. The approval of a request and the NR-PRIV-002 deadline belong to the node and are assigned when step 8 closes (8e).
 
 ## Access analysis
 
