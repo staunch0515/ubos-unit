@@ -1,0 +1,39 @@
+# Posting journal entries (FIN-GL-010…015; PH-2 step 10a-1, DEC-146). Decisions run before
+# `post` (STD-LGS-031): the sheet `ubos.finance.controls` requires approval or refuses.
+assets:
+  - name: ubos.finance.entries
+    abi: "1.0"
+    tier: l2
+    profile: standard
+    state: committed
+    capabilities: [read, commit]
+    exports: [post]
+    source: |
+      fn post() {
+        if this.state == "posted" { return #{posted: false, reason: "already posted"}; }
+        sys.read.get(#{target: self_id});
+        // the declared total, which the approval rules read, is the sum of the debits
+        let debits = dec("0.00");
+        for l in this.lines {
+          let a = dec(l.amount.amount);
+          if a > 0 { debits += a; }
+        }
+        if debits != amount(this.total) {
+          throw "the total " + amount(this.total).to_string() + " is not the sum of the debits " + debits.to_string();
+        }
+        let year = this.posting_date.sub_string(0, 4);
+        let source = this.source;
+        // the number: the next entry of the gap-free sequence of (fiscal year, source)
+        sys.commit.append(#{class: "PostingNumber", ledger_key: #{fiscal_year: year, source: source},
+                            valid_at: this.posting_date,
+                            fields: #{fiscal_year: year, source: source, entry: self_id, count: dec("1")}});
+        for l in this.lines {
+          let f = #{account: l.account, amount: l.amount, document: this.number, kind: this.kind,
+                    description: this.description};
+          if this.party != () { f.party = this.party; }
+          sys.commit.append(#{class: "JournalLine", ledger_key: #{account: l.account},
+                              valid_at: this.posting_date, posting_group: this.number, fields: f});
+        }
+        sys.commit.update(#{target: self_id, set: #{state: "posted"}});
+        #{posted: true, number: this.number}
+      }

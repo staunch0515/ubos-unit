@@ -84,6 +84,13 @@ def section(fid):
     return out[1:]
 
 
+# the control accounts of the sample chart (FIN-GL-005)
+CONTROL = {'1010': 'bank', '1050': 'bank', '1200': 'receivables', '1210': 'receivables', '2000': 'payables',
+           '1500': 'fixed_assets', '1510': 'fixed_assets', '1520': 'fixed_assets', '1590': 'fixed_assets'}
+PREPARER = 'did:ubos:acme:01900000-0000-7000-8000-0000000000e1'
+CONTROLLER = 'did:ubos:acme:01900000-0000-7000-8000-0000000000e2'
+
+
 def chart_changes():
     out = []
     for r in rows('chart-of-accounts.csv'):
@@ -92,6 +99,8 @@ def chart_changes():
                     'slug': r['code'], 'valid': {'from': '2025-01-01'},
                     'body': {'number': r['code'], 'name': r['name'], 'type': t, 'category': r['type'],
                              'normal_balance': r['normal_balance'], 'statement_line': r['statement_line']}})
+        if r['code'] in CONTROL:
+            out[-1]['body']['control'] = CONTROL[r['code']]
     return out
 
 
@@ -399,6 +408,135 @@ def statement_tests():
     return tests
 
 
+def document_named(name):
+    for month in ('2026-01', '2026-02'):
+        for d in documents(month):
+            if d[0] == name:
+                return d
+    raise SystemExit('no document ' + name)
+
+
+def je(name, source='manual', **extra):
+    _, kind, posting, _, rows_ = document_named(name)
+    lines = [{'account': account_uri(r['account']), 'amount': money(amount(cents(r['debit']) - cents(r['credit'])))}
+             for r in rows_]
+    debits = sum(max(cents(r['debit']) - cents(r['credit']), 0) for r in rows_)
+    body = {'number': name, 'source': source, 'kind': kind, 'posting_date': posting,
+            'description': rows_[0]['description'], 'lines': lines, 'total': money(amount(debits)),
+            'state': 'draft'}
+    body.update(extra)
+    return {'op': 'create', 'class': 'JournalEntry', 'object_id': uid('entry', name), 'slug': name.lower(),
+            'body': body}
+
+
+def post(name, initiator=PREPARER, defer=False, label=None, expect=None):
+    i = {'branch': BRANCH, 'target': uid('entry', name), 'port': 'post', 'params': {},
+         'process': {'initiator': initiator, 'process_id': uid('process', name, initiator, defer)}}
+    if defer:
+        i['defer'] = True
+    s = {'op': 'execute', 'input': i}
+    if label:
+        s['label'] = label
+    if expect:
+        s['expect'] = expect
+    return s
+
+
+def entry_tests():
+    """Journal entries: approval, refusal, numbering and invalidation (FIN-GL-005, -010,
+    -013…015; SCN-502)."""
+    base = setup_steps()
+    big = je('JE-0002')
+    pid = uid('process', 'JE-0002', PREPARER, True)
+    approve = lambda who, roles, exp: {'op': 'approve', 'input': {'pending_change_id': pid, 'approver': who,
+                                                                  'roles': roles}, 'expect': exp}
+    read_entry = lambda name, body: {'op': 'read', 'input': {'branch': BRANCH, 'object_id': uid('entry', name)},
+                                     'expect': {'match': 'subset', 'result': {'body': body}}}
+    numbers = lambda n: {'op': 'read_ledger', 'input': {'branch': BRANCH, 'class': 'PostingNumber',
+                                                        'ledger_key': {'fiscal_year': '2026', 'source': 'manual'}},
+                         'expect': {'match': 'subset', 'result': {'entries': [
+                             {'seq': k + 1, 'body': {'entry': uid('entry', e)}} for k, e in enumerate(n)]}}}
+    lines_of = lambda name: [{'key': {'account': l['account'], 'document': name}, 'values': {'amount': [l['amount']]}}
+                             for l in je(name)['body']['lines']]
+    return [{
+        'name': 'FIN-GL-015 JE-0002 (25,000.00) waits for a controller; the preparer cannot approve it; it posts on approval',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [big]}},
+            post('JE-0002', defer=True, expect={'match': 'subset', 'result': {'pending': {
+                'pending_change_id': pid, 'state': 'pending'}}}),
+            read_entry('JE-0002', {'state': 'draft'}),
+            approve(PREPARER, ['controller'], {'error_code': 'IAM.DENIED', 'details': {'sod': 'maker_checker'}}),
+            approve('did:ubos:acme:01900000-0000-7000-8000-0000000000e3', ['clerk'],
+                    {'error_code': 'IAM.DENIED', 'details': {'approval': 'not_eligible'}}),
+            approve(CONTROLLER, ['controller'], {'match': 'subset', 'result': {'state': 'applied'}}),
+            read_entry('JE-0002', {'state': 'posted', 'number': 'JE-0002', 'source': 'manual', 'posting_date': '2026-01-31'}),
+            numbers(['JE-0002']),
+        ],
+    }, {
+        'name': 'FIN-GL-015 an entry of 1,362.90 posts without approval; without defer a large entry is refused',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [je('JE-0004'), big]}},
+            post('JE-0004', expect={'match': 'subset', 'result': {'result': {'posted': True}}}),
+            post('JE-0002', expect={'error_code': 'RULE.DECISION_REQUIRES'}),
+            numbers(['JE-0004']),
+        ],
+    }, {
+        'name': 'FIN-GL-014 a change to a submitted entry invalidates its approval; the entry stays a draft',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [big]}, 'label': 'c'},
+            post('JE-0002', defer=True),
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                {'op': 'update', 'object_id': uid('entry', 'JE-0002'),
+                 'base': {'$ref': 'c/versions/' + uid('entry', 'JE-0002')},
+                 'body': {'total': money('26000.00'), 'lines': [{'account': account_uri('6400'), 'amount': money('26000.00')},
+                                    {'account': account_uri('2100'), 'amount': money('-26000.00')}]}}]}},
+            approve(CONTROLLER, ['controller'], {'match': 'subset', 'result': {'state': 'invalidated'}}),
+            read_entry('JE-0002', {'state': 'draft'}),
+        ],
+    }, {
+        'name': 'FIN-GL-005 a manual line to receivables (1200) is refused; with a logged exception it posts',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                {'op': 'create', 'class': 'JournalEntry', 'object_id': uid('entry', 'JE-9001'), 'slug': 'je-9001',
+                 'body': {'number': 'JE-9001', 'source': 'manual', 'kind': 'journal', 'posting_date': '2026-01-20',
+                          'description': 'write-off', 'total': money('100.00'), 'state': 'draft', 'lines': [
+                              {'account': account_uri('6800'), 'amount': money('100.00')},
+                              {'account': account_uri('1200'), 'amount': money('-100.00')}]}}]},
+             'label': 'w'},
+            post('JE-9001', expect={'error_code': 'RULE.DECISION_DENIED'}),
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                {'op': 'update', 'object_id': uid('entry', 'JE-9001'),
+                 'base': {'$ref': 'w/versions/' + uid('entry', 'JE-9001')},
+                 'body': {'control_exception': 'small balance write-off approved by the controller, ticket 77'}}]}},
+            post('JE-9001', expect={'match': 'subset', 'result': {'result': {'posted': True}}}),
+            numbers(['JE-9001']),
+        ],
+    }, {
+        'name': 'FIN-GL-013 posted numbers per fiscal year and source have no gaps; drafts take none',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                je('JE-0001', control_exception='bonus paid by wire from the operating account'), je('JE-0004'), big,
+                je('JE-0003')]}},
+            post('JE-0001', defer=True),
+            {'op': 'approve', 'input': {'pending_change_id': uid('process', 'JE-0001', PREPARER, True),
+                                        'approver': CONTROLLER, 'roles': ['controller']}},
+            post('JE-0004'),
+            post('JE-0002', defer=True),
+            approve(CONTROLLER, ['controller'], {'match': 'subset', 'result': {'state': 'applied'}}),
+            numbers(['JE-0001', 'JE-0004', 'JE-0002']),
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document',
+                                                'group': {'document': 'JE-0002'}},
+             'expect': {'match': 'subset', 'result': {'groups': sorted(lines_of('JE-0002'),
+                        key=lambda g: json.dumps(g['key'], sort_keys=True, separators=(',', ':')))}}},
+        ],
+    }]
+
+
 def dump(tests):
     return HEADER + json.dumps({'tests': tests}, indent=1, ensure_ascii=False) + '\n'
 
@@ -407,7 +545,8 @@ def main():
     files = {'tests/sample-opening.yaml': dump(opening_tests()),
              'tests/sample-january.yaml': dump(january_tests()),
              'tests/sample-february.yaml': dump(february_tests()),
-             'tests/sample-statements.yaml': dump(statement_tests())}
+             'tests/sample-statements.yaml': dump(statement_tests()),
+             'tests/sample-entries.yaml': dump(entry_tests())}
     check = '--check' in sys.argv
     stale = []
     for rel, text in files.items():

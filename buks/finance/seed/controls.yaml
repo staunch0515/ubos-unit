@@ -1,0 +1,18 @@
+# The controls over journal entries (FIN-GL-005, -015, FIN-CT-001), as decisions of a sheet
+# (STD-LGS-031, -041, -042): changing a rule is a reviewed change of this sheet.
+changes:
+  - op: create
+    class: GovernanceSheet
+    object_id: 01890a5d-ac96-7f02-8000-000000000001
+    slug: ubos-finance-controls
+    body:
+      name: ubos.finance.controls
+      layer: vendor
+      description: approval of manual entries over 10,000.00 by a controller; no manual posting to control accounts without a logged exception
+      source: |
+        JournalEntry[this.source == "manual" and amount(this.total) > 10000] {
+          approvals: {count: 1, roles: ["controller"]};
+        }
+        JournalEntry {
+          decisions: [{name: "control-accounts", when: "this.source == \"manual\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)", outcome: "deny", message: "a manual entry posts to a control account only with a logged exception (FIN-GL-005)"}];
+        }

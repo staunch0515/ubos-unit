@@ -67,6 +67,69 @@ pub(crate) fn eval_rule(
     params: Option<(&[Value], &Value)>,
     ctx: Option<&Map<String, Value>>,
 ) -> Result<bool, BpaError> {
+    eval_rule_with(reg, class, rule, this, old, params, ctx, None)
+}
+
+/// Reads the objects of a decision's state by canonical URI, at their class's default valid
+/// time: the `ref()` and `exists()` of a decision's `when` read at the same coordinates as
+/// the decision (STD-EXPR-005, STD-LGS-031; PH-2 step 10a-1, DEC-146). An object that the
+/// partial state of a process has not loaded is read from the branch at its snapshot.
+pub(crate) struct StateReader<'a, 'r> {
+    pub(crate) repo: std::cell::RefCell<&'r mut Repo<'a>>,
+    pub(crate) st: &'r State,
+    pub(crate) reg: &'r Registry,
+    pub(crate) branch: String,
+    pub(crate) cseq: Option<u64>,
+    pub(crate) now: String,
+}
+
+impl ubos_expr::Resolver for StateReader<'_, '_> {
+    fn resolve(&self, uri: &str) -> Result<Option<Val>, BpaError> {
+        let mut repo = self.repo.borrow_mut();
+        let authority = repo.store.authority();
+        let o = match crate::relations::resolve(self.st, uri, &authority) {
+            Some(oid) => self.st.objects[&oid].clone(),
+            None => {
+                let Some((class, slug)) = crate::relations::parse_uri(uri, &authority) else {
+                    return Ok(None);
+                };
+                let cseq = match self.cseq {
+                    Some(c) => c,
+                    None => repo.ordinal(&self.branch, None)?,
+                };
+                match repo.object_by_slug(&self.branch, cseq, class, slug)? {
+                    Some((_, o)) => o,
+                    None => return Ok(None),
+                }
+            }
+        };
+        let asof = match self.reg.class(&o.class).map(|c| c.valid_time.as_str()) {
+            Ok("instant") => self.now.clone(),
+            _ => self.now[..10].to_string(),
+        };
+        let Some(seg) = ubos_version::at(&o.timeline, &asof) else {
+            return Ok(None);
+        };
+        let body = repo.version(&seg.version)?["body"].clone();
+        Ok(Some(from_json(
+            &ubos_expr::class_type(self.reg, &o.class)?,
+            &body,
+        )))
+    }
+}
+
+/// `eval_rule` with a resolver for `ref()` and `exists()`.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn eval_rule_with(
+    reg: &Registry,
+    class: &str,
+    rule: &str,
+    this: &Value,
+    old: Option<&Value>,
+    params: Option<(&[Value], &Value)>,
+    ctx: Option<&Map<String, Value>>,
+    resolver: Option<&dyn ubos_expr::Resolver>,
+) -> Result<bool, BpaError> {
     let run = || -> Result<Val, BpaError> {
         let ast = ubos_expr::parse(&Value::String(rule.to_string()))?;
         let this_t = ubos_expr::class_type(reg, class)?;
@@ -104,6 +167,7 @@ pub(crate) fn eval_rule(
         if let Some(c) = ctx {
             ev.ctx = from_json(&ubos_expr::check::ctx_type(), &Value::Object(c.clone()));
         }
+        ev.resolver = resolver;
         ev.eval(&ast)
     };
     match run() {
@@ -437,6 +501,7 @@ impl Engine {
         ] {
             ctx.entry(k.to_string()).or_insert_with(|| json!(d));
         }
+        let lazy_cseq = lazy.as_ref().and_then(|(_, c)| *c);
         // over the partial view of a process, a `:rel` qualifier reads at its snapshot
         let (eff, bindings, _) = crate::sheets::cascade_lazy(
             &mut repo,
@@ -464,12 +529,21 @@ impl Engine {
         let mut denies = 0;
         let mut steps: Vec<Value> = Vec::new();
         let mut explanations: Vec<Value> = Vec::new();
-        for d in value("decisions").as_array().into_iter().flatten() {
+        let decisions = value("decisions");
+        let reader = StateReader {
+            repo: std::cell::RefCell::new(&mut repo),
+            st,
+            reg: &reg_ext,
+            branch: branch.to_string(),
+            cseq: lazy_cseq,
+            now: self.now.clone(),
+        };
+        for d in decisions.as_array().into_iter().flatten() {
             if let Some(when) = d
                 .get("when")
                 .and_then(Value::as_str)
                 .filter(|w| !w.is_empty())
-                && !eval_rule(
+                && !eval_rule_with(
                     &reg_ext,
                     class,
                     when,
@@ -477,6 +551,7 @@ impl Engine {
                     Some(&empty),
                     Some((&ptypes, params)),
                     Some(&ctx),
+                    Some(&reader),
                 )?
             {
                 continue;

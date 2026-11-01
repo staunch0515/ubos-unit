@@ -24,7 +24,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Cash and cash equivalents"
+         "statement_line": "Cash and cash equivalents",
+         "control": "bank"
         }
        },
        {
@@ -41,7 +42,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Cash and cash equivalents"
+         "statement_line": "Cash and cash equivalents",
+         "control": "bank"
         }
        },
        {
@@ -58,7 +60,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Accounts receivable, net"
+         "statement_line": "Accounts receivable, net",
+         "control": "receivables"
         }
        },
        {
@@ -75,7 +78,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "C",
-         "statement_line": "Accounts receivable, net"
+         "statement_line": "Accounts receivable, net",
+         "control": "receivables"
         }
        },
        {
@@ -109,7 +113,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -126,7 +131,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -143,7 +149,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -160,7 +167,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "C",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -177,7 +185,8 @@
          "type": "liability",
          "category": "Liability",
          "normal_balance": "C",
-         "statement_line": "Accounts payable"
+         "statement_line": "Accounts payable",
+         "control": "payables"
         }
        },
        {
@@ -3174,7 +3183,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Cash and cash equivalents"
+         "statement_line": "Cash and cash equivalents",
+         "control": "bank"
         }
        },
        {
@@ -3191,7 +3201,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Cash and cash equivalents"
+         "statement_line": "Cash and cash equivalents",
+         "control": "bank"
         }
        },
        {
@@ -3208,7 +3219,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Accounts receivable, net"
+         "statement_line": "Accounts receivable, net",
+         "control": "receivables"
         }
        },
        {
@@ -3225,7 +3237,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "C",
-         "statement_line": "Accounts receivable, net"
+         "statement_line": "Accounts receivable, net",
+         "control": "receivables"
         }
        },
        {
@@ -3259,7 +3272,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -3276,7 +3290,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -3293,7 +3308,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -3310,7 +3326,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "C",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -3327,7 +3344,8 @@
          "type": "liability",
          "category": "Liability",
          "normal_balance": "C",
-         "statement_line": "Accounts payable"
+         "statement_line": "Accounts payable",
+         "control": "payables"
         }
        },
        {
@@ -7882,7 +7900,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Cash and cash equivalents"
+         "statement_line": "Cash and cash equivalents",
+         "control": "bank"
         }
        },
        {
@@ -7899,7 +7918,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Cash and cash equivalents"
+         "statement_line": "Cash and cash equivalents",
+         "control": "bank"
         }
        },
        {
@@ -7916,7 +7936,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Accounts receivable, net"
+         "statement_line": "Accounts receivable, net",
+         "control": "receivables"
         }
        },
        {
@@ -7933,7 +7954,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "C",
-         "statement_line": "Accounts receivable, net"
+         "statement_line": "Accounts receivable, net",
+         "control": "receivables"
         }
        },
        {
@@ -7967,7 +7989,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -7984,7 +8007,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -8001,7 +8025,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -8018,7 +8043,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "C",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -8035,7 +8061,8 @@
          "type": "liability",
          "category": "Liability",
          "normal_balance": "C",
-         "statement_line": "Accounts payable"
+         "statement_line": "Accounts payable",
+         "control": "payables"
         }
        },
        {
@@ -11443,7 +11470,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Cash and cash equivalents"
+         "statement_line": "Cash and cash equivalents",
+         "control": "bank"
         }
        },
        {
@@ -11460,7 +11488,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Cash and cash equivalents"
+         "statement_line": "Cash and cash equivalents",
+         "control": "bank"
         }
        },
        {
@@ -11477,7 +11506,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Accounts receivable, net"
+         "statement_line": "Accounts receivable, net",
+         "control": "receivables"
         }
        },
        {
@@ -11494,7 +11524,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "C",
-         "statement_line": "Accounts receivable, net"
+         "statement_line": "Accounts receivable, net",
+         "control": "receivables"
         }
        },
        {
@@ -11528,7 +11559,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -11545,7 +11577,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -11562,7 +11595,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "D",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -11579,7 +11613,8 @@
          "type": "asset",
          "category": "Asset",
          "normal_balance": "C",
-         "statement_line": "Property and equipment, net"
+         "statement_line": "Property and equipment, net",
+         "control": "fixed_assets"
         }
        },
        {
@@ -11596,7 +11631,8 @@
          "type": "liability",
          "category": "Liability",
          "normal_balance": "C",
-         "statement_line": "Accounts payable"
+         "statement_line": "Accounts payable",
+         "control": "payables"
         }
        },
        {

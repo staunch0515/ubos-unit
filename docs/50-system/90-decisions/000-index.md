@@ -32,6 +32,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-143 | PH-2 step 9, part 9c: January closed with its close artefact, later January postings refused, the February items with the back-dated correction; `read_projection` takes every snapshot selector; FIN-EXP-15…17 tie out | Accepted |
 | DEC-144 | PH-2 step 9, part 9d: financial statements as layout data rendered by an L2 port from the balance projections; the four US layouts and the `gl-kind` projection; FIN-EXP-04…07 tie out line by line | Accepted |
 | DEC-145 | PH-2 step 9 closed: the `finance` Buk, part 1 (parts 9a–9d, DEC-141…144) — 12 tests tie out 466 figures in memory and on PostgreSQL; EXIT-2-04 passed by inspection (VER-INSP-0002, 0 findings); requirement coverage recorded and the rest assigned to steps | Accepted |
+| DEC-146 | PH-2 step 10 opened in parts 10a–10h; part 10a-1: journal entries with maker–checker approval, the control-account rule and gap-free numbering per fiscal year and source; `ref()` in decisions reads at the decision's coordinates | Accepted |
 
 ---
 
@@ -658,3 +659,41 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
 - **Alternatives considered:**
   - Recording the requirement coverage in `docs/finance-requirements` was rejected: that folder is frozen and never refers to an implementation (DEC-029). The record lives with the Buk.
 - **Affects:** DEC-141, DEC-142, DEC-143, DEC-144, EXIT-2-04, VER-INSP-0002, MET-BIZ-001, CST-005
+
+### DEC-146 — The finance Buk, part 10a-1: journal entries, approval and numbering (PH-2 step 10)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** PH-2 step 10 (UBS-PH-2 §11) builds part 2 of the `finance` Buk: receivables, payables with 1099, bank reconciliation, fixed assets, multi-currency and sales tax. It also runs SCN-501…510 in process (EXIT-2-16 in process) and covers the general-ledger items step 9 left to it (DEC-145). The owner confirmed the plan with the default suggestions.
+- **Decision:**
+  1. **Parts.**
+     - 10a: the general-ledger items of DEC-145, in two halves. 10a-1 covers entries, approval, control accounts and numbering. 10a-2 covers recurring and reversing entries, fiscal years and year-end close, governed reopening, and statements "as known on".
+     - 10b: receivables and sales tax.
+     - 10c: payables and 1099.
+     - 10d: bank.
+     - 10e: fixed assets.
+     - 10f: multi-currency.
+     - 10g: SCN-501…510 in process and the tie-out driven by documents.
+     - 10h: closing the step, with the review package for the accounting reviewer.
+  2. **Journal entries.**
+     - The class `JournalEntry` holds a number (a class key), source, kind, posting and document dates, description, party, lines, the declared `total` and an optional `control_exception`. Its state is `draft` until posted.
+     - The query states submitted, approved and rejected are the states of the entry's pending change (STD-TXN-060). A change to a submitted entry therefore invalidates its approval (FIN-GL-014).
+     - The command port `post` (L2 asset `ubos.finance.entries`) refuses an entry whose lines do not add up to its total. It appends a `PostingNumber` entry and the `JournalLine` entries in one process, and sets the state to `posted`.
+  3. **Numbering.**
+     - `PostingNumber` is a ledger keyed by fiscal year and source. The gap-free sequence of STD-KIND-022 is the entry's posted number.
+     - Drafts and rejected entries take none (FIN-GL-013).
+  4. **Controls as a sheet.** The seed holds the sheet `ubos.finance.controls`.
+     - Manual entries whose total exceeds 10,000.00 require one approval by the role `controller` (STD-LGS-041). Maker–checker and one decision per principal are kernel rules (STD-LGS-042).
+     - A manual entry that posts to a control account without a logged exception is denied (`RULE.DECISION_DENIED`, FIN-GL-005).
+     - `GlAccount` gains `control` (receivables, payables, fixed assets, bank).
+  5. **Kernel gap: references in decisions.**
+     - A decision's `when` was evaluated without a resolver, so `ref()` and `exists()` found nothing.
+     - The decisions now read referenced objects at the decision's coordinates: the process state, else the branch at its snapshot, at the class's default valid time. STD-EXPR-005 already states this for `ref()`.
+     - The change is generic: `StateReader` in `crates/ubos-dvm/src/rules.rs`.
+  6. **Total.** The approval rule compares the declared money `total` rather than summing the untyped JSON lines. Rule expressions cannot convert their texts to amounts, and `post` refuses a total that differs from the lines.
+- **Consequences:**
+  - Five new tests pass in memory and on PostgreSQL 16. They cover approval, maker–checker and eligibility (JE-0002); posting without approval (JE-0004); refusal without `defer`; invalidation on change; the control-account refusal and exception; and numbering without gaps.
+  - All 17 finance tests pass.
+  - A field default is not stored (STD-OBJ-003), so created entries state `draft` explicitly.
+- **Alternatives considered:**
+  - Typing the lines as composites was not used: the standard does not yet fix how a composite declares its members (an open point for the BPA 1.0 release notes).
+  - Raising the control-account refusal from the script was rejected: a sheet decision gives the reason and is changed through review.
+- **Affects:** DEC-141, DEC-145, FIN-GL-005, FIN-GL-010, FIN-GL-013, FIN-GL-014, FIN-GL-015, STD-KIND-022, STD-TXN-060, STD-LGS-031, STD-LGS-041, STD-LGS-042, STD-EXPR-005

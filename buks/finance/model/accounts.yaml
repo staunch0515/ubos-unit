@@ -25,6 +25,11 @@ classes:
         description: the line of the financial statements the account reports on
         type: text
         required: true
+      - name: control
+        label: control
+        description: the subledger a control account belongs to; only it posts to the account (FIN-GL-005)
+        type: enum
+        constraints: {allowed_values: [receivables, payables, fixed_assets, bank]}
   - name: FiscalPeriod
     label: fiscal period
     description: A fiscal period [start, end) that governs the journal (STD-KIND-025)

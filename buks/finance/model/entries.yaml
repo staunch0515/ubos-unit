@@ -1,0 +1,49 @@
+# Journal entries with their lifecycle, approval and numbering (FIN-GL-005, -010, -013…015;
+# PH-2 step 10a-1, DEC-146).
+classes:
+  - name: JournalEntry
+    label: journal entry
+    description: A journal entry; `post` appends its lines to the journal. Approval rules and the control-account rule are decisions of the sheet `ubos.finance.controls`.
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[number]]
+    fields:
+      - {name: number, label: number, description: the entry's document number, type: text, required: true}
+      - name: source
+        label: source
+        description: where the entry comes from (FIN-GL-010)
+        type: enum
+        required: true
+        constraints: {allowed_values: [manual, receivables, payables, bank, fixed_assets, revaluation, import, closing, opening, recurring]}
+      - {name: kind, label: kind, description: the document kind its journal lines carry, type: text, required: true}
+      - {name: posting_date, label: posting date, description: the date of business effect, type: date, required: true}
+      - {name: document_date, label: document date, description: the date of the source document, type: date}
+      - {name: description, label: description, description: the entry's description, type: text, required: true}
+      - {name: total, label: total, description: the sum of the debits; `post` refuses an entry whose lines do not add up to it, type: money, required: true}
+      - {name: party, label: party, description: the customer or vendor code, type: text}
+      - {name: lines, label: lines, description: "the lines: {account (URI of a GlAccount), amount (money, debit positive), memo?}", type: json, required: true}
+      - {name: control_exception, label: control exception, description: the logged reason that lets a manual entry post to a control account (FIN-GL-005), type: text}
+      - name: state
+        label: state
+        description: draft until posted; submitted, approved and rejected are the states of its pending change (STD-TXN-060)
+        type: enum
+        default: draft
+        constraints: {allowed_values: [draft, posted]}
+      - {name: posted_number, label: posted number, description: "the gap-free number per fiscal year and source: <year>-<source>-<n> (FIN-GL-013)", type: text}
+    ports:
+      - {name: post, description: post the entry to the journal, kind: command, params: [], permission: post, impl: ubos.finance.entries#post}
+  - name: PostingNumber
+    label: posting number
+    description: One entry per posted journal entry, keyed by fiscal year and source; its gap-free sequence is the entry's number (STD-KIND-022, FIN-GL-013)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: ledger
+    schema_version: 1
+    ledger: {key: [fiscal_year, source], amounts: [count], double_entry: false}
+    fields:
+      - {name: fiscal_year, label: fiscal year, description: the fiscal year of the posting date, type: text, required: true}
+      - {name: source, label: source, description: the entry's source, type: text, required: true}
+      - {name: entry, label: entry, description: the object id of the journal entry numbered, type: text, required: true}
+      - {name: count, label: count, description: always 1, type: decimal, required: true}
