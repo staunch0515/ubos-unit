@@ -114,6 +114,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a new manager assignment, when committed, then relation checks see it in the next process.
 - **Verification:** CONF
 - **Origin:** FR-IAM-051, FR-IAM-053
+- **Phase note:** DEC-136: built in PH-2 step 8a as BPA 1.0-rc8 states it (STD-LGS-050): a reference field or list of references declares `authz_relation`, and the relations are derived from the object's version at the snapshot of the request, without a tuple store of their own; `relations` reports them with the principal of `principal_field`.
 
 ### DSN-DVM-811 — Relation-based rules
 - **Statement:** Policies MUST be able to use relation paths of bounded depth (default 4), for example `principal in resource.fund.team.members`. The engine MUST evaluate paths by index lookups at the process snapshot.
@@ -124,6 +125,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a 3-hop path, when evaluated for 10,000 objects in a list query, then latency meets NR-PERF-008.
 - **Verification:** BENCH, CONF
 - **Origin:** FR-IAM-052, NR-PERF-008
+- **Phase note:** DEC-136: built in PH-2 step 8a as STD-LGS-051 states it: the kernel property `access` holds `{action, allow_if}` rules whose paths `principal in this(.relation)*` have at most four relations, checked when the sheet is committed; a path is followed by reading the referenced objects at the snapshot, not by index lookups, which the benchmarks of step 18 decide on.
 
 ### DSN-DVM-812 — Consistent relation checks
 - **Statement:** Relation checks MUST use the same snapshot as the data being read (FR-IAM-053), so there is no "new enemy" window within one process.
@@ -134,6 +136,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given a removal of a user from a team and a document added afterwards, when the user reads at the later snapshot, then access is denied.
 - **Verification:** SIM, SEC
 - **Origin:** FR-IAM-053
+- **Phase note:** DEC-136: built in PH-2 step 8a: the rules, the relations and the objects they reach are read at the snapshot of the request (its selectors), so a read at an earlier commit sees the relations of that commit; reads and queries made `as` a viewer and port calls are checked, and a query leaves out the objects the viewer may not read inside its execution.
 
 ### DSN-DVM-813 — Group expansion cache
 - **Statement:** Group and role membership closures MUST be precomputed as a projection maintained in the flush, keyed by `(principal, cseq)`.
@@ -144,6 +147,7 @@ This file designs the crates `ubos-authz`, `ubos-query` and `ubos-proof`. Readin
   1. Given 5-level nested groups, when checked, then membership is resolved with one lookup.
 - **Verification:** BENCH, PROP
 - **Origin:** FR-IAM-073, AR-016
+- **Phase note:** DEC-136: not built in PH-2 step 8a: BPA 1.0-rc8 relation paths follow object references and have no group or role closure to precompute; the cache moves to step 18, if the benchmarks of relation checks need it.
 
 ## Row filters and masking
 

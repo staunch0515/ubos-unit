@@ -138,6 +138,8 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-CLS-061",
     "STD-CLS-062",
     "STD-VER-082",
+    "STD-LGS-050",
+    "STD-LGS-051",
 ];
 
 /// The clauses a vector verifies.

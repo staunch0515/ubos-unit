@@ -800,6 +800,19 @@ pub fn check_field(f: &Value, custom: &BTreeSet<String>) -> Result<(), BpaError>
     {
         check_relationship(f, rel)?;
     }
+    // STD-LGS-050 (1.0-rc8; PH-2 step 8a): an authorization relation is named on a
+    // reference field or a list of references
+    if let Some(r) = f.get("authz_relation") {
+        if !r.as_str().is_some_and(|x| names::matches("member-name", x)) {
+            return Err(err("MODEL.INVALID_NAME", "authz_relation"));
+        }
+        if t != "reference" && !is_reference_list(f) {
+            return Err(err(
+                "MODEL.INVALID_VALUE",
+                "an authorization relation is a reference or a list of references",
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -1005,6 +1018,18 @@ pub fn check_decl(d: &Value, custom: &BTreeSet<String>) -> Result<(), BpaError> 
             return Err(err(
                 "MODEL.INVALID_VALUE",
                 "a class with a lifecycle has no field state",
+            ));
+        }
+    }
+    // STD-LGS-050 (1.0-rc8; PH-2 step 8a): the principal field names a text field
+    if let Some(pf) = d.get("principal_field").filter(|p| !p.is_null()) {
+        let ok = pf.as_str().is_some_and(|n| {
+            members(d, "fields").any(|f| s(f, "name") == Some(n) && s(f, "type") == Some("text"))
+        });
+        if !ok {
+            return Err(err(
+                "MODEL.INVALID_VALUE",
+                "principal_field names a text field",
             ));
         }
     }

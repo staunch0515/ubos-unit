@@ -6,6 +6,7 @@
 //! PH-0 prototype scope (DEC-033): the conformance adapter, which executes the adapter
 //! operations of STD-CONF-005 for the runner (`ubos-forge`).
 
+pub mod access;
 pub mod adapter;
 pub mod approvals;
 pub mod audit;

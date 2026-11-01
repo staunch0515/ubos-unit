@@ -778,7 +778,25 @@ impl Engine {
 
     /// `read` (STD-TIME-012, -013, -015, STD-VER-080, -081, -090).
     pub fn read(&mut self, input: &Value) -> Result<Value, BpaError> {
-        self.read_classed(input).map(|(r, _)| r)
+        let (r, _) = self.read_classed(input)?;
+        // STD-LGS-051 (1.0-rc8; PH-2 step 8a): a read made as a viewer is refused when no
+        // access rule allows it
+        if let Some(v) = crate::access::viewer_of(input)? {
+            let branch = s(input, "branch").unwrap_or("main").to_string();
+            let oid = s(input, "object_id").unwrap_or_default().to_string();
+            let (ok, _) = self.access_allows(
+                &branch,
+                &crate::access::selectors(input),
+                &oid,
+                s(&v, "principal").unwrap_or_default(),
+                "read",
+                v.get("ctx").unwrap_or(&Value::Null),
+            )?;
+            if !ok {
+                return Err(BpaError::new("IAM.NOT_FOUND", "not visible"));
+            }
+        }
+        Ok(r)
     }
 
     /// The rows of a query result read at commit sequence `cseq` of `branch` and valid time

@@ -22,6 +22,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-133 | PH-2 step 7, part 7f, first half: model export as OpenAPI 3.1 and the `ubos.model-graph.v1` graph; the ontology Buk waits for a decision on its class names | Accepted |
 | DEC-134 | PH-2 step 7, part 7f, second half: the genesis `ontology` Buk 0.2.0 with the content of FR-MODEL-091; fixture classes that collided with it renamed (option A) | Accepted |
 | DEC-135 | PH-2 step 7 closed: models and packages (parts 7a–7f, DEC-127…134) — schema evolution and lenses, upstream changes, the Buk format and Forge commands, installation, upgrade, migration, rollback, removal, deprecation, genesis upgrades, model export and the ontology Buk; 61 step-7 vectors pass in memory and on PostgreSQL; deferred items listed with their target steps | Accepted |
+| DEC-136 | PH-2 step 8 opened in parts 8a–8e; part 8a: authorization relations and relation-based access rules in the kernel; STD-LGS-050 and -051 claimed | Accepted |
 
 ---
 
@@ -363,3 +364,38 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
 - **Alternatives considered:**
   - Leaving the deferred items spread over DEC-127…134 was rejected, as in DEC-104, DEC-111, DEC-118 and DEC-126.
 - **Affects:** DEC-127, DEC-128, DEC-129, DEC-130, DEC-131, DEC-132, DEC-133, DEC-134, CTR-054, DSN-FRG-303, DSN-FRG-304, DSN-FRG-308, DSN-EXC-008, DSN-DVM-121, DSN-DVM-123, FR-PKG-043, FR-PKG-051, FR-AUD-071
+
+### DEC-136 — Protection, part 8a: relation-based authorization (PH-2 step 8)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** PH-2 step 8 (UBS-PH-2 §11) covers protection:
+  - relationship authorization (CAP-IAM-05);
+  - masking and filtering (CAP-IAM-06);
+  - encrypted fields and crypto-shredding (CAP-PROOF-07);
+  - access logging (CAP-AUD-05).
+
+  Its BPA clauses were released in 1.0-rc8 (DEC-093): STD-LGS-050…052 and STD-OBJ-010, -011. On the kernel, 2 of their 43 vectors passed, 17 failed, and 24 were not applicable for lack of the operations. The owner confirmed the plan with the default suggestions.
+- **Decision:**
+  1. **Parts.**
+     - 8a: authorization relations and access rules (STD-LGS-050, -051; DSN-DVM-810…813).
+     - 8b: field masking and masked fields in queries and expressions (STD-LGS-052; DSN-DVM-821, -822).
+     - 8c: encrypted fields under subject keys, equality lookups, crypto-shredding and key unavailability (STD-OBJ-010, -011; DSN-DVM-830, -833, -834).
+     - 8d: personal-data read logging on the node and the subject access export (DSN-DVM-823, -837).
+     - 8e closes the step.
+
+     No release candidate is opened. Who-can and policy impact (DSN-DVM-840, -841) belong to access review (CAP-IAM-08, PH-3), and break-glass (DSN-DVM-808) to identity; neither is part of this step.
+  2. **Declarations.** `ubos-model` checks `authz_relation`: a member name, on a reference field or a list of references. It also checks `principal_field`, which must name a text field.
+  3. **Rules.** `ubos-rules` registers the kernel property `access` (enforcement `action`, combined by union) and checks its paths when a sheet is committed (`RULE.PARSE_ERROR`).
+  4. **Evaluation** (`crates/ubos-dvm/src/access.rs`).
+     - Relations come from the objects' versions at the snapshot of the request. Paths are followed by reading the referenced objects at that snapshot. `relations` and `check_access` are adapter operations.
+     - A read made `as` a viewer is refused with `IAM.NOT_FOUND`.
+     - A query made `as` a viewer leaves out, inside its execution, the objects the viewer may not read, so pages and counts agree.
+     - A port call is refused with `IAM.DENIED`. An object created in the same process is not checked, because it is not yet at a snapshot.
+     - Without a live sheet declaring `access`, nothing is evaluated.
+  5. **Claim.** The conformance test claims STD-LGS-050 and -051.
+  6. **Design notes.** DSN-DVM-810…813 get phase notes. The group-expansion cache (DSN-DVM-813) is not built, since rc8 paths have no group closure, and moves to step 18 if needed.
+- **Consequences:**
+  - The 17 vectors pass in memory and on PostgreSQL 16, and the conformance test passes.
+  - A viewer query with rules present evaluates every candidate of its class once; the benchmarks of step 18 decide whether that needs an index.
+- **Alternatives considered:**
+  - Keeping relation tuples in an index maintained by the flush (DSN-DVM-810's `relationship_index`) was deferred. Deriving them from the versions at the snapshot is what STD-LGS-050 requires and needs no second store; an index is an optimisation for step 18.
+- **Affects:** STD-LGS-050, STD-LGS-051, DSN-DVM-810, DSN-DVM-811, DSN-DVM-812, DSN-DVM-813, DSN-DVM-840, DSN-DVM-841, DSN-DVM-808, DEC-093

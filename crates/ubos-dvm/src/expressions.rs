@@ -302,6 +302,18 @@ impl Engine {
         let mut pushdown: Option<(usize, bool)> = None;
         let mut scanned_rows: u64 = 0;
         let mut next_lo: Option<(Vec<u8>, BTreeSet<String>)> = None;
+        // STD-LGS-051 (1.0-rc8; PH-2 step 8a): a query made as a viewer leaves out, inside
+        // its execution, the objects the viewer may not read
+        let hidden: BTreeSet<String> = match crate::access::viewer_of(i)? {
+            Some(v) => {
+                let mut asel = sel.clone();
+                if let Some(a) = &asof {
+                    asel["asof"] = json!(a);
+                }
+                self.unreadable(&branch, &asel, &cls, only, &v)?
+            }
+            None => BTreeSet::new(),
+        };
         let reg = &self.registry;
         let default_valid = move |c: &str| match reg.class(c).map(|c| c.valid_time.as_str()) {
             Ok("instant") => now.clone(),
@@ -448,6 +460,9 @@ impl Engine {
         }
         let fetched = repo.versions(&hashes)?;
         for (oid, o) in &st.objects {
+            if hidden.contains(oid) {
+                continue;
+            }
             let lin = &reg.class(&o.class)?.linearization;
             let hit = if only {
                 o.class == cls

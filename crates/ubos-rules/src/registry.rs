@@ -161,6 +161,14 @@ pub fn kernel_properties() -> Vec<Property> {
                 "rule": req_text, "severity": severity(), "message": text,
             }))),
         ),
+        // since 1.0-rc8 (STD-LGS-051; PH-2 step 8a, DEC-136): access rules over
+        // authorization relations
+        (
+            "access",
+            "action",
+            "union",
+            list_of(composite(json!({"action": req_text, "allow_if": req_text}))),
+        ),
         (
             "decisions",
             "action",
@@ -333,7 +341,11 @@ impl Registry {
         } else {
             value
         };
-        validate_value(type_, schema.get("constraints"), value)
+        let out = validate_value(type_, schema.get("constraints"), value)?;
+        if root == "access" {
+            check_access_rules(&out)?;
+        }
+        Ok(out)
     }
 
     /// The `(path, value)` pairs a declaration contributes: a whole-map declaration
@@ -405,4 +417,65 @@ impl Registry {
             _ => Err(invalid("combine rule")),
         }
     }
+}
+
+/// The longest relation path of an access rule (STD-LGS-051).
+pub const MAX_ACCESS_DEPTH: usize = 4;
+
+/// STD-LGS-051: the relations of an access rule `principal in this(.relation)*`, at most
+/// four; `RULE.PARSE_ERROR` otherwise.
+pub fn parse_access(text: &str) -> Result<Vec<String>, BpaError> {
+    let bad = |m: &str| BpaError::new("RULE.PARSE_ERROR", m.to_string());
+    let shape = "an access rule is principal in this(.relation)*";
+    let t = text.trim();
+    let rest = t.strip_prefix("principal").ok_or_else(|| bad(shape))?;
+    if !rest.starts_with(char::is_whitespace) {
+        return Err(bad(shape));
+    }
+    let rest = rest
+        .trim_start()
+        .strip_prefix("in")
+        .ok_or_else(|| bad(shape))?;
+    if !rest.starts_with(char::is_whitespace) {
+        return Err(bad(shape));
+    }
+    let rest = rest
+        .trim_start()
+        .strip_prefix("this")
+        .ok_or_else(|| bad(shape))?;
+    let mut path = Vec::new();
+    if !rest.is_empty() {
+        let segs = rest.strip_prefix('.').ok_or_else(|| bad(shape))?;
+        for seg in segs.split('.') {
+            let ok = seg.chars().next().is_some_and(|c| c.is_ascii_lowercase())
+                && seg
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
+            if !ok {
+                return Err(bad(shape));
+            }
+            path.push(seg.to_string());
+        }
+    }
+    if path.len() > MAX_ACCESS_DEPTH {
+        return Err(bad(&format!(
+            "a relation path has at most {MAX_ACCESS_DEPTH} relations"
+        )));
+    }
+    Ok(path)
+}
+
+/// The rules of an `access` value: each `{action, allow_if}` with a valid path.
+pub fn check_access_rules(value: &Value) -> Result<(), BpaError> {
+    for r in value.as_array().into_iter().flatten() {
+        let ok = r.get("action").is_some_and(Value::is_string) && r.get("allow_if").is_some();
+        if !ok {
+            return Err(BpaError::new(
+                "MODEL.DECLARATION_INCOMPLETE",
+                "an access rule is {action, allow_if}",
+            ));
+        }
+        parse_access(r["allow_if"].as_str().unwrap_or_default())?;
+    }
+    Ok(())
 }

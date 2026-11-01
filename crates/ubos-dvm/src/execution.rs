@@ -1595,6 +1595,24 @@ impl<'a> EngineHost<'a> {
         }
         let permission = s(&decl, "permission").unwrap_or("none").to_string();
         self.permit(core, &permission, &cls, Some(&oid))?;
+        // STD-LGS-051 (1.0-rc8; PH-2 step 8a): the access rules of the object for the port;
+        // an object created in this process is not yet at a snapshot
+        if !core.pending.contains_key(&oid)
+            && let Some(principal) = core.context["principal"].as_str()
+        {
+            let principal = principal.to_string();
+            let branch = core.branch.clone();
+            let dctx = self.decision_ctx(core)?;
+            let (ok, _) =
+                self.e
+                    .access_allows(&branch, &json!({}), &oid, &principal, &port, &dctx)?;
+            if !ok {
+                return Err(BpaError::with_details(
+                    "IAM.DENIED",
+                    json!({"port": port, "access": "no rule allows the principal"}),
+                ));
+            }
+        }
         if !core.pending.contains_key(&oid) {
             // STD-LGS-031: the decisions of a command port run before it (DSN-DVM-720) and
             // their result is journaled (DSN-DVM-721)
