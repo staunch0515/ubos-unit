@@ -10,6 +10,7 @@ the Buk's results with the expected figures. The generated files are never edite
 Usage: python3 buks/finance/tools/gen_tests.py [--check]
 """
 import csv
+import datetime
 import hashlib
 import json
 import os
@@ -114,6 +115,73 @@ def opening_changes():
     return out
 
 
+def documents(month):
+    """The documents of `transactions.csv` whose posting date is in a month, in file order:
+    (document, kind, posting_date, recorded_on, lines)."""
+    out = {}
+    for r in rows('transactions.csv'):
+        if not r['posting_date'].startswith(month):
+            continue
+        d = out.setdefault(r['document'], (r['document'], r['kind'], r['posting_date'], r['recorded_on'], []))
+        d[4].append(r)
+    return list(out.values())
+
+
+def document_changes(doc):
+    name, kind, posting, _, lines = doc
+    out = []
+    for n, r in enumerate(lines):
+        c = cents(r['debit']) - cents(r['credit'])
+        body = {'account': account_uri(r['account']), 'amount': money(amount(c)), 'document': name,
+                'kind': kind, 'description': r['description']}
+        if r['party']:
+            body['party'] = r['party']
+        out.append({'op': 'append', 'class': 'JournalLine', 'entry_id': uid('line', name, n),
+                    'ledger_key': {'account': account_uri(r['account'])}, 'posting_group': name,
+                    'valid_at': posting, 'body': body})
+    return out
+
+
+START = datetime.datetime(2026, 1, 1)
+
+
+def posting_steps(month, clock):
+    """Each document of a month committed at noon of its recording date; returns the steps
+    and the clock after them."""
+    steps = []
+    for doc in documents(month):
+        at = datetime.datetime.fromisoformat(doc[3]) + datetime.timedelta(hours=12)
+        if at > clock:
+            steps.append({'advance': '%dm' % ((at - clock).total_seconds() // 60)})
+            clock = at
+        steps.append({'op': 'commit', 'input': {'branch': 'main', 'changes': document_changes(doc)}})
+    return steps, clock
+
+
+def posted_lines(fid):
+    """{(account, document): cents} of a postings section ("6200 8,500.00; 2000 (8,500.00)")."""
+    out = {}
+    for cells in section(fid):
+        doc = cells[1]
+        for part in cells[4].split(';'):
+            code, _, value = part.strip().partition(' ')
+            key = (code, doc)
+            out[key] = out.get(key, 0) + cents(value)
+    return out
+
+
+def document_groups(lines):
+    """The groups of `gl-document`, in canonical key order."""
+    groups = [{'key': {'account': account_uri(code), 'document': doc},
+               'values': {'amount': [money(amount(c))]}} for (code, doc), c in lines.items()]
+    groups.sort(key=lambda g: json.dumps(g['key'], sort_keys=True, separators=(',', ':')))
+    return groups
+
+
+def opening_lines():
+    return {(code, 'OB-2025-12-31'): c for code, c in trial_balance('FIN-EXP-01').items() if c}
+
+
 def trial_balance(fid):
     """{account code: balance in cents} of a trial-balance section."""
     out = {}
@@ -157,12 +225,36 @@ def opening_tests():
     }]
 
 
+def january_tests():
+    steps, _ = posting_steps('2026-01', START)
+    posted = dict(opening_lines())
+    posted.update(posted_lines('FIN-EXP-02'))
+    return [{
+        'name': 'FIN-EXP-02 January 2026 postings, line by line',
+        'kind': 'scenario',
+        'steps': setup_steps() + steps + [
+            {'op': 'read_projection',
+             'input': {'branch': 'main', 'projection': 'gl-document', 'asof': '2026-01-31'},
+             'expect': {'match': 'subset', 'result': {'groups': document_groups(posted)}}},
+        ],
+    }, {
+        'name': 'FIN-EXP-03 trial balance at 2026-01-31 before closing entries',
+        'kind': 'scenario',
+        'steps': setup_steps() + steps + [
+            {'op': 'read_projection',
+             'input': {'branch': 'main', 'projection': 'gl-balance', 'asof': '2026-01-31'},
+             'expect': {'match': 'subset', 'result': {'groups': balance_groups(trial_balance('FIN-EXP-03'))}}},
+        ],
+    }]
+
+
 def dump(tests):
     return HEADER + json.dumps({'tests': tests}, indent=1, ensure_ascii=False) + '\n'
 
 
 def main():
-    files = {'tests/sample-opening.yaml': dump(opening_tests())}
+    files = {'tests/sample-opening.yaml': dump(opening_tests()),
+             'tests/sample-january.yaml': dump(january_tests())}
     check = '--check' in sys.argv
     stale = []
     for rel, text in files.items():

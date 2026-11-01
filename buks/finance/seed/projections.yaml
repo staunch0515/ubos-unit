@@ -12,3 +12,14 @@ changes:
       aggregates:
         - {fn: sum, field: amount, as: balance}
         - {fn: count, as: entries}
+  # the lines of each document by account: the journal report and drill-down (FIN-RP-006, -008)
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-000000000002
+    slug: gl-document
+    body:
+      name: gl-document
+      source: JournalLine
+      group_by: [document, account]
+      aggregates:
+        - {fn: sum, field: amount, as: amount}

@@ -28,6 +28,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-139 | PH-2 step 8, part 8d: personal-data read logging in the security log, the subject access export, and security-log records of key rotations and erasures | Accepted |
 | DEC-140 | PH-2 step 8 closed: protection (parts 8a–8d, DEC-136…139) — relation-based authorization, field masking, encrypted fields and crypto-shredding, read logging and the subject export; 48 vectors in memory and on PostgreSQL; open items assigned to steps | Accepted |
 | DEC-141 | PH-2 step 9 opened in parts 9a–9e; part 9a: the `finance` Buk in `buks/finance` with the chart of accounts, fiscal periods, the journal ledger and the balance projection; tie-out tests generated from the frozen sample company; FIN-EXP-01 ties out | Accepted |
+| DEC-142 | PH-2 step 9, part 9b: the January documents posted as balanced journal entries at their recording dates; the `gl-document` projection; FIN-EXP-02 and FIN-EXP-03 tie out | Accepted |
 
 ---
 
@@ -556,3 +557,20 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
   - Loading the sample company as seed was rejected: the seed is installed in every VAE that installs the Buk.
   - A separate ledger per document kind was rejected for step 9. One journal keeps the trial balance a single projection; step 10 adds subledgers where FIN-AR and FIN-AP need them.
 - **Affects:** DEC-022, DEC-029, EXIT-2-04, MET-BIZ-001, STD-KIND-025, STD-KIND-029, STD-TIME-021, FR-PKG-031
+
+### DEC-142 — The finance Buk, part 9b: posting the January documents (PH-2 step 9)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 9b of step 9 (DEC-141) posts the January 2026 documents of the sample company and ties out FIN-EXP-02 (the postings, line by line) and FIN-EXP-03 (the trial balance at 2026-01-31 before closing entries).
+- **Decision:**
+  1. **Posting.**
+     - Each document of `transactions.csv` with a January posting date is one commit of `JournalLine` appends, sharing the document number as posting group, so the kernel checks the balance (STD-KIND-024).
+     - Each line's `valid_at` is the posting date. The commit is made at noon of the recording date, so the posting date of STD-KIND-025 falls in the right open period.
+     - Lines carry the document, its kind, the party and the description.
+  2. **Projection.** The seed adds `gl-document`, the sum by document and account. It is the journal report and the drill-down from a balance to its documents (FIN-RP-006, -008), and the test reads it to compare FIN-EXP-02 line by line.
+  3. **Tie-out.** `tools/gen_tests.py` takes the documents from the CSV and the expected figures from the tables of FIN-EXP-02 and -03, never from the CSV. A test therefore fails when the posting differs from the published results.
+  4. **Not in 9b.** The approval of manual entries over 10,000.00 (FIN-GL-015), recurring entries (FIN-GL-017) and automatic reversal (FIN-GL-018) do not change the figures. Part 9e records how far step 9 covers each FIN-GL and FIN-PC requirement and where the rest goes.
+- **Consequences:**
+  - FIN-EXP-01, -02 and -03 tie out in memory and on PostgreSQL 16: the 28 January documents, and the trial balance of 826,012.90 each side.
+- **Alternatives considered:**
+  - Comparing per-account ledgers with `read_ledger` was rejected: one projection read compares every line of every document in one step.
+- **Affects:** DEC-141, STD-KIND-024, STD-KIND-025, STD-TIME-021, FIN-GL-015, FIN-GL-017, FIN-GL-018, FIN-RP-006, FIN-RP-008
