@@ -145,17 +145,60 @@ def document_changes(doc):
 START = datetime.datetime(2026, 1, 1)
 
 
-def posting_steps(month, clock):
-    """Each document of a month committed at noon of its recording date; returns the steps
-    and the clock after them."""
+def advance(clock, at):
+    """The step moving the clock to `at`, if later."""
+    if at > clock:
+        return [{'advance': '%dm' % ((at - clock).total_seconds() // 60)}], at
+    return [], clock
+
+
+def posting_steps(month, clock, events=()):
+    """Each document of a month committed at noon of its recording date, in recording order,
+    with `events` ((instant, steps)) placed by time; returns the steps and the clock after."""
+    items = [(datetime.datetime.fromisoformat(d[3]) + datetime.timedelta(hours=12), n, d)
+             for n, d in enumerate(documents(month))]
+    items += [(at, -1, s) for at, s in events]
     steps = []
-    for doc in documents(month):
-        at = datetime.datetime.fromisoformat(doc[3]) + datetime.timedelta(hours=12)
-        if at > clock:
-            steps.append({'advance': '%dm' % ((at - clock).total_seconds() // 60)})
-            clock = at
-        steps.append({'op': 'commit', 'input': {'branch': 'main', 'changes': document_changes(doc)}})
+    for at, n, item in sorted(items, key=lambda x: (x[0], x[1])):
+        more, clock = advance(clock, at)
+        steps += more
+        if n < 0:
+            steps += item
+        else:
+            steps.append({'op': 'commit', 'input': {'branch': 'main', 'changes': document_changes(item)}})
     return steps, clock
+
+
+def close_steps(slug, tb):
+    """Close a period (STD-KIND-025, -026): to closing, then close_period, whose artefact
+    holds the balances of the trial balance `tb`."""
+    oid = uid('period', slug)
+    balances = [{'class': 'JournalLine', 'ledger_key': g['key'],
+                 'amounts': {'amount': g['values']['balance']}} for g in balance_groups(tb)]
+    return [
+        {'op': 'read', 'input': {'branch': 'main', 'object_id': oid}, 'label': 'period-' + slug},
+        {'op': 'commit', 'input': {'branch': 'main', 'changes': [
+            {'op': 'update', 'object_id': oid, 'base': {'$ref': 'period-%s/version_hash' % slug},
+             'body': {'state': 'closing'}}]}},
+        {'op': 'close_period',
+         'input': {'branch': 'main', 'period': oid, 'artefact_id': uid('artefact', slug)},
+         'expect': {'match': 'subset', 'result': {'tag': 'close-%s-1' % slug, 'balances': balances}}},
+    ]
+
+
+def account_reads(asof, figures, tx_time=None):
+    """One read of `gl-balance` per account: {code: cents}."""
+    out = []
+    for code, c in figures.items():
+        i = {'branch': 'main', 'projection': 'gl-balance', 'asof': asof,
+             'group': {'account': account_uri(code)}}
+        if tx_time:
+            i['tx_time'] = tx_time
+        values = {'balance': [money(amount(c))]}
+        out.append({'op': 'read_projection', 'input': i,
+                    'expect': {'match': 'subset', 'result': {'groups': [
+                        {'key': {'account': account_uri(code)}, 'values': values}]}}})
+    return out
 
 
 def posted_lines(fid):
@@ -248,13 +291,71 @@ def january_tests():
     }]
 
 
+def signed_column(fid, col):
+    """{account code: cents} of a column of signed balances."""
+    return {cells[0]: cents(cells[col]) for cells in section(fid) if cells[0].isdigit()}
+
+
+def february_tests():
+    jan, clock = posting_steps('2026-01', START)
+    tb = trial_balance('FIN-EXP-03')
+    close_at = datetime.datetime(2026, 2, 2, 9)
+    feb, _ = posting_steps('2026-02', clock, [(close_at, close_steps('2026-01', tb))])
+    posted = dict(opening_lines())
+    posted.update(posted_lines('FIN-EXP-02'))
+    for (code, doc), c in posted_feb().items():
+        posted[(code, doc)] = posted.get((code, doc), 0) + c
+    late, _ = advance(datetime.datetime(2026, 1, 31, 12), datetime.datetime(2026, 1, 31, 18))
+    late_close = close_steps('2026-01', tb)
+    refused = {'op': 'commit', 'input': {'branch': 'main', 'changes': document_changes(
+        ('JE-LATE', 'journal', '2026-01-31', '2026-01-31',
+         [{'account': '6400', 'debit': '100.00', 'credit': '', 'party': '', 'description': 'late entry'},
+          {'account': '2100', 'debit': '', 'credit': '100.00', 'party': '', 'description': 'late entry'}]))},
+        'expect': {'error_code': 'LEDG.PERIOD_CLOSED'}}
+    return [{
+        'name': 'FIN-PC-005 closing January: the close artefact holds FIN-EXP-03, and later January postings are refused',
+        'kind': 'scenario',
+        'steps': setup_steps() + jan + late + late_close + [refused],
+    }, {
+        'name': 'FIN-EXP-15 February postings after the January close, line by line',
+        'kind': 'scenario',
+        'steps': setup_steps() + jan + feb + [
+            {'op': 'read_projection',
+             'input': {'branch': 'main', 'projection': 'gl-document', 'asof': '2026-02-28'},
+             'expect': {'match': 'subset', 'result': {'groups': document_groups(posted)}}},
+        ],
+    }, {
+        'name': 'FIN-EXP-16 back-dated correction: balances at 2026-02-05 as known on 2026-02-05 and 2026-02-28',
+        'kind': 'scenario',
+        'steps': setup_steps() + jan + feb
+        + account_reads('2026-02-05', signed_column('FIN-EXP-16', 2), '2026-02-05T23:59:59.999999Z')
+        + account_reads('2026-02-05', signed_column('FIN-EXP-16', 3), '2026-02-28T23:59:59.999999Z'),
+    }, {
+        'name': 'FIN-EXP-17 selected balances at 2026-02-28',
+        'kind': 'scenario',
+        'steps': setup_steps() + jan + feb + account_reads('2026-02-28', signed_column('FIN-EXP-17', 2)),
+    }]
+
+
+def posted_feb():
+    """The lines of FIN-EXP-15, whose table has the recording date as an extra column."""
+    out = {}
+    for cells in section('FIN-EXP-15'):
+        doc = cells[2]
+        for part in cells[5].split(';'):
+            code, _, value = part.strip().partition(' ')
+            out[(code, doc)] = out.get((code, doc), 0) + cents(value)
+    return out
+
+
 def dump(tests):
     return HEADER + json.dumps({'tests': tests}, indent=1, ensure_ascii=False) + '\n'
 
 
 def main():
     files = {'tests/sample-opening.yaml': dump(opening_tests()),
-             'tests/sample-january.yaml': dump(january_tests())}
+             'tests/sample-january.yaml': dump(january_tests()),
+             'tests/sample-february.yaml': dump(february_tests())}
     check = '--check' in sys.argv
     stale = []
     for rel, text in files.items():

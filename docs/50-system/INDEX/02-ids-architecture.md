@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (142)
+## DEC (143)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -236,4 +236,5 @@ depends_on: [UBS-IDX-00]
 | DEC-140 | PH-2 step 8 closed: protection (PH-2 step 8, part 8e) | `90-decisions/000-index.md` |
 | DEC-141 | The finance Buk, part 9a: chart of accounts, journal and opening balances (PH-2 step 9) | `90-decisions/000-index.md` |
 | DEC-142 | The finance Buk, part 9b: posting the January documents (PH-2 step 9) | `90-decisions/000-index.md` |
+| DEC-143 | The finance Buk, part 9c: periods, close and the February items (PH-2 step 9) | `90-decisions/000-index.md` |
 

@@ -510,7 +510,17 @@ impl Engine {
     pub fn projection_at(&mut self, branch: &str, i: &Value) -> Result<Value, BpaError> {
         let name = s(i, "projection").unwrap_or_default().to_string();
         let mut r = Repo::new(self.store.as_mut(), &self.registry);
-        let snap = r.ordinal(branch, i.get("time").and_then(Value::as_u64))?;
+        // the snapshot selectors of convention 9 (STD-CONF-005): `time`, `commit`, `tag` or
+        // `tx_time` (PH-2 step 9c, DEC-143: reports "as known on" a date)
+        let selected = ["commit", "tag", "tx_time"]
+            .iter()
+            .any(|k| i.get(*k).is_some_and(|v| !v.is_null()));
+        let snap = if selected {
+            let c = r.select(branch, i)?.commit;
+            r.commit(c)?.cseq
+        } else {
+            r.ordinal(branch, i.get("time").and_then(Value::as_u64))?
+        };
         drop(r);
         let (oid, vh, decl) = self.projection_decl(branch, snap, &name)?;
         let mut wm = snap;

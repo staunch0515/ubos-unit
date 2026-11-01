@@ -29,6 +29,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-140 | PH-2 step 8 closed: protection (parts 8a–8d, DEC-136…139) — relation-based authorization, field masking, encrypted fields and crypto-shredding, read logging and the subject export; 48 vectors in memory and on PostgreSQL; open items assigned to steps | Accepted |
 | DEC-141 | PH-2 step 9 opened in parts 9a–9e; part 9a: the `finance` Buk in `buks/finance` with the chart of accounts, fiscal periods, the journal ledger and the balance projection; tie-out tests generated from the frozen sample company; FIN-EXP-01 ties out | Accepted |
 | DEC-142 | PH-2 step 9, part 9b: the January documents posted as balanced journal entries at their recording dates; the `gl-document` projection; FIN-EXP-02 and FIN-EXP-03 tie out | Accepted |
+| DEC-143 | PH-2 step 9, part 9c: January closed with its close artefact, later January postings refused, the February items with the back-dated correction; `read_projection` takes every snapshot selector; FIN-EXP-15…17 tie out | Accepted |
 
 ---
 
@@ -574,3 +575,24 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
 - **Alternatives considered:**
   - Comparing per-account ledgers with `read_ledger` was rejected: one projection read compares every line of every document in one step.
 - **Affects:** DEC-141, STD-KIND-024, STD-KIND-025, STD-TIME-021, FIN-GL-015, FIN-GL-017, FIN-GL-018, FIN-RP-006, FIN-RP-008
+
+### DEC-143 — The finance Buk, part 9c: periods, close and the February items (PH-2 step 9)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 9c of step 9 (DEC-141) covers periods and close (FIN-PC-003, -005, -007) and the February items of the sample company. It ties out FIN-EXP-15 (the February postings), FIN-EXP-16 (the back-dated correction "as known on" two dates) and the general-ledger figures of FIN-EXP-17. The open balance of customer C400 belongs to receivables, in step 10.
+- **Decision:**
+  1. **Close.** January is closed on 2026-02-02 with the kernel's period close (STD-KIND-025, -026): an update to `closing`, then `close_period`. The close artefact's balances equal the trial balance FIN-EXP-03, and the commit gets the tag `close-2026-01-1`.
+  2. **February.**
+     - The February documents are committed in recording order at their recording dates.
+     - BILL-OS-0120, a January item, posts on 2026-02-10 in the open February (FIN-PC-007).
+     - JE-0005 is effective 2026-02-03 (`valid_at`) and recorded on 2026-02-20.
+  3. **Refused postings.** A further test closes January on 2026-01-31 and then appends a January entry. The append fails with `LEDG.PERIOD_CLOSED`.
+  4. **As known on.**
+     - FIN-EXP-16 reads `gl-balance` at valid date 2026-02-05, as known at the end of 2026-02-05 and at the end of 2026-02-28.
+     - The second reading uses the snapshot selector `tx_time` (convention 9 of STD-CONF-005). `read_projection` honoured only `time`. It now selects the snapshot with every selector, as the other reads do. This is a conformance gap closed in the kernel, not finance-specific code.
+  5. **Single balances.** FIN-EXP-16 and -17 list only some accounts, so the tests read the projection's `group` of each account.
+- **Consequences:**
+  - FIN-EXP-01, -02, -03, -15, -16 and -17 (general-ledger figures) tie out in memory and on PostgreSQL 16: seven tests.
+  - The 54 vectors of STD-TIME-021, STD-ISA-037, STD-KIND-025 and -026 still pass in memory and on PostgreSQL.
+- **Alternatives considered:**
+  - Reading "as known on" by commit sequence (`time`) was rejected: the expected results state dates, and `tx_time` is the selector made for them.
+- **Affects:** DEC-141, STD-KIND-025, STD-KIND-026, STD-TIME-021, STD-CONF-005, FIN-PC-003, FIN-PC-005, FIN-PC-007, FIN-RP-020

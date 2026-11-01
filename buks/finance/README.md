@@ -18,4 +18,5 @@ what every installation receives.
 
 Status (PH-2 step 9, parts 9a–9e, DEC-141): 9a — chart of accounts, fiscal periods, the
 journal, the balance projection and the opening trial balance FIN-EXP-01; 9b — the January
-documents, the `gl-document` projection, FIN-EXP-02 and -03.
+documents, the `gl-document` projection, FIN-EXP-02 and -03; 9c — the January close, the February
+items and the back-dated correction, FIN-EXP-15…17.
