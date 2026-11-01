@@ -1,0 +1,170 @@
+# Receivables and sales tax (FIN-AR, FIN-TX; PH-2 step 10b, DEC-148).
+classes:
+  - name: TaxCode
+    label: tax code
+    description: A sales-tax code of a jurisdiction with its rate (FIN-TX-001, -002)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[code]]
+    fields:
+      - {name: code, label: code, description: the code, type: text, required: true}
+      - {name: description, label: description, description: what the code means, type: text, required: true}
+      - {name: rate, label: rate, description: the rate in percent, type: decimal, required: true}
+      - name: category
+        label: category
+        description: taxable, exempt with a certificate, non-taxable or export
+        type: enum
+        required: true
+        constraints: {allowed_values: [taxable, exempt, non_taxable, export]}
+      - {name: certificate_required, label: certificate required, description: a sale under this code needs a valid exemption or resale certificate of the customer (FIN-TX-004), type: boolean}
+      - {name: payable_account, label: payable account, description: the sales-tax payable account (FIN-TX-006), type: reference, constraints: {target_class: GlAccount}}
+  - name: Customer
+    label: customer
+    description: A customer (FIN-AR-001)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[code]]
+    fields:
+      - {name: code, label: code, description: the customer ID, type: text, required: true}
+      - {name: name, label: name, description: the legal name, type: text, required: true}
+      - {name: location, label: location, description: the ship-to jurisdiction, type: text}
+      - {name: currency, label: currency, description: the invoicing currency, type: text, required: true}
+      - {name: tax_code, label: tax code, description: the default tax code, type: reference, required: true, constraints: {target_class: TaxCode}}
+      - {name: terms_days, label: terms, description: net days to the due date (FIN-AR-002), type: integer, required: true}
+      - {name: certificate, label: certificate, description: the exemption or resale certificate number, type: text}
+      - {name: certificate_valid_to, label: certificate valid to, description: the last day the certificate is valid, type: date}
+      - {name: receivable_account, label: receivable account, description: the receivables control account, type: reference, required: true, constraints: {target_class: GlAccount}}
+  - name: Invoice
+    label: invoice
+    description: A customer invoice or credit memo; `post` computes tax, posts to the general ledger and records the open item (FIN-AR-003, -004, -006, FIN-TX-003, -005)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[number]]
+    fields:
+      - {name: number, label: number, description: the document number, type: text, required: true}
+      - name: kind
+        label: kind
+        description: invoice or credit memo
+        type: enum
+        required: true
+        constraints: {allowed_values: [invoice, credit_memo]}
+      - {name: customer, label: customer, description: the customer, type: reference, required: true, constraints: {target_class: Customer}}
+      - {name: invoice_date, label: invoice date, description: the document and posting date, type: date, required: true}
+      - {name: due_date, label: due date, description: computed from the terms when absent, type: date}
+      - {name: description, label: description, description: the document's description, type: text, required: true}
+      - {name: lines, label: lines, description: "the lines: {description, amount (money, positive), account (revenue or returns account), tax_code (URI of a TaxCode)}", type: json, required: true}
+      - {name: applies_to, label: applies to, description: the invoice a credit memo is applied to, type: text}
+      - {name: tax, label: tax, description: the tax computed on posting, type: money}
+      - {name: total, label: total, description: the total with tax, computed on posting, type: money}
+      - name: state
+        label: state
+        description: draft until posted; a posted document is not changed (FIN-AR-004)
+        type: enum
+        constraints: {allowed_values: [draft, posted]}
+    ports:
+      - {name: post, description: post the document, kind: command, params: [], permission: post, impl: ubos.finance.receivables#post_invoice}
+  - name: Receipt
+    label: receipt
+    description: A customer receipt and its application to open items (FIN-AR-007, -008)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[number]]
+    fields:
+      - {name: number, label: number, description: the receipt number, type: text, required: true}
+      - {name: customer, label: customer, description: the customer, type: reference, required: true, constraints: {target_class: Customer}}
+      - {name: receipt_date, label: date, description: the date received, type: date, required: true}
+      - {name: amount, label: amount, description: the amount received, type: money, required: true}
+      - {name: method, label: method, description: check, ACH, wire or card, type: text}
+      - {name: reference, label: reference, description: the payer's reference, type: text}
+      - {name: bank_account, label: bank account, description: the deposit account, type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: applications, label: applications, description: "{document, amount}; the rest stays unapplied", type: json}
+      - name: state
+        label: state
+        description: draft until posted
+        type: enum
+        constraints: {allowed_values: [draft, posted]}
+    ports:
+      - {name: post, description: post the receipt and apply it, kind: command, params: [], permission: post, impl: ubos.finance.receivables#post_receipt}
+      - name: reapply
+        description: move an applied amount from one open item to another, keeping the history (FIN-AR-008)
+        kind: command
+        params:
+          - {name: from_document, label: from, description: the item the amount is taken from, type: text, required: true}
+          - {name: to_document, label: to, description: the item it is applied to, type: text, required: true}
+          - {name: amount, label: amount, description: the amount moved, type: money, required: true}
+        permission: apply
+        impl: ubos.finance.receivables#reapply
+  - name: Receivables
+    label: receivables
+    description: The receivables subledger's reports
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    fields:
+      - {name: name, label: name, description: the subledger's name, type: text, required: true}
+      - {name: control_account, label: control account, description: the receivables control account (FIN-RP-007), type: reference, required: true, constraints: {target_class: GlAccount}}
+    ports:
+      - name: aging
+        description: the open items by due-date bucket as of a date, with the control account (FIN-AR-010, FIN-RP-007)
+        kind: query
+        params:
+          - {name: as_of, label: as of, description: the date, type: date, required: true}
+        permission: read
+        impl: ubos.finance.receivables#aging
+      - name: tax_report
+        description: taxable, exempt and tax collected per tax code for a period (FIN-TX-008)
+        kind: query
+        params:
+          - {name: opening, label: opening, description: the last day before the period, type: date, required: true}
+          - {name: closing, label: closing, description: the last day of the period, type: date, required: true}
+        permission: read
+        impl: ubos.finance.receivables#tax_report
+      - name: statement
+        description: a customer's statement for a period (FIN-AR-009)
+        kind: query
+        params:
+          - {name: customer, label: customer, description: the customer code, type: text, required: true}
+          - {name: opening, label: opening, description: the last day before the period, type: date, required: true}
+          - {name: closing, label: closing, description: the last day of the period, type: date, required: true}
+        permission: read
+        impl: ubos.finance.receivables#statement
+  - name: ArItem
+    label: receivable item
+    description: The receivables subledger; an item's balance is the sum of its document's entries
+    namespace: ubos.finance
+    parent: DataObject
+    kind: ledger
+    schema_version: 1
+    ledger: {key: [customer], amounts: [amount], double_entry: false}
+    fields:
+      - {name: customer, label: customer, description: the customer code, type: text, required: true}
+      - {name: document, label: document, description: the open item (invoice number, or UNAPPLIED-<receipt>), type: text, required: true}
+      - {name: amount, label: amount, description: positive for invoices, negative for credits and receipts, type: money, required: true}
+      - {name: kind, label: kind, description: opening, invoice, credit_memo, receipt or reapply, type: text, required: true}
+      - {name: source, label: source, description: the document that wrote the entry, type: text, required: true}
+      - {name: invoice_date, label: invoice date, description: the item's document date, type: date, required: true}
+      - {name: due, label: due, description: the item's due date, type: date, required: true}
+  - name: TaxLine
+    label: tax line
+    description: The sales-tax detail of posted documents (FIN-TX-003, -008)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: ledger
+    schema_version: 1
+    ledger: {key: [tax_code], amounts: [taxable, exempt, tax], double_entry: false}
+    fields:
+      - {name: tax_code, label: tax code, description: the tax code, type: text, required: true}
+      - {name: document, label: document, description: the invoice or credit memo, type: text, required: true}
+      - {name: customer, label: customer, description: the customer code, type: text, required: true}
+      - {name: taxable, label: taxable, description: taxable sales, type: money, required: true}
+      - {name: exempt, label: exempt, description: exempt or non-taxable sales, type: money, required: true}
+      - {name: tax, label: tax, description: tax collected, type: money, required: true}

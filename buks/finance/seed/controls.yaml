@@ -19,3 +19,6 @@ changes:
         FiscalPeriod:closed {
           approvals: {count: 1, roles: ["controller"]};
         }
+        Invoice {
+          decisions: [{name: "exemption-certificate", when: "any(this.lines, l -> ref(l.tax_code).certificate_required == true) and (ref(this.customer).certificate_valid_to is null or ref(this.customer).certificate_valid_to < this.invoice_date)", outcome: "deny", message: "an exempt sale needs the customer's valid exemption or resale certificate (FIN-TX-004)"}];
+        }

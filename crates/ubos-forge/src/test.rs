@@ -236,16 +236,33 @@ fn concurrent(
 /// The asset and function implementing the port a port test calls: the class of the
 /// target from the seed, else the only class declaring a port of that name.
 fn port_impl(project: &Project, input: &Value) -> Option<(String, String)> {
+    port_impl_in(project, input, &HashMap::new())
+}
+
+/// `port_impl` with the classes of the objects a scenario created (object id → class); a
+/// target URI names its class (DEC-148).
+fn port_impl_in(
+    project: &Project,
+    input: &Value,
+    created: &HashMap<String, String>,
+) -> Option<(String, String)> {
     let port = input.get("port").and_then(Value::as_str)?;
     let target = input
         .get("target")
         .and_then(Value::as_str)
         .unwrap_or_default();
-    let seeded = project
-        .seed
-        .iter()
-        .find(|i| i.value.get("object_id").and_then(Value::as_str) == Some(target))
-        .and_then(|i| i.value.get("class").and_then(Value::as_str));
+    let by_uri = target
+        .strip_prefix("ubos://")
+        .and_then(|r| r.split('/').nth(1))
+        .map(str::to_string);
+    let seeded = by_uri.or_else(|| created.get(target).cloned()).or_else(|| {
+        project
+            .seed
+            .iter()
+            .find(|i| i.value.get("object_id").and_then(Value::as_str) == Some(target))
+            .and_then(|i| i.value.get("class").and_then(Value::as_str))
+            .map(str::to_string)
+    });
     let with_port: Vec<&Value> = project
         .classes
         .iter()
@@ -257,7 +274,9 @@ fn port_impl(project: &Project, input: &Value) -> Option<(String, String)> {
         })
         .collect();
     let class = match seeded {
-        Some(n) => with_port.into_iter().find(|c| c["name"] == json!(n))?,
+        Some(n) => with_port
+            .into_iter()
+            .find(|c| c["name"] == json!(n.as_str()))?,
         None if with_port.len() == 1 => with_port[0],
         None => return None,
     };
@@ -427,6 +446,7 @@ pub fn run_with(
         let outcome: Result<Option<Value>, BpaError> = (|| match kind.as_str() {
             "scenario" => {
                 let mut labels: HashMap<String, Value> = HashMap::new();
+                let mut created: HashMap<String, String> = HashMap::new();
                 for step in t
                     .get("steps")
                     .and_then(Value::as_array)
@@ -461,11 +481,21 @@ pub fn run_with(
                         concurrent(&mut vae, backend, scope.as_ref(), n, op, &input)
                     } else {
                         let out = vae.call(op, &input);
+                        if op == "commit" {
+                            for ch in input["changes"].as_array().into_iter().flatten() {
+                                if let (Some(id), Some(c)) = (
+                                    ch.get("object_id").and_then(Value::as_str),
+                                    ch.get("class").and_then(Value::as_str),
+                                ) {
+                                    created.insert(id.to_string(), c.to_string());
+                                }
+                            }
+                        }
                         if op == "execute" && out.is_ok() {
                             note_invocation(&mut invoked, &input);
                             // a port call of a scenario covers the function implementing the
                             // port, as a port test does (DSN-FRG-201; PH-2 step 10a-2, DEC-147)
-                            if let Some((asset, f)) = port_impl(project, &input) {
+                            if let Some((asset, f)) = port_impl_in(project, &input, &created) {
                                 note_invocation(
                                     &mut invoked,
                                     &json!({"asset": asset, "function": f}),

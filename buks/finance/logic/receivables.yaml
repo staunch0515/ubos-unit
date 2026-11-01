@@ -1,0 +1,260 @@
+# Receivables and sales tax (FIN-AR-002…010, FIN-TX-002…008, FIN-GL-021, FIN-RP-007; PH-2 step
+# 10b, DEC-148). Every document posts through a JournalEntry of source `receivables`.
+assets:
+  - name: ubos.finance.receivables
+    abi: "1.0"
+    tier: l2
+    profile: standard
+    state: committed
+    capabilities: [read, commit, run, search]
+    exports: [post_invoice, post_receipt, reapply, aging, tax_report, statement]
+    source: |
+      fn d(v) { dec(v.to_string()) }
+      fn two(x) {
+        let s = x.to_string();
+        if !s.contains(".") { return s + ".00"; }
+        let p = s.split(".");
+        let f = p[1];
+        if f.len() == 1 { f += "0"; }
+        if f.len() > 2 { f = f.sub_string(0, 2); }
+        let out = p[0] + "." + f;
+        if out == "-0.00" { "0.00" } else { out }
+      }
+      fn usd(x, cur) { #{amount: two(x), currency: cur} }
+      fn num(s) {
+        let n = 0;
+        for c in s.chars() { n = n * 10 + "0123456789".index_of(c); }
+        n
+      }
+      // days from 0000-03-01 (civil calendar)
+      fn days(s) {
+        let y = num(s.sub_string(0, 4));
+        let m = num(s.sub_string(5, 2));
+        let dd = num(s.sub_string(8, 2));
+        if m <= 2 { y -= 1; }
+        let era = y / 400;
+        let yoe = y - era * 400;
+        let mp = (m + 9) % 12;
+        let doy = (153 * mp + 2) / 5 + dd - 1;
+        era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy
+      }
+      fn date_of(z) {
+        let era = z / 146097;
+        let doe = z - era * 146097;
+        let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+        let y = yoe + era * 400;
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+        let mp = (5 * doy + 2) / 153;
+        let dd = doy - (153 * mp + 2) / 5 + 1;
+        let m = if mp < 10 { mp + 3 } else { mp - 9 };
+        if m <= 2 { y += 1; }
+        let ms = if m < 10 { "0" + m.to_string() } else { m.to_string() };
+        let ds = if dd < 10 { "0" + dd.to_string() } else { dd.to_string() };
+        y.to_string() + "-" + ms + "-" + ds
+      }
+      fn bucket(late) {
+        if late <= 0 { "Current" } else if late <= 30 { "1–30" } else if late <= 60 { "31–60" }
+        else if late <= 90 { "61–90" } else { "Over 90" }
+      }
+      fn sum_of(values, name) {
+        let t = dec("0.00");
+        for m in values[name] { t += dec(m.amount); }
+        t
+      }
+      fn code_of(uri) { let p = uri.split("/"); p[p.len() - 1] }
+      fn sorted(rows, key) {
+        let out = [];
+        for r in rows {
+          let i = 0;
+          while i < out.len() && out[i][key] <= r[key] { i += 1; }
+          out.insert(i, r);
+        }
+        out
+      }
+
+      // an invoice or credit memo: tax per code on the sum of its lines, the journal entry,
+      // the open item, the tax detail and the document's number
+      fn post_invoice() {
+        if this.state == "posted" { return #{posted: false, reason: "already posted"}; }
+        sys.read.get(#{target: self_id});
+        let cust = sys.read.get(#{target: this.customer}).fields;
+        let cm = this.kind == "credit_memo";
+        let sign = if cm { -1 } else { 1 };
+        let cur = cust.currency;
+        let lines = [];
+        let net = #{};
+        let codes = [];
+        let total = dec("0.00");
+        for l in this.lines {
+          let a = d(l.amount.amount);
+          lines.push(#{account: l.account, amount: usd(-a * sign, cur)});
+          total += a;
+          if !(l.tax_code in net) { net[l.tax_code] = dec("0.00"); codes.push(l.tax_code); }
+          net[l.tax_code] = net[l.tax_code] + a;
+        }
+        let tax_total = dec("0.00");
+        let tax_lines = [];
+        for uri in codes {
+          let tc = sys.read.get(#{target: uri}).fields;
+          let rate = d(tc.rate);
+          let base = net[uri];
+          // half away from zero to the cent (FIN-TX-003)
+          let tax = div(base * rate, 100, 2, "half_up");
+          if !tax.is_zero() {
+            lines.push(#{account: tc.payable_account, amount: usd(-tax * sign, cur)});
+          }
+          let taxable = if tc.category == "taxable" { base } else { dec("0.00") };
+          let exempt = if tc.category == "taxable" { dec("0.00") } else { base };
+          tax_lines.push(#{code: tc.code, taxable: taxable, exempt: exempt, tax: tax});
+          tax_total += tax;
+        }
+        let gross = total + tax_total;
+        lines.insert(0, #{account: cust.receivable_account, amount: usd(gross * sign, cur)});
+        let debits = gross;
+        let due = if this.due_date == () { date_of(days(this.invoice_date) + cust.terms_days) } else { this.due_date };
+        // the open item: an invoice opens one, a credit memo reduces the invoice it applies to
+        let item = this.number;
+        let item_date = this.invoice_date;
+        let item_due = due;
+        if cm && this.applies_to != () {
+          item = this.applies_to;
+          let g = sys.read.projection(#{projection: "ar-open", group: #{customer: cust.code, document: item}}).groups;
+          if g.len() > 0 { item_date = g[0].values.invoice_date; item_due = g[0].values.due; }
+        }
+        let kind = if cm { "credit memo" } else { "invoice" };
+        let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
+          fields: #{number: this.number, source: "receivables", kind: kind, posting_date: this.invoice_date,
+                    document_date: this.invoice_date, description: this.description, party: cust.code,
+                    lines: lines, total: usd(debits, cur), state: "draft"}});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        sys.commit.append(#{class: "ArItem", ledger_key: #{customer: cust.code}, valid_at: this.invoice_date,
+          fields: #{customer: cust.code, document: item, amount: usd(gross * sign, cur), kind: this.kind,
+                    source: this.number, invoice_date: item_date, due: item_due}});
+        for t in tax_lines {
+          sys.commit.append(#{class: "TaxLine", ledger_key: #{tax_code: t.code}, valid_at: this.invoice_date,
+            fields: #{tax_code: t.code, document: this.number, customer: cust.code,
+                      taxable: usd(t.taxable * sign, cur), exempt: usd(t.exempt * sign, cur), tax: usd(t.tax * sign, cur)}});
+        }
+        sys.commit.append(#{class: "PostingNumber",
+          ledger_key: #{fiscal_year: this.invoice_date.sub_string(0, 4), source: "sales-documents"},
+          valid_at: this.invoice_date,
+          fields: #{fiscal_year: this.invoice_date.sub_string(0, 4), source: "sales-documents", entry: self_id, count: dec("1")}});
+        sys.commit.update(#{target: self_id, set: #{state: "posted", due_date: due,
+          tax: usd(tax_total, cur), total: usd(gross, cur)}});
+        #{posted: true, number: this.number, tax: two(tax_total), total: two(gross), due_date: due}
+      }
+
+      // a receipt: cash against receivables; applications reduce open items, the rest stays
+      // unapplied (FIN-AR-007, -008)
+      fn post_receipt() {
+        if this.state == "posted" { return #{posted: false, reason: "already posted"}; }
+        sys.read.get(#{target: self_id});
+        let cust = sys.read.get(#{target: this.customer}).fields;
+        let cur = currency(this.amount);
+        let a = amount(this.amount);
+        let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
+          fields: #{number: this.number, source: "receivables", kind: "receipt", posting_date: this.receipt_date,
+                    document_date: this.receipt_date, description: "Receipt " + this.number, party: cust.code,
+                    lines: [#{account: this.bank_account, amount: usd(a, cur)},
+                            #{account: cust.receivable_account, amount: usd(-a, cur)}],
+                    total: usd(a, cur), state: "draft"}});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        let rest = a;
+        let apps = if this.applications == () { [] } else { this.applications };
+        for app in apps {
+          let g = sys.read.projection(#{projection: "ar-open", group: #{customer: cust.code, document: app.document}}).groups;
+          if g.len() == 0 { throw "no open item " + app.document; }
+          let x = d(app.amount.amount);
+          sys.commit.append(#{class: "ArItem", ledger_key: #{customer: cust.code}, valid_at: this.receipt_date,
+            fields: #{customer: cust.code, document: app.document, amount: usd(-x, cur), kind: "receipt",
+                      source: this.number, invoice_date: g[0].values.invoice_date, due: g[0].values.due}});
+          rest -= x;
+        }
+        if !rest.is_zero() {
+          sys.commit.append(#{class: "ArItem", ledger_key: #{customer: cust.code}, valid_at: this.receipt_date,
+            fields: #{customer: cust.code, document: "UNAPPLIED-" + this.number, amount: usd(-rest, cur),
+                      kind: "receipt", source: this.number, invoice_date: this.receipt_date, due: this.receipt_date}});
+        }
+        sys.commit.update(#{target: self_id, set: #{state: "posted"}});
+        #{posted: true, number: this.number, unapplied: two(rest)}
+      }
+
+      fn reapply(from_document, to_document, amount) {
+        sys.read.get(#{target: self_id});
+        let cust = sys.read.get(#{target: this.customer}).fields;
+        let x = d(amount.amount);
+        let cur = amount.currency;
+        let today = this.receipt_date;
+        for pair in [[from_document, x], [to_document, -x]] {
+          let g = sys.read.projection(#{projection: "ar-open", group: #{customer: cust.code, document: pair[0]}}).groups;
+          if g.len() == 0 { throw "no open item " + pair[0]; }
+          sys.commit.append(#{class: "ArItem", ledger_key: #{customer: cust.code}, valid_at: today,
+            fields: #{customer: cust.code, document: pair[0], amount: usd(pair[1], cur), kind: "reapply",
+                      source: this.number, invoice_date: g[0].values.invoice_date, due: g[0].values.due}});
+        }
+        #{reapplied: two(x), from: from_document, to: to_document}
+      }
+
+      fn aging(as_of) {
+        let groups = sys.read.projection(#{projection: "ar-open", asof: as_of}).groups;
+        let control = sys.read.projection(#{projection: "gl-balance", asof: as_of,
+                                            group: #{account: this.control_account}}).groups;
+        let rows = [];
+        let total = dec("0.00");
+        for g in groups {
+          let open = sum_of(g.values, "open");
+          if open.is_zero() { continue; }
+          rows.push(#{customer: g.key.customer, document: g.key.document, date: g.values.invoice_date,
+                      due: g.values.due, bucket: bucket(days(as_of) - days(g.values.due)), open: two(open)});
+          total += open;
+        }
+        let c = if control.len() > 0 { sum_of(control[0].values, "balance") } else { dec("0.00") };
+        #{as_of: as_of, rows: sorted(rows, "document"), total: two(total), control_balance: two(c),
+          difference: two(total - c)}
+      }
+
+      fn tax_report(opening, closing) {
+        let g0 = sys.read.projection(#{projection: "tax-detail", asof: opening}).groups;
+        let g1 = sys.read.projection(#{projection: "tax-detail", asof: closing}).groups;
+        let before = #{};
+        for g in g0 { before[g.key.tax_code + "|" + g.key.document] = g.values; }
+        let by = #{};
+        let codes = [];
+        for g in g1 {
+          let k = g.key.tax_code + "|" + g.key.document;
+          let t = sum_of(g.values, "taxable");
+          let x = sum_of(g.values, "exempt");
+          let tax = sum_of(g.values, "tax");
+          if k in before {
+            t -= sum_of(before[k], "taxable");
+            x -= sum_of(before[k], "exempt");
+            tax -= sum_of(before[k], "tax");
+          }
+          if t.is_zero() && x.is_zero() && tax.is_zero() { continue; }
+          let c = g.key.tax_code;
+          if !(c in by) { by[c] = #{taxable: dec("0.00"), exempt: dec("0.00"), tax: dec("0.00"), documents: []}; codes.push(c); }
+          let r = by[c];
+          r.taxable += t; r.exempt += x; r.tax += tax; r.documents.push(g.key.document);
+          by[c] = r;
+        }
+        let rows = [];
+        for c in codes {
+          let r = by[c];
+          rows.push(#{tax_code: c, taxable: two(r.taxable), exempt: two(r.exempt), tax: two(r.tax), documents: r.documents});
+        }
+        #{opening: opening, closing: closing, rows: sorted(rows, "tax_code")}
+      }
+
+      fn statement(customer, opening, closing) {
+        let g0 = sys.read.projection(#{projection: "ar-activity", asof: opening, group: #{customer: customer}}).groups;
+        let g1 = sys.read.projection(#{projection: "ar-activity", asof: closing, group: #{customer: customer}}).groups;
+        let start = dec("0.00");
+        for g in g0 { start += sum_of(g.values, "amount"); }
+        let kinds = #{};
+        let end = dec("0.00");
+        for g in g1 { end += sum_of(g.values, "amount"); kinds[g.key.kind] = sum_of(g.values, "amount"); }
+        for g in g0 { kinds[g.key.kind] = kinds[g.key.kind] - sum_of(g.values, "amount"); }
+        let k = #{};
+        for n in kinds.keys() { if !kinds[n].is_zero() { k[n] = two(kinds[n]); } }
+        #{customer: customer, opening_balance: two(start), activity: k, closing_balance: two(end)}
+      }

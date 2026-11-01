@@ -673,6 +673,192 @@ def period_tests():
     }]
 
 
+# ---- receivables and sales tax (PH-2 step 10b, DEC-148) ----
+
+TAX_CATEGORY = {'TX-AUSTIN': 'taxable', 'TX-RESALE': 'exempt', 'OR-NONE': 'non_taxable', 'EXPORT': 'export',
+                'NT': 'non_taxable'}
+# facts of the documents that the CSV gives only in its descriptions (FIN-EXP-02, -13)
+LINE_TAX = {('INV-1004', '4100'): 'NT'}
+APPLIES_TO = {'CM-2001': 'INV-1004'}
+REVENUE = ('4000', '4100', '4900')
+
+
+def tax_uri(code):
+    return 'ubos://%s/TaxCode/%s' % (VAE, code.lower())
+
+
+def customer_uri(code):
+    return 'ubos://%s/Customer/%s' % (VAE, code.lower())
+
+
+def receivables_setup():
+    """Tax codes, customers, the receivables object and the opening open items."""
+    changes = []
+    for r in rows('tax-codes.csv'):
+        changes.append({'op': 'create', 'class': 'TaxCode', 'object_id': uid('tax', r['code']), 'slug': r['code'].lower(),
+                        'body': {'code': r['code'], 'description': r['description'], 'rate': r['rate_percent'],
+                                 'category': TAX_CATEGORY[r['code']],
+                                 'certificate_required': TAX_CATEGORY[r['code']] == 'exempt',
+                                 'payable_account': account_uri('2200')}})
+    for r in rows('customers.csv'):
+        body = {'code': r['id'], 'name': r['name'], 'location': r['location'], 'currency': 'USD',
+                'tax_code': tax_uri(r['tax_code']), 'terms_days': int(r['terms_days']),
+                'receivable_account': account_uri('1200')}
+        m = re.search(r'(RC-\d+), valid to (\d{4}-\d{2}-\d{2})', r['exemption_certificate'])
+        if m:
+            body['certificate'], body['certificate_valid_to'] = m.group(1), m.group(2)
+        changes.append({'op': 'create', 'class': 'Customer', 'object_id': uid('customer', r['id']),
+                        'slug': r['id'].lower(), 'body': body})
+    changes.append({'op': 'create', 'class': 'Receivables', 'object_id': uid('receivables'), 'slug': 'receivables',
+                    'body': {'name': 'Receivables', 'control_account': account_uri('1200')}})
+    for r in rows('open-receivables.csv'):
+        changes.append({'op': 'append', 'class': 'ArItem', 'entry_id': uid('ar-open', r['document']),
+                        'ledger_key': {'customer': r['customer']}, 'valid_at': r['date'],
+                        'body': {'customer': r['customer'], 'document': r['document'],
+                                 'amount': money(amount(cents(r['amount_usd']))), 'kind': 'opening',
+                                 'source': 'opening', 'invoice_date': r['date'], 'due': r['due']}})
+    return [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': changes}}]
+
+
+def customer_codes():
+    return {r['id']: r for r in rows('customers.csv')}
+
+
+def ar_document(doc):
+    """The Invoice or Receipt object of a January receivables document of the CSV."""
+    name, kind, posting, _, lines = doc
+    cust = lines[0]['party']
+    cdef = customer_codes()[cust]['tax_code']
+    if kind in ('invoice', 'credit memo'):
+        out = []
+        for r in lines:
+            if r['account'] not in REVENUE:
+                continue
+            a = cents(r['credit']) - cents(r['debit'])
+            out.append({'description': r['description'], 'account': account_uri(r['account']),
+                        'amount': money(amount(abs(a))),
+                        'tax_code': tax_uri(LINE_TAX.get((name, r['account']), cdef))})
+        body = {'number': name, 'kind': 'invoice' if kind == 'invoice' else 'credit_memo',
+                'customer': customer_uri(cust), 'invoice_date': posting, 'description': lines[0]['description'],
+                'lines': out, 'state': 'draft'}
+        if name in APPLIES_TO:
+            body['applies_to'] = APPLIES_TO[name]
+        return {'op': 'create', 'class': 'Invoice', 'object_id': uid('invoice', name), 'slug': name.lower(), 'body': body}
+    cash = next(r for r in lines if r['account'] == '1010')
+    total = cents(cash['debit'])
+    apps = [{'document': d, 'amount': money(amount(total))} for d in re.findall(r'INV-\d+', lines[0]['description'])]
+    return {'op': 'create', 'class': 'Receipt', 'object_id': uid('receipt', name), 'slug': name.lower(),
+            'body': {'number': name, 'customer': customer_uri(cust), 'receipt_date': posting,
+                     'amount': money(amount(total)), 'method': 'ACH', 'bank_account': account_uri('1010'),
+                     'applications': apps, 'state': 'draft'}}
+
+
+def ar_steps(month, clock, override=None):
+    """The receivables documents of a month, each created and posted at its recording date."""
+    steps = []
+    for doc in documents(month):
+        if doc[1] not in ('invoice', 'credit memo', 'receipt'):
+            continue
+        at = datetime.datetime.fromisoformat(doc[3]) + datetime.timedelta(hours=12)
+        more, clock = advance(clock, at)
+        obj = (override or {}).get(doc[0]) or ar_document(doc)
+        steps += more + [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': [obj]}},
+                         {'op': 'execute', 'input': {'branch': BRANCH, 'target': obj['object_id'], 'port': 'post',
+                                                     'params': {}, 'process': {'initiator': PREPARER}},
+                          'expect': {'match': 'subset', 'result': {'result': {'posted': True}}}}]
+    return steps, clock
+
+
+def receivables_tests():
+    base = setup_steps() + receivables_setup()
+    steps, _ = ar_steps('2026-01', START)
+    ar_docs = [d[0] for d in documents('2026-01') if d[1] in ('invoice', 'credit memo', 'receipt')]
+    posted = {k: c for k, c in posted_lines('FIN-EXP-02').items() if k[1] in ar_docs}
+    # FIN-EXP-08 before the revaluation of INV-1005 (multi-currency, part 10f): INV-1005 at its
+    # invoice-date amount, the total less the revaluation of FIN-EXP-02 (FXR-2601)
+    reval = posted_lines('FIN-EXP-02')[('1200', 'FXR-2601')]
+    aging = []
+    for cells in section('FIN-EXP-08'):
+        if not cells[0]:      # the total line
+            continue
+        open_ = cents(cells[5])
+        if cells[1] == 'INV-1005':
+            open_ -= reval
+        aging.append({'customer': cells[0], 'document': cells[1], 'date': cells[2], 'due': cells[3],
+                      'bucket': cells[4], 'open': amount(open_)})
+    total = amount(sum(cents(r['open']) for r in aging))
+    tax = []
+    for cells in section('FIN-EXP-13'):
+        code = cells[0].split(' ')[0]
+        tax.append({'tax_code': code, 'taxable': amount(cents(cells[1])), 'exempt': amount(cents(cells[2])),
+                    'tax': amount(cents(cells[3])), 'documents': sorted(re.findall(r'(?:INV|CM)-\d+', cells[4]))})
+    tax.sort(key=lambda r: r['tax_code'])
+    report = lambda port, params, result: {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('receivables'),
+                                                                        'port': port, 'params': params},
+                                           'expect': {'match': 'subset', 'result': {'result': result}}}
+    c300_open = sum(cents(r['amount_usd']) for r in rows('open-receivables.csv') if r['customer'] == 'C300')
+    c300_end = sum(cents(r['open']) for r in aging if r['customer'] == 'C300')
+    c300_receipts = sum(c for (code, doc), c in posted.items() if code == '1200' and doc.startswith('RCPT')
+                        and document_named(doc)[4][0]['party'] == 'C300')
+    c300_invoices = sum(c for (code, doc), c in posted.items() if code == '1200' and doc.startswith('INV')
+                        and document_named(doc)[4][0]['party'] == 'C300')
+    wrong = ar_document(document_named('RCPT-0003'))
+    wrong['body']['applications'] = [{'document': 'INV-1007', 'amount': money('20000.00')}]
+    steps_wrong, _ = ar_steps('2026-01', START, {'RCPT-0003': wrong})
+    resale = {'op': 'create', 'class': 'Invoice', 'object_id': uid('invoice', 'INV-9001'), 'slug': 'inv-9001',
+              'body': {'number': 'INV-9001', 'kind': 'invoice', 'customer': customer_uri('C100'),
+                       'invoice_date': '2026-01-20', 'description': 'resale claimed without a certificate',
+                       'state': 'draft', 'lines': [{'description': 'components', 'account': account_uri('4000'),
+                                                    'amount': money('1000.00'), 'tax_code': tax_uri('TX-RESALE')}]}}
+    return [{
+        'name': 'SCN-503 FIN-GL-021 the January receivables documents post the journal lines of FIN-EXP-02',
+        'kind': 'scenario',
+        'steps': base + steps + [
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document', 'group': {'document': d}},
+             'expect': {'match': 'subset', 'result': {'groups': document_groups(
+                 {k: c for k, c in posted.items() if k[1] == d})}}} for d in ar_docs],
+    }, {
+        'name': 'FIN-AR-010 FIN-RP-007 the aging at 2026-01-31 equals FIN-EXP-08 (INV-1005 before revaluation) and the control account',
+        'kind': 'scenario',
+        'steps': base + steps + [report('aging', {'as_of': '2026-01-31'},
+                                        {'rows': aging, 'total': total, 'control_balance': total, 'difference': '0.00'})],
+    }, {
+        'name': 'FIN-TX-008 the sales tax report of January equals FIN-EXP-13',
+        'kind': 'scenario',
+        'steps': base + steps + [report('tax_report', {'opening': '2025-12-31', 'closing': '2026-01-31'}, {'rows': tax})],
+    }, {
+        'name': 'FIN-AR-009 the statement of C300 for January',
+        'kind': 'scenario',
+        'steps': base + steps + [report('statement', {'customer': 'C300', 'opening': '2025-12-31', 'closing': '2026-01-31'},
+                                        {'opening_balance': amount(c300_open), 'closing_balance': amount(c300_end),
+                                         'activity': {'invoice': amount(c300_invoices), 'receipt': amount(c300_receipts)}})],
+    }, {
+        'name': 'FIN-AR-008 a receipt applied to the wrong invoice is reapplied; the aging is right and the history stays',
+        'kind': 'scenario',
+        'steps': base + steps_wrong + [
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('receipt', 'RCPT-0003'), 'port': 'reapply',
+                                        'params': {'from_document': 'INV-1007', 'to_document': 'INV-1003',
+                                                   'amount': money('20000.00')}}},
+            report('aging', {'as_of': '2026-01-31'}, {'rows': aging, 'total': total, 'difference': '0.00'}),
+            {'op': 'read_ledger', 'input': {'branch': BRANCH, 'class': 'ArItem', 'ledger_key': {'customer': 'C300'}},
+             'expect': {'match': 'subset', 'result': {'entries': [
+                 {'body': {'document': 'INV-1003', 'kind': 'opening'}},
+                 {'body': {'document': 'INV-1007', 'kind': 'invoice'}},
+                 {'body': {'document': 'INV-1007', 'kind': 'receipt', 'source': 'RCPT-0003'}},
+                 {'body': {'document': 'INV-1007', 'kind': 'reapply'}},
+                 {'body': {'document': 'INV-1003', 'kind': 'reapply'}}]}}},
+        ],
+    }, {
+        'name': 'FIN-TX-004 a resale line without a valid certificate is refused',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [resale]}},
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('invoice', 'INV-9001'), 'port': 'post',
+                                        'params': {}}, 'expect': {'error_code': 'RULE.DECISION_DENIED'}},
+        ],
+    }]
+
+
 def asset_id(name):
     """The object id `forge test` gives a logic asset (`ubos_dvm::packages::asset_object_id`)."""
     h = hashlib.sha256(b'ubos.chunk.v1\x00' + json.dumps(name).encode()).hexdigest()
@@ -680,7 +866,7 @@ def asset_id(name):
 
 
 ASSETS = ('ubos.finance.statements', 'ubos.finance.entries', 'ubos.finance.periods', 'ubos.finance.years',
-          'ubos.finance.recurring')
+          'ubos.finance.recurring', 'ubos.finance.receivables')
 
 
 def verified_on(branch):
@@ -708,7 +894,8 @@ def main():
              'tests/sample-february.yaml': dump(february_tests()),
              'tests/sample-statements.yaml': dump(statement_tests()),
              'tests/sample-entries.yaml': dump(entry_tests()),
-             'tests/sample-periods.yaml': dump(period_tests())}
+             'tests/sample-periods.yaml': dump(period_tests()),
+             'tests/sample-receivables.yaml': dump(receivables_tests())}
     check = '--check' in sys.argv
     stale = []
     for rel, text in files.items():

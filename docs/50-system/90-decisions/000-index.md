@@ -34,6 +34,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-145 | PH-2 step 9 closed: the `finance` Buk, part 1 (parts 9a–9d, DEC-141…144) — 12 tests tie out 466 figures in memory and on PostgreSQL; EXIT-2-04 passed by inspection (VER-INSP-0002, 0 findings); requirement coverage recorded and the rest assigned to steps | Accepted |
 | DEC-146 | PH-2 step 10 opened in parts 10a–10h; part 10a-1: journal entries with maker–checker approval, the control-account rule and gap-free numbering per fiscal year and source; `ref()` in decisions reads at the decision's coordinates | Accepted |
 | DEC-147 | PH-2 step 10, part 10a-2: recurring entries, automatic reversal on opening a period, governed reopening, the fiscal-year close with superseded closes; two gaps of BPA 1.0 for the next release candidate (a ledger's posting-date field, explicit coordinates of `read.projection`) | Accepted |
+| DEC-148 | PH-2 step 10, part 10b: receivables and sales tax — customers, tax codes, invoices and credit memos with tax, receipts with application and reapplication, the open-item and tax subledgers, aging with the control account, the sales tax report and customer statements | Accepted |
 
 ---
 
@@ -732,3 +733,38 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
   - Posting reversals by a timer (BecameEffective events) was rejected for now: FIN-GL-018 ties the reversal to opening the period, and a port keeps it explicit and idempotent.
   - Treating the posting date as the entry's `valid_at` inside the Buk was rejected: the kernel's period rules and close artefacts follow the posting date of STD-KIND-025, and a Buk cannot change them.
 - **Affects:** DEC-146, FIN-GL-017, FIN-GL-018, FIN-PC-001, FIN-PC-006, FIN-PC-008, FIN-RP-020, STD-KIND-025, STD-KIND-026, STD-ISA-037, STD-VER-011, STD-CTX-023, DSN-FRG-201
+
+### DEC-148 — The finance Buk, part 10b: receivables and sales tax (PH-2 step 10)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 10b of step 10 (DEC-146) builds receivables and sales tax (FIN-AR, FIN-TX) and SCN-503. It ties out the January receivables documents against FIN-EXP-02, the aging against FIN-EXP-08 and the sales tax report against FIN-EXP-13.
+- **Decision:**
+  1. **Master data.**
+     - `TaxCode` holds the code, rate, category (taxable, exempt, non-taxable, export), whether a certificate is required, and the payable account.
+     - `Customer` holds the code, name, location, currency, default tax code, terms, certificate with its expiry, and receivable account.
+     - Both are Definition objects, so rates and terms are effective-dated by their versions.
+  2. **Documents.**
+     - `Invoice` holds both invoices and credit memos; a credit memo can apply to an invoice. Its port `post`:
+       - computes tax per tax code on the sum of the code's lines, half away from zero to the cent (`div` with `half_up`);
+       - computes the due date from the terms;
+       - creates and posts a `JournalEntry` of source `receivables`, so every subledger document reaches the general ledger at once (FIN-GL-021);
+       - appends the open item (`ArItem`) and the tax detail (`TaxLine`), and numbers the document in the gap-free series `sales-documents` (FIN-AR-004).
+     - `Receipt` posts cash against receivables. It applies its amount to open items, and the rest stays as an unapplied item. Its port `reapply` moves an applied amount between items, keeping both entries as history (FIN-AR-008).
+  3. **Subledgers and reports.**
+     - The projections `ar-open` (by customer and document), `ar-activity` (by customer and kind) and `tax-detail` (by tax code and document) are in the seed.
+     - The `Receivables` object answers three query ports: `aging(as_of)`, with due-date buckets and the control account's balance and difference (FIN-AR-010, FIN-RP-007); `tax_report(opening, closing)` (FIN-TX-008); and `statement(customer, opening, closing)` (FIN-AR-009).
+  4. **Certificates.** The sheet `ubos.finance.controls` denies posting an invoice with a line under a code that requires a certificate when the customer's certificate is missing or expired at the invoice date (FIN-TX-004).
+  5. **Test data.** Tax codes, customers and opening open items come from the frozen CSVs. The documents are built from the CSV's journal lines. Two facts appear only in the documents' descriptions: the service line of INV-1004 is non-taxable (NT), and CM-2001 applies to INV-1004. The generator states them as data. The expected figures come only from the tables of the expected results.
+  6. **INV-1005.** It is recorded at its US-dollar amount at the invoice-date rate until part 10f makes it a euro invoice with revaluation. The aging test therefore expects INV-1005 at 54,250.00, the published row less the revaluation of FXR-2601 in FIN-EXP-02.
+  7. **Forge.** Script coverage resolves a scenario port call to its implementation through the target's URI or the objects the scenario created, now that several classes have a port `post`.
+- **Consequences:**
+  - Six new tests pass in memory and on PostgreSQL 16; all 28 finance tests pass, with script coverage 1.0.
+  - The tests cover: the GL lines of the nine January receivables documents; the aging; the tax report; the statement of C300; reapplying a misapplied receipt with its history; and the certificate refusal.
+- **Open, assigned to parts of step 10 or later steps:**
+  - multi-currency invoices and revaluation (10f);
+  - the payment of sales tax to the authority, STX-PAY-2512 (10d with the bank);
+  - use tax on purchases (FIN-TX-007, Should; 10c);
+  - the allowance and write-offs with approval (FIN-AR-011, -012), the credit-limit check (FIN-AR-013, Should) and recurring invoices (FIN-AR-014, Should): 10g;
+  - deferred service revenue (FIN-AR-015, Could): PH-3;
+  - invoice documents as PDF (FIN-AR-005): step 15;
+  - jurisdictions combined into codes (FIN-TX-001): the sample codes are single rates, so 10g decides whether a combination is needed.
+- **Affects:** DEC-146, FIN-AR-001…010, FIN-TX-002…006, FIN-TX-008, FIN-GL-021, FIN-RP-007, DSN-FRG-201

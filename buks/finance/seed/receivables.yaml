@@ -1,0 +1,37 @@
+# The receivables projections (STD-TIME-021): open items and the sales-tax detail.
+changes:
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-000000000004
+    slug: ar-open
+    body:
+      name: ar-open
+      source: ArItem
+      group_by: [customer, document]
+      aggregates:
+        - {fn: sum, field: amount, as: open}
+        - {fn: last, field: invoice_date, as: invoice_date}
+        - {fn: last, field: due, as: due}
+        - {fn: sum, field: amount, as: amount}
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-000000000005
+    slug: ar-activity
+    body:
+      name: ar-activity
+      source: ArItem
+      group_by: [customer, kind]
+      aggregates:
+        - {fn: sum, field: amount, as: amount}
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-000000000006
+    slug: tax-detail
+    body:
+      name: tax-detail
+      source: TaxLine
+      group_by: [tax_code, document]
+      aggregates:
+        - {fn: sum, field: taxable, as: taxable}
+        - {fn: sum, field: exempt, as: exempt}
+        - {fn: sum, field: tax, as: tax}

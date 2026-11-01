@@ -25,4 +25,5 @@ documents, the `gl-document` projection, FIN-EXP-02 and -03; 9c — the January 
 items and the back-dated correction, FIN-EXP-15…17; 9d — the financial statements, FIN-EXP-04…07; 9e — the tie-out report and
 the step record. Step 9 is closed (DEC-145).
 Step 10 (DEC-146, parts 10a–10h): 10a-1 — journal entries with approval, control accounts and
-numbering; 10a-2 — recurring and reversing entries, governed reopening and the year-end close.
+numbering; 10a-2 — recurring and reversing entries, governed reopening and the year-end close; 10b — receivables and
+sales tax.
