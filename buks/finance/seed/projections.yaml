@@ -23,3 +23,14 @@ changes:
       group_by: [document, account]
       aggregates:
         - {fn: sum, field: amount, as: amount}
+  # the lines of each account by document kind: exclusions of the cash-flow statement
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-000000000003
+    slug: gl-kind
+    body:
+      name: gl-kind
+      source: JournalLine
+      group_by: [account, kind]
+      aggregates:
+        - {fn: sum, field: amount, as: amount}

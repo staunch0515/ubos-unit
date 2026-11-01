@@ -25,6 +25,8 @@ DATA = os.path.join(FIN, 'sample-company')
 EXPECTED = os.path.join(FIN, '21-expected-results.md')
 
 VAE = 'acme'
+# the working branch of `forge test`, where the Buk's logic assets are (DEC-144)
+BRANCH = 'feature/forge'
 CURRENCY = 'USD'
 # chart categories -> LedgerAccount types (STD-KIND-029)
 TYPES = {'Asset': 'asset', 'Liability': 'liability', 'Equity': 'equity', 'Revenue': 'income',
@@ -165,7 +167,7 @@ def posting_steps(month, clock, events=()):
         if n < 0:
             steps += item
         else:
-            steps.append({'op': 'commit', 'input': {'branch': 'main', 'changes': document_changes(item)}})
+            steps.append({'op': 'commit', 'input': {'branch': BRANCH, 'changes': document_changes(item)}})
     return steps, clock
 
 
@@ -176,12 +178,12 @@ def close_steps(slug, tb):
     balances = [{'class': 'JournalLine', 'ledger_key': g['key'],
                  'amounts': {'amount': g['values']['balance']}} for g in balance_groups(tb)]
     return [
-        {'op': 'read', 'input': {'branch': 'main', 'object_id': oid}, 'label': 'period-' + slug},
-        {'op': 'commit', 'input': {'branch': 'main', 'changes': [
+        {'op': 'read', 'input': {'branch': BRANCH, 'object_id': oid}, 'label': 'period-' + slug},
+        {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
             {'op': 'update', 'object_id': oid, 'base': {'$ref': 'period-%s/version_hash' % slug},
              'body': {'state': 'closing'}}]}},
         {'op': 'close_period',
-         'input': {'branch': 'main', 'period': oid, 'artefact_id': uid('artefact', slug)},
+         'input': {'branch': BRANCH, 'period': oid, 'artefact_id': uid('artefact', slug)},
          'expect': {'match': 'subset', 'result': {'tag': 'close-%s-1' % slug, 'balances': balances}}},
     ]
 
@@ -190,7 +192,7 @@ def account_reads(asof, figures, tx_time=None):
     """One read of `gl-balance` per account: {code: cents}."""
     out = []
     for code, c in figures.items():
-        i = {'branch': 'main', 'projection': 'gl-balance', 'asof': asof,
+        i = {'branch': BRANCH, 'projection': 'gl-balance', 'asof': asof,
              'group': {'account': account_uri(code)}}
         if tx_time:
             i['tx_time'] = tx_time
@@ -249,9 +251,9 @@ def balance_groups(tb):
 
 def setup_steps():
     return [
-        {'op': 'commit', 'input': {'branch': 'main', 'changes': chart_changes()}},
-        {'op': 'commit', 'input': {'branch': 'main', 'changes': period_changes()}},
-        {'op': 'commit', 'input': {'branch': 'main', 'changes': opening_changes()}},
+        {'op': 'commit', 'input': {'branch': BRANCH, 'changes': chart_changes()}},
+        {'op': 'commit', 'input': {'branch': BRANCH, 'changes': period_changes()}},
+        {'op': 'commit', 'input': {'branch': BRANCH, 'changes': opening_changes()}},
     ]
 
 
@@ -262,7 +264,7 @@ def opening_tests():
         'kind': 'scenario',
         'steps': setup_steps() + [
             {'op': 'read_projection',
-             'input': {'branch': 'main', 'projection': 'gl-balance', 'asof': '2025-12-31'},
+             'input': {'branch': BRANCH, 'projection': 'gl-balance', 'asof': '2025-12-31'},
              'expect': {'match': 'subset', 'result': {'groups': balance_groups(tb)}}},
         ],
     }]
@@ -277,7 +279,7 @@ def january_tests():
         'kind': 'scenario',
         'steps': setup_steps() + steps + [
             {'op': 'read_projection',
-             'input': {'branch': 'main', 'projection': 'gl-document', 'asof': '2026-01-31'},
+             'input': {'branch': BRANCH, 'projection': 'gl-document', 'asof': '2026-01-31'},
              'expect': {'match': 'subset', 'result': {'groups': document_groups(posted)}}},
         ],
     }, {
@@ -285,7 +287,7 @@ def january_tests():
         'kind': 'scenario',
         'steps': setup_steps() + steps + [
             {'op': 'read_projection',
-             'input': {'branch': 'main', 'projection': 'gl-balance', 'asof': '2026-01-31'},
+             'input': {'branch': BRANCH, 'projection': 'gl-balance', 'asof': '2026-01-31'},
              'expect': {'match': 'subset', 'result': {'groups': balance_groups(trial_balance('FIN-EXP-03'))}}},
         ],
     }]
@@ -307,7 +309,7 @@ def february_tests():
         posted[(code, doc)] = posted.get((code, doc), 0) + c
     late, _ = advance(datetime.datetime(2026, 1, 31, 12), datetime.datetime(2026, 1, 31, 18))
     late_close = close_steps('2026-01', tb)
-    refused = {'op': 'commit', 'input': {'branch': 'main', 'changes': document_changes(
+    refused = {'op': 'commit', 'input': {'branch': BRANCH, 'changes': document_changes(
         ('JE-LATE', 'journal', '2026-01-31', '2026-01-31',
          [{'account': '6400', 'debit': '100.00', 'credit': '', 'party': '', 'description': 'late entry'},
           {'account': '2100', 'debit': '', 'credit': '100.00', 'party': '', 'description': 'late entry'}]))},
@@ -321,7 +323,7 @@ def february_tests():
         'kind': 'scenario',
         'steps': setup_steps() + jan + feb + [
             {'op': 'read_projection',
-             'input': {'branch': 'main', 'projection': 'gl-document', 'asof': '2026-02-28'},
+             'input': {'branch': BRANCH, 'projection': 'gl-document', 'asof': '2026-02-28'},
              'expect': {'match': 'subset', 'result': {'groups': document_groups(posted)}}},
         ],
     }, {
@@ -348,6 +350,55 @@ def posted_feb():
     return out
 
 
+def statement_rows(fid, columns=False):
+    """The rows of a statement section: {label, amount} or {label, values}."""
+    out = []
+    for cells in section(fid):
+        if columns:
+            vals = [None if c in ('—', '') else amount(cents(c)) for c in cells[1:]]
+            out.append({'label': cells[0], 'values': vals})
+        else:
+            out.append({'label': cells[0], 'amount': amount(cents(cells[1]))})
+    return out
+
+
+STATEMENTS = (('FIN-EXP-04', 'income-statement', 'Income statement, January 2026', False),
+              ('FIN-EXP-05', 'balance-sheet', 'Balance sheet at 2026-01-31', False),
+              ('FIN-EXP-06', 'cash-flows', 'Statement of cash flows, January 2026', False),
+              ('FIN-EXP-07', 'stockholders-equity', "Statement of stockholders' equity, January 2026", True))
+
+
+def statement_tests():
+    jan, _ = posting_steps('2026-01', START)
+    tests = []
+    for fid, slug, title, columns in STATEMENTS:
+        key = 'values' if columns else 'amount'
+        rows = [{'label': r['label'], key: r[key]} for r in statement_rows(fid, columns)]
+        tests.append({
+            'name': '%s %s' % (fid, title),
+            'kind': 'scenario',
+            'steps': setup_steps() + jan + [
+                {'op': 'execute',
+                 'input': {'branch': BRANCH, 'target': 'ubos://%s/FinancialStatement/%s' % (VAE, slug),
+                           'port': 'render', 'params': {'opening': '2025-12-31', 'closing': '2026-01-31'}},
+                 'expect': {'match': 'subset', 'result': {'result': {'lines': rows}}}},
+            ],
+        })
+    # the port on the seed alone: every line of an empty ledger is zero (and the asset's
+    # coverage counts the port, DSN-FRG-201)
+    tests.append({
+        'name': 'an empty ledger renders the income statement with every line at zero',
+        'kind': 'port',
+        'target': '01890a5d-ac96-7f01-8000-000000000001',
+        'port': 'render',
+        'params': {'opening': '2025-12-31', 'closing': '2026-01-31'},
+        'expect': {'result': {'statement': 'Income statement', 'opening': '2025-12-31', 'closing': '2026-01-31',
+                              'lines': [{'label': r['label'], 'amount': '0.00'}
+                                        for r in statement_rows('FIN-EXP-04')]}},
+    })
+    return tests
+
+
 def dump(tests):
     return HEADER + json.dumps({'tests': tests}, indent=1, ensure_ascii=False) + '\n'
 
@@ -355,7 +406,8 @@ def dump(tests):
 def main():
     files = {'tests/sample-opening.yaml': dump(opening_tests()),
              'tests/sample-january.yaml': dump(january_tests()),
-             'tests/sample-february.yaml': dump(february_tests())}
+             'tests/sample-february.yaml': dump(february_tests()),
+             'tests/sample-statements.yaml': dump(statement_tests())}
     check = '--check' in sys.argv
     stale = []
     for rel, text in files.items():

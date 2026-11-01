@@ -8,7 +8,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "create",
@@ -628,7 +628,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "create",
@@ -692,7 +692,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1023,7 +1023,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1076,7 +1076,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1129,7 +1129,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1224,7 +1224,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1277,7 +1277,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1330,7 +1330,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1404,7 +1404,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1457,7 +1457,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1510,7 +1510,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1560,7 +1560,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1610,7 +1610,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1661,7 +1661,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1714,7 +1714,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1764,7 +1764,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1814,7 +1814,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1867,7 +1867,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1920,7 +1920,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -1973,7 +1973,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -2026,7 +2026,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -2079,7 +2079,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -2174,7 +2174,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -2222,7 +2222,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -2270,7 +2270,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -2318,7 +2318,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -2368,7 +2368,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -2418,7 +2418,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -2468,7 +2468,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -2518,7 +2518,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -2569,7 +2569,7 @@
     {
      "op": "read",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "object_id": "6cf0a7e9-f104-818a-8c4e-883883e4f466"
      },
      "label": "period-2026-01"
@@ -2577,7 +2577,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "update",
@@ -2595,7 +2595,7 @@
     {
      "op": "close_period",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "period": "6cf0a7e9-f104-818a-8c4e-883883e4f466",
       "artefact_id": "b9441d69-2ceb-808c-866a-666c8dcc4469"
      },
@@ -3101,7 +3101,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -3158,7 +3158,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "create",
@@ -3778,7 +3778,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "create",
@@ -3842,7 +3842,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4173,7 +4173,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4226,7 +4226,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4279,7 +4279,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4374,7 +4374,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4427,7 +4427,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4480,7 +4480,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4554,7 +4554,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4607,7 +4607,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4660,7 +4660,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4710,7 +4710,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4760,7 +4760,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4811,7 +4811,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4864,7 +4864,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4914,7 +4914,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -4964,7 +4964,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5017,7 +5017,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5070,7 +5070,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5123,7 +5123,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5176,7 +5176,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5229,7 +5229,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5324,7 +5324,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5372,7 +5372,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5420,7 +5420,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5468,7 +5468,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5518,7 +5518,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5568,7 +5568,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5618,7 +5618,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5668,7 +5668,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5719,7 +5719,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -5772,7 +5772,7 @@
     {
      "op": "read",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "object_id": "6cf0a7e9-f104-818a-8c4e-883883e4f466"
      },
      "label": "period-2026-01"
@@ -5780,7 +5780,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "update",
@@ -5798,7 +5798,7 @@
     {
      "op": "close_period",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "period": "6cf0a7e9-f104-818a-8c4e-883883e4f466",
       "artefact_id": "b9441d69-2ceb-808c-866a-666c8dcc4469"
      },
@@ -6307,7 +6307,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -6360,7 +6360,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -6413,7 +6413,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -6466,7 +6466,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -6514,7 +6514,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -6585,7 +6585,7 @@
     {
      "op": "read_projection",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "projection": "gl-document",
       "asof": "2026-02-28"
      },
@@ -7866,7 +7866,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "create",
@@ -8486,7 +8486,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "create",
@@ -8550,7 +8550,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -8881,7 +8881,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -8934,7 +8934,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -8987,7 +8987,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9082,7 +9082,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9135,7 +9135,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9188,7 +9188,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9262,7 +9262,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9315,7 +9315,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9368,7 +9368,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9418,7 +9418,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9468,7 +9468,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9519,7 +9519,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9572,7 +9572,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9622,7 +9622,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9672,7 +9672,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9725,7 +9725,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9778,7 +9778,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9831,7 +9831,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9884,7 +9884,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -9937,7 +9937,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -10032,7 +10032,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -10080,7 +10080,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -10128,7 +10128,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -10176,7 +10176,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -10226,7 +10226,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -10276,7 +10276,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -10326,7 +10326,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -10376,7 +10376,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -10427,7 +10427,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -10480,7 +10480,7 @@
     {
      "op": "read",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "object_id": "6cf0a7e9-f104-818a-8c4e-883883e4f466"
      },
      "label": "period-2026-01"
@@ -10488,7 +10488,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "update",
@@ -10506,7 +10506,7 @@
     {
      "op": "close_period",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "period": "6cf0a7e9-f104-818a-8c4e-883883e4f466",
       "artefact_id": "b9441d69-2ceb-808c-866a-666c8dcc4469"
      },
@@ -11015,7 +11015,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -11068,7 +11068,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -11121,7 +11121,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -11174,7 +11174,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -11222,7 +11222,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -11293,7 +11293,7 @@
     {
      "op": "read_projection",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "projection": "gl-balance",
       "asof": "2026-02-05",
       "group": {
@@ -11325,7 +11325,7 @@
     {
      "op": "read_projection",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "projection": "gl-balance",
       "asof": "2026-02-05",
       "group": {
@@ -11357,7 +11357,7 @@
     {
      "op": "read_projection",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "projection": "gl-balance",
       "asof": "2026-02-05",
       "group": {
@@ -11389,7 +11389,7 @@
     {
      "op": "read_projection",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "projection": "gl-balance",
       "asof": "2026-02-05",
       "group": {
@@ -11427,7 +11427,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "create",
@@ -12047,7 +12047,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "create",
@@ -12111,7 +12111,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -12442,7 +12442,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -12495,7 +12495,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -12548,7 +12548,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -12643,7 +12643,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -12696,7 +12696,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -12749,7 +12749,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -12823,7 +12823,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -12876,7 +12876,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -12929,7 +12929,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -12979,7 +12979,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13029,7 +13029,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13080,7 +13080,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13133,7 +13133,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13183,7 +13183,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13233,7 +13233,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13286,7 +13286,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13339,7 +13339,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13392,7 +13392,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13445,7 +13445,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13498,7 +13498,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13593,7 +13593,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13641,7 +13641,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13689,7 +13689,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13737,7 +13737,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13787,7 +13787,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13837,7 +13837,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13887,7 +13887,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13937,7 +13937,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -13988,7 +13988,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -14041,7 +14041,7 @@
     {
      "op": "read",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "object_id": "6cf0a7e9-f104-818a-8c4e-883883e4f466"
      },
      "label": "period-2026-01"
@@ -14049,7 +14049,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "update",
@@ -14067,7 +14067,7 @@
     {
      "op": "close_period",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "period": "6cf0a7e9-f104-818a-8c4e-883883e4f466",
       "artefact_id": "b9441d69-2ceb-808c-866a-666c8dcc4469"
      },
@@ -14576,7 +14576,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -14629,7 +14629,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -14682,7 +14682,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -14735,7 +14735,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -14783,7 +14783,7 @@
     {
      "op": "commit",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "changes": [
        {
         "op": "append",
@@ -14854,7 +14854,7 @@
     {
      "op": "read_projection",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "projection": "gl-balance",
       "asof": "2026-02-28",
       "group": {
@@ -14885,7 +14885,7 @@
     {
      "op": "read_projection",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "projection": "gl-balance",
       "asof": "2026-02-28",
       "group": {
@@ -14916,7 +14916,7 @@
     {
      "op": "read_projection",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "projection": "gl-balance",
       "asof": "2026-02-28",
       "group": {
@@ -14947,7 +14947,7 @@
     {
      "op": "read_projection",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "projection": "gl-balance",
       "asof": "2026-02-28",
       "group": {
@@ -14978,7 +14978,7 @@
     {
      "op": "read_projection",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "projection": "gl-balance",
       "asof": "2026-02-28",
       "group": {
@@ -15009,7 +15009,7 @@
     {
      "op": "read_projection",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "projection": "gl-balance",
       "asof": "2026-02-28",
       "group": {
@@ -15040,7 +15040,7 @@
     {
      "op": "read_projection",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "projection": "gl-balance",
       "asof": "2026-02-28",
       "group": {
@@ -15071,7 +15071,7 @@
     {
      "op": "read_projection",
      "input": {
-      "branch": "main",
+      "branch": "feature/forge",
       "projection": "gl-balance",
       "asof": "2026-02-28",
       "group": {

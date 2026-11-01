@@ -1,0 +1,29 @@
+# Financial statements as layouts (FIN-RP-002…005, -011): a layout is data, rendered by the
+# port `render` from the balance projections (logic `ubos.finance.statements`).
+classes:
+  - name: FinancialStatement
+    label: financial statement
+    description: The layout of a financial statement; `render` computes its lines for a period
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    fields:
+      - {name: name, label: name, description: the statement's name, type: text, required: true}
+      - name: basis
+        label: basis
+        description: lines (one amount per line) or columns (the statement of stockholders' equity)
+        type: enum
+        required: true
+        constraints: {allowed_values: [lines, columns]}
+      - {name: lines, label: lines, description: "the line specifications (see the logic asset)", type: json, required: true}
+      - {name: columns, label: columns, description: "the column specifications of a columns statement", type: json}
+    ports:
+      - name: render
+        description: the statement for the period (opening, closing]
+        kind: query
+        params:
+          - {name: opening, label: opening, description: the last day before the period, type: date, required: true}
+          - {name: closing, label: closing, description: the last day of the period, type: date, required: true}
+        permission: read
+        impl: ubos.finance.statements#render

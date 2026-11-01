@@ -30,6 +30,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-141 | PH-2 step 9 opened in parts 9a–9e; part 9a: the `finance` Buk in `buks/finance` with the chart of accounts, fiscal periods, the journal ledger and the balance projection; tie-out tests generated from the frozen sample company; FIN-EXP-01 ties out | Accepted |
 | DEC-142 | PH-2 step 9, part 9b: the January documents posted as balanced journal entries at their recording dates; the `gl-document` projection; FIN-EXP-02 and FIN-EXP-03 tie out | Accepted |
 | DEC-143 | PH-2 step 9, part 9c: January closed with its close artefact, later January postings refused, the February items with the back-dated correction; `read_projection` takes every snapshot selector; FIN-EXP-15…17 tie out | Accepted |
+| DEC-144 | PH-2 step 9, part 9d: financial statements as layout data rendered by an L2 port from the balance projections; the four US layouts and the `gl-kind` projection; FIN-EXP-04…07 tie out line by line | Accepted |
 
 ---
 
@@ -596,3 +597,29 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); the records from DEC-127 on
 - **Alternatives considered:**
   - Reading "as known on" by commit sequence (`time`) was rejected: the expected results state dates, and `tx_time` is the selector made for them.
 - **Affects:** DEC-141, STD-KIND-025, STD-KIND-026, STD-TIME-021, STD-CONF-005, FIN-PC-003, FIN-PC-005, FIN-PC-007, FIN-RP-020
+
+### DEC-144 — The finance Buk, part 9d: financial statements (PH-2 step 9)
+- **Date:** 2026-11-01 · **Status:** Accepted
+- **Context:** Part 9d of step 9 (DEC-141) produces the four statements of January 2026: income statement, balance sheet, statement of cash flows by the indirect method, and statement of stockholders' equity. They must equal FIN-EXP-04…07 line by line and come from the Buk alone (EXIT-2-04).
+- **Decision:**
+  1. **Layouts are data.**
+     - The class `FinancialStatement` holds a layout: `basis` (`lines` or `columns`), the line specifications and, for the equity statement, the columns. This is the report-layout requirement FIN-RP-011.
+     - A line takes the balance at the period's end or start, or the change between them, of account codes or ranges, with a sign. Or it sums earlier lines.
+     - A line can leave out document kinds, keep only documents that post to given accounts or leave them out, and take debits only. With these the cash-flow statement leaves out the revaluation from receivables and the equipment bought on account from payables, and reports interest and taxes paid.
+     - A label may insert the amount of another line and the period's dates.
+  2. **Seed.** The four US layouts of the standard chart (FIN-GL-002), with the labels of the expected results.
+     - The retained earnings of the balance sheet and the equity statement include the year's result (accounts 4000–8999), since monthly closes post no closing entries.
+     - The seed also adds the projection `gl-kind`, the sum by account and document kind.
+  3. **Rendering.**
+     - The query port `render(opening, closing)` is implemented by the L2 asset `ubos.finance.statements`. It reads `gl-balance`, `gl-kind` and `gl-document` at both dates and computes the period (opening, closing].
+     - The script reads only projections and computes in exact decimals; it writes nothing.
+     - Two L2 rules shape the script: the instruction gateway is visible only in the exported function, so it makes all reads; and the hardened profile has no `parse_int`, so account codes of one length compare as text.
+  4. **Branch.** `forge test` commits logic assets on its working branch `feature/forge` (DEC-060). The tie-out tests therefore run on that branch, which inherits the seed.
+  5. **Tests.** Four scenario tests compare every label and amount of FIN-EXP-04…07; amounts are signed, with two decimals. A port test renders the income statement on an empty ledger, every line at zero, which also counts the port toward script coverage (1.0).
+- **Consequences:**
+  - The 12 tie-out tests (FIN-EXP-01…07 and -15…17) pass in memory and on PostgreSQL 16.
+  - No kernel code was added in this part.
+- **Alternatives considered:**
+  - Hard-coding the statements in the script was rejected: FIN-RP-011 asks for layouts, and a layout is reviewable and changeable through change sets.
+  - Closing entries posted by each monthly close were rejected: the expected results keep income and expense balances through February.
+- **Affects:** DEC-141, DEC-060, EXIT-2-04, FIN-RP-002, FIN-RP-003, FIN-RP-004, FIN-RP-005, FIN-RP-011, FIN-GL-002, STD-CTX-020, STD-ISA-037

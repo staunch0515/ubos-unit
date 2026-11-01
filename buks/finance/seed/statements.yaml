@@ -1,0 +1,667 @@
+# The US statement layouts of the standard chart (FIN-GL-002, FIN-RP-002…005, -011).
+# Labels in ** ** are subtotals and totals.
+{
+ "changes": [
+  {
+   "op": "create",
+   "class": "FinancialStatement",
+   "object_id": "01890a5d-ac96-7f01-8000-000000000001",
+   "slug": "income-statement",
+   "body": {
+    "name": "Income statement",
+    "basis": "lines",
+    "lines": [
+     {
+      "id": "product",
+      "label": "Product sales",
+      "accounts": [
+       "4000"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "service",
+      "label": "Service revenue",
+      "accounts": [
+       "4100"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "returns",
+      "label": "Less: sales returns and allowances",
+      "accounts": [
+       "4900"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "net_revenue",
+      "label": "**Net revenue**",
+      "sum": [
+       "product",
+       "service",
+       "returns"
+      ]
+     },
+     {
+      "id": "cogs",
+      "label": "Cost of goods sold",
+      "accounts": [
+       "5000-5999"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "gross",
+      "label": "**Gross profit**",
+      "sum": [
+       "net_revenue",
+       "cogs"
+      ]
+     },
+     {
+      "id": "x6100",
+      "label": "Salaries and Wages",
+      "accounts": [
+       "6100"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "x6150",
+      "label": "Payroll Taxes",
+      "accounts": [
+       "6150"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "x6200",
+      "label": "Rent",
+      "accounts": [
+       "6200"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "x6300",
+      "label": "Utilities",
+      "accounts": [
+       "6300"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "x6400",
+      "label": "Professional Fees",
+      "accounts": [
+       "6400"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "x6500",
+      "label": "Software Subscriptions",
+      "accounts": [
+       "6500"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "x6600",
+      "label": "Insurance",
+      "accounts": [
+       "6600"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "x6700",
+      "label": "Depreciation Expense",
+      "accounts": [
+       "6700"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "x6800",
+      "label": "Bank Fees",
+      "accounts": [
+       "6800"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "opex",
+      "label": "**Total operating expenses**",
+      "sum": [
+       "x6100",
+       "x6150",
+       "x6200",
+       "x6300",
+       "x6400",
+       "x6500",
+       "x6600",
+       "x6700",
+       "x6800"
+      ]
+     },
+     {
+      "id": "operating",
+      "label": "**Operating income**",
+      "sum": [
+       "gross",
+       "opex"
+      ]
+     },
+     {
+      "id": "interest_expense",
+      "label": "Interest expense",
+      "accounts": [
+       "7100"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "interest_income",
+      "label": "Interest income",
+      "accounts": [
+       "7300"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "fx_unrealized",
+      "label": "Unrealized foreign exchange gain",
+      "accounts": [
+       "7210"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "pretax",
+      "label": "**Income before income taxes**",
+      "sum": [
+       "operating",
+       "interest_expense",
+       "interest_income",
+       "fx_unrealized"
+      ]
+     },
+     {
+      "id": "tax",
+      "label": "Income tax expense",
+      "accounts": [
+       "8000"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "net_income",
+      "label": "**Net income**",
+      "sum": [
+       "pretax",
+       "tax"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "op": "create",
+   "class": "FinancialStatement",
+   "object_id": "01890a5d-ac96-7f01-8000-000000000002",
+   "slug": "balance-sheet",
+   "body": {
+    "name": "Balance sheet",
+    "basis": "lines",
+    "lines": [
+     {
+      "id": "cash",
+      "label": "Cash and cash equivalents",
+      "accounts": [
+       "1010",
+       "1050"
+      ],
+      "at": "end"
+     },
+     {
+      "id": "allowance",
+      "label": "allowance",
+      "accounts": [
+       "1210"
+      ],
+      "sign": -1,
+      "at": "end",
+      "hidden": true
+     },
+     {
+      "id": "ar",
+      "label": "Accounts receivable, net of allowance of {allowance}",
+      "accounts": [
+       "1200",
+       "1210"
+      ],
+      "at": "end"
+     },
+     {
+      "id": "prepaid",
+      "label": "Prepaid expenses",
+      "accounts": [
+       "1300"
+      ],
+      "at": "end"
+     },
+     {
+      "id": "current",
+      "label": "**Total current assets**",
+      "sum": [
+       "cash",
+       "ar",
+       "prepaid"
+      ]
+     },
+     {
+      "id": "ppe_cost",
+      "label": "Property and equipment, at cost",
+      "accounts": [
+       "1500-1589"
+      ],
+      "at": "end"
+     },
+     {
+      "id": "accum",
+      "label": "Less: accumulated depreciation",
+      "accounts": [
+       "1590"
+      ],
+      "at": "end"
+     },
+     {
+      "id": "ppe_net",
+      "label": "Property and equipment, net",
+      "sum": [
+       "ppe_cost",
+       "accum"
+      ]
+     },
+     {
+      "id": "assets",
+      "label": "**Total assets**",
+      "sum": [
+       "current",
+       "ppe_net"
+      ]
+     },
+     {
+      "id": "ap",
+      "label": "Accounts payable",
+      "accounts": [
+       "2000"
+      ],
+      "sign": -1,
+      "at": "end"
+     },
+     {
+      "id": "accrued",
+      "label": "Accrued liabilities",
+      "accounts": [
+       "2100"
+      ],
+      "sign": -1,
+      "at": "end"
+     },
+     {
+      "id": "payroll",
+      "label": "Payroll liabilities",
+      "accounts": [
+       "2150"
+      ],
+      "sign": -1,
+      "at": "end"
+     },
+     {
+      "id": "stp",
+      "label": "Sales tax payable",
+      "accounts": [
+       "2200"
+      ],
+      "sign": -1,
+      "at": "end"
+     },
+     {
+      "id": "itp",
+      "label": "Income tax payable",
+      "accounts": [
+       "2400"
+      ],
+      "sign": -1,
+      "at": "end"
+     },
+     {
+      "id": "loc",
+      "label": "Line of credit",
+      "accounts": [
+       "2300"
+      ],
+      "sign": -1,
+      "at": "end"
+     },
+     {
+      "id": "liabilities",
+      "label": "**Total liabilities**",
+      "sum": [
+       "ap",
+       "accrued",
+       "payroll",
+       "stp",
+       "itp",
+       "loc"
+      ]
+     },
+     {
+      "id": "common",
+      "label": "Common stock",
+      "accounts": [
+       "3000"
+      ],
+      "sign": -1,
+      "at": "end"
+     },
+     {
+      "id": "apic",
+      "label": "Additional paid-in capital",
+      "accounts": [
+       "3100"
+      ],
+      "sign": -1,
+      "at": "end"
+     },
+     {
+      "id": "re",
+      "label": "Retained earnings",
+      "accounts": [
+       "3200",
+       "4000-8999"
+      ],
+      "sign": -1,
+      "at": "end"
+     },
+     {
+      "id": "equity",
+      "label": "**Total stockholders' equity**",
+      "sum": [
+       "common",
+       "apic",
+       "re"
+      ]
+     },
+     {
+      "id": "le",
+      "label": "**Total liabilities and stockholders' equity**",
+      "sum": [
+       "liabilities",
+       "equity"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "op": "create",
+   "class": "FinancialStatement",
+   "object_id": "01890a5d-ac96-7f01-8000-000000000003",
+   "slug": "cash-flows",
+   "body": {
+    "name": "Statement of cash flows, indirect method",
+    "basis": "lines",
+    "lines": [
+     {
+      "id": "ni",
+      "label": "Net income",
+      "accounts": [
+       "4000-8999"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "dep",
+      "label": "Depreciation",
+      "accounts": [
+       "6700"
+      ]
+     },
+     {
+      "id": "fx",
+      "label": "Unrealized foreign exchange gain",
+      "accounts": [
+       "7210"
+      ]
+     },
+     {
+      "id": "ar",
+      "label": "(Increase) decrease in accounts receivable, net, excluding revaluation",
+      "accounts": [
+       "1200",
+       "1210"
+      ],
+      "sign": -1,
+      "exclude_kinds": [
+       "revaluation",
+       "revaluation reversal"
+      ]
+     },
+     {
+      "id": "prepaid",
+      "label": "(Increase) decrease in prepaid expenses",
+      "accounts": [
+       "1300"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "ap",
+      "label": "Increase (decrease) in accounts payable, excluding equipment payable",
+      "accounts": [
+       "2000"
+      ],
+      "sign": -1,
+      "exclude_documents_touching": [
+       "1500-1589"
+      ]
+     },
+     {
+      "id": "accrued",
+      "label": "Increase (decrease) in accrued and payroll liabilities",
+      "accounts": [
+       "2100",
+       "2150"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "stp",
+      "label": "Increase (decrease) in sales tax payable",
+      "accounts": [
+       "2200"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "itp",
+      "label": "Increase (decrease) in income tax payable",
+      "accounts": [
+       "2400"
+      ],
+      "sign": -1
+     },
+     {
+      "id": "operating",
+      "label": "**Net cash provided by (used in) operating activities**",
+      "sum": [
+       "ni",
+       "dep",
+       "fx",
+       "ar",
+       "prepaid",
+       "ap",
+       "accrued",
+       "stp",
+       "itp"
+      ]
+     },
+     {
+      "id": "capex",
+      "label": "Purchases of property and equipment (cash paid)",
+      "accounts": [
+       "1500-1589"
+      ],
+      "sign": -1,
+      "documents_touching": [
+       "1010",
+       "1050"
+      ]
+     },
+     {
+      "id": "investing",
+      "label": "**Net cash used in investing activities**",
+      "sum": [
+       "capex"
+      ]
+     },
+     {
+      "id": "financing",
+      "label": "**Net cash provided by (used in) financing activities**",
+      "accounts": [
+       "2300",
+       "3000",
+       "3100"
+      ],
+      "sign": -1,
+      "documents_touching": [
+       "1010",
+       "1050"
+      ]
+     },
+     {
+      "id": "net",
+      "label": "**Net increase (decrease) in cash and cash equivalents**",
+      "sum": [
+       "operating",
+       "investing",
+       "financing"
+      ]
+     },
+     {
+      "id": "begin",
+      "label": "Cash and cash equivalents, beginning",
+      "accounts": [
+       "1010",
+       "1050"
+      ],
+      "at": "start"
+     },
+     {
+      "id": "end",
+      "label": "Cash and cash equivalents, ending",
+      "accounts": [
+       "1010",
+       "1050"
+      ],
+      "at": "end"
+     },
+     {
+      "id": "noncash",
+      "label": "Supplemental: equipment acquired on account (non-cash)",
+      "accounts": [
+       "1500-1589"
+      ],
+      "exclude_documents_touching": [
+       "1010",
+       "1050"
+      ]
+     },
+     {
+      "id": "interest",
+      "label": "Supplemental: interest paid",
+      "accounts": [
+       "7100"
+      ],
+      "documents_touching": [
+       "1010",
+       "1050"
+      ]
+     },
+     {
+      "id": "taxes",
+      "label": "Supplemental: income taxes paid",
+      "accounts": [
+       "2400"
+      ],
+      "side": "debit",
+      "documents_touching": [
+       "1010",
+       "1050"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "op": "create",
+   "class": "FinancialStatement",
+   "object_id": "01890a5d-ac96-7f01-8000-000000000004",
+   "slug": "stockholders-equity",
+   "body": {
+    "name": "Statement of stockholders' equity",
+    "basis": "columns",
+    "lines": [
+     {
+      "label": "Balance {opening}",
+      "at": "start"
+     },
+     {
+      "label": "Net income",
+      "at": "change",
+      "only": [
+       "4000-8999"
+      ]
+     },
+     {
+      "label": "Balance {closing}",
+      "at": "end"
+     }
+    ],
+    "columns": [
+     {
+      "label": "Common stock",
+      "accounts": [
+       "3000"
+      ],
+      "sign": -1
+     },
+     {
+      "label": "Additional paid-in capital",
+      "accounts": [
+       "3100"
+      ],
+      "sign": -1
+     },
+     {
+      "label": "Retained earnings",
+      "accounts": [
+       "3200",
+       "4000-8999"
+      ],
+      "sign": -1
+     },
+     {
+      "label": "Total",
+      "total": true
+     }
+    ]
+   }
+  }
+ ]
+}

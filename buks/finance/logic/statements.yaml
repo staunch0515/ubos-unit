@@ -1,0 +1,202 @@
+# Rendering of financial statements (FIN-RP-002…005, -011; PH-2 step 9d, DEC-144).
+#
+# A line of a layout is a map:
+#   id        name of the line, used by `sum` and label templates
+#   label     the text shown; "{id}" inserts the absolute amount of another line, "{opening}"
+#             and "{closing}" the dates
+#   accounts  account codes or ranges "4000-8999"; the amount is the balance at `closing`
+#             (at: end), at `opening` (at: start) or the change between them (at: change)
+#   sign      1 or -1 (default 1; balances are debit positive)
+#   sum       ids of earlier lines added instead of accounts
+#   exclude_kinds              document kinds left out of a change
+#   documents_touching         only documents of the period that post to these accounts
+#   exclude_documents_touching documents of the period that post to these accounts left out
+#   side      "debit": only the documents' debits
+#   hidden    computed but not shown
+# A columns statement has `columns` ({label, accounts} or {label, total: true}); each row
+# gives `at` and optionally `only` (accounts) and is computed per column.
+assets:
+  - name: ubos.finance.statements
+    abi: "1.0"
+    tier: l2
+    profile: standard
+    state: committed
+    capabilities: [read]
+    exports: [render]
+    source: |
+      fn code_of(uri) {
+        let p = uri.split("/");
+        p[p.len() - 1]
+      }
+      // account codes of one length compare as text
+      fn matches(code, specs) {
+        for s in specs {
+          if s.contains("-") {
+            let r = s.split("-");
+            if code.len() == r[0].len() && code >= r[0] && code <= r[1] { return true; }
+          } else if s == code { return true; }
+        }
+        false
+      }
+      fn amount_of(values, name) {
+        let total = dec("0.00");
+        for m in values[name] { total += dec(m.amount); }
+        total
+      }
+      fn balance(gs, specs) {
+        let total = dec("0.00");
+        for g in gs {
+          if matches(code_of(g.key.account), specs) { total += amount_of(g.values, "balance"); }
+        }
+        total
+      }
+      // {document: {account code: change}} of the period
+      fn doc_changes(start, end) {
+        let out = #{};
+        for pass in [[end, 1], [start, -1]] {
+          for g in pass[0] {
+            let d = g.key.document;
+            if !(d in out) { out[d] = #{}; }
+            let c = code_of(g.key.account);
+            let m = out[d];
+            let prev = if c in m { m[c] } else { dec("0.00") };
+            m[c] = prev + amount_of(g.values, "amount") * pass[1];
+            out[d] = m;
+          }
+        }
+        out
+      }
+      fn touches(m, specs) {
+        for c in m.keys() { if matches(c, specs) && !m[c].is_zero() { return true; } }
+        false
+      }
+      // the text of an amount with two decimals
+      fn two(d) {
+        let s = d.to_string();
+        if !s.contains(".") { return s + ".00"; }
+        let p = s.split(".");
+        let f = p[1];
+        if f.len() == 1 { f += "0"; }
+        if f.len() > 2 { f = f.sub_string(0, 2); }
+        p[0] + "." + f
+      }
+      fn fmt(d) {
+        let neg = d < 0;
+        let s = if neg { two(-d) } else { two(d) };
+        let p = s.split(".");
+        let whole = p[0];
+        let out = "";
+        let n = whole.len();
+        for i in 0..n {
+          if i > 0 && (n - i) % 3 == 0 { out += ","; }
+          out += whole.sub_string(i, 1);
+        }
+        out + "." + p[1]
+      }
+      fn text_of(d) {
+        let s = two(d);
+        if s == "-0.00" { "0.00" } else { s }
+      }
+      fn line_amount(spec, ctx) {
+        let sign = if "sign" in spec { spec.sign } else { 1 };
+        if "sum" in spec {
+          let t = dec("0.00");
+          for id in spec.sum { t += ctx.values[id]; }
+          return t * sign;
+        }
+        let at = if "at" in spec { spec.at } else { ctx.at };
+        let specs = spec.accounts;
+        let total = dec("0.00");
+        if at == "end" { total = balance(ctx.end, specs); }
+        else if at == "start" { total = balance(ctx.start, specs); }
+        else {
+          total = balance(ctx.end, specs) - balance(ctx.start, specs);
+          if "exclude_kinds" in spec {
+            for pass in [[ctx.kind_end, 1], [ctx.kind_start, -1]] {
+              for g in pass[0] {
+                if g.key.kind in spec.exclude_kinds && matches(code_of(g.key.account), specs) {
+                  total -= amount_of(g.values, "amount") * pass[1];
+                }
+              }
+            }
+          }
+          let filtered = "documents_touching" in spec || "exclude_documents_touching" in spec || "side" in spec;
+          if filtered {
+            total = dec("0.00");
+            for d in ctx.docs.keys() {
+              let m = ctx.docs[d];
+              if "documents_touching" in spec && !touches(m, spec.documents_touching) { continue; }
+              if "exclude_documents_touching" in spec && touches(m, spec.exclude_documents_touching) { continue; }
+              for c in m.keys() {
+                if !matches(c, specs) { continue; }
+                let v = m[c];
+                if "side" in spec && spec.side == "debit" && v < 0 { continue; }
+                total += v;
+              }
+            }
+            if "exclude_kinds" in spec {
+              for pass in [[ctx.kind_end, 1], [ctx.kind_start, -1]] {
+                for g in pass[0] {
+                  if g.key.kind in spec.exclude_kinds && matches(code_of(g.key.account), specs) {
+                    total -= amount_of(g.values, "amount") * pass[1];
+                  }
+                }
+              }
+            }
+          }
+        }
+        total * sign
+      }
+      fn label_of(spec, ctx) {
+        let l = spec.label;
+        for id in ctx.values.keys() {
+          let v = ctx.values[id];
+          let a = if v < 0 { -v } else { v };
+          l.replace("{" + id + "}", fmt(a));
+        }
+        l.replace("{opening}", ctx.opening);
+        l.replace("{closing}", ctx.closing);
+        l
+      }
+      fn render(opening, closing) {
+        // the gateway is visible in the exported function only: every read is made here
+        let b0 = sys.read.projection(#{projection: "gl-balance", asof: opening}).groups;
+        let b1 = sys.read.projection(#{projection: "gl-balance", asof: closing}).groups;
+        let k0 = sys.read.projection(#{projection: "gl-kind", asof: opening}).groups;
+        let k1 = sys.read.projection(#{projection: "gl-kind", asof: closing}).groups;
+        let d0 = sys.read.projection(#{projection: "gl-document", asof: opening}).groups;
+        let d1 = sys.read.projection(#{projection: "gl-document", asof: closing}).groups;
+        let ctx = #{opening: opening, closing: closing, values: #{}, at: "change",
+                    start: b0, end: b1, kind_start: k0, kind_end: k1, docs: doc_changes(d0, d1)};
+        let out = [];
+        if this.basis == "columns" {
+          for row in this.lines {
+            let vals = [];
+            let total = dec("0.00");
+            for col in this.columns {
+              if "total" in col { vals.push(text_of(total)); continue; }
+              let specs = col.accounts;
+              if "only" in row {
+                let keep = [];
+                for s in col.accounts { if matches(s.split("-")[0], row.only) { keep.push(s); } }
+                if keep.is_empty() { vals.push(()); continue; }
+                specs = row.only;
+              }
+              let v = line_amount(#{accounts: specs, at: row.at, sign: col.sign}, ctx);
+              total += v;
+              vals.push(text_of(v));
+            }
+            out.push(#{label: label_of(row, ctx), values: vals});
+          }
+          return #{statement: this.name, opening: opening, closing: closing, lines: out};
+        }
+        for spec in this.lines {
+          let v = line_amount(spec, ctx);
+          ctx.values[spec.id] = v;
+        }
+        for spec in this.lines {
+          if "hidden" in spec && spec.hidden { continue; }
+          out.push(#{label: label_of(spec, ctx), amount: text_of(ctx.values[spec.id])});
+        }
+        #{statement: this.name, opening: opening, closing: closing, lines: out}
+      }
