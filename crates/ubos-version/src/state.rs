@@ -1435,6 +1435,23 @@ impl<'a> Repo<'a> {
         Ok(rec)
     }
 
+    /// The posting date of an entry (STD-KIND-025): the value of the class's posting-date
+    /// field when the entry has one (1.0-rc13), otherwise `default`, the commit date.
+    pub fn posting_date(&self, e: &Entry, default: &str) -> Result<String, BpaError> {
+        let field = self
+            .reg
+            .class(&e.class)?
+            .ledger
+            .as_ref()
+            .and_then(|l| l.get("posting_date"))
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        Ok(field
+            .and_then(|f| e.body.get(&f).and_then(Value::as_str).map(str::to_string))
+            .map(|d| d.get(..10).unwrap_or(&d).to_string())
+            .unwrap_or_else(|| default.to_string()))
+    }
+
     /// The period rule of a ledger class at `today` (STD-KIND-025): `LEDG.PERIOD_CLOSED`
     /// when the period object covering the day is closed.
     pub fn check_period(&mut self, tx: &mut Tx, class: &str, today: &str) -> Result<(), BpaError> {
@@ -1611,6 +1628,18 @@ impl<'a> Repo<'a> {
                         b.insert(a, negate(&v)?);
                     }
                 }
+                // STD-KIND-025 (1.0-rc13): a reversal posts on the date of its commit
+                if let Some(f) = self
+                    .reg
+                    .class(&target.class)?
+                    .ledger
+                    .as_ref()
+                    .and_then(|l| l.get("posting_date"))
+                    .and_then(Value::as_str)
+                    && b.get(f).is_some_and(|v| !v.is_null())
+                {
+                    b.insert(f.to_string(), json!(today));
+                }
                 Value::Object(b)
             } else {
                 Value::Object(self.reg.check_body(
@@ -1658,7 +1687,8 @@ impl<'a> Repo<'a> {
         {
             return Err(BpaError::new("TXN.ALREADY_EXISTS", "entry exists"));
         }
-        self.check_period(tx, &entry.class.clone(), today)?;
+        let day = self.posting_date(&entry, today)?;
+        self.check_period(tx, &entry.class.clone(), &day)?;
         let key = canonical(&entry.ledger_key)?;
         entry.cseq = tx.cseq;
         entry.provenance_ref = provenance.map(str::to_string);

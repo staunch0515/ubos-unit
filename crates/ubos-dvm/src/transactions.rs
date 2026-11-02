@@ -9,7 +9,7 @@
 
 use crate::stateful::Engine;
 use crate::versioning::{Process, process, record};
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use ubos_model::Registry;
 use ubos_store::Store;
@@ -1076,6 +1076,18 @@ impl Engine {
     /// (STD-ADDR-001, STD-ADDR-002); redirects follow earlier slugs, `@vN` addresses the
     /// n-th version on the branch line.
     pub fn resolve(&mut self, uri: &Value) -> Result<Value, BpaError> {
+        self.resolve_in(uri, "main", None)
+    }
+
+    /// Resolve a URI with a default branch and, in a process, its pinned snapshots: a
+    /// target without `commit`, `tag` or `time` is read at the pin of its branch
+    /// (STD-ISA-030, 1.0-rc13).
+    pub fn resolve_in(
+        &mut self,
+        uri: &Value,
+        default_branch: &str,
+        pins: Option<&BTreeMap<String, String>>,
+    ) -> Result<Value, BpaError> {
         let p = ubos_types::addr::parse_uri(uri)?;
         let authority = self.store.authority();
         if s(&p, "tenant") != Some(authority.as_str()) || p.get("vae").is_some() {
@@ -1126,7 +1138,13 @@ impl Engine {
         if let Some(t) = s(&sel, "time") {
             i["tx_time"] = json!(t);
         }
-        let branch = branch.unwrap_or_else(|| "main".into());
+        let branch = branch.unwrap_or_else(|| default_branch.into());
+        if let Some(pins) = pins
+            && i.as_object().is_some_and(Map::is_empty)
+            && pins.contains_key(&branch)
+        {
+            i["evaluated_at"] = json!(pins);
+        }
         let (class, slug) = (text_of(&p["class"]), text_of(&p["slug"]));
         // the object from the slug index at the snapshot (PH-2 step 0b); a branch with a
         // parent line (STD-VER-080) is resolved in a view of its state

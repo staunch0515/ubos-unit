@@ -375,9 +375,13 @@ impl Engine {
         checks.cardinality_check()?;
         checks.extensions_apply(&self.registry, &written)?;
         repo.check_double_entry(tx)?;
-        let classes: BTreeSet<String> = tx.appended.iter().map(|e| e.class.clone()).collect();
-        for c in classes {
-            repo.check_period(tx, &c, &self.now[..10])?;
+        // STD-KIND-025 (1.0-rc13): each merged entry at its posting date
+        let mut days: BTreeSet<(String, String)> = BTreeSet::new();
+        for e in tx.appended.clone() {
+            days.insert((e.class.clone(), repo.posting_date(&e, &self.now[..10])?));
+        }
+        for (c, day) in days {
+            repo.check_period(tx, &c, &day)?;
         }
         // STD-LGS-022 (1.0-rc7): the sheets and property declarations the merge or revert
         // brings into the target, over the live sheets of the result

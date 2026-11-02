@@ -292,7 +292,12 @@ pub(crate) fn enforce(
         if written_ids.contains(oid.as_str()) || !governed(reg_ext, &o.class) {
             continue;
         }
-        let v = version_of(repo, Some(tx), &o.head)?;
+        // STD-LGS-011 (1.0-rc13): `read_only` is matched on the version the end changes
+        let head = match tx.loaded.get(oid) {
+            Some(Some(prev)) => prev.head.clone(),
+            _ => o.head.clone(),
+        };
+        let v = version_of(repo, Some(tx), &head)?;
         let body = v["body"].clone();
         let asof = (e.default_valid)(&o.class);
         let (eff, b, _) = cascade_state(
@@ -325,10 +330,11 @@ pub(crate) fn enforce(
     for (oid, _, body, state) in &written {
         let class = tx.state.objects[oid].class.clone();
         let existed = tx.loaded.get(oid).is_some_and(Option::is_some);
-        let old = match tx.loaded.get(oid) {
-            Some(Some(prev)) => version_of(repo, Some(tx), &prev.head)?["body"].clone(),
+        let prev = match tx.loaded.get(oid) {
+            Some(Some(prev)) => version_of(repo, Some(tx), &prev.head)?,
             _ => json!({}),
         };
+        let old = prev.get("body").cloned().unwrap_or_else(|| json!({}));
         let asof = (e.default_valid)(&class);
         let (eff, b, _) = cascade_state(
             repo,
@@ -344,8 +350,24 @@ pub(crate) fn enforce(
         )?;
         bound.extend(b);
         let value = |p: &str| eff.get(p).map(|(v, _)| v.clone()).unwrap_or(Value::Null);
-        if value("read_only") == json!(true) && existed {
-            return Err(unsatisfied("read_only", oid, &[]));
+        // STD-LGS-011 (1.0-rc13): `read_only` is matched on the version before the change,
+        // with the sheets in force after it
+        if existed {
+            let (before, _, _) = cascade_state(
+                repo,
+                Some(tx),
+                &tx.state,
+                reg_ext,
+                cache,
+                &class,
+                &old,
+                &asof,
+                &ctx,
+                crate::flow::state_of(&prev).as_deref(),
+            )?;
+            if before.get("read_only").map(|(v, _)| v) == Some(&json!(true)) {
+                return Err(unsatisfied("read_only", oid, &[]));
+            }
         }
         for f in value("field_required").as_array().into_iter().flatten() {
             let f = f.as_str().unwrap_or_default();

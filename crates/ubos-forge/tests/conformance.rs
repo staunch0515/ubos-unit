@@ -25,8 +25,9 @@ const CLAIMED_RELEASE: &str = "1.0-rc1";
 /// messages and introspection queries of step 18b; DEC-082: the process of a failed mutate
 /// and the replay from the journal's snapshots of step 18d; DEC-083: the revert resolutions
 /// and the timer effects of events subscriptions of step 18d-3a; DEC-084: the sheet checks
-/// at merge and the sheets of the rule binding of step 18d-3b).
-const NEXT_RELEASE: &str = "1.0-rc12";
+/// at merge and the sheets of the rule binding of step 18d-3b; DEC-157: the refinements of
+/// BPA 1.0-rc13).
+const NEXT_RELEASE: &str = "1.0-rc13";
 const RC2_CLAUSES: &[&str] = &[
     "STD-LGS-001",
     "STD-LGS-002",
@@ -144,6 +145,8 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-OBJ-010",
     "STD-OBJ-011",
     "STD-OBJ-012",
+    // BPA 1.0-rc13 (DEC-157): explicit coordinates of read.get in a process
+    "STD-ISA-030",
 ];
 
 /// The clauses a vector verifies.

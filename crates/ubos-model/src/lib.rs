@@ -1021,6 +1021,22 @@ pub fn check_decl(d: &Value, custom: &BTreeSet<String>) -> Result<(), BpaError> 
             ));
         }
     }
+    // STD-KIND-025 (1.0-rc13): the posting-date field of a ledger class is a date field
+    if let Some(pd) = d
+        .get("ledger")
+        .and_then(|l| l.get("posting_date"))
+        .filter(|p| !p.is_null())
+    {
+        let ok = pd.as_str().is_some_and(|n| {
+            members(d, "fields").any(|f| s(f, "name") == Some(n) && s(f, "type") == Some("date"))
+        });
+        if !ok {
+            return Err(err(
+                "MODEL.INVALID_VALUE",
+                "ledger.posting_date names a date field",
+            ));
+        }
+    }
     // STD-LGS-050 (1.0-rc8; PH-2 step 8a): the principal field names a text field
     if let Some(pf) = d.get("principal_field").filter(|p| !p.is_null()) {
         let ok = pf.as_str().is_some_and(|n| {

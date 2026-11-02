@@ -188,6 +188,7 @@ impl Engine {
                     d
                 }
             };
+            let date = r.posting_date(e, &date)?;
             if date.as_str() >= end {
                 continue;
             }

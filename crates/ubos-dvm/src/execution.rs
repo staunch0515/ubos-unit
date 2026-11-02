@@ -1144,8 +1144,26 @@ impl<'a> EngineHost<'a> {
         d: &Instruction,
     ) -> Result<Value, BpaError> {
         let t = a["target"].clone();
-        let mut out = if t.as_str().is_some_and(|x| x.contains('?')) {
-            let r = self.e.resolve(&t)?;
+        let mut out = if let Some(uri) = t.as_str().filter(|x| x.contains('?')) {
+            // STD-ISA-030 (1.0-rc13): the branch defaults to the process's branch, and
+            // without commit, tag or time the target is read at the process snapshot
+            let sel: Vec<&str> = uri
+                .split_once('?')
+                .map(|(_, q)| {
+                    q.split('&')
+                        .map(|x| x.split('=').next().unwrap_or(""))
+                        .collect()
+                })
+                .unwrap_or_default();
+            if !sel
+                .iter()
+                .any(|k| matches!(*k, "branch" | "commit" | "tag" | "time"))
+            {
+                self.state(core)?;
+            }
+            let pins = core.pins.clone();
+            let branch = core.branch.clone();
+            let r = self.e.resolve_in(&t, &branch, Some(&pins))?;
             let vh = s(&r, "version_hash").unwrap_or_default().to_string();
             let cls = s(&self.version(&vh)?, "class")
                 .unwrap_or_default()
@@ -1437,7 +1455,16 @@ impl<'a> EngineHost<'a> {
         let source = decl["source"].as_str().unwrap_or_default().to_string();
         self.permit(core, &d.authorization, &source, None)?;
         let mut input = Value::Object(a.clone());
-        input["time"] = json!(cseq);
+        // STD-ISA-037 (1.0-rc13): `time` reads the projection as known at an earlier
+        // transaction time, never later than the snapshot
+        let mut at = cseq;
+        if let Some(t) = a.get("time").filter(|v| !v.is_null()) {
+            ubos_model::types::values::validate_value("instant", None, t)?;
+            let mut repo = self.repo();
+            let c = repo.at_tx(&branch, t.as_str().unwrap_or_default())?;
+            at = at.min(repo.meta(c)?.cseq);
+        }
+        input["time"] = json!(at);
         let r = self.e.projection_at(&branch, &input)?;
         core.per_item(d, r["groups"].as_array().map_or(0, Vec::len) as u64)?;
         Ok(r)
