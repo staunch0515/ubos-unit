@@ -383,3 +383,57 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); those of DEC-127 … DEC-14
   - `read_only` on the version before a change, the business-refusal code (DEC-153) and the simulation vector (DEC-153): the next BPA release candidate.
 - **Affects:** DEC-147…153, FIN-AP-005, -006, -008, -010, -011, -014, FIN-AR-011…014, FIN-FA-003, -004, -006, FIN-FX-003…005, FIN-BK-001…011, STD-LGS-011
 
+### DEC-155 — The finance Buk, part 10g-3: every Must requirement accounted for (PH-2 step 10)
+- **Date:** 2026-11-02 · **Status:** Accepted
+- **Context:** DEC-154 found Must requirements that 10b…10d had missed, and assigned a part 10g-3. It starts with a table of every finance requirement against the Buk, then builds the Buk's gaps. The owner confirmed it with the default suggestions.
+- **Decision:**
+  1. **The coverage table.** The source `buks/finance/tools/fin-status.txt` gives each requirement that no test name carries one status with its evidence:
+     - `covered`: the test names given must exist;
+     - `platform`: the kernel or platform reference;
+     - `assigned`: a later PH-2 step or PH-3;
+     - `gap`.
+
+     `tools/fin_coverage.py` reads the 153 requirements of fin-req-v1.0, the test names and that file, checks them and writes `docs/fin-coverage.md` (generated). With `--closing`, it also fails while a Must requirement is a gap. CI runs it with `--check --closing`.
+  2. **General ledger.**
+     - The trial balance (FIN-RP-001) gives, per account, the opening balance, debits, credits and the closing balance, with totals. On request it rolls up summary accounts along `parent`. Journal lines now carry `side` and `date`.
+     - The account inquiry (FIN-GL-022) gives the opening balance, the lines by document with a running balance, and the closing balance.
+     - Both are ports of the new `GeneralLedger` object (asset `ubos.finance.ledger`), over the projections `gl-sides` and `gl-lines`.
+     - An entry balances in each transaction currency too (FIN-GL-011). A payment run's bank line therefore carries its original amount, and a run pays in one foreign currency at most.
+  3. **Kernel fix: accounts of subclasses** (STD-KIND-029).
+     - The checks that an account is live, a leaf and in the entry's currency applied only to objects of the class `LedgerAccount` itself, and so did the roll-up of `read.projection`. The clause lets packages extend or subclass it, and `GlAccount` is such a subclass.
+     - Both now cover `LedgerAccount` and every class that extends it (`crates/ubos-dvm/src/finance.rs`, `projections.rs`). A posting to a summary account is refused, and an ended account is not found.
+     - The release candidate after rc12 gets a conformance vector for it.
+  4. **Periods** (FIN-PC-003).
+     - A soft-closed (`closing`) period takes only entries marked `adjusting`, which a controller approves.
+     - `FiscalPeriod.close_subledger` closes a subledger for the period while the general ledger stays open.
+  5. **Receivables and payables documents.**
+     - `PaymentTerms` give net days, an end-of-month variant and an early-payment discount. The discount is taken on a receipt or a payment by the discount date and posted to the discount account (FIN-AR-002, FIN-AP-012). A void also reverses a discount taken.
+     - Customers gain addresses, contacts and status; an inactive customer takes no invoice (FIN-AR-001).
+     - Invoice lines take quantity and unit price (FIN-AR-003).
+     - `Invoice.void` reverses a posted invoice on which nothing was received, by an entry in an open period (FIN-AR-004).
+     - `Receivables.refund` pays back a credit standing alone (FIN-AR-006).
+     - Bills record a received date.
+  6. **Vendors.**
+     - The vendor master holds a trade name, remit-to address, contacts, currency, default account, payment method and status (FIN-AP-001).
+     - It holds TIN, TIN type, W-9 and its verification, and backup withholding. A 1099 vendor without a TIN gets a warning on its bill (FIN-AP-002).
+     - Bank details change through `request_bank_change` and `apply_bank_change`. A controller who did not request the change approves it (`incompatible`, FIN-AP-003, FIN-CT-001). Payment runs and proposals hold the vendor's items meanwhile.
+     - TINs and account numbers are `confidential` and masked `partial` for the role `payables_clerk` (STD-LGS-052, FIN-SC-004).
+     - `BankAccount` maps one bank account to one GL account (FIN-BK-001).
+  7. **Form 1099.**
+     - Each payment writes its reportable amounts to the ledger `Form1099Amount`, by the bill lines' forms (a line may override the vendor's or say `none`). Card payments are left out, and a void writes the negative (FIN-AP-020).
+     - The 1099 report reads that ledger by vendor and form against the year's threshold. FIN-EXP-14 still ties out, and a test year's threshold makes V800 reportable (FIN-AP-021).
+     - `review_1099` lists the paid vendors with their exceptions (FIN-AP-022).
+  8. **Sales tax.**
+     - `TaxJurisdiction` holds jurisdictions, and a tax code lists its `components`, taken from the sample's note. The tax is allocated to them in the ledger `TaxPart`, and the tax report shows the parts (FIN-TX-001).
+     - A document is taxed at the code's version valid on its date, so a rate change is a version from its effective date.
+     - A credit memo applied to an invoice is taxed at the rate of that invoice's date (FIN-TX-005).
+  9. **Assigned.** The two Should gaps go to PH-2 step 12, with the statement and e-filing formats: foreign-currency bank accounts (FIN-FX-006) and 1099 corrections (FIN-AP-023).
+- **Consequences:**
+  - Fourteen new tests pass in memory and on PostgreSQL 16, in `sample-ledger.yaml`, `sample-documents.yaml` and `sample-vendors.yaml`. All 77 finance tests pass, with script coverage 1.0. Every earlier tie-out passes unchanged, and the January tax report now also ties out its state and local parts.
+  - The table: of 130 Must requirements, 63 are tested by name, 27 covered, 7 met by the platform and 33 assigned to later steps. None is a gap. Of the 153 requirements, 68 are tested by name.
+  - Two kernel gaps found in step 10 (DEC-153, this record) are fixed in code and wait for their conformance vectors.
+- **Open, assigned:**
+  - the conformance vectors of the kernel fixes of DEC-153 and this record, the business-refusal code (DEC-153) and `read_only` on the version before a change (DEC-154): the next BPA release candidate;
+  - the assignments of `fin-status.txt`: their steps.
+- **Affects:** DEC-147…154, FIN-GL-003, -004, -011, -022, FIN-PC-003, FIN-AR-001…004, -006, FIN-AP-001…003, -012, -020…023, FIN-BK-001, FIN-TX-001, -005, FIN-RP-001, FIN-CT-001, FIN-SC-004, FIN-FX-006, STD-KIND-029, STD-LGS-042, STD-LGS-052
+

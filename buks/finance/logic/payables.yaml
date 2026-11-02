@@ -7,7 +7,7 @@ assets:
     profile: standard
     state: committed
     capabilities: [read, commit, run, search]
-    exports: [post_bill, post_run, aging, form_1099, void_payment, propose_run, apply, revalue]
+    exports: [post_bill, post_run, aging, form_1099, void_payment, propose_run, apply, revalue, request_bank_change, apply_bank_change, review_1099]
     source: |
       fn d(v) { dec(v.to_string()) }
       fn two(x) {
@@ -50,6 +50,18 @@ assets:
         let ms = if m < 10 { "0" + m.to_string() } else { m.to_string() };
         let ds = if dd < 10 { "0" + dd.to_string() } else { dd.to_string() };
         y.to_string() + "-" + ms + "-" + ds
+      }
+      fn month_end(s) {
+        let y = num(s.sub_string(0, 4));
+        let m = num(s.sub_string(5, 2));
+        let ny = if m == 12 { y + 1 } else { y };
+        let nm = if m == 12 { 1 } else { m + 1 };
+        let ms = if nm < 10 { "0" + nm.to_string() } else { nm.to_string() };
+        date_of(days(ny.to_string() + "-" + ms + "-01") - 1)
+      }
+      fn due_of(date, net, eom) {
+        let base = if eom == true { month_end(date) } else { date };
+        date_of(days(base) + net)
       }
       fn bucket(late) {
         if late <= 0 { "Current" } else if late <= 30 { "1–30" } else if late <= 60 { "31–60" }
@@ -156,7 +168,19 @@ assets:
           throw "the lines add up to " + two(total) + ", not to the amount " + two(declared);
         }
         lines.push(with_original(#{account: v.payable_account, amount: usd(-ftotal * sign, fc)}, -total * sign, cur, fc));
-        let due = if this.due_date == () { date_of(days(this.bill_date) + v.terms_days) } else { this.due_date };
+        // the vendor's terms: net days, end of month, early-payment discount (FIN-AP-012)
+        let net = v.terms_days;
+        let eom = false;
+        let disc_days = ();
+        let disc_pct = ();
+        if v.terms != () {
+          let pt = sys.read.get(#{target: v.terms}).fields;
+          net = pt.net_days;
+          eom = pt.end_of_month == true;
+          disc_days = pt.discount_days;
+          disc_pct = pt.discount_percent;
+        }
+        let due = if this.due_date == () { due_of(this.bill_date, net, eom) } else { this.due_date };
         // the document date ages the item; the posting date books it (FIN-PC-005)
         let posting = if this.posting_date == () { this.bill_date } else { this.posting_date };
         let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
@@ -180,10 +204,20 @@ assets:
           fields: #{vendor: v.code, document: item, amount: usd(ftotal * sign, fc), original: usd(total * sign, cur),
                     kind: if credit { "credit" } else { "bill" }, source: this.number, bill_date: item_date, due: item_due}});
         let set = #{state: "posted", due_date: due, total: usd(total, cur), functional_total: usd(ftotal, fc)};
+        if !credit && disc_days != () && disc_pct != () {
+          set.discount_date = date_of(days(this.bill_date) + disc_days);
+          set.discount = usd(div(total * d(disc_pct), 100, 2, "half_up"), cur);
+        }
         if cur != fc { set.rate = rate.to_string(); }
         sys.commit.update(#{target: self_id, set: set});
-        #{posted: true, number: this.number, total: two(total), currency: cur, rate: rate.to_string(),
-          functional_total: two(ftotal), due_date: due}
+        let out = #{posted: true, number: this.number, total: two(total), currency: cur, rate: rate.to_string(),
+                    functional_total: two(ftotal), due_date: due};
+        // a 1099 vendor without a TIN on file: payments may be subject to backup withholding
+        // (FIN-AP-002)
+        if v.form_1099 != () && v.tin == () && v.tin_on_file != true {
+          out.warning = "no TIN on file for " + v.code + ": backup withholding may apply";
+        }
+        out
       }
 
       // a payment run: payables against the bank, each payment reducing its open item at its
@@ -204,9 +238,15 @@ assets:
         let parties = [];
         let done = [];
         let gains = [];
+        let originals = #{};
+        let discounts = dec("0.00");
         for p in this.payments {
           let a = d(p.amount.amount);
           let cur = p.amount.currency;
+          if cur != fc {
+            if !(cur in originals) { originals[cur] = dec("0.00"); }
+            originals[cur] = originals[cur] + a;
+          }
           if cur != fc && !(cur in rates) {
             let fq = sys.search.query(#{query: #{from: "FxRate", where: rate_where(cur, fc, pay.rate_type)}});
             let ids = fq.items;
@@ -234,25 +274,82 @@ assets:
             bill_date = g[0].values.bill_date;
             due = g[0].values.due;
           }
+          // an early-payment discount taken by the discount date settles part of the item
+          // without cash (FIN-AP-012)
+          let disc = dec("0.00");
+          if "discount" in p && p.discount != () {
+            disc = d(p.discount.amount);
+            if cur != fc { throw "a discount is taken in the functional currency"; }
+            if pay.discount_account == () { throw "the payables have no discount account"; }
+            let bq = sys.search.query(#{query: #{from: "Bill", where: "this.vendor_invoice == \"" + p.document + "\""}});
+            let bs = bq.items;
+            if bs.len() == 0 { throw "no bill " + p.document + " to take a discount on"; }
+            let b = sys.read.get(#{target: bs[0]}).fields;
+            if b.discount_date == () || this.run_date > b.discount_date { throw "the discount of " + p.document + " has expired"; }
+            if disc > d(b.discount.amount) { throw "the discount exceeds the one offered on " + p.document; }
+            if a + disc > sum_of(g[0].values, "original") { throw "the payment and discount of " + p.document + " exceed its open amount"; }
+            discounts += disc;
+          }
           let vq = sys.search.query(#{query: #{from: "Vendor", where: "this.code == \"" + p.vendor + "\""}});
           let vs = vq.items;
           let v = sys.read.get(#{target: vs[0]}).fields;
-          lines.push(with_original(#{account: v.payable_account, amount: usd(c, fc)}, a, cur, fc));
+          // payments wait while new bank details wait for approval (FIN-AP-003)
+          if v.bank_change != () { throw "the payment of " + p.document + " is held: bank details pending approval"; }
+          lines.push(with_original(#{account: v.payable_account, amount: usd(c + disc, fc)}, a, cur, fc));
           paid += fa;
           let loss = fa - c;
           realized += loss;
           if !loss.is_zero() { gains.push(#{document: p.document, vendor: p.vendor, amount: loss, rate: rate}); }
           if !(p.vendor in parties) { parties.push(p.vendor); }
           sys.commit.append(#{class: "ApItem", ledger_key: #{vendor: p.vendor}, valid_at: this.run_date,
-            fields: #{vendor: p.vendor, document: p.document, amount: usd(-c, fc), original: usd(-a, cur),
+            fields: #{vendor: p.vendor, document: p.document, amount: usd(-c - disc, fc), original: usd(-a - disc, cur),
                       kind: "payment", source: this.number, bill_date: bill_date, due: due}});
+          // the reportable amounts of the payment by form and box: the bill's lines' forms in
+          // proportion, else the vendor's; card payments are reported on Form 1099-K by the
+          // processor (FIN-AP-020)
+          let alloc = [];
+          if this.method != "card" && v.payment_method != "card" {
+            let forms = [];
+            if !prepay {
+              let bq = sys.search.query(#{query: #{from: "Bill", where: "this.vendor_invoice == \"" + p.document + "\" and this.state == \"posted\""}});
+              let bs = bq.items;
+              if bs.len() > 0 {
+                let b = sys.read.get(#{target: bs[0]}).fields;
+                for l in b.lines {
+                  let f = if "form_1099" in l && l.form_1099 != () { l.form_1099 } else { v.form_1099 };
+                  forms.push(#{form: f, amount: d(l.amount.amount)});
+                }
+              }
+            }
+            if forms.len() == 0 { forms.push(#{form: v.form_1099, amount: dec("1")}); }
+            let base = dec("0");
+            for f in forms { base += f.amount; }
+            let left = fa;
+            for i in 0..forms.len() {
+              let f = forms[i];
+              let x = if i == forms.len() - 1 { left } else { div(fa * f.amount, base, 2, "half_up") };
+              left -= x;
+              if f.form == () || f.form == "none" || x.is_zero() { continue; }
+              alloc.push(#{form: f.form, amount: usd(x, fc)});
+              sys.commit.append(#{class: "Form1099Amount", ledger_key: #{vendor: p.vendor}, valid_at: this.run_date,
+                fields: #{vendor: p.vendor, form: f.form, amount: usd(x, fc), payment: this.number, document: p.document}});
+            }
+          }
           let q = p;
           q.functional = usd(fa, fc);
           q.carrying = usd(c, fc);
+          if alloc.len() > 0 { q.f1099 = alloc; }
+          if !disc.is_zero() { q.discount_taken = usd(disc, fc); }
           done.push(q);
         }
         if !realized.is_zero() { lines.push(#{account: pay.realized_account, amount: usd(realized, fc)}); }
-        lines.push(#{account: this.bank_account, amount: usd(-paid, fc)});
+        if !discounts.is_zero() { lines.push(#{account: pay.discount_account, amount: usd(-discounts, fc)}); }
+        // the bank line carries the run's foreign amount, so the entry balances in it (FIN-GL-011)
+        let bank = #{account: this.bank_account, amount: usd(-paid, fc)};
+        let fcur = originals.keys();
+        if fcur.len() > 1 { throw "a run pays in one foreign currency at most"; }
+        if fcur.len() == 1 { bank.original = usd(-originals[fcur[0]], fcur[0]); }
+        lines.push(bank);
         let debits = dec("0.00");
         for l in lines { let x = d(l.amount.amount); if x > 0 { debits += x; } }
         let party = "";
@@ -299,20 +396,36 @@ assets:
         let tq = sys.search.query(#{query: #{from: "Form1099Threshold", where: "this.tax_year == \"" + tax_year + "\""}});
         if tq.items.len() == 0 { throw "no Form 1099 threshold for " + tax_year; }
         let threshold = d(sys.read.get(#{target: tq.items[0]}).fields.threshold.amount);
+        // the amounts of the year by vendor and form, from the Form1099Amount ledger
         let start = date_of(days(tax_year + "-01-01") - 1);
-        let g0 = sys.read.projection(#{projection: "ap-activity", asof: start}).groups;
-        let g1 = sys.read.projection(#{projection: "ap-activity", asof: through}).groups;
+        let g0 = sys.read.projection(#{projection: "f1099", asof: start}).groups;
+        let g1 = sys.read.projection(#{projection: "f1099", asof: through}).groups;
         let paid = #{};
-        for g in g1 { if g.key.kind == "payment" { paid[g.key.vendor] = -sum_of(g.values, "amount"); } }
-        for g in g0 { if g.key.kind == "payment" && g.key.vendor in paid { paid[g.key.vendor] = paid[g.key.vendor] + sum_of(g.values, "amount"); } }
-        let vq = sys.search.query(#{query: #{from: "Vendor", where: "this.form_1099 is not null"}});
+        for g in g1 { paid[g.key.vendor + "|" + g.key.form] = sum_of(g.values, "amount"); }
+        for g in g0 {
+          let k = g.key.vendor + "|" + g.key.form;
+          if k in paid { paid[k] = paid[k] - sum_of(g.values, "amount"); }
+        }
         let rows = [];
+        let vq = sys.search.query(#{query: #{from: "Vendor"}});
         for id in vq.items {
           let v = sys.read.get(#{target: id}).fields;
-          let p = if v.code in paid { paid[v.code] } else { dec("0.00") };
-          rows.push(#{vendor: v.code, name: v.name, form: v.form_1099, paid: two(p), reportable: p >= threshold});
+          let forms = [];
+          for k in paid.keys() {
+            let parts = k.split("|");
+            if parts[0] == v.code && !paid[k].is_zero() { forms.push(parts[1]); }
+          }
+          if forms.len() == 0 && v.form_1099 != () { forms.push(v.form_1099); }
+          for f in forms {
+            let k = v.code + "|" + f;
+            let p = if k in paid { paid[k] } else { dec("0.00") };
+            rows.push(#{vendor: v.code, name: v.name, form: f, paid: two(p), reportable: p >= threshold,
+                        order: v.code + "|" + f});
+          }
         }
-        #{tax_year: tax_year, through: through, threshold: two(threshold), rows: sorted(rows, "vendor")}
+        let out = [];
+        for r in sorted(rows, "order") { r.remove("order"); out.push(r); }
+        #{tax_year: tax_year, through: through, threshold: two(threshold), rows: out}
       }
 
       // void one payment of a posted run: a reversing entry in an open period, the item open
@@ -339,9 +452,12 @@ assets:
         let v = sys.read.get(#{target: vs[0]}).fields;
         let g = sys.read.projection(#{projection: "ap-open", group: #{vendor: p.vendor, document: document}}).groups;
         let number = this.number + "-V" + (done.len() + 1).to_string();
+        // a discount taken with the payment is reversed with it
+        let disc = if "discount_taken" in p { d(p.discount_taken.amount) } else { dec("0.00") };
         let lines = [with_original(#{account: this.bank_account, amount: usd(fa, fc)}, a, cur, fc),
-                     with_original(#{account: v.payable_account, amount: usd(-c, fc)}, -a, cur, fc)];
+                     with_original(#{account: v.payable_account, amount: usd(-c - disc, fc)}, -a, cur, fc)];
         if fa != c { lines.push(#{account: pay.realized_account, amount: usd(c - fa, fc)}); }
+        if !disc.is_zero() { lines.push(#{account: pay.discount_account, amount: usd(disc, fc)}); }
         let debits = dec("0.00");
         for l in lines { let x = d(l.amount.amount); if x > 0 { debits += x; } }
         let e = sys.commit.create(#{class: "JournalEntry", slug: number.to_lower(),
@@ -350,11 +466,17 @@ assets:
                     party: p.vendor, reverses: this.number, lines: lines, total: usd(debits, fc), state: "draft"}});
         sys.run.port(#{target: e.object_id, port: "post", params: #{}});
         sys.commit.append(#{class: "ApItem", ledger_key: #{vendor: p.vendor}, valid_at: void_date,
-          fields: #{vendor: p.vendor, document: document, amount: usd(c, fc), original: usd(a, cur), kind: "payment",
+          fields: #{vendor: p.vendor, document: document, amount: usd(c + disc, fc), original: usd(a + disc, cur), kind: "payment",
                     source: number, bill_date: g[0].values.bill_date, due: g[0].values.due}});
         if fa != c {
           sys.commit.append(#{class: "FxGain", ledger_key: #{document: document}, valid_at: void_date,
             fields: #{document: document, vendor: p.vendor, kind: "realized", source: number, amount: usd(c - fa, fc)}});
+        }
+        if "f1099" in p {
+          for f in p.f1099 {
+            sys.commit.append(#{class: "Form1099Amount", ledger_key: #{vendor: p.vendor}, valid_at: void_date,
+              fields: #{vendor: p.vendor, form: f.form, amount: usd(-d(f.amount.amount), fc), payment: number, document: document}});
+          }
         }
         done.push(#{document: document, date: void_date, reason: reason, entry: number});
         sys.commit.update(#{target: self_id, set: #{voided: done}});
@@ -368,11 +490,20 @@ assets:
         for id in sys.search.query(#{query: #{from: "Bill", where: "this.hold == true"}}).items {
           held.push(sys.read.get(#{target: id}).fields.vendor_invoice);
         }
+        let pending = [];
+        for id in sys.search.query(#{query: #{from: "Vendor", where: "this.bank_change is not null"}}).items {
+          pending.push(sys.read.get(#{target: id}).fields.code);
+        }
         let rows = [];
+        let held_rows = [];
         let total = dec("0.00");
         for g in sys.read.projection(#{projection: "ap-open", asof: run_date}).groups {
           let open = sum_of(g.values, "open");
           if open <= 0 || g.values.due > due_by || held.contains(g.key.document) { continue; }
+          if pending.contains(g.key.vendor) {
+            held_rows.push(#{vendor: g.key.vendor, document: g.key.document, reason: "bank details pending approval"});
+            continue;
+          }
           rows.push(#{vendor: g.key.vendor, document: g.key.document, amount: usd(open, "USD"),
                       order: g.values.due + "|" + g.key.document});
           total += open;
@@ -382,7 +513,7 @@ assets:
         let c = sys.commit.create(#{class: "PaymentRun", slug: number.to_lower(),
           fields: #{number: number, run_date: run_date, bank_account: bank_account, method: "ACH",
                     payments: payments, state: "draft"}});
-        #{number: number, run: c.object_id, payments: payments, total: two(total)}
+        #{number: number, run: c.object_id, payments: payments, total: two(total), held: held_rows}
       }
 
       // a credit or prepayment applied to an open bill of the same vendor (FIN-AP-008)
@@ -498,4 +629,47 @@ assets:
           }
         }
         #{posted: true, number: number, reverses_on: reverse_on, items: out_items, total: two(total)}
+      }
+
+      // new bank details requested; they apply on a second person's approval (FIN-AP-003)
+      fn request_bank_change(bank_name, bank_routing, bank_account_number, reason) {
+        sys.read.get(#{target: self_id});
+        if this.bank_change != () { throw "a change of bank details is already pending"; }
+        sys.commit.update(#{target: self_id, set: #{bank_change: #{bank_name: bank_name, bank_routing: bank_routing,
+                                                                  bank_account_number: bank_account_number, reason: reason}}});
+        #{requested: this.code}
+      }
+
+      // the requested bank details applied; the sheet requires a controller who did not
+      // request them (FIN-AP-003, FIN-CT-001); the versions keep the old and new values
+      fn apply_bank_change() {
+        sys.read.get(#{target: self_id});
+        if this.bank_change == () { throw "no change of bank details is pending"; }
+        let c = this.bank_change;
+        sys.commit.update(#{target: self_id, set: #{bank_name: c.bank_name, bank_routing: c.bank_routing,
+                                                    bank_account_number: c.bank_account_number, bank_change: ()}});
+        #{applied: this.code}
+      }
+
+      // the 1099 review: the vendors paid in the year with their exceptions (FIN-AP-022)
+      fn review_1099(tax_year, through) {
+        sys.read.get(#{target: self_id});
+        let r = sys.run.port(#{target: self_id, port: "form_1099", params: #{tax_year: tax_year, through: through}});
+        let seen = [];
+        let rows = [];
+        for x in r.rows {
+          if seen.contains(x.vendor) || d(x.paid).is_zero() { continue; }
+          seen.push(x.vendor);
+          let vq = sys.search.query(#{query: #{from: "Vendor", where: "this.code == \"" + x.vendor + "\""}});
+          let vs = vq.items;
+          let v = sys.read.get(#{target: vs[0]}).fields;
+          let issues = [];
+          if v.tin == () && v.tin_on_file != true { issues.push("no TIN"); }
+          if v.tin_status == "mismatch" { issues.push("TIN failed verification"); }
+          if v.remit_to == () { issues.push("no address"); }
+          rows.push(#{vendor: x.vendor, name: v.name, issues: issues});
+        }
+        let exceptions = [];
+        for x in rows { if x.issues.len() > 0 { exceptions.push(x); } }
+        #{tax_year: tax_year, through: through, vendors: rows, exceptions: exceptions}
       }

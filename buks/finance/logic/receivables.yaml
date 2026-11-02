@@ -7,7 +7,7 @@ assets:
     profile: standard
     state: committed
     capabilities: [read, commit, run, search]
-    exports: [post_invoice, post_receipt, reapply, aging, tax_report, statement, revalue, fx_report, post_write_off, allowance, run_recurring]
+    exports: [post_invoice, post_receipt, reapply, aging, tax_report, statement, revalue, fx_report, post_write_off, allowance, run_recurring, void_invoice, refund]
     source: |
       fn d(v) { dec(v.to_string()) }
       fn two(x) {
@@ -51,6 +51,20 @@ assets:
         let ms = if m < 10 { "0" + m.to_string() } else { m.to_string() };
         let ds = if dd < 10 { "0" + dd.to_string() } else { dd.to_string() };
         y.to_string() + "-" + ms + "-" + ds
+      }
+      // the last day of a date's month
+      fn month_end(s) {
+        let y = num(s.sub_string(0, 4));
+        let m = num(s.sub_string(5, 2));
+        let ny = if m == 12 { y + 1 } else { y };
+        let nm = if m == 12 { 1 } else { m + 1 };
+        let ms = if nm < 10 { "0" + nm.to_string() } else { nm.to_string() };
+        date_of(days(ny.to_string() + "-" + ms + "-01") - 1)
+      }
+      // the due date under net days from the date or from the end of its month (FIN-AR-002)
+      fn due_of(date, net, eom) {
+        let base = if eom == true { month_end(date) } else { date };
+        date_of(days(base) + net)
       }
       fn bucket(late) {
         if late <= 0 { "Current" } else if late <= 30 { "1–30" } else if late <= 60 { "31–60" }
@@ -110,6 +124,14 @@ assets:
         let fc = rcv.functional_currency;
         let cm = this.kind == "credit_memo";
         let sign = if cm { -1 } else { 1 };
+        if cust.status == "inactive" { throw "the customer " + cust.code + " is inactive"; }
+        // quantity times unit price gives the amount of a line (FIN-AR-003)
+        for l in this.lines {
+          if "quantity" in l && "unit_price" in l {
+            let x = round(d(l.quantity) * d(l.unit_price.amount), 2, "half_up");
+            if x != d(l.amount.amount) { throw "the amount of a line is not its quantity times its unit price"; }
+          }
+        }
         let cur = if this.currency == () { cust.currency } else { this.currency };
         let rate = dec("1");
         if cur != fc {
@@ -138,26 +160,64 @@ assets:
         }
         let tax_total = dec("0.00");
         let tax_lines = [];
+        // the tax date: the invoice's, or for a credit memo applied to an invoice the original
+        // invoice's, so that a return is taxed at the rate of the sale (FIN-TX-005)
+        let tax_date = this.invoice_date;
+        if cm && this.applies_to != () {
+          let og = sys.read.projection(#{projection: "ar-open", group: #{customer: cust.code, document: this.applies_to}}).groups;
+          if og.len() > 0 { tax_date = og[0].values.invoice_date; }
+        }
         for uri in codes {
-          let tc = sys.read.get(#{target: uri}).fields;
+          // the version of the code valid on the tax date (FIN-TX-001)
+          let ts = sys.read.timeline(#{target: uri, valid_from: tax_date, valid_to: date_of(days(tax_date) + 1)}).segments;
+          let tc = ();
+          for s in ts { if s.from <= tax_date && (s.to == () || s.to > tax_date) { tc = s.fields; } }
+          if tc == () { throw "no tax code " + uri + " on " + tax_date; }
           let trate = d(tc.rate);
           let base = net[uri];
           // half away from zero to the cent (FIN-TX-003)
           let tax = div(base * trate, 100, 2, "half_up");
           let ftax = fx(tax, rate);
+          // the tax by jurisdiction, in proportion to the components' rates (FIN-TX-001)
+          let parts = [];
+          if tc.components != () && !ftax.is_zero() {
+            let sum_rates = dec("0");
+            for c in tc.components { sum_rates += d(c.rate); }
+            if sum_rates != trate { throw "the components of " + tc.code + " do not add up to its rate"; }
+            let left = ftax;
+            for i in 0..tc.components.len() {
+              let c = tc.components[i];
+              let x = if i == tc.components.len() - 1 { left } else { div(ftax * d(c.rate), trate, 2, "half_up") };
+              left -= x;
+              let p = c.jurisdiction.split("/");
+              parts.push(#{jurisdiction: p[p.len() - 1].to_upper(), tax: x});
+            }
+          }
           if !tax.is_zero() {
             lines.push(with_original(#{account: tc.payable_account, amount: usd(-ftax * sign, fc)}, -tax * sign, cur, fc));
           }
           let fbase = fx(base, rate);
           let taxable = if tc.category == "taxable" { fbase } else { dec("0.00") };
           let exempt = if tc.category == "taxable" { dec("0.00") } else { fbase };
-          tax_lines.push(#{code: tc.code, taxable: taxable, exempt: exempt, tax: ftax});
+          tax_lines.push(#{code: tc.code, taxable: taxable, exempt: exempt, tax: ftax, parts: parts});
           tax_total += tax;
           ftotal += ftax;
         }
         let gross = total + tax_total;
         lines.insert(0, with_original(#{account: cust.receivable_account, amount: usd(ftotal * sign, fc)}, gross * sign, cur, fc));
-        let due = if this.due_date == () { date_of(days(this.invoice_date) + cust.terms_days) } else { this.due_date };
+        // the terms: net days, from the end of the month, and an early-payment discount (FIN-AR-002)
+        let net = cust.terms_days;
+        let eom = false;
+        let disc_days = ();
+        let disc_pct = ();
+        if cust.terms != () {
+          let pt = sys.read.get(#{target: cust.terms}).fields;
+          net = pt.net_days;
+          eom = pt.end_of_month == true;
+          disc_days = pt.discount_days;
+          disc_pct = pt.discount_percent;
+        }
+        let due = if this.due_date == () { due_of(this.invoice_date, net, eom) } else { this.due_date };
         // the open item: an invoice opens one, a credit memo reduces the invoice it applies to
         let item = this.number;
         let item_date = this.invoice_date;
@@ -196,6 +256,10 @@ assets:
           sys.commit.append(#{class: "TaxLine", ledger_key: #{tax_code: t.code}, valid_at: this.invoice_date,
             fields: #{tax_code: t.code, document: this.number, customer: cust.code,
                       taxable: usd(t.taxable * sign, fc), exempt: usd(t.exempt * sign, fc), tax: usd(t.tax * sign, fc)}});
+          for pt in t.parts {
+            sys.commit.append(#{class: "TaxPart", ledger_key: #{tax_code: t.code}, valid_at: this.invoice_date,
+              fields: #{tax_code: t.code, jurisdiction: pt.jurisdiction, document: this.number, tax: usd(pt.tax * sign, fc)}});
+          }
         }
         sys.commit.append(#{class: "PostingNumber",
           ledger_key: #{fiscal_year: this.invoice_date.sub_string(0, 4), source: "sales-documents"},
@@ -203,6 +267,10 @@ assets:
           fields: #{fiscal_year: this.invoice_date.sub_string(0, 4), source: "sales-documents", entry: self_id, count: dec("1")}});
         let set = #{state: "posted", due_date: due, tax: usd(tax_total, cur), total: usd(gross, cur),
                     functional_total: usd(ftotal, fc)};
+        if !cm && disc_days != () && disc_pct != () {
+          set.discount_date = date_of(days(this.invoice_date) + disc_days);
+          set.discount = usd(div(gross * d(disc_pct), 100, 2, "half_up"), cur);
+        }
         if cur != fc { set.currency = cur; set.rate = rate.to_string(); }
         sys.commit.update(#{target: self_id, set: set});
         let out = #{posted: true, number: this.number, tax: two(tax_total), total: two(gross), currency: cur,
@@ -239,6 +307,7 @@ assets:
         let fa = fx(a, rate);
         let rest = a;
         let credited = dec("0.00");
+        let discounts = dec("0.00");
         let items = [];
         let gains = [];
         let apps = if this.applications == () { [] } else { this.applications };
@@ -247,22 +316,37 @@ assets:
           if g.len() == 0 { throw "no open item " + app.document; }
           let x = d(app.amount.amount);
           let c = carrying(sum_of(g[0].values, "open"), sum_of(g[0].values, "original"), x);
-          items.push(#{document: app.document, functional: c, original: x,
+          // an early-payment discount taken by the discount date (FIN-AR-002)
+          let disc = dec("0.00");
+          if "discount" in app && app.discount != () {
+            disc = d(app.discount.amount);
+            if cur != fc { throw "a discount is taken in the functional currency"; }
+            let iq = sys.search.query(#{query: #{from: "Invoice", where: "this.number == \"" + app.document + "\""}});
+            let inv = iq.items;
+            if inv.len() == 0 { throw "no invoice " + app.document + " to take a discount on"; }
+            let f = sys.read.get(#{target: inv[0]}).fields;
+            if f.discount_date == () || this.receipt_date > f.discount_date { throw "the discount of " + app.document + " has expired"; }
+            if disc > d(f.discount.amount) { throw "the discount exceeds the one offered on " + app.document; }
+            if rcv.discount_account == () { throw "the receivables have no discount account"; }
+            discounts += disc;
+          }
+          items.push(#{document: app.document, functional: c + disc, original: x + disc,
                        invoice_date: g[0].values.invoice_date, due: g[0].values.due});
           let loss = c - fx(x, rate);
           if !loss.is_zero() { gains.push(#{document: app.document, amount: loss}); }
-          credited += c;
+          credited += c + disc;
           rest -= x;
         }
         let frest = fa - fx(a - rest, rate);
         credited += frest;
-        let loss_total = credited - fa;
+        let loss_total = credited - fa - discounts;
         let lines = [with_original(#{account: this.bank_account, amount: usd(fa, fc)}, a, cur, fc)];
+        if !discounts.is_zero() { lines.push(#{account: rcv.discount_account, amount: usd(discounts, fc)}); }
         if !loss_total.is_zero() {
           lines.push(#{account: rcv.realized_account, amount: usd(loss_total, fc)});
         }
         lines.push(with_original(#{account: cust.receivable_account, amount: usd(-credited, fc)}, -a, cur, fc));
-        let debits = fa;
+        let debits = fa + discounts;
         if loss_total > 0 { debits += loss_total; }
         let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
           fields: #{number: this.number, source: "receivables", kind: "receipt", posting_date: this.receipt_date,
@@ -359,10 +443,31 @@ assets:
           r.taxable += t; r.exempt += x; r.tax += tax; r.documents.push(g.key.document);
           by[c] = r;
         }
+        // the tax by jurisdiction of the period (FIN-TX-001)
+        let p0 = #{};
+        for g in sys.read.projection(#{projection: "tax-parts", asof: opening}).groups {
+          p0[g.key.tax_code + "|" + g.key.jurisdiction + "|" + g.key.document] = sum_of(g.values, "tax");
+        }
+        let parts = #{};
+        for g in sys.read.projection(#{projection: "tax-parts", asof: closing}).groups {
+          let k = g.key.tax_code + "|" + g.key.jurisdiction + "|" + g.key.document;
+          let x = sum_of(g.values, "tax");
+          if k in p0 { x -= p0[k]; }
+          let pk = g.key.tax_code + "|" + g.key.jurisdiction;
+          if !(pk in parts) { parts[pk] = dec("0.00"); }
+          parts[pk] = parts[pk] + x;
+        }
         let rows = [];
         for c in codes {
           let r = by[c];
-          rows.push(#{tax_code: c, taxable: two(r.taxable), exempt: two(r.exempt), tax: two(r.tax), documents: r.documents});
+          let row = #{tax_code: c, taxable: two(r.taxable), exempt: two(r.exempt), tax: two(r.tax), documents: r.documents};
+          let ps = [];
+          for pk in parts.keys() {
+            let s = pk.split("|");
+            if s[0] == c && !parts[pk].is_zero() { ps.push(#{jurisdiction: s[1], tax: two(parts[pk])}); }
+          }
+          if ps.len() > 0 { row.parts = sorted(ps, "jurisdiction"); }
+          rows.push(row);
         }
         #{opening: opening, closing: closing, rows: sorted(rows, "tax_code")}
       }
@@ -588,4 +693,72 @@ assets:
                     description: this.description, lines: this.lines, state: "draft"}});
         let r = sys.run.port(#{target: c.object_id, port: "post", params: #{}});
         #{created: true, number: number, total: r.total}
+      }
+
+      // the void of a posted invoice on which nothing was received: a reversing entry dated in an
+      // open period, the open item and the tax detail reversed (FIN-AR-004)
+      fn void_invoice(void_date, reason) {
+        sys.read.get(#{target: self_id});
+        if this.state != "posted" { throw "only a posted invoice is voided"; }
+        if this.voided_on != () { throw "the invoice is voided"; }
+        if this.kind != "invoice" { throw "a credit memo is reversed by an invoice"; }
+        let cust = sys.read.get(#{target: this.customer}).fields;
+        let g = sys.read.projection(#{projection: "ar-open", group: #{customer: cust.code, document: this.number}}).groups;
+        if g.len() == 0 || sum_of(g[0].values, "original") != amount(this.total) {
+          throw "something was received or credited on " + this.number + ": issue a credit memo";
+        }
+        let eq = sys.search.query(#{query: #{from: "JournalEntry", where: "this.number == \"" + this.number + "\""}});
+        let es = eq.items;
+        let e = sys.read.get(#{target: es[0]}).fields;
+        let number = this.number + "-VOID";
+        let lines = [];
+        for l in e.lines {
+          let n = #{account: l.account, amount: #{amount: (-dec(l.amount.amount)).to_string(), currency: l.amount.currency}};
+          if "original" in l { n.original = #{amount: (-dec(l.original.amount)).to_string(), currency: l.original.currency}; }
+          lines.push(n);
+        }
+        let v = sys.commit.create(#{class: "JournalEntry", slug: number.to_lower(),
+          fields: #{number: number, source: "receivables", kind: "invoice void", posting_date: void_date,
+                    document_date: void_date, description: "Void of " + this.number + ": " + reason, party: cust.code,
+                    reverses: this.number, lines: lines, total: e.total, state: "draft"}});
+        sys.run.port(#{target: v.object_id, port: "post", params: #{}});
+        sys.commit.append(#{class: "ArItem", ledger_key: #{customer: cust.code}, valid_at: void_date,
+          fields: #{customer: cust.code, document: this.number, amount: usd(-sum_of(g[0].values, "open"), g[0].values.open[0].currency),
+                    original: usd(-sum_of(g[0].values, "original"), g[0].values.original[0].currency), kind: "void",
+                    source: number, invoice_date: g[0].values.invoice_date, due: g[0].values.due}});
+        let tq = sys.read.projection(#{projection: "tax-detail"}).groups;
+        for t in tq {
+          if t.key.document != this.number { continue; }
+          sys.commit.append(#{class: "TaxLine", ledger_key: #{tax_code: t.key.tax_code}, valid_at: void_date,
+            fields: #{tax_code: t.key.tax_code, document: this.number, customer: cust.code,
+                      taxable: usd(-sum_of(t.values, "taxable"), t.values.taxable[0].currency),
+                      exempt: usd(-sum_of(t.values, "exempt"), t.values.exempt[0].currency),
+                      tax: usd(-sum_of(t.values, "tax"), t.values.tax[0].currency)}});
+        }
+        sys.commit.update(#{target: self_id, set: #{voided_on: void_date}});
+        #{voided: this.number, entry: number}
+      }
+
+      // a refund of a customer's credit from a bank account (FIN-AR-006)
+      fn refund(number, customer, document, amount, refund_date, bank_account) {
+        sys.read.get(#{target: self_id});
+        let x = d(amount.amount);
+        let cur = amount.currency;
+        if cur != this.functional_currency { throw "a refund is in the functional currency"; }
+        let g = sys.read.projection(#{projection: "ar-open", group: #{customer: customer, document: document}}).groups;
+        if g.len() == 0 || -sum_of(g[0].values, "open") < x { throw document + " has no credit of " + two(x); }
+        let cq = sys.search.query(#{query: #{from: "Customer", where: "this.code == \"" + customer + "\""}});
+        let cs = cq.items;
+        let cust = sys.read.get(#{target: cs[0]}).fields;
+        let e = sys.commit.create(#{class: "JournalEntry", slug: number.to_lower(),
+          fields: #{number: number, source: "receivables", kind: "refund", posting_date: refund_date,
+                    document_date: refund_date, description: "Refund of " + document, party: customer,
+                    lines: [#{account: cust.receivable_account, amount: usd(x, cur)},
+                            #{account: bank_account, amount: usd(-x, cur)}],
+                    total: usd(x, cur), state: "draft"}});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        sys.commit.append(#{class: "ArItem", ledger_key: #{customer: customer}, valid_at: refund_date,
+          fields: #{customer: customer, document: document, amount: usd(x, cur), original: usd(x, cur), kind: "refund",
+                    source: number, invoice_date: g[0].values.invoice_date, due: g[0].values.due}});
+        #{refunded: two(x), document: document, open: two(sum_of(g[0].values, "open") + x)}
       }

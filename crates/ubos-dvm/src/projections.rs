@@ -629,7 +629,11 @@ impl Engine {
         };
         let authority = self.store.authority();
         let mut r = Repo::new(self.store.as_mut(), &self.registry);
-        let accounts = r.objects_in(branch, cseq, Some("LedgerAccount"))?;
+        // STD-KIND-029: accounts of LedgerAccount and of the classes that extend it
+        let mut accounts = BTreeMap::new();
+        for c in self.registry.subclasses("LedgerAccount") {
+            accounts.extend(r.objects_in(branch, cseq, Some(&c))?);
+        }
         let mut parent: BTreeMap<String, Option<String>> = BTreeMap::new();
         for o in accounts.values() {
             let uri = crate::relations::uri_of(&authority, &o.class, &o.slug);

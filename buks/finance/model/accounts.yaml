@@ -43,12 +43,13 @@ classes:
       - {name: end, label: end, description: first day after the period, type: date, required: true}
       - name: state
         label: state
-        description: open, closing or closed
+        description: "open, closing (soft-closed: adjusting entries only, FIN-PC-003) or closed"
         type: enum
         required: true
         constraints: {allowed_values: [open, closing, closed]}
       - {name: fiscal_year, label: fiscal year, description: the fiscal year the period belongs to, type: text}
       - {name: number, label: number, description: the period's number in its year (1-12; 13 for the adjustment period), type: integer}
+      - {name: closed_subledgers, label: closed subledgers, description: "the subledgers closed for the period while the general ledger is open: sources of entries such as receivables or payables (FIN-PC-003)", type: json}
       - {name: checklist, label: checklist, description: "the results of the automatic close checks when the period was soft-closed: {check, passed, evidence} (FIN-PC-004, -005)", type: json}
     ports:
       - {name: open, description: post the automatic reversals dated in the period (FIN-GL-018), kind: command, params: [], permission: open, impl: ubos.finance.periods#open}
@@ -58,6 +59,13 @@ classes:
         params: []
         permission: read
         impl: ubos.finance.periods#checklist
+      - name: close_subledger
+        description: "close a subledger for the period: its documents post no more in it (FIN-PC-003)"
+        kind: command
+        params:
+          - {name: subledger, label: subledger, description: "the source of its entries: receivables, payables, bank, fixed_assets or revaluation", type: text, required: true}
+        permission: close
+        impl: ubos.finance.periods#close_subledger
       - name: soft_close
         description: "move the period to closing when every check passes, keeping the results; refused naming the failing checks (FIN-PC-004, SCN-506). close_period then closes it."
         kind: command

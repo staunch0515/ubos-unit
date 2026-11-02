@@ -18,8 +18,27 @@ classes:
         type: enum
         required: true
         constraints: {allowed_values: [taxable, exempt, non_taxable, export]}
+      - {name: components, label: components, description: "the jurisdictions the code combines: {jurisdiction (URI of a TaxJurisdiction), rate in percent}; their rates add up to the code's rate. A rate change is a new version from its effective date; a document is taxed at the version valid on its date (FIN-TX-001)", type: json}
       - {name: certificate_required, label: certificate required, description: a sale under this code needs a valid exemption or resale certificate of the customer (FIN-TX-004), type: boolean}
       - {name: payable_account, label: payable account, description: the sales-tax payable account (FIN-TX-006), type: reference, constraints: {target_class: GlAccount}}
+  - name: TaxJurisdiction
+    label: tax jurisdiction
+    description: "A sales-tax jurisdiction: a state, county, city or special district (FIN-TX-001)"
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[code]]
+    fields:
+      - {name: code, label: code, description: the jurisdiction's code, type: text, required: true}
+      - {name: name, label: name, description: the jurisdiction's name, type: text, required: true}
+      - name: level
+        label: level
+        description: state, county, city or special district
+        type: enum
+        required: true
+        constraints: {allowed_values: [state, county, city, special]}
+      - {name: state, label: state, description: the state it belongs to, type: text, required: true}
   - name: Customer
     label: customer
     description: A customer (FIN-AR-001)
@@ -35,6 +54,15 @@ classes:
       - {name: currency, label: currency, description: the invoicing currency, type: text, required: true}
       - {name: tax_code, label: tax code, description: the default tax code, type: reference, required: true, constraints: {target_class: TaxCode}}
       - {name: terms_days, label: terms, description: net days to the due date (FIN-AR-002), type: integer, required: true}
+      - {name: terms, label: payment terms, description: "payment terms with a discount or end of month; they take precedence over terms_days (FIN-AR-002)", type: reference, constraints: {target_class: PaymentTerms}}
+      - {name: billing_address, label: billing address, description: the billing address (FIN-AR-001), type: text}
+      - {name: shipping_address, label: shipping address, description: the ship-to address, which decides the tax jurisdiction (FIN-AR-001), type: text}
+      - {name: contacts, label: contacts, description: "the contacts: {name, role, email, phone}", type: json}
+      - name: status
+        label: status
+        description: active, on hold or inactive; no invoice is posted for an inactive customer (FIN-AR-001)
+        type: enum
+        constraints: {allowed_values: [active, on_hold, inactive]}
       - {name: certificate, label: certificate, description: the exemption or resale certificate number, type: text}
       - {name: certificate_valid_to, label: certificate valid to, description: the last day the certificate is valid, type: date}
       - {name: receivable_account, label: receivable account, description: the receivables control account, type: reference, required: true, constraints: {target_class: GlAccount}}
@@ -66,7 +94,10 @@ classes:
       - {name: description, label: description, description: the document's description, type: text, required: true}
       - {name: currency, label: currency, description: "the document currency; the customer's invoicing currency when absent (FIN-FX-003)", type: text}
       - {name: rate, label: rate, description: "the rate to the functional currency entered for the document; the spot rate of the invoice date when absent (FIN-FX-003)", type: decimal}
-      - {name: lines, label: lines, description: "the lines: {description, amount (money in the document currency, positive), account (revenue or returns account), tax_code (URI of a TaxCode)}", type: json, required: true}
+      - {name: lines, label: lines, description: "the lines: {description, quantity?, unit_price?, amount (money in the document currency, positive; quantity times unit price when both are given, FIN-AR-003), account (revenue or returns account), tax_code (URI of a TaxCode)}", type: json, required: true}
+      - {name: discount_date, label: discount date, description: the last day an early-payment discount is offered, computed on posting (FIN-AR-002), type: date}
+      - {name: discount, label: discount, description: the early-payment discount offered, computed on posting, type: money}
+      - {name: voided_on, label: voided on, description: the date of the reversing entry that voided the invoice (FIN-AR-004), type: date}
       - {name: applies_to, label: applies to, description: the invoice a credit memo is applied to, type: text}
       - {name: tax, label: tax, description: the tax computed on posting, type: money}
       - {name: total, label: total, description: the total with tax, computed on posting, type: money}
@@ -80,6 +111,14 @@ classes:
         constraints: {allowed_values: [draft, posted]}
     ports:
       - {name: post, description: post the document, kind: command, params: [], permission: post, impl: ubos.finance.receivables#post_invoice}
+      - name: void
+        description: "void a posted invoice on which nothing was received, by a reversing entry dated in an open period; the invoice stays with its number (FIN-AR-004)"
+        kind: command
+        params:
+          - {name: void_date, label: date, description: the date of the reversing entry, type: date, required: true}
+          - {name: reason, label: reason, description: why, type: text, required: true}
+        permission: void
+        impl: ubos.finance.receivables#void_invoice
   - name: Receipt
     label: receipt
     description: A customer receipt and its application to open items (FIN-AR-007, -008)
@@ -98,7 +137,7 @@ classes:
       - {name: method, label: method, description: check, ACH, wire or card, type: text}
       - {name: reference, label: reference, description: the payer's reference, type: text}
       - {name: bank_account, label: bank account, description: the deposit account, type: reference, required: true, constraints: {target_class: GlAccount}}
-      - {name: applications, label: applications, description: "{document, amount in the receipt currency}; the rest stays unapplied", type: json}
+      - {name: applications, label: applications, description: "{document, amount in the receipt currency, discount?}; the rest stays unapplied; a discount taken by the discount date posts to the discount account (FIN-AR-002)", type: json}
       - name: state
         label: state
         description: draft until posted
@@ -127,6 +166,7 @@ classes:
       - {name: control_account, label: control account, description: the receivables control account (FIN-RP-007), type: reference, required: true, constraints: {target_class: GlAccount}}
       - {name: functional_currency, label: functional currency, description: the functional currency of the company (FIN-FX-001), type: text, required: true}
       - {name: rate_type, label: rate type, description: "the type of the FxRate objects the subledger converts with (FIN-FX-002)", type: text, required: true}
+      - {name: discount_account, label: discount account, description: the account of early-payment discounts allowed (FIN-AR-002), type: reference, constraints: {target_class: GlAccount}}
       - {name: allowance_account, label: allowance account, description: the allowance for credit losses (FIN-AR-011, -012), type: reference, constraints: {target_class: GlAccount}}
       - {name: loss_rates, label: loss rates, description: "the loss rate in percent by aging bucket, for the suggested allowance: {bucket: rate} (FIN-AR-011)", type: json}
       - {name: realized_account, label: realized FX account, description: the realized exchange gain or loss account (FIN-FX-004), type: reference, required: true, constraints: {target_class: GlAccount}}
@@ -156,6 +196,18 @@ classes:
           - {name: closing, label: closing, description: the last day of the period, type: date, required: true}
         permission: read
         impl: ubos.finance.receivables#statement
+      - name: refund
+        description: "pay back a customer's credit (an unapplied receipt or a credit memo standing alone) from a bank account (FIN-AR-006)"
+        kind: command
+        params:
+          - {name: number, label: number, description: the refund's number, type: text, required: true}
+          - {name: customer, label: customer, description: the customer code, type: text, required: true}
+          - {name: document, label: document, description: the credit item, type: text, required: true}
+          - {name: amount, label: amount, description: the amount refunded, type: money, required: true}
+          - {name: refund_date, label: date, description: the date, type: date, required: true}
+          - {name: bank_account, label: bank account, description: the account paid from, type: reference, required: true, constraints: {target_class: GlAccount}}
+        permission: post
+        impl: ubos.finance.receivables#refund
       - name: allowance
         description: "the allowance suggested by the loss rates on the aging at a date, against the allowance account's balance (FIN-AR-011); it is recorded by a journal entry"
         kind: query
@@ -283,3 +335,30 @@ classes:
           - {name: period_end, label: period end, description: the last day of the period, type: date, required: true}
         permission: run
         impl: ubos.finance.receivables#run_recurring
+  - name: PaymentTerms
+    label: payment terms
+    description: "Payment terms: net days from the document date or from the end of its month, and an optional early-payment discount, for example 2/10 net 30 (FIN-AR-002)"
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[code]]
+    fields:
+      - {name: code, label: code, description: the terms' code, type: text, required: true}
+      - {name: net_days, label: net days, description: the days to the due date, type: integer, required: true}
+      - {name: end_of_month, label: end of month, description: the net days count from the end of the document's month, type: boolean}
+      - {name: discount_days, label: discount days, description: the days in which the discount is offered, type: integer}
+      - {name: discount_percent, label: discount percent, description: the discount in percent of the total, type: decimal}
+  - name: TaxPart
+    label: tax part
+    description: "The tax of a document by jurisdiction: the tax of a code allocated to its components in proportion to their rates, the rest to the last (FIN-TX-001, -008)"
+    namespace: ubos.finance
+    parent: DataObject
+    kind: ledger
+    schema_version: 1
+    ledger: {key: [tax_code], amounts: [tax], double_entry: false}
+    fields:
+      - {name: tax_code, label: tax code, description: the tax code, type: text, required: true}
+      - {name: jurisdiction, label: jurisdiction, description: the jurisdiction's code, type: text, required: true}
+      - {name: document, label: document, description: the invoice or credit memo, type: text, required: true}
+      - {name: tax, label: tax, description: the jurisdiction's part of the tax, type: money, required: true}

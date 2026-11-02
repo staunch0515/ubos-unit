@@ -7,7 +7,7 @@ assets:
     profile: standard
     state: committed
     capabilities: [read, commit, run, search]
-    exports: [open, reopen, checklist, soft_close]
+    exports: [open, reopen, checklist, soft_close, close_subledger]
     source: |
       fn num(s) {
         let n = 0;
@@ -167,6 +167,17 @@ assets:
         let failing = [];
         for c in checks { if !c.passed { passed = false; failing.push(c.check); } }
         #{period: start, last_day: last, passed: passed, failing: failing, checks: checks}
+      }
+
+      // a subledger closed for the period (FIN-PC-003)
+      fn close_subledger(subledger) {
+        sys.read.get(#{target: self_id});
+        if this.state == "closed" { throw "the period is closed"; }
+        let list = if this.closed_subledgers == () { [] } else { this.closed_subledgers };
+        if list.contains(subledger) { return #{closed: false, subledger: subledger}; }
+        list.push(subledger);
+        sys.commit.update(#{target: self_id, set: #{closed_subledgers: list}});
+        #{closed: true, subledger: subledger, closed_subledgers: list}
       }
 
       // soft close: to closing when every check passes, keeping the results (FIN-PC-004, -005)

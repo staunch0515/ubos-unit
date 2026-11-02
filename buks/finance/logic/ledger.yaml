@@ -1,0 +1,163 @@
+# The general ledger's reports (FIN-RP-001, FIN-GL-003, FIN-GL-022; PH-2 step 10g-3, DEC-155):
+# the trial balance from the balance and side projections, rolled up along the account
+# hierarchy on request, and the inquiry of one account by document with a running balance.
+assets:
+  - name: ubos.finance.ledger
+    abi: "1.0"
+    tier: l2
+    profile: standard
+    state: committed
+    capabilities: [read, search]
+    exports: [trial_balance, inquiry]
+    source: |
+      fn two(x) {
+        let s = x.to_string();
+        if !s.contains(".") { return s + ".00"; }
+        let p = s.split(".");
+        let f = p[1];
+        if f.len() == 1 { f += "0"; }
+        if f.len() > 2 { f = f.sub_string(0, 2); }
+        let out = p[0] + "." + f;
+        if out == "-0.00" { "0.00" } else { out }
+      }
+      fn num(s) {
+        let n = 0;
+        for c in s.chars() { n = n * 10 + "0123456789".index_of(c); }
+        n
+      }
+      fn days(s) {
+        let y = num(s.sub_string(0, 4));
+        let m = num(s.sub_string(5, 2));
+        let dd = num(s.sub_string(8, 2));
+        if m <= 2 { y -= 1; }
+        let era = y / 400;
+        let yoe = y - era * 400;
+        let mp = (m + 9) % 12;
+        let doy = (153 * mp + 2) / 5 + dd - 1;
+        era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy
+      }
+      fn date_of(z) {
+        let era = z / 146097;
+        let doe = z - era * 146097;
+        let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+        let y = yoe + era * 400;
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+        let mp = (5 * doy + 2) / 153;
+        let dd = doy - (153 * mp + 2) / 5 + 1;
+        let m = if mp < 10 { mp + 3 } else { mp - 9 };
+        if m <= 2 { y += 1; }
+        let ms = if m < 10 { "0" + m.to_string() } else { m.to_string() };
+        let ds = if dd < 10 { "0" + dd.to_string() } else { dd.to_string() };
+        y.to_string() + "-" + ms + "-" + ds
+      }
+      fn sum_of(values, name) {
+        let t = dec("0.00");
+        for m in values[name] { t += dec(m.amount); }
+        t
+      }
+      fn code_of(uri) { let p = uri.split("/"); p[p.len() - 1] }
+      fn sorted(rows, key) {
+        let out = [];
+        for r in rows {
+          let i = 0;
+          while i < out.len() && out[i][key] <= r[key] { i += 1; }
+          out.insert(i, r);
+        }
+        out
+      }
+      fn zero_row(code, name) {
+        #{account: code, name: name, opening: dec("0.00"), debits: dec("0.00"), credits: dec("0.00"), closing: dec("0.00")}
+      }
+
+      // the trial balance of the period (opening, closing]: opening and closing balances, debits
+      // and credits per account, with totals; rollup adds the summary accounts (FIN-RP-001)
+      fn trial_balance(opening, closing, rollup) {
+        let names = #{};
+        let parents = #{};
+        for id in sys.search.query(#{query: #{from: "GlAccount"}}).items {
+          let a = sys.read.get(#{target: id}).fields;
+          names[a.number] = a.name;
+          if a.parent != () { parents[a.number] = code_of(a.parent); }
+        }
+        let rows = #{};
+        for pair in [[opening, "opening"], [closing, "closing"]] {
+          for g in sys.read.projection(#{projection: "gl-balance", asof: pair[0]}).groups {
+            let c = code_of(g.key.account);
+            if !(c in rows) { rows[c] = zero_row(c, names[c]); }
+            let r = rows[c];
+            r[pair[1]] = sum_of(g.values, "balance");
+            rows[c] = r;
+          }
+        }
+        let before = #{};
+        for g in sys.read.projection(#{projection: "gl-sides", asof: opening}).groups {
+          before[g.key.account + "|" + g.key.side] = sum_of(g.values, "amount");
+        }
+        for g in sys.read.projection(#{projection: "gl-sides", asof: closing}).groups {
+          if g.key.side == () { continue; }
+          let k = g.key.account + "|" + g.key.side;
+          let x = sum_of(g.values, "amount");
+          if k in before { x -= before[k]; }
+          let c = code_of(g.key.account);
+          if !(c in rows) { rows[c] = zero_row(c, names[c]); }
+          let r = rows[c];
+          if g.key.side == "debit" { r.debits += x; } else { r.credits -= x; }
+          rows[c] = r;
+        }
+        let leaves = rows.keys();
+        let total = zero_row("", "Total");
+        for c in leaves {
+          let r = rows[c];
+          total.opening += r.opening; total.debits += r.debits; total.credits += r.credits; total.closing += r.closing;
+        }
+        if rollup == true {
+          for c in leaves {
+            let r = rows[c];
+            let p = if c in parents { parents[c] } else { () };
+            while p != () {
+              if !(p in rows) { rows[p] = zero_row(p, names[p]); }
+              let s = rows[p];
+              s.opening += r.opening; s.debits += r.debits; s.credits += r.credits; s.closing += r.closing;
+              s.summary = true;
+              rows[p] = s;
+              p = if p in parents { parents[p] } else { () };
+            }
+          }
+        }
+        let out = [];
+        for c in rows.keys() {
+          let r = rows[c];
+          if r.opening.is_zero() && r.debits.is_zero() && r.credits.is_zero() && r.closing.is_zero() { continue; }
+          let row = #{account: c, name: r.name, opening: two(r.opening), debits: two(r.debits),
+                      credits: two(r.credits), closing: two(r.closing)};
+          if "summary" in r { row.summary = true; }
+          out.push(row);
+        }
+        #{opening: opening, closing: closing, rows: sorted(out, "account"),
+          totals: #{opening: two(total.opening), debits: two(total.debits), credits: two(total.credits),
+                    closing: two(total.closing)},
+          balanced: total.debits == total.credits && total.closing.is_zero()}
+      }
+
+      // an account's lines of a date range by document, with the running balance (FIN-GL-022)
+      fn inquiry(account, from, to) {
+        let before = date_of(days(from) - 1);
+        let g0 = sys.read.projection(#{projection: "gl-balance", asof: before, group: #{account: account}}).groups;
+        let opening = if g0.len() > 0 { sum_of(g0[0].values, "balance") } else { dec("0.00") };
+        let lines = [];
+        for g in sys.read.projection(#{projection: "gl-lines", asof: to}).groups {
+          if g.key.account != account || g.values.date == () { continue; }
+          if g.values.date < from || g.values.date > to { continue; }
+          lines.push(#{date: g.values.date, document: g.key.document, kind: g.values.kind,
+                       description: g.values.description, amount: sum_of(g.values, "amount"),
+                       order: g.values.date + "|" + g.key.document});
+        }
+        let balance = opening;
+        let out = [];
+        for l in sorted(lines, "order") {
+          balance += l.amount;
+          out.push(#{date: l.date, document: l.document, kind: l.kind, description: l.description,
+                     amount: two(l.amount), balance: two(balance)});
+        }
+        #{account: account, from: from, to: to, opening: two(opening), lines: out, closing: two(balance)}
+      }

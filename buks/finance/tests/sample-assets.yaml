@@ -888,7 +888,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -908,7 +910,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -928,7 +932,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -948,7 +954,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -968,7 +976,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -988,7 +998,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -1008,7 +1020,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -1028,7 +1042,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1048,7 +1064,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1068,7 +1086,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1088,7 +1108,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1108,7 +1130,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1128,7 +1152,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1148,7 +1174,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1168,7 +1196,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1188,7 +1218,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -1350,6 +1382,7 @@
          "control_account": "ubos://acme/GlAccount/2000",
          "functional_currency": "USD",
          "rate_type": "spot",
+         "discount_account": "ubos://acme/GlAccount/5000",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }
@@ -2755,7 +2788,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -2775,7 +2810,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -2795,7 +2832,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -2815,7 +2854,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2835,7 +2876,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -2855,7 +2898,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -2875,7 +2920,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -2895,7 +2942,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2915,7 +2964,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2935,7 +2986,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2955,7 +3008,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2975,7 +3030,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2995,7 +3052,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3015,7 +3074,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3035,7 +3096,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3055,7 +3118,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -3217,6 +3282,7 @@
          "control_account": "ubos://acme/GlAccount/2000",
          "functional_currency": "USD",
          "rate_type": "spot",
+         "discount_account": "ubos://acme/GlAccount/5000",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }
@@ -4582,7 +4648,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -4602,7 +4670,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -4622,7 +4692,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -4642,7 +4714,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4662,7 +4736,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -4682,7 +4758,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -4702,7 +4780,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -4722,7 +4802,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4742,7 +4824,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4762,7 +4846,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4782,7 +4868,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4802,7 +4890,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4822,7 +4912,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4842,7 +4934,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4862,7 +4956,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4882,7 +4978,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -5044,6 +5142,7 @@
          "control_account": "ubos://acme/GlAccount/2000",
          "functional_currency": "USD",
          "rate_type": "spot",
+         "discount_account": "ubos://acme/GlAccount/5000",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }
@@ -6318,7 +6417,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -6338,7 +6439,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -6358,7 +6461,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -6378,7 +6483,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -6398,7 +6505,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -6418,7 +6527,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -6438,7 +6549,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -6458,7 +6571,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -6478,7 +6593,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -6498,7 +6615,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -6518,7 +6637,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -6538,7 +6659,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -6558,7 +6681,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -6578,7 +6703,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -6598,7 +6725,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -6618,7 +6747,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -6780,6 +6911,7 @@
          "control_account": "ubos://acme/GlAccount/2000",
          "functional_currency": "USD",
          "rate_type": "spot",
+         "discount_account": "ubos://acme/GlAccount/5000",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }
@@ -8189,7 +8321,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -8209,7 +8343,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -8229,7 +8365,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -8249,7 +8387,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8269,7 +8409,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -8289,7 +8431,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -8309,7 +8453,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -8329,7 +8475,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8349,7 +8497,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8369,7 +8519,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8389,7 +8541,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8409,7 +8563,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8429,7 +8585,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8449,7 +8607,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8469,7 +8629,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8489,7 +8651,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -8651,6 +8815,7 @@
          "control_account": "ubos://acme/GlAccount/2000",
          "functional_currency": "USD",
          "rate_type": "spot",
+         "discount_account": "ubos://acme/GlAccount/5000",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }

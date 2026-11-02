@@ -23,3 +23,14 @@ changes:
       group_by: [vendor, kind]
       aggregates:
         - {fn: sum, field: amount, as: amount}
+  # the 1099 amounts by vendor and form (FIN-AP-020, -021; PH-2 step 10g-3, DEC-155)
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-000000000010
+    slug: f1099
+    body:
+      name: f1099
+      source: Form1099Amount
+      group_by: [vendor, form]
+      aggregates:
+        - {fn: sum, field: amount, as: amount}

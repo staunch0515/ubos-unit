@@ -888,7 +888,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -908,7 +910,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -928,7 +932,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -948,7 +954,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -968,7 +976,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -988,7 +998,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -1008,7 +1020,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -1028,7 +1042,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1048,7 +1064,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1068,7 +1086,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1088,7 +1108,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1108,7 +1130,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1128,7 +1152,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1148,7 +1174,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1168,7 +1196,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -1188,7 +1218,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -2235,7 +2267,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -2255,7 +2289,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -2275,7 +2311,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -2295,7 +2333,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2315,7 +2355,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -2335,7 +2377,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -2355,7 +2399,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -2375,7 +2421,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2395,7 +2443,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2415,7 +2465,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2435,7 +2487,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2455,7 +2509,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2475,7 +2531,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2495,7 +2553,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2515,7 +2575,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -2535,7 +2597,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -3593,7 +3657,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -3613,7 +3679,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -3633,7 +3701,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -3653,7 +3723,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3673,7 +3745,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -3693,7 +3767,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -3713,7 +3789,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -3733,7 +3811,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3753,7 +3833,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3773,7 +3855,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3793,7 +3877,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3813,7 +3899,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3833,7 +3921,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3853,7 +3943,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3873,7 +3965,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3893,7 +3987,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -3925,6 +4021,8 @@
          "document": "BILL-V300-2601",
          "kind": "bill",
          "description": "January rent",
+         "date": "2026-01-02",
+         "side": "debit",
          "party": "V300"
         }
        },
@@ -3946,6 +4044,8 @@
          "document": "BILL-V300-2601",
          "kind": "bill",
          "description": "January rent",
+         "date": "2026-01-02",
+         "side": "credit",
          "party": "V300"
         }
        }
@@ -3978,6 +4078,8 @@
          "document": "RCPT-0001",
          "kind": "receipt",
          "description": "Receipt for INV-1001",
+         "date": "2026-01-05",
+         "side": "debit",
          "party": "C100"
         }
        },
@@ -3999,6 +4101,8 @@
          "document": "RCPT-0001",
          "kind": "receipt",
          "description": "Receipt for INV-1001",
+         "date": "2026-01-05",
+         "side": "credit",
          "party": "C100"
         }
        }
@@ -4031,6 +4135,8 @@
          "document": "INV-1004",
          "kind": "invoice",
          "description": "Components 40,000.00 (TX-AUSTIN), engineering services 10,000.00 (NT)",
+         "date": "2026-01-06",
+         "side": "debit",
          "party": "C100"
         }
        },
@@ -4052,6 +4158,8 @@
          "document": "INV-1004",
          "kind": "invoice",
          "description": "Components 40,000.00 (TX-AUSTIN), engineering services 10,000.00 (NT)",
+         "date": "2026-01-06",
+         "side": "credit",
          "party": "C100"
         }
        },
@@ -4073,6 +4181,8 @@
          "document": "INV-1004",
          "kind": "invoice",
          "description": "Components 40,000.00 (TX-AUSTIN), engineering services 10,000.00 (NT)",
+         "date": "2026-01-06",
+         "side": "credit",
          "party": "C100"
         }
        },
@@ -4094,6 +4204,8 @@
          "document": "INV-1004",
          "kind": "invoice",
          "description": "Components 40,000.00 (TX-AUSTIN), engineering services 10,000.00 (NT)",
+         "date": "2026-01-06",
+         "side": "credit",
          "party": "C100"
         }
        }
@@ -4126,6 +4238,8 @@
          "document": "PAY-RUN-01",
          "kind": "payment",
          "description": "ACH payment run 01: P-7781 28,300.00; CPL-1225 4,000.00",
+         "date": "2026-01-08",
+         "side": "debit",
          "party": "V100, V600"
         }
        },
@@ -4147,6 +4261,8 @@
          "document": "PAY-RUN-01",
          "kind": "payment",
          "description": "ACH payment run 01: P-7781 28,300.00; CPL-1225 4,000.00",
+         "date": "2026-01-08",
+         "side": "credit",
          "party": "V100, V600"
         }
        }
@@ -4179,6 +4295,8 @@
          "document": "BILL-P-7902",
          "kind": "bill",
          "description": "Components purchased",
+         "date": "2026-01-09",
+         "side": "debit",
          "party": "V100"
         }
        },
@@ -4200,6 +4318,8 @@
          "document": "BILL-P-7902",
          "kind": "bill",
          "description": "Components purchased",
+         "date": "2026-01-09",
+         "side": "credit",
          "party": "V100"
         }
        }
@@ -4232,6 +4352,8 @@
          "document": "CM-2001",
          "kind": "credit memo",
          "description": "Return of components on INV-1004",
+         "date": "2026-01-10",
+         "side": "debit",
          "party": "C100"
         }
        },
@@ -4253,6 +4375,8 @@
          "document": "CM-2001",
          "kind": "credit memo",
          "description": "Return of components on INV-1004",
+         "date": "2026-01-10",
+         "side": "debit",
          "party": "C100"
         }
        },
@@ -4274,6 +4398,8 @@
          "document": "CM-2001",
          "kind": "credit memo",
          "description": "Return of components on INV-1004",
+         "date": "2026-01-10",
+         "side": "credit",
          "party": "C100"
         }
        }
@@ -4306,6 +4432,8 @@
          "document": "INV-1005",
          "kind": "invoice",
          "description": "Components, EUR 50,000.00 at 1.0850",
+         "date": "2026-01-12",
+         "side": "debit",
          "party": "C400"
         }
        },
@@ -4327,6 +4455,8 @@
          "document": "INV-1005",
          "kind": "invoice",
          "description": "Components, EUR 50,000.00 at 1.0850",
+         "date": "2026-01-12",
+         "side": "credit",
          "party": "C400"
         }
        }
@@ -4359,6 +4489,8 @@
          "document": "INV-1006",
          "kind": "invoice",
          "description": "Engineering services (Oregon)",
+         "date": "2026-01-14",
+         "side": "debit",
          "party": "C200"
         }
        },
@@ -4380,6 +4512,8 @@
          "document": "INV-1006",
          "kind": "invoice",
          "description": "Engineering services (Oregon)",
+         "date": "2026-01-14",
+         "side": "credit",
          "party": "C200"
         }
        }
@@ -4412,6 +4546,8 @@
          "document": "INV-1007",
          "kind": "invoice",
          "description": "Components for resale (certificate RC-3301)",
+         "date": "2026-01-15",
+         "side": "debit",
          "party": "C300"
         }
        },
@@ -4433,6 +4569,8 @@
          "document": "INV-1007",
          "kind": "invoice",
          "description": "Components for resale (certificate RC-3301)",
+         "date": "2026-01-15",
+         "side": "credit",
          "party": "C300"
         }
        }
@@ -4462,6 +4600,8 @@
          "document": "BILL-TS-5520",
          "kind": "bill",
          "description": "Application server, capitalized as FA-003",
+         "date": "2026-01-15",
+         "side": "debit",
          "party": "V700"
         }
        },
@@ -4483,6 +4623,8 @@
          "document": "BILL-TS-5520",
          "kind": "bill",
          "description": "Application server, capitalized as FA-003",
+         "date": "2026-01-15",
+         "side": "credit",
          "party": "V700"
         }
        }
@@ -4511,7 +4653,9 @@
          },
          "document": "JE-0001",
          "kind": "journal",
-         "description": "Payout of 2025 bonus accrued at year end (approval required: > 10,000.00)"
+         "description": "Payout of 2025 bonus accrued at year end (approval required: > 10,000.00)",
+         "date": "2026-01-15",
+         "side": "debit"
         }
        },
        {
@@ -4531,7 +4675,9 @@
          },
          "document": "JE-0001",
          "kind": "journal",
-         "description": "Payout of 2025 bonus accrued at year end (approval required: > 10,000.00)"
+         "description": "Payout of 2025 bonus accrued at year end (approval required: > 10,000.00)",
+         "date": "2026-01-15",
+         "side": "credit"
         }
        }
       ]
@@ -4563,6 +4709,8 @@
          "document": "RCPT-0002",
          "kind": "receipt",
          "description": "Receipt for INV-1002 (past due)",
+         "date": "2026-01-16",
+         "side": "debit",
          "party": "C200"
         }
        },
@@ -4584,6 +4732,8 @@
          "document": "RCPT-0002",
          "kind": "receipt",
          "description": "Receipt for INV-1002 (past due)",
+         "date": "2026-01-16",
+         "side": "credit",
          "party": "C200"
         }
        }
@@ -4616,6 +4766,8 @@
          "document": "BILL-DC-2601",
          "kind": "bill",
          "description": "January consulting",
+         "date": "2026-01-20",
+         "side": "debit",
          "party": "V200"
         }
        },
@@ -4637,6 +4789,8 @@
          "document": "BILL-DC-2601",
          "kind": "bill",
          "description": "January consulting",
+         "date": "2026-01-20",
+         "side": "credit",
          "party": "V200"
         }
        }
@@ -4666,6 +4820,8 @@
          "document": "BILL-CS-0126",
          "kind": "bill",
          "description": "Software subscription January",
+         "date": "2026-01-20",
+         "side": "debit",
          "party": "V400"
         }
        },
@@ -4687,6 +4843,8 @@
          "document": "BILL-CS-0126",
          "kind": "bill",
          "description": "Software subscription January",
+         "date": "2026-01-20",
+         "side": "credit",
          "party": "V400"
         }
        }
@@ -4716,6 +4874,8 @@
          "document": "STX-PAY-2512",
          "kind": "tax payment",
          "description": "Texas sales tax return December 2025",
+         "date": "2026-01-20",
+         "side": "debit",
          "party": "Texas Comptroller"
         }
        },
@@ -4737,6 +4897,8 @@
          "document": "STX-PAY-2512",
          "kind": "tax payment",
          "description": "Texas sales tax return December 2025",
+         "date": "2026-01-20",
+         "side": "credit",
          "party": "Texas Comptroller"
         }
        }
@@ -4769,6 +4931,8 @@
          "document": "BILL-JR-014",
          "kind": "bill",
          "description": "Drafting services",
+         "date": "2026-01-21",
+         "side": "debit",
          "party": "V800"
         }
        },
@@ -4790,6 +4954,8 @@
          "document": "BILL-JR-014",
          "kind": "bill",
          "description": "Drafting services",
+         "date": "2026-01-21",
+         "side": "credit",
          "party": "V800"
         }
        }
@@ -4822,6 +4988,8 @@
          "document": "PAY-RUN-02",
          "kind": "payment",
          "description": "ACH payment run 02: DC-2025-12 9,000.00; MP-2026-01 8,500.00; JR-014 1,500.00",
+         "date": "2026-01-22",
+         "side": "debit",
          "party": "V200, V300, V800"
         }
        },
@@ -4843,6 +5011,8 @@
          "document": "PAY-RUN-02",
          "kind": "payment",
          "description": "ACH payment run 02: DC-2025-12 9,000.00; MP-2026-01 8,500.00; JR-014 1,500.00",
+         "date": "2026-01-22",
+         "side": "credit",
          "party": "V200, V300, V800"
         }
        }
@@ -4875,6 +5045,8 @@
          "document": "RCPT-0003",
          "kind": "receipt",
          "description": "Partial receipt for INV-1003",
+         "date": "2026-01-25",
+         "side": "debit",
          "party": "C300"
         }
        },
@@ -4896,6 +5068,8 @@
          "document": "RCPT-0003",
          "kind": "receipt",
          "description": "Partial receipt for INV-1003",
+         "date": "2026-01-25",
+         "side": "credit",
          "party": "C300"
         }
        }
@@ -4928,6 +5102,8 @@
          "document": "BILL-CPL-0126",
          "kind": "bill",
          "description": "Electricity January",
+         "date": "2026-01-28",
+         "side": "debit",
          "party": "V600"
         }
        },
@@ -4949,6 +5125,8 @@
          "document": "BILL-CPL-0126",
          "kind": "bill",
          "description": "Electricity January",
+         "date": "2026-01-28",
+         "side": "credit",
          "party": "V600"
         }
        }
@@ -4981,6 +5159,8 @@
          "document": "PAYROLL-2601",
          "kind": "journal",
          "description": "Payroll summary from external provider: gross 60,000.00; employer taxes 4,590.00; net pay 45,000.00; withholdings and employer taxes 19,590.00 (imported; approval required: > 10,000.00)",
+         "date": "2026-01-30",
+         "side": "debit",
          "party": "payroll provider"
         }
        },
@@ -5002,6 +5182,8 @@
          "document": "PAYROLL-2601",
          "kind": "journal",
          "description": "Payroll summary from external provider: gross 60,000.00; employer taxes 4,590.00; net pay 45,000.00; withholdings and employer taxes 19,590.00 (imported; approval required: > 10,000.00)",
+         "date": "2026-01-30",
+         "side": "debit",
          "party": "payroll provider"
         }
        },
@@ -5023,6 +5205,8 @@
          "document": "PAYROLL-2601",
          "kind": "journal",
          "description": "Payroll summary from external provider: gross 60,000.00; employer taxes 4,590.00; net pay 45,000.00; withholdings and employer taxes 19,590.00 (imported; approval required: > 10,000.00)",
+         "date": "2026-01-30",
+         "side": "credit",
          "party": "payroll provider"
         }
        },
@@ -5044,6 +5228,8 @@
          "document": "PAYROLL-2601",
          "kind": "journal",
          "description": "Payroll summary from external provider: gross 60,000.00; employer taxes 4,590.00; net pay 45,000.00; withholdings and employer taxes 19,590.00 (imported; approval required: > 10,000.00)",
+         "date": "2026-01-30",
+         "side": "credit",
          "party": "payroll provider"
         }
        }
@@ -5075,7 +5261,9 @@
          },
          "document": "JE-0002",
          "kind": "journal",
-         "description": "Accrue annual audit fee (approval required: > 10,000.00)"
+         "description": "Accrue annual audit fee (approval required: > 10,000.00)",
+         "date": "2026-01-31",
+         "side": "debit"
         }
        },
        {
@@ -5095,7 +5283,9 @@
          },
          "document": "JE-0002",
          "kind": "journal",
-         "description": "Accrue annual audit fee (approval required: > 10,000.00)"
+         "description": "Accrue annual audit fee (approval required: > 10,000.00)",
+         "date": "2026-01-31",
+         "side": "credit"
         }
        }
       ]
@@ -5123,7 +5313,9 @@
          },
          "document": "JE-0003",
          "kind": "journal",
-         "description": "Recurring: amortize prepaid insurance 1/12"
+         "description": "Recurring: amortize prepaid insurance 1/12",
+         "date": "2026-01-31",
+         "side": "debit"
         }
        },
        {
@@ -5143,7 +5335,9 @@
          },
          "document": "JE-0003",
          "kind": "journal",
-         "description": "Recurring: amortize prepaid insurance 1/12"
+         "description": "Recurring: amortize prepaid insurance 1/12",
+         "date": "2026-01-31",
+         "side": "credit"
         }
        }
       ]
@@ -5171,7 +5365,9 @@
          },
          "document": "DEP-2601",
          "kind": "depreciation",
-         "description": "Depreciation January: FA-001 2,000.00; FA-002 1,666.67; FA-003 333.33"
+         "description": "Depreciation January: FA-001 2,000.00; FA-002 1,666.67; FA-003 333.33",
+         "date": "2026-01-31",
+         "side": "debit"
         }
        },
        {
@@ -5191,7 +5387,9 @@
          },
          "document": "DEP-2601",
          "kind": "depreciation",
-         "description": "Depreciation January: FA-001 2,000.00; FA-002 1,666.67; FA-003 333.33"
+         "description": "Depreciation January: FA-001 2,000.00; FA-002 1,666.67; FA-003 333.33",
+         "date": "2026-01-31",
+         "side": "credit"
         }
        }
       ]
@@ -5220,6 +5418,8 @@
          "document": "BANK-INT-2601",
          "kind": "bank",
          "description": "Line of credit interest 50,000.00 x 7.20% / 12",
+         "date": "2026-01-31",
+         "side": "debit",
          "party": "Lakeside National Bank"
         }
        },
@@ -5241,6 +5441,8 @@
          "document": "BANK-INT-2601",
          "kind": "bank",
          "description": "Line of credit interest 50,000.00 x 7.20% / 12",
+         "date": "2026-01-31",
+         "side": "credit",
          "party": "Lakeside National Bank"
         }
        }
@@ -5270,6 +5472,8 @@
          "document": "BANK-FEE-2601",
          "kind": "bank",
          "description": "Account service fee",
+         "date": "2026-01-31",
+         "side": "debit",
          "party": "Lakeside National Bank"
         }
        },
@@ -5291,6 +5495,8 @@
          "document": "BANK-FEE-2601",
          "kind": "bank",
          "description": "Account service fee",
+         "date": "2026-01-31",
+         "side": "credit",
          "party": "Lakeside National Bank"
         }
        }
@@ -5320,6 +5526,8 @@
          "document": "SAV-INT-2601",
          "kind": "bank",
          "description": "Savings interest",
+         "date": "2026-01-31",
+         "side": "debit",
          "party": "Lakeside National Bank"
         }
        },
@@ -5341,6 +5549,8 @@
          "document": "SAV-INT-2601",
          "kind": "bank",
          "description": "Savings interest",
+         "date": "2026-01-31",
+         "side": "credit",
          "party": "Lakeside National Bank"
         }
        }
@@ -5370,6 +5580,8 @@
          "document": "FXR-2601",
          "kind": "revaluation",
          "description": "Revalue INV-1005 EUR 50,000.00 at 1.0920 (auto-reverses 2026-02-01)",
+         "date": "2026-01-31",
+         "side": "debit",
          "party": "C400"
         }
        },
@@ -5391,6 +5603,8 @@
          "document": "FXR-2601",
          "kind": "revaluation",
          "description": "Revalue INV-1005 EUR 50,000.00 at 1.0920 (auto-reverses 2026-02-01)",
+         "date": "2026-01-31",
+         "side": "credit",
          "party": "C400"
         }
        }
@@ -5419,7 +5633,9 @@
          },
          "document": "JE-0004",
          "kind": "journal",
-         "description": "Estimated federal income tax provision, 21% of January pre-tax income 6,490.00"
+         "description": "Estimated federal income tax provision, 21% of January pre-tax income 6,490.00",
+         "date": "2026-01-31",
+         "side": "debit"
         }
        },
        {
@@ -5439,7 +5655,9 @@
          },
          "document": "JE-0004",
          "kind": "journal",
-         "description": "Estimated federal income tax provision, 21% of January pre-tax income 6,490.00"
+         "description": "Estimated federal income tax provision, 21% of January pre-tax income 6,490.00",
+         "date": "2026-01-31",
+         "side": "credit"
         }
        }
       ]
@@ -6960,7 +7178,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -6980,7 +7200,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -7000,7 +7222,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -7020,7 +7244,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -7040,7 +7266,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -7060,7 +7288,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -7080,7 +7310,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -7100,7 +7332,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -7120,7 +7354,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -7140,7 +7376,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -7160,7 +7398,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -7180,7 +7420,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -7200,7 +7442,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -7220,7 +7464,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -7240,7 +7486,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -7260,7 +7508,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -7292,6 +7542,8 @@
          "document": "BILL-V300-2601",
          "kind": "bill",
          "description": "January rent",
+         "date": "2026-01-02",
+         "side": "debit",
          "party": "V300"
         }
        },
@@ -7313,6 +7565,8 @@
          "document": "BILL-V300-2601",
          "kind": "bill",
          "description": "January rent",
+         "date": "2026-01-02",
+         "side": "credit",
          "party": "V300"
         }
        }
@@ -7345,6 +7599,8 @@
          "document": "RCPT-0001",
          "kind": "receipt",
          "description": "Receipt for INV-1001",
+         "date": "2026-01-05",
+         "side": "debit",
          "party": "C100"
         }
        },
@@ -7366,6 +7622,8 @@
          "document": "RCPT-0001",
          "kind": "receipt",
          "description": "Receipt for INV-1001",
+         "date": "2026-01-05",
+         "side": "credit",
          "party": "C100"
         }
        }
@@ -7398,6 +7656,8 @@
          "document": "INV-1004",
          "kind": "invoice",
          "description": "Components 40,000.00 (TX-AUSTIN), engineering services 10,000.00 (NT)",
+         "date": "2026-01-06",
+         "side": "debit",
          "party": "C100"
         }
        },
@@ -7419,6 +7679,8 @@
          "document": "INV-1004",
          "kind": "invoice",
          "description": "Components 40,000.00 (TX-AUSTIN), engineering services 10,000.00 (NT)",
+         "date": "2026-01-06",
+         "side": "credit",
          "party": "C100"
         }
        },
@@ -7440,6 +7702,8 @@
          "document": "INV-1004",
          "kind": "invoice",
          "description": "Components 40,000.00 (TX-AUSTIN), engineering services 10,000.00 (NT)",
+         "date": "2026-01-06",
+         "side": "credit",
          "party": "C100"
         }
        },
@@ -7461,6 +7725,8 @@
          "document": "INV-1004",
          "kind": "invoice",
          "description": "Components 40,000.00 (TX-AUSTIN), engineering services 10,000.00 (NT)",
+         "date": "2026-01-06",
+         "side": "credit",
          "party": "C100"
         }
        }
@@ -7493,6 +7759,8 @@
          "document": "PAY-RUN-01",
          "kind": "payment",
          "description": "ACH payment run 01: P-7781 28,300.00; CPL-1225 4,000.00",
+         "date": "2026-01-08",
+         "side": "debit",
          "party": "V100, V600"
         }
        },
@@ -7514,6 +7782,8 @@
          "document": "PAY-RUN-01",
          "kind": "payment",
          "description": "ACH payment run 01: P-7781 28,300.00; CPL-1225 4,000.00",
+         "date": "2026-01-08",
+         "side": "credit",
          "party": "V100, V600"
         }
        }
@@ -7546,6 +7816,8 @@
          "document": "BILL-P-7902",
          "kind": "bill",
          "description": "Components purchased",
+         "date": "2026-01-09",
+         "side": "debit",
          "party": "V100"
         }
        },
@@ -7567,6 +7839,8 @@
          "document": "BILL-P-7902",
          "kind": "bill",
          "description": "Components purchased",
+         "date": "2026-01-09",
+         "side": "credit",
          "party": "V100"
         }
        }
@@ -7599,6 +7873,8 @@
          "document": "CM-2001",
          "kind": "credit memo",
          "description": "Return of components on INV-1004",
+         "date": "2026-01-10",
+         "side": "debit",
          "party": "C100"
         }
        },
@@ -7620,6 +7896,8 @@
          "document": "CM-2001",
          "kind": "credit memo",
          "description": "Return of components on INV-1004",
+         "date": "2026-01-10",
+         "side": "debit",
          "party": "C100"
         }
        },
@@ -7641,6 +7919,8 @@
          "document": "CM-2001",
          "kind": "credit memo",
          "description": "Return of components on INV-1004",
+         "date": "2026-01-10",
+         "side": "credit",
          "party": "C100"
         }
        }
@@ -7673,6 +7953,8 @@
          "document": "INV-1005",
          "kind": "invoice",
          "description": "Components, EUR 50,000.00 at 1.0850",
+         "date": "2026-01-12",
+         "side": "debit",
          "party": "C400"
         }
        },
@@ -7694,6 +7976,8 @@
          "document": "INV-1005",
          "kind": "invoice",
          "description": "Components, EUR 50,000.00 at 1.0850",
+         "date": "2026-01-12",
+         "side": "credit",
          "party": "C400"
         }
        }
@@ -7726,6 +8010,8 @@
          "document": "INV-1006",
          "kind": "invoice",
          "description": "Engineering services (Oregon)",
+         "date": "2026-01-14",
+         "side": "debit",
          "party": "C200"
         }
        },
@@ -7747,6 +8033,8 @@
          "document": "INV-1006",
          "kind": "invoice",
          "description": "Engineering services (Oregon)",
+         "date": "2026-01-14",
+         "side": "credit",
          "party": "C200"
         }
        }
@@ -7779,6 +8067,8 @@
          "document": "INV-1007",
          "kind": "invoice",
          "description": "Components for resale (certificate RC-3301)",
+         "date": "2026-01-15",
+         "side": "debit",
          "party": "C300"
         }
        },
@@ -7800,6 +8090,8 @@
          "document": "INV-1007",
          "kind": "invoice",
          "description": "Components for resale (certificate RC-3301)",
+         "date": "2026-01-15",
+         "side": "credit",
          "party": "C300"
         }
        }
@@ -7829,6 +8121,8 @@
          "document": "BILL-TS-5520",
          "kind": "bill",
          "description": "Application server, capitalized as FA-003",
+         "date": "2026-01-15",
+         "side": "debit",
          "party": "V700"
         }
        },
@@ -7850,6 +8144,8 @@
          "document": "BILL-TS-5520",
          "kind": "bill",
          "description": "Application server, capitalized as FA-003",
+         "date": "2026-01-15",
+         "side": "credit",
          "party": "V700"
         }
        }
@@ -7878,7 +8174,9 @@
          },
          "document": "JE-0001",
          "kind": "journal",
-         "description": "Payout of 2025 bonus accrued at year end (approval required: > 10,000.00)"
+         "description": "Payout of 2025 bonus accrued at year end (approval required: > 10,000.00)",
+         "date": "2026-01-15",
+         "side": "debit"
         }
        },
        {
@@ -7898,7 +8196,9 @@
          },
          "document": "JE-0001",
          "kind": "journal",
-         "description": "Payout of 2025 bonus accrued at year end (approval required: > 10,000.00)"
+         "description": "Payout of 2025 bonus accrued at year end (approval required: > 10,000.00)",
+         "date": "2026-01-15",
+         "side": "credit"
         }
        }
       ]
@@ -7930,6 +8230,8 @@
          "document": "RCPT-0002",
          "kind": "receipt",
          "description": "Receipt for INV-1002 (past due)",
+         "date": "2026-01-16",
+         "side": "debit",
          "party": "C200"
         }
        },
@@ -7951,6 +8253,8 @@
          "document": "RCPT-0002",
          "kind": "receipt",
          "description": "Receipt for INV-1002 (past due)",
+         "date": "2026-01-16",
+         "side": "credit",
          "party": "C200"
         }
        }
@@ -7983,6 +8287,8 @@
          "document": "BILL-DC-2601",
          "kind": "bill",
          "description": "January consulting",
+         "date": "2026-01-20",
+         "side": "debit",
          "party": "V200"
         }
        },
@@ -8004,6 +8310,8 @@
          "document": "BILL-DC-2601",
          "kind": "bill",
          "description": "January consulting",
+         "date": "2026-01-20",
+         "side": "credit",
          "party": "V200"
         }
        }
@@ -8033,6 +8341,8 @@
          "document": "BILL-CS-0126",
          "kind": "bill",
          "description": "Software subscription January",
+         "date": "2026-01-20",
+         "side": "debit",
          "party": "V400"
         }
        },
@@ -8054,6 +8364,8 @@
          "document": "BILL-CS-0126",
          "kind": "bill",
          "description": "Software subscription January",
+         "date": "2026-01-20",
+         "side": "credit",
          "party": "V400"
         }
        }
@@ -8083,6 +8395,8 @@
          "document": "STX-PAY-2512",
          "kind": "tax payment",
          "description": "Texas sales tax return December 2025",
+         "date": "2026-01-20",
+         "side": "debit",
          "party": "Texas Comptroller"
         }
        },
@@ -8104,6 +8418,8 @@
          "document": "STX-PAY-2512",
          "kind": "tax payment",
          "description": "Texas sales tax return December 2025",
+         "date": "2026-01-20",
+         "side": "credit",
          "party": "Texas Comptroller"
         }
        }
@@ -8136,6 +8452,8 @@
          "document": "BILL-JR-014",
          "kind": "bill",
          "description": "Drafting services",
+         "date": "2026-01-21",
+         "side": "debit",
          "party": "V800"
         }
        },
@@ -8157,6 +8475,8 @@
          "document": "BILL-JR-014",
          "kind": "bill",
          "description": "Drafting services",
+         "date": "2026-01-21",
+         "side": "credit",
          "party": "V800"
         }
        }
@@ -8189,6 +8509,8 @@
          "document": "PAY-RUN-02",
          "kind": "payment",
          "description": "ACH payment run 02: DC-2025-12 9,000.00; MP-2026-01 8,500.00; JR-014 1,500.00",
+         "date": "2026-01-22",
+         "side": "debit",
          "party": "V200, V300, V800"
         }
        },
@@ -8210,6 +8532,8 @@
          "document": "PAY-RUN-02",
          "kind": "payment",
          "description": "ACH payment run 02: DC-2025-12 9,000.00; MP-2026-01 8,500.00; JR-014 1,500.00",
+         "date": "2026-01-22",
+         "side": "credit",
          "party": "V200, V300, V800"
         }
        }
@@ -8242,6 +8566,8 @@
          "document": "RCPT-0003",
          "kind": "receipt",
          "description": "Partial receipt for INV-1003",
+         "date": "2026-01-25",
+         "side": "debit",
          "party": "C300"
         }
        },
@@ -8263,6 +8589,8 @@
          "document": "RCPT-0003",
          "kind": "receipt",
          "description": "Partial receipt for INV-1003",
+         "date": "2026-01-25",
+         "side": "credit",
          "party": "C300"
         }
        }
@@ -8295,6 +8623,8 @@
          "document": "BILL-CPL-0126",
          "kind": "bill",
          "description": "Electricity January",
+         "date": "2026-01-28",
+         "side": "debit",
          "party": "V600"
         }
        },
@@ -8316,6 +8646,8 @@
          "document": "BILL-CPL-0126",
          "kind": "bill",
          "description": "Electricity January",
+         "date": "2026-01-28",
+         "side": "credit",
          "party": "V600"
         }
        }
@@ -8348,6 +8680,8 @@
          "document": "PAYROLL-2601",
          "kind": "journal",
          "description": "Payroll summary from external provider: gross 60,000.00; employer taxes 4,590.00; net pay 45,000.00; withholdings and employer taxes 19,590.00 (imported; approval required: > 10,000.00)",
+         "date": "2026-01-30",
+         "side": "debit",
          "party": "payroll provider"
         }
        },
@@ -8369,6 +8703,8 @@
          "document": "PAYROLL-2601",
          "kind": "journal",
          "description": "Payroll summary from external provider: gross 60,000.00; employer taxes 4,590.00; net pay 45,000.00; withholdings and employer taxes 19,590.00 (imported; approval required: > 10,000.00)",
+         "date": "2026-01-30",
+         "side": "debit",
          "party": "payroll provider"
         }
        },
@@ -8390,6 +8726,8 @@
          "document": "PAYROLL-2601",
          "kind": "journal",
          "description": "Payroll summary from external provider: gross 60,000.00; employer taxes 4,590.00; net pay 45,000.00; withholdings and employer taxes 19,590.00 (imported; approval required: > 10,000.00)",
+         "date": "2026-01-30",
+         "side": "credit",
          "party": "payroll provider"
         }
        },
@@ -8411,6 +8749,8 @@
          "document": "PAYROLL-2601",
          "kind": "journal",
          "description": "Payroll summary from external provider: gross 60,000.00; employer taxes 4,590.00; net pay 45,000.00; withholdings and employer taxes 19,590.00 (imported; approval required: > 10,000.00)",
+         "date": "2026-01-30",
+         "side": "credit",
          "party": "payroll provider"
         }
        }
@@ -8442,7 +8782,9 @@
          },
          "document": "JE-0002",
          "kind": "journal",
-         "description": "Accrue annual audit fee (approval required: > 10,000.00)"
+         "description": "Accrue annual audit fee (approval required: > 10,000.00)",
+         "date": "2026-01-31",
+         "side": "debit"
         }
        },
        {
@@ -8462,7 +8804,9 @@
          },
          "document": "JE-0002",
          "kind": "journal",
-         "description": "Accrue annual audit fee (approval required: > 10,000.00)"
+         "description": "Accrue annual audit fee (approval required: > 10,000.00)",
+         "date": "2026-01-31",
+         "side": "credit"
         }
        }
       ]
@@ -8490,7 +8834,9 @@
          },
          "document": "JE-0003",
          "kind": "journal",
-         "description": "Recurring: amortize prepaid insurance 1/12"
+         "description": "Recurring: amortize prepaid insurance 1/12",
+         "date": "2026-01-31",
+         "side": "debit"
         }
        },
        {
@@ -8510,7 +8856,9 @@
          },
          "document": "JE-0003",
          "kind": "journal",
-         "description": "Recurring: amortize prepaid insurance 1/12"
+         "description": "Recurring: amortize prepaid insurance 1/12",
+         "date": "2026-01-31",
+         "side": "credit"
         }
        }
       ]
@@ -8538,7 +8886,9 @@
          },
          "document": "DEP-2601",
          "kind": "depreciation",
-         "description": "Depreciation January: FA-001 2,000.00; FA-002 1,666.67; FA-003 333.33"
+         "description": "Depreciation January: FA-001 2,000.00; FA-002 1,666.67; FA-003 333.33",
+         "date": "2026-01-31",
+         "side": "debit"
         }
        },
        {
@@ -8558,7 +8908,9 @@
          },
          "document": "DEP-2601",
          "kind": "depreciation",
-         "description": "Depreciation January: FA-001 2,000.00; FA-002 1,666.67; FA-003 333.33"
+         "description": "Depreciation January: FA-001 2,000.00; FA-002 1,666.67; FA-003 333.33",
+         "date": "2026-01-31",
+         "side": "credit"
         }
        }
       ]
@@ -8587,6 +8939,8 @@
          "document": "BANK-INT-2601",
          "kind": "bank",
          "description": "Line of credit interest 50,000.00 x 7.20% / 12",
+         "date": "2026-01-31",
+         "side": "debit",
          "party": "Lakeside National Bank"
         }
        },
@@ -8608,6 +8962,8 @@
          "document": "BANK-INT-2601",
          "kind": "bank",
          "description": "Line of credit interest 50,000.00 x 7.20% / 12",
+         "date": "2026-01-31",
+         "side": "credit",
          "party": "Lakeside National Bank"
         }
        }
@@ -8637,6 +8993,8 @@
          "document": "BANK-FEE-2601",
          "kind": "bank",
          "description": "Account service fee",
+         "date": "2026-01-31",
+         "side": "debit",
          "party": "Lakeside National Bank"
         }
        },
@@ -8658,6 +9016,8 @@
          "document": "BANK-FEE-2601",
          "kind": "bank",
          "description": "Account service fee",
+         "date": "2026-01-31",
+         "side": "credit",
          "party": "Lakeside National Bank"
         }
        }
@@ -8687,6 +9047,8 @@
          "document": "SAV-INT-2601",
          "kind": "bank",
          "description": "Savings interest",
+         "date": "2026-01-31",
+         "side": "debit",
          "party": "Lakeside National Bank"
         }
        },
@@ -8708,6 +9070,8 @@
          "document": "SAV-INT-2601",
          "kind": "bank",
          "description": "Savings interest",
+         "date": "2026-01-31",
+         "side": "credit",
          "party": "Lakeside National Bank"
         }
        }
@@ -8737,6 +9101,8 @@
          "document": "FXR-2601",
          "kind": "revaluation",
          "description": "Revalue INV-1005 EUR 50,000.00 at 1.0920 (auto-reverses 2026-02-01)",
+         "date": "2026-01-31",
+         "side": "debit",
          "party": "C400"
         }
        },
@@ -8758,6 +9124,8 @@
          "document": "FXR-2601",
          "kind": "revaluation",
          "description": "Revalue INV-1005 EUR 50,000.00 at 1.0920 (auto-reverses 2026-02-01)",
+         "date": "2026-01-31",
+         "side": "credit",
          "party": "C400"
         }
        }
@@ -8786,7 +9154,9 @@
          },
          "document": "JE-0004",
          "kind": "journal",
-         "description": "Estimated federal income tax provision, 21% of January pre-tax income 6,490.00"
+         "description": "Estimated federal income tax provision, 21% of January pre-tax income 6,490.00",
+         "date": "2026-01-31",
+         "side": "debit"
         }
        },
        {
@@ -8806,7 +9176,9 @@
          },
          "document": "JE-0004",
          "kind": "journal",
-         "description": "Estimated federal income tax provision, 21% of January pre-tax income 6,490.00"
+         "description": "Estimated federal income tax provision, 21% of January pre-tax income 6,490.00",
+         "date": "2026-01-31",
+         "side": "credit"
         }
        }
       ]
@@ -11337,7 +11709,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -11357,7 +11731,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -11377,7 +11753,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -11397,7 +11775,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -11417,7 +11797,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -11437,7 +11819,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -11457,7 +11841,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -11477,7 +11863,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -11497,7 +11885,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -11517,7 +11907,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -11537,7 +11929,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -11557,7 +11951,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -11577,7 +11973,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -11597,7 +11995,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -11617,7 +12017,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -11637,7 +12039,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -11669,6 +12073,8 @@
          "document": "BILL-V300-2601",
          "kind": "bill",
          "description": "January rent",
+         "date": "2026-01-02",
+         "side": "debit",
          "party": "V300"
         }
        },
@@ -11690,6 +12096,8 @@
          "document": "BILL-V300-2601",
          "kind": "bill",
          "description": "January rent",
+         "date": "2026-01-02",
+         "side": "credit",
          "party": "V300"
         }
        }
@@ -11722,6 +12130,8 @@
          "document": "RCPT-0001",
          "kind": "receipt",
          "description": "Receipt for INV-1001",
+         "date": "2026-01-05",
+         "side": "debit",
          "party": "C100"
         }
        },
@@ -11743,6 +12153,8 @@
          "document": "RCPT-0001",
          "kind": "receipt",
          "description": "Receipt for INV-1001",
+         "date": "2026-01-05",
+         "side": "credit",
          "party": "C100"
         }
        }
@@ -11775,6 +12187,8 @@
          "document": "INV-1004",
          "kind": "invoice",
          "description": "Components 40,000.00 (TX-AUSTIN), engineering services 10,000.00 (NT)",
+         "date": "2026-01-06",
+         "side": "debit",
          "party": "C100"
         }
        },
@@ -11796,6 +12210,8 @@
          "document": "INV-1004",
          "kind": "invoice",
          "description": "Components 40,000.00 (TX-AUSTIN), engineering services 10,000.00 (NT)",
+         "date": "2026-01-06",
+         "side": "credit",
          "party": "C100"
         }
        },
@@ -11817,6 +12233,8 @@
          "document": "INV-1004",
          "kind": "invoice",
          "description": "Components 40,000.00 (TX-AUSTIN), engineering services 10,000.00 (NT)",
+         "date": "2026-01-06",
+         "side": "credit",
          "party": "C100"
         }
        },
@@ -11838,6 +12256,8 @@
          "document": "INV-1004",
          "kind": "invoice",
          "description": "Components 40,000.00 (TX-AUSTIN), engineering services 10,000.00 (NT)",
+         "date": "2026-01-06",
+         "side": "credit",
          "party": "C100"
         }
        }
@@ -11870,6 +12290,8 @@
          "document": "PAY-RUN-01",
          "kind": "payment",
          "description": "ACH payment run 01: P-7781 28,300.00; CPL-1225 4,000.00",
+         "date": "2026-01-08",
+         "side": "debit",
          "party": "V100, V600"
         }
        },
@@ -11891,6 +12313,8 @@
          "document": "PAY-RUN-01",
          "kind": "payment",
          "description": "ACH payment run 01: P-7781 28,300.00; CPL-1225 4,000.00",
+         "date": "2026-01-08",
+         "side": "credit",
          "party": "V100, V600"
         }
        }
@@ -11923,6 +12347,8 @@
          "document": "BILL-P-7902",
          "kind": "bill",
          "description": "Components purchased",
+         "date": "2026-01-09",
+         "side": "debit",
          "party": "V100"
         }
        },
@@ -11944,6 +12370,8 @@
          "document": "BILL-P-7902",
          "kind": "bill",
          "description": "Components purchased",
+         "date": "2026-01-09",
+         "side": "credit",
          "party": "V100"
         }
        }
@@ -11976,6 +12404,8 @@
          "document": "CM-2001",
          "kind": "credit memo",
          "description": "Return of components on INV-1004",
+         "date": "2026-01-10",
+         "side": "debit",
          "party": "C100"
         }
        },
@@ -11997,6 +12427,8 @@
          "document": "CM-2001",
          "kind": "credit memo",
          "description": "Return of components on INV-1004",
+         "date": "2026-01-10",
+         "side": "debit",
          "party": "C100"
         }
        },
@@ -12018,6 +12450,8 @@
          "document": "CM-2001",
          "kind": "credit memo",
          "description": "Return of components on INV-1004",
+         "date": "2026-01-10",
+         "side": "credit",
          "party": "C100"
         }
        }
@@ -12050,6 +12484,8 @@
          "document": "INV-1005",
          "kind": "invoice",
          "description": "Components, EUR 50,000.00 at 1.0850",
+         "date": "2026-01-12",
+         "side": "debit",
          "party": "C400"
         }
        },
@@ -12071,6 +12507,8 @@
          "document": "INV-1005",
          "kind": "invoice",
          "description": "Components, EUR 50,000.00 at 1.0850",
+         "date": "2026-01-12",
+         "side": "credit",
          "party": "C400"
         }
        }
@@ -12103,6 +12541,8 @@
          "document": "INV-1006",
          "kind": "invoice",
          "description": "Engineering services (Oregon)",
+         "date": "2026-01-14",
+         "side": "debit",
          "party": "C200"
         }
        },
@@ -12124,6 +12564,8 @@
          "document": "INV-1006",
          "kind": "invoice",
          "description": "Engineering services (Oregon)",
+         "date": "2026-01-14",
+         "side": "credit",
          "party": "C200"
         }
        }
@@ -12156,6 +12598,8 @@
          "document": "INV-1007",
          "kind": "invoice",
          "description": "Components for resale (certificate RC-3301)",
+         "date": "2026-01-15",
+         "side": "debit",
          "party": "C300"
         }
        },
@@ -12177,6 +12621,8 @@
          "document": "INV-1007",
          "kind": "invoice",
          "description": "Components for resale (certificate RC-3301)",
+         "date": "2026-01-15",
+         "side": "credit",
          "party": "C300"
         }
        }
@@ -12206,6 +12652,8 @@
          "document": "BILL-TS-5520",
          "kind": "bill",
          "description": "Application server, capitalized as FA-003",
+         "date": "2026-01-15",
+         "side": "debit",
          "party": "V700"
         }
        },
@@ -12227,6 +12675,8 @@
          "document": "BILL-TS-5520",
          "kind": "bill",
          "description": "Application server, capitalized as FA-003",
+         "date": "2026-01-15",
+         "side": "credit",
          "party": "V700"
         }
        }
@@ -12255,7 +12705,9 @@
          },
          "document": "JE-0001",
          "kind": "journal",
-         "description": "Payout of 2025 bonus accrued at year end (approval required: > 10,000.00)"
+         "description": "Payout of 2025 bonus accrued at year end (approval required: > 10,000.00)",
+         "date": "2026-01-15",
+         "side": "debit"
         }
        },
        {
@@ -12275,7 +12727,9 @@
          },
          "document": "JE-0001",
          "kind": "journal",
-         "description": "Payout of 2025 bonus accrued at year end (approval required: > 10,000.00)"
+         "description": "Payout of 2025 bonus accrued at year end (approval required: > 10,000.00)",
+         "date": "2026-01-15",
+         "side": "credit"
         }
        }
       ]
@@ -12307,6 +12761,8 @@
          "document": "RCPT-0002",
          "kind": "receipt",
          "description": "Receipt for INV-1002 (past due)",
+         "date": "2026-01-16",
+         "side": "debit",
          "party": "C200"
         }
        },
@@ -12328,6 +12784,8 @@
          "document": "RCPT-0002",
          "kind": "receipt",
          "description": "Receipt for INV-1002 (past due)",
+         "date": "2026-01-16",
+         "side": "credit",
          "party": "C200"
         }
        }
@@ -12360,6 +12818,8 @@
          "document": "BILL-DC-2601",
          "kind": "bill",
          "description": "January consulting",
+         "date": "2026-01-20",
+         "side": "debit",
          "party": "V200"
         }
        },
@@ -12381,6 +12841,8 @@
          "document": "BILL-DC-2601",
          "kind": "bill",
          "description": "January consulting",
+         "date": "2026-01-20",
+         "side": "credit",
          "party": "V200"
         }
        }
@@ -12410,6 +12872,8 @@
          "document": "BILL-CS-0126",
          "kind": "bill",
          "description": "Software subscription January",
+         "date": "2026-01-20",
+         "side": "debit",
          "party": "V400"
         }
        },
@@ -12431,6 +12895,8 @@
          "document": "BILL-CS-0126",
          "kind": "bill",
          "description": "Software subscription January",
+         "date": "2026-01-20",
+         "side": "credit",
          "party": "V400"
         }
        }
@@ -12460,6 +12926,8 @@
          "document": "STX-PAY-2512",
          "kind": "tax payment",
          "description": "Texas sales tax return December 2025",
+         "date": "2026-01-20",
+         "side": "debit",
          "party": "Texas Comptroller"
         }
        },
@@ -12481,6 +12949,8 @@
          "document": "STX-PAY-2512",
          "kind": "tax payment",
          "description": "Texas sales tax return December 2025",
+         "date": "2026-01-20",
+         "side": "credit",
          "party": "Texas Comptroller"
         }
        }
@@ -12513,6 +12983,8 @@
          "document": "BILL-JR-014",
          "kind": "bill",
          "description": "Drafting services",
+         "date": "2026-01-21",
+         "side": "debit",
          "party": "V800"
         }
        },
@@ -12534,6 +13006,8 @@
          "document": "BILL-JR-014",
          "kind": "bill",
          "description": "Drafting services",
+         "date": "2026-01-21",
+         "side": "credit",
          "party": "V800"
         }
        }
@@ -12566,6 +13040,8 @@
          "document": "PAY-RUN-02",
          "kind": "payment",
          "description": "ACH payment run 02: DC-2025-12 9,000.00; MP-2026-01 8,500.00; JR-014 1,500.00",
+         "date": "2026-01-22",
+         "side": "debit",
          "party": "V200, V300, V800"
         }
        },
@@ -12587,6 +13063,8 @@
          "document": "PAY-RUN-02",
          "kind": "payment",
          "description": "ACH payment run 02: DC-2025-12 9,000.00; MP-2026-01 8,500.00; JR-014 1,500.00",
+         "date": "2026-01-22",
+         "side": "credit",
          "party": "V200, V300, V800"
         }
        }
@@ -12619,6 +13097,8 @@
          "document": "RCPT-0003",
          "kind": "receipt",
          "description": "Partial receipt for INV-1003",
+         "date": "2026-01-25",
+         "side": "debit",
          "party": "C300"
         }
        },
@@ -12640,6 +13120,8 @@
          "document": "RCPT-0003",
          "kind": "receipt",
          "description": "Partial receipt for INV-1003",
+         "date": "2026-01-25",
+         "side": "credit",
          "party": "C300"
         }
        }
@@ -12672,6 +13154,8 @@
          "document": "BILL-CPL-0126",
          "kind": "bill",
          "description": "Electricity January",
+         "date": "2026-01-28",
+         "side": "debit",
          "party": "V600"
         }
        },
@@ -12693,6 +13177,8 @@
          "document": "BILL-CPL-0126",
          "kind": "bill",
          "description": "Electricity January",
+         "date": "2026-01-28",
+         "side": "credit",
          "party": "V600"
         }
        }
@@ -12725,6 +13211,8 @@
          "document": "PAYROLL-2601",
          "kind": "journal",
          "description": "Payroll summary from external provider: gross 60,000.00; employer taxes 4,590.00; net pay 45,000.00; withholdings and employer taxes 19,590.00 (imported; approval required: > 10,000.00)",
+         "date": "2026-01-30",
+         "side": "debit",
          "party": "payroll provider"
         }
        },
@@ -12746,6 +13234,8 @@
          "document": "PAYROLL-2601",
          "kind": "journal",
          "description": "Payroll summary from external provider: gross 60,000.00; employer taxes 4,590.00; net pay 45,000.00; withholdings and employer taxes 19,590.00 (imported; approval required: > 10,000.00)",
+         "date": "2026-01-30",
+         "side": "debit",
          "party": "payroll provider"
         }
        },
@@ -12767,6 +13257,8 @@
          "document": "PAYROLL-2601",
          "kind": "journal",
          "description": "Payroll summary from external provider: gross 60,000.00; employer taxes 4,590.00; net pay 45,000.00; withholdings and employer taxes 19,590.00 (imported; approval required: > 10,000.00)",
+         "date": "2026-01-30",
+         "side": "credit",
          "party": "payroll provider"
         }
        },
@@ -12788,6 +13280,8 @@
          "document": "PAYROLL-2601",
          "kind": "journal",
          "description": "Payroll summary from external provider: gross 60,000.00; employer taxes 4,590.00; net pay 45,000.00; withholdings and employer taxes 19,590.00 (imported; approval required: > 10,000.00)",
+         "date": "2026-01-30",
+         "side": "credit",
          "party": "payroll provider"
         }
        }
@@ -12819,7 +13313,9 @@
          },
          "document": "JE-0002",
          "kind": "journal",
-         "description": "Accrue annual audit fee (approval required: > 10,000.00)"
+         "description": "Accrue annual audit fee (approval required: > 10,000.00)",
+         "date": "2026-01-31",
+         "side": "debit"
         }
        },
        {
@@ -12839,7 +13335,9 @@
          },
          "document": "JE-0002",
          "kind": "journal",
-         "description": "Accrue annual audit fee (approval required: > 10,000.00)"
+         "description": "Accrue annual audit fee (approval required: > 10,000.00)",
+         "date": "2026-01-31",
+         "side": "credit"
         }
        }
       ]
@@ -12867,7 +13365,9 @@
          },
          "document": "JE-0003",
          "kind": "journal",
-         "description": "Recurring: amortize prepaid insurance 1/12"
+         "description": "Recurring: amortize prepaid insurance 1/12",
+         "date": "2026-01-31",
+         "side": "debit"
         }
        },
        {
@@ -12887,7 +13387,9 @@
          },
          "document": "JE-0003",
          "kind": "journal",
-         "description": "Recurring: amortize prepaid insurance 1/12"
+         "description": "Recurring: amortize prepaid insurance 1/12",
+         "date": "2026-01-31",
+         "side": "credit"
         }
        }
       ]
@@ -12915,7 +13417,9 @@
          },
          "document": "DEP-2601",
          "kind": "depreciation",
-         "description": "Depreciation January: FA-001 2,000.00; FA-002 1,666.67; FA-003 333.33"
+         "description": "Depreciation January: FA-001 2,000.00; FA-002 1,666.67; FA-003 333.33",
+         "date": "2026-01-31",
+         "side": "debit"
         }
        },
        {
@@ -12935,7 +13439,9 @@
          },
          "document": "DEP-2601",
          "kind": "depreciation",
-         "description": "Depreciation January: FA-001 2,000.00; FA-002 1,666.67; FA-003 333.33"
+         "description": "Depreciation January: FA-001 2,000.00; FA-002 1,666.67; FA-003 333.33",
+         "date": "2026-01-31",
+         "side": "credit"
         }
        }
       ]
@@ -12964,6 +13470,8 @@
          "document": "BANK-INT-2601",
          "kind": "bank",
          "description": "Line of credit interest 50,000.00 x 7.20% / 12",
+         "date": "2026-01-31",
+         "side": "debit",
          "party": "Lakeside National Bank"
         }
        },
@@ -12985,6 +13493,8 @@
          "document": "BANK-INT-2601",
          "kind": "bank",
          "description": "Line of credit interest 50,000.00 x 7.20% / 12",
+         "date": "2026-01-31",
+         "side": "credit",
          "party": "Lakeside National Bank"
         }
        }
@@ -13014,6 +13524,8 @@
          "document": "BANK-FEE-2601",
          "kind": "bank",
          "description": "Account service fee",
+         "date": "2026-01-31",
+         "side": "debit",
          "party": "Lakeside National Bank"
         }
        },
@@ -13035,6 +13547,8 @@
          "document": "BANK-FEE-2601",
          "kind": "bank",
          "description": "Account service fee",
+         "date": "2026-01-31",
+         "side": "credit",
          "party": "Lakeside National Bank"
         }
        }
@@ -13064,6 +13578,8 @@
          "document": "SAV-INT-2601",
          "kind": "bank",
          "description": "Savings interest",
+         "date": "2026-01-31",
+         "side": "debit",
          "party": "Lakeside National Bank"
         }
        },
@@ -13085,6 +13601,8 @@
          "document": "SAV-INT-2601",
          "kind": "bank",
          "description": "Savings interest",
+         "date": "2026-01-31",
+         "side": "credit",
          "party": "Lakeside National Bank"
         }
        }
@@ -13114,6 +13632,8 @@
          "document": "FXR-2601",
          "kind": "revaluation",
          "description": "Revalue INV-1005 EUR 50,000.00 at 1.0920 (auto-reverses 2026-02-01)",
+         "date": "2026-01-31",
+         "side": "debit",
          "party": "C400"
         }
        },
@@ -13135,6 +13655,8 @@
          "document": "FXR-2601",
          "kind": "revaluation",
          "description": "Revalue INV-1005 EUR 50,000.00 at 1.0920 (auto-reverses 2026-02-01)",
+         "date": "2026-01-31",
+         "side": "credit",
          "party": "C400"
         }
        }
@@ -13163,7 +13685,9 @@
          },
          "document": "JE-0004",
          "kind": "journal",
-         "description": "Estimated federal income tax provision, 21% of January pre-tax income 6,490.00"
+         "description": "Estimated federal income tax provision, 21% of January pre-tax income 6,490.00",
+         "date": "2026-01-31",
+         "side": "debit"
         }
        },
        {
@@ -13183,7 +13707,9 @@
          },
          "document": "JE-0004",
          "kind": "journal",
-         "description": "Estimated federal income tax provision, 21% of January pre-tax income 6,490.00"
+         "description": "Estimated federal income tax provision, 21% of January pre-tax income 6,490.00",
+         "date": "2026-01-31",
+         "side": "credit"
         }
        }
       ]
@@ -13215,6 +13741,8 @@
          "document": "FXR-2601-R",
          "kind": "revaluation reversal",
          "description": "Auto-reversal of FXR-2601",
+         "date": "2026-02-01",
+         "side": "debit",
          "party": "C400"
         }
        },
@@ -13236,6 +13764,8 @@
          "document": "FXR-2601-R",
          "kind": "revaluation reversal",
          "description": "Auto-reversal of FXR-2601",
+         "date": "2026-02-01",
+         "side": "credit",
          "party": "C400"
         }
        }
@@ -13803,6 +14333,8 @@
          "document": "BILL-P-8010",
          "kind": "bill",
          "description": "Components purchased, coded in error to professional fees",
+         "date": "2026-02-03",
+         "side": "debit",
          "party": "V100"
         }
        },
@@ -13824,6 +14356,8 @@
          "document": "BILL-P-8010",
          "kind": "bill",
          "description": "Components purchased, coded in error to professional fees",
+         "date": "2026-02-03",
+         "side": "credit",
          "party": "V100"
         }
        }
@@ -13856,6 +14390,8 @@
          "document": "RCPT-0004",
          "kind": "receipt",
          "description": "Receipt for INV-1004 balance",
+         "date": "2026-02-05",
+         "side": "debit",
          "party": "C100"
         }
        },
@@ -13877,6 +14413,8 @@
          "document": "RCPT-0004",
          "kind": "receipt",
          "description": "Receipt for INV-1004 balance",
+         "date": "2026-02-05",
+         "side": "credit",
          "party": "C100"
         }
        }
@@ -13909,6 +14447,8 @@
          "document": "BILL-OS-0120",
          "kind": "bill",
          "description": "January office-power adjustment, document date 2026-01-20; January is closed, so posted in February as a prior-period item referencing January",
+         "date": "2026-02-10",
+         "side": "debit",
          "party": "V600"
         }
        },
@@ -13930,6 +14470,8 @@
          "document": "BILL-OS-0120",
          "kind": "bill",
          "description": "January office-power adjustment, document date 2026-01-20; January is closed, so posted in February as a prior-period item referencing January",
+         "date": "2026-02-10",
+         "side": "credit",
          "party": "V600"
         }
        }
@@ -13961,7 +14503,9 @@
          },
          "document": "JE-0005",
          "kind": "journal",
-         "description": "Reclassify P-8010 to cost of goods sold (back-dated correction effective 2026-02-03, recorded 2026-02-20)"
+         "description": "Reclassify P-8010 to cost of goods sold (back-dated correction effective 2026-02-03, recorded 2026-02-20)",
+         "date": "2026-02-03",
+         "side": "debit"
         }
        },
        {
@@ -13981,7 +14525,9 @@
          },
          "document": "JE-0005",
          "kind": "journal",
-         "description": "Reclassify P-8010 to cost of goods sold (back-dated correction effective 2026-02-03, recorded 2026-02-20)"
+         "description": "Reclassify P-8010 to cost of goods sold (back-dated correction effective 2026-02-03, recorded 2026-02-20)",
+         "date": "2026-02-03",
+         "side": "credit"
         }
        }
       ]
@@ -14010,6 +14556,8 @@
          "document": "RCPT-0005",
          "kind": "receipt",
          "description": "Receipt EUR 50,000.00 at 1.0800 for INV-1005; realized loss against the invoice-date rate",
+         "date": "2026-02-20",
+         "side": "debit",
          "party": "C400"
         }
        },
@@ -14031,6 +14579,8 @@
          "document": "RCPT-0005",
          "kind": "receipt",
          "description": "Receipt EUR 50,000.00 at 1.0800 for INV-1005; realized loss against the invoice-date rate",
+         "date": "2026-02-20",
+         "side": "debit",
          "party": "C400"
         }
        },
@@ -14052,6 +14602,8 @@
          "document": "RCPT-0005",
          "kind": "receipt",
          "description": "Receipt EUR 50,000.00 at 1.0800 for INV-1005; realized loss against the invoice-date rate",
+         "date": "2026-02-20",
+         "side": "credit",
          "party": "C400"
         }
        }
@@ -14182,6 +14734,20 @@
      "input": {
       "branch": "release/fy-2026",
       "object_id": "c76a7815-4d3e-74af-82a7-0a1c1515dbcc",
+      "verifier": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2"
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "verified": true
+      }
+     }
+    },
+    {
+     "op": "verify_asset",
+     "input": {
+      "branch": "release/fy-2026",
+      "object_id": "69455abc-e111-712c-818e-d557b32c068f",
       "verifier": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2"
      },
      "expect": {

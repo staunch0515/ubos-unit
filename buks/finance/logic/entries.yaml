@@ -22,6 +22,18 @@ assets:
         }
         // debits equal credits (FIN-GL-010); the ledger checks it again when the lines commit
         if !net.is_zero() { throw "the entry does not balance: debits less credits " + net.to_string(); }
+        // a foreign-currency entry balances in each transaction currency too (FIN-GL-011)
+        let by = #{};
+        for l in this.lines {
+          if "original" in l {
+            let c = l.original.currency;
+            if !(c in by) { by[c] = dec("0.00"); }
+            by[c] = by[c] + dec(l.original.amount);
+          }
+        }
+        for c in by.keys() {
+          if !by[c].is_zero() { throw "the entry does not balance in " + c + ": " + by[c].to_string(); }
+        }
         // every line names an account of the chart (SCN-501 A2): an unknown one is not found
         for l in this.lines { sys.read.get(#{target: l.account}); }
         if debits != amount(this.total) {
@@ -29,11 +41,20 @@ assets:
         }
         // the posting date must lie in a period that is not closed (FIN-PC-005): the kernel
         // checks the commit date (STD-KIND-025), the Buk the business date
-        let pw = "this.state == \"closed\" and this.start <= d'" + this.posting_date + "' and this.end > d'"
-                 + this.posting_date + "'";
-        let cq = sys.search.query(#{query: #{from: "FiscalPeriod", where: pw}});
-        let closed = cq.items;
-        if closed.len() > 0 { throw "the period of " + this.posting_date + " is closed"; }
+        let pw = "this.start <= d'" + this.posting_date + "' and this.end > d'" + this.posting_date + "'";
+        for id in sys.search.query(#{query: #{from: "FiscalPeriod", where: pw}}).items {
+          let p = sys.read.get(#{target: id}).fields;
+          if p.state == "closed" { throw "the period of " + this.posting_date + " is closed"; }
+          // a soft-closed period takes adjusting entries only, which a controller approves
+          // (FIN-PC-003, the sheet ubos.finance.controls)
+          if p.state == "closing" && this.adjusting != true {
+            throw "the period of " + this.posting_date + " is soft-closed: only adjusting entries post";
+          }
+          // a subledger closed for the period posts no more in it (FIN-PC-003)
+          if p.closed_subledgers != () && p.closed_subledgers.contains(this.source) {
+            throw "the " + this.source + " subledger is closed for the period of " + this.posting_date;
+          }
+        }
         let year = this.posting_date.sub_string(0, 4);
         let source = this.source;
         // the number: the next entry of the gap-free sequence of (fiscal year, source)
@@ -42,7 +63,8 @@ assets:
                             fields: #{fiscal_year: year, source: source, entry: self_id, count: dec("1")}});
         for l in this.lines {
           let f = #{account: l.account, amount: l.amount, document: this.number, kind: this.kind,
-                    description: this.description};
+                    description: this.description, date: this.posting_date,
+                    side: if dec(l.amount.amount) < 0 { "credit" } else { "debit" }};
           if this.party != () { f.party = this.party; }
           if "original" in l { f.original = l.original; }
           sys.commit.append(#{class: "JournalLine", ledger_key: #{account: l.account},

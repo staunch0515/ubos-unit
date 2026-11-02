@@ -16,6 +16,12 @@ classes:
         required: true
         constraints: {target_class: GlAccount}
       - {name: amount, label: amount, description: signed amount, debit positive, type: money, required: true}
+      - name: side
+        label: side
+        description: "debit or credit, so that the trial balance shows both (FIN-RP-001)"
+        type: enum
+        constraints: {allowed_values: [debit, credit]}
+      - {name: date, label: date, description: "the posting date, for the account inquiry (FIN-GL-022)", type: date}
       - {name: original, label: original, description: the amount in the document currency of a foreign-currency document (FIN-FX-003), type: money}
       - {name: document, label: document, description: the source document number, type: text, required: true}
       - {name: kind, label: kind, description: the kind of source document, type: text, required: true}

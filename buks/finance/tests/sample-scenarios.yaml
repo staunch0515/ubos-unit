@@ -3336,7 +3336,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -3356,7 +3358,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -3376,7 +3380,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -3396,7 +3402,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3416,7 +3424,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -3436,7 +3446,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -3456,7 +3468,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -3476,7 +3490,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3496,7 +3512,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3516,7 +3534,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3536,7 +3556,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3556,7 +3578,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3576,7 +3600,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3596,7 +3622,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3616,7 +3644,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -3636,7 +3666,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -4723,7 +4755,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -4743,7 +4777,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -4763,7 +4799,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -4783,7 +4821,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4803,7 +4843,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -4823,7 +4865,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -4843,7 +4887,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -4863,7 +4909,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4883,7 +4931,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4903,7 +4953,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4923,7 +4975,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4943,7 +4997,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4963,7 +5019,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -4983,7 +5041,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -5003,7 +5063,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -5023,7 +5085,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -5036,6 +5100,30 @@
       "changes": [
        {
         "op": "create",
+        "class": "TaxJurisdiction",
+        "object_id": "9689ac65-3267-8ac5-8a2a-027f94bc9dea",
+        "slug": "tx",
+        "body": {
+         "code": "TX",
+         "name": "TX state",
+         "level": "state",
+         "state": "TX"
+        }
+       },
+       {
+        "op": "create",
+        "class": "TaxJurisdiction",
+        "object_id": "92cb540b-7d7a-8df1-8d65-ec45fa435af6",
+        "slug": "tx-austin-local",
+        "body": {
+         "code": "TX-AUSTIN-LOCAL",
+         "name": "Texas, City of Austin combined rate, local part",
+         "level": "city",
+         "state": "TX"
+        }
+       },
+       {
+        "op": "create",
         "class": "TaxCode",
         "object_id": "1c648074-625c-89fa-84b5-07a68f0814e4",
         "slug": "tx-austin",
@@ -5045,7 +5133,17 @@
          "rate": "8.25",
          "category": "taxable",
          "certificate_required": false,
-         "payable_account": "ubos://acme/GlAccount/2200"
+         "payable_account": "ubos://acme/GlAccount/2200",
+         "components": [
+          {
+           "jurisdiction": "ubos://acme/TaxJurisdiction/tx",
+           "rate": "6.25"
+          },
+          {
+           "jurisdiction": "ubos://acme/TaxJurisdiction/tx-austin-local",
+           "rate": "2.00"
+          }
+         ]
         }
        },
        {
@@ -5177,6 +5275,7 @@
          "functional_currency": "USD",
          "rate_type": "spot",
          "allowance_account": "ubos://acme/GlAccount/1210",
+         "discount_account": "ubos://acme/GlAccount/4900",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }
@@ -5509,6 +5608,7 @@
          "control_account": "ubos://acme/GlAccount/2000",
          "functional_currency": "USD",
          "rate_type": "spot",
+         "discount_account": "ubos://acme/GlAccount/5000",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }
@@ -8538,7 +8638,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -8558,7 +8660,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -8578,7 +8682,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -8598,7 +8704,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8618,7 +8726,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -8638,7 +8748,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -8658,7 +8770,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -8678,7 +8792,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8698,7 +8814,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8718,7 +8836,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8738,7 +8858,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8758,7 +8880,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8778,7 +8902,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8798,7 +8924,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8818,7 +8946,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -8838,7 +8968,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -8851,6 +8983,30 @@
       "changes": [
        {
         "op": "create",
+        "class": "TaxJurisdiction",
+        "object_id": "9689ac65-3267-8ac5-8a2a-027f94bc9dea",
+        "slug": "tx",
+        "body": {
+         "code": "TX",
+         "name": "TX state",
+         "level": "state",
+         "state": "TX"
+        }
+       },
+       {
+        "op": "create",
+        "class": "TaxJurisdiction",
+        "object_id": "92cb540b-7d7a-8df1-8d65-ec45fa435af6",
+        "slug": "tx-austin-local",
+        "body": {
+         "code": "TX-AUSTIN-LOCAL",
+         "name": "Texas, City of Austin combined rate, local part",
+         "level": "city",
+         "state": "TX"
+        }
+       },
+       {
+        "op": "create",
         "class": "TaxCode",
         "object_id": "1c648074-625c-89fa-84b5-07a68f0814e4",
         "slug": "tx-austin",
@@ -8860,7 +9016,17 @@
          "rate": "8.25",
          "category": "taxable",
          "certificate_required": false,
-         "payable_account": "ubos://acme/GlAccount/2200"
+         "payable_account": "ubos://acme/GlAccount/2200",
+         "components": [
+          {
+           "jurisdiction": "ubos://acme/TaxJurisdiction/tx",
+           "rate": "6.25"
+          },
+          {
+           "jurisdiction": "ubos://acme/TaxJurisdiction/tx-austin-local",
+           "rate": "2.00"
+          }
+         ]
         }
        },
        {
@@ -8992,6 +9158,7 @@
          "functional_currency": "USD",
          "rate_type": "spot",
          "allowance_account": "ubos://acme/GlAccount/1210",
+         "discount_account": "ubos://acme/GlAccount/4900",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }
@@ -9324,6 +9491,7 @@
          "control_account": "ubos://acme/GlAccount/2000",
          "functional_currency": "USD",
          "rate_type": "spot",
+         "discount_account": "ubos://acme/GlAccount/5000",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }
@@ -11209,7 +11377,7 @@
          "$ref": "sheet-500000/version_hash"
         },
         "body": {
-         "source": "JournalEntry[this.source in [\"manual\", \"import\", \"opening\"] and amount(this.total) > 5000 and this.reverses is null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nJournalEntry {\n  decisions: [{name: \"control-accounts\", when: \"this.source == \\\"manual\\\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)\", outcome: \"deny\", message: \"a manual entry posts to a control account only with a logged exception (FIN-GL-005)\"}];\n}\nBill[this.state == \"draft\" and amount(this.amount) > 10000] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nPaymentRun[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nWriteOff[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice[this.state == \"draft\" and this.credit_override is not null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nBankReconciliation {\n  decisions: [{name: \"sign-off\", when: \"params.confirm == true\", outcome: \"require\", steps: [\"approval\"]}];\n}\nFiscalPeriod:closed {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice {\n  decisions: [{name: \"exemption-certificate\", when: \"any(this.lines, l -> ref(l.tax_code).certificate_required == true) and (ref(this.customer).certificate_valid_to is null or ref(this.customer).certificate_valid_to < this.invoice_date)\", outcome: \"deny\", message: \"an exempt sale needs the customer's valid exemption or resale certificate (FIN-TX-004)\"}];\n}\n"
+         "source": "JournalEntry[this.source in [\"manual\", \"import\", \"opening\"] and amount(this.total) > 5000 and this.reverses is null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nJournalEntry {\n  decisions: [{name: \"control-accounts\", when: \"this.source == \\\"manual\\\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)\", outcome: \"deny\", message: \"a manual entry posts to a control account only with a logged exception (FIN-GL-005)\"}];\n}\nBill[this.state == \"draft\" and amount(this.amount) > 10000] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nPaymentRun[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nWriteOff[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice[this.state == \"draft\" and this.credit_override is not null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nBankReconciliation {\n  decisions: [{name: \"sign-off\", when: \"params.confirm == true\", outcome: \"require\", steps: [\"approval\"]}];\n}\nJournalEntry[this.adjusting == true and this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nVendor[this.bank_change is not null] {\n  approvals: {count: 1, roles: [\"controller\"], incompatible: [\"request_bank_change\"]};\n}\nVendor:ctx(role = \"payables_clerk\") {\n  mask.tin: \"partial\";\n  mask.bank_account_number: \"partial\";\n}\nBankAccount:ctx(role = \"payables_clerk\") {\n  mask.account_number: \"partial\";\n}\nFiscalPeriod:closed {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice {\n  decisions: [{name: \"exemption-certificate\", when: \"any(this.lines, l -> ref(l.tax_code).certificate_required == true) and (ref(this.customer).certificate_valid_to is null or ref(this.customer).certificate_valid_to < this.invoice_date)\", outcome: \"deny\", message: \"an exempt sale needs the customer's valid exemption or resale certificate (FIN-TX-004)\"}];\n}\n"
         },
         "valid": {
          "kind": "supersede_from",
@@ -11271,7 +11439,7 @@
          "$ref": "sheet-100000/version_hash"
         },
         "body": {
-         "source": "JournalEntry[this.source in [\"manual\", \"import\", \"opening\"] and amount(this.total) > 1000 and this.reverses is null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nJournalEntry {\n  decisions: [{name: \"control-accounts\", when: \"this.source == \\\"manual\\\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)\", outcome: \"deny\", message: \"a manual entry posts to a control account only with a logged exception (FIN-GL-005)\"}];\n}\nBill[this.state == \"draft\" and amount(this.amount) > 10000] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nPaymentRun[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nWriteOff[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice[this.state == \"draft\" and this.credit_override is not null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nBankReconciliation {\n  decisions: [{name: \"sign-off\", when: \"params.confirm == true\", outcome: \"require\", steps: [\"approval\"]}];\n}\nFiscalPeriod:closed {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice {\n  decisions: [{name: \"exemption-certificate\", when: \"any(this.lines, l -> ref(l.tax_code).certificate_required == true) and (ref(this.customer).certificate_valid_to is null or ref(this.customer).certificate_valid_to < this.invoice_date)\", outcome: \"deny\", message: \"an exempt sale needs the customer's valid exemption or resale certificate (FIN-TX-004)\"}];\n}\n"
+         "source": "JournalEntry[this.source in [\"manual\", \"import\", \"opening\"] and amount(this.total) > 1000 and this.reverses is null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nJournalEntry {\n  decisions: [{name: \"control-accounts\", when: \"this.source == \\\"manual\\\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)\", outcome: \"deny\", message: \"a manual entry posts to a control account only with a logged exception (FIN-GL-005)\"}];\n}\nBill[this.state == \"draft\" and amount(this.amount) > 10000] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nPaymentRun[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nWriteOff[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice[this.state == \"draft\" and this.credit_override is not null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nBankReconciliation {\n  decisions: [{name: \"sign-off\", when: \"params.confirm == true\", outcome: \"require\", steps: [\"approval\"]}];\n}\nJournalEntry[this.adjusting == true and this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nVendor[this.bank_change is not null] {\n  approvals: {count: 1, roles: [\"controller\"], incompatible: [\"request_bank_change\"]};\n}\nVendor:ctx(role = \"payables_clerk\") {\n  mask.tin: \"partial\";\n  mask.bank_account_number: \"partial\";\n}\nBankAccount:ctx(role = \"payables_clerk\") {\n  mask.account_number: \"partial\";\n}\nFiscalPeriod:closed {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice {\n  decisions: [{name: \"exemption-certificate\", when: \"any(this.lines, l -> ref(l.tax_code).certificate_required == true) and (ref(this.customer).certificate_valid_to is null or ref(this.customer).certificate_valid_to < this.invoice_date)\", outcome: \"deny\", message: \"an exempt sale needs the customer's valid exemption or resale certificate (FIN-TX-004)\"}];\n}\n"
         },
         "valid": {
          "kind": "supersede_from",
@@ -12195,7 +12363,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -12215,7 +12385,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -12235,7 +12407,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -12255,7 +12429,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -12275,7 +12451,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -12295,7 +12473,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -12315,7 +12495,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "debit"
         }
        },
        {
@@ -12335,7 +12517,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -12355,7 +12539,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -12375,7 +12561,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -12395,7 +12583,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -12415,7 +12605,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -12435,7 +12627,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -12455,7 +12649,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -12475,7 +12671,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        },
        {
@@ -12495,7 +12693,9 @@
          },
          "document": "OB-2025-12-31",
          "kind": "opening",
-         "description": "Opening balance"
+         "description": "Opening balance",
+         "date": "2025-12-31",
+         "side": "credit"
         }
        }
       ]
@@ -12508,6 +12708,30 @@
       "changes": [
        {
         "op": "create",
+        "class": "TaxJurisdiction",
+        "object_id": "9689ac65-3267-8ac5-8a2a-027f94bc9dea",
+        "slug": "tx",
+        "body": {
+         "code": "TX",
+         "name": "TX state",
+         "level": "state",
+         "state": "TX"
+        }
+       },
+       {
+        "op": "create",
+        "class": "TaxJurisdiction",
+        "object_id": "92cb540b-7d7a-8df1-8d65-ec45fa435af6",
+        "slug": "tx-austin-local",
+        "body": {
+         "code": "TX-AUSTIN-LOCAL",
+         "name": "Texas, City of Austin combined rate, local part",
+         "level": "city",
+         "state": "TX"
+        }
+       },
+       {
+        "op": "create",
         "class": "TaxCode",
         "object_id": "1c648074-625c-89fa-84b5-07a68f0814e4",
         "slug": "tx-austin",
@@ -12517,7 +12741,17 @@
          "rate": "8.25",
          "category": "taxable",
          "certificate_required": false,
-         "payable_account": "ubos://acme/GlAccount/2200"
+         "payable_account": "ubos://acme/GlAccount/2200",
+         "components": [
+          {
+           "jurisdiction": "ubos://acme/TaxJurisdiction/tx",
+           "rate": "6.25"
+          },
+          {
+           "jurisdiction": "ubos://acme/TaxJurisdiction/tx-austin-local",
+           "rate": "2.00"
+          }
+         ]
         }
        },
        {
@@ -12649,6 +12883,7 @@
          "functional_currency": "USD",
          "rate_type": "spot",
          "allowance_account": "ubos://acme/GlAccount/1210",
+         "discount_account": "ubos://acme/GlAccount/4900",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }
@@ -12981,6 +13216,7 @@
          "control_account": "ubos://acme/GlAccount/2000",
          "functional_currency": "USD",
          "rate_type": "spot",
+         "discount_account": "ubos://acme/GlAccount/5000",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }
@@ -14859,7 +15095,7 @@
          "$ref": "january/version_hash"
         },
         "body": {
-         "source": "JournalEntry[this.source in [\"manual\", \"import\", \"opening\"] and amount(this.total) > 5000 and this.reverses is null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nJournalEntry {\n  decisions: [{name: \"control-accounts\", when: \"this.source == \\\"manual\\\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)\", outcome: \"deny\", message: \"a manual entry posts to a control account only with a logged exception (FIN-GL-005)\"}];\n}\nBill[this.state == \"draft\" and amount(this.amount) > 10000] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nPaymentRun[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nWriteOff[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice[this.state == \"draft\" and this.credit_override is not null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nBankReconciliation {\n  decisions: [{name: \"sign-off\", when: \"params.confirm == true\", outcome: \"require\", steps: [\"approval\"]}];\n}\nFiscalPeriod:closed {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice {\n  decisions: [{name: \"exemption-certificate\", when: \"any(this.lines, l -> ref(l.tax_code).certificate_required == true) and (ref(this.customer).certificate_valid_to is null or ref(this.customer).certificate_valid_to < this.invoice_date)\", outcome: \"deny\", message: \"an exempt sale needs the customer's valid exemption or resale certificate (FIN-TX-004)\"}];\n}\n"
+         "source": "JournalEntry[this.source in [\"manual\", \"import\", \"opening\"] and amount(this.total) > 5000 and this.reverses is null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nJournalEntry {\n  decisions: [{name: \"control-accounts\", when: \"this.source == \\\"manual\\\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)\", outcome: \"deny\", message: \"a manual entry posts to a control account only with a logged exception (FIN-GL-005)\"}];\n}\nBill[this.state == \"draft\" and amount(this.amount) > 10000] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nPaymentRun[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nWriteOff[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice[this.state == \"draft\" and this.credit_override is not null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nBankReconciliation {\n  decisions: [{name: \"sign-off\", when: \"params.confirm == true\", outcome: \"require\", steps: [\"approval\"]}];\n}\nJournalEntry[this.adjusting == true and this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nVendor[this.bank_change is not null] {\n  approvals: {count: 1, roles: [\"controller\"], incompatible: [\"request_bank_change\"]};\n}\nVendor:ctx(role = \"payables_clerk\") {\n  mask.tin: \"partial\";\n  mask.bank_account_number: \"partial\";\n}\nBankAccount:ctx(role = \"payables_clerk\") {\n  mask.account_number: \"partial\";\n}\nFiscalPeriod:closed {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice {\n  decisions: [{name: \"exemption-certificate\", when: \"any(this.lines, l -> ref(l.tax_code).certificate_required == true) and (ref(this.customer).certificate_valid_to is null or ref(this.customer).certificate_valid_to < this.invoice_date)\", outcome: \"deny\", message: \"an exempt sale needs the customer's valid exemption or resale certificate (FIN-TX-004)\"}];\n}\n"
         },
         "valid": {
          "kind": "supersede_from",

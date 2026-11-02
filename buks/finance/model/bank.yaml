@@ -133,3 +133,20 @@ classes:
         constraints: {allowed_values: [draft, posted]}
     ports:
       - {name: post, description: post the transfer, kind: command, params: [], permission: post, impl: ubos.finance.bank#post_transfer}
+  - name: BankAccount
+    label: bank account
+    description: "A bank account of the company, mapped to exactly one GL cash account (FIN-BK-001)"
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[code], [gl_account]]
+    fields:
+      - {name: code, label: code, description: the account's code, type: text, required: true}
+      - {name: bank_name, label: bank, description: the bank's name, type: text, required: true}
+      - {name: routing_number, label: routing number, description: the bank's routing number, type: text, required: true}
+      - {name: account_number, label: account number, description: "the account number; confidential, shown partially to clerks (FIN-SC-004)", type: text, required: true, classification: confidential}
+      - {name: currency, label: currency, description: the account's currency, type: text, required: true}
+      - {name: gl_account, label: GL account, description: the GL cash account; one bank account per GL account, type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: statement_format, label: statement format, description: "the statement format: BAI2, camt.053 or CSV (PH-2 step 12)", type: text}
+      - {name: payment_files, label: payment files, description: "the payment-file settings: NACHA or pain.001, positive pay (PH-2 step 12)", type: json}

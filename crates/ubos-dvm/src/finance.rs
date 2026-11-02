@@ -13,6 +13,15 @@ use ubos_version::state::{Entry, Repo, Tx, at};
 /// The genesis classes whose objects the commit checks here.
 const CLASSES: &[&str] = &["Currency", "FxRate", "LedgerAccount", "Projection"];
 
+/// STD-KIND-029: an account is an object of `LedgerAccount` or of a class that extends it
+/// (PH-2 step 10g-3, DEC-155: a package's subclass was not checked).
+pub(crate) fn is_account(reg: &ubos_model::Registry, class: &str) -> bool {
+    class == "LedgerAccount"
+        || reg
+            .class(class)
+            .is_ok_and(|c| c.linearization.iter().any(|l| l == "LedgerAccount"))
+}
+
 fn s<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
     v.get(k).and_then(Value::as_str)
 }
@@ -123,7 +132,10 @@ pub(crate) fn check(
 ) -> Result<(), BpaError> {
     for (oid, vh) in written {
         let v = repo.version_in(tx, vh)?;
-        let class = s(&v, "class").unwrap_or_default().to_string();
+        let mut class = s(&v, "class").unwrap_or_default().to_string();
+        if is_account(repo.reg, &class) {
+            class = "LedgerAccount".to_string();
+        }
         if !CLASSES.contains(&class.as_str()) || v["tombstone"] == json!(true) {
             continue;
         }
@@ -341,7 +353,7 @@ fn check_entry(repo: &mut Repo, tx: &mut Tx, e: &Entry, field: &str) -> Result<(
     };
     if repo
         .obj(tx, &oid)?
-        .is_none_or(|o| o.class != "LedgerAccount")
+        .is_none_or(|o| !is_account(repo.reg, &o.class))
     {
         return Ok(());
     }
@@ -350,11 +362,13 @@ fn check_entry(repo: &mut Repo, tx: &mut Tx, e: &Entry, field: &str) -> Result<(
         return Err(fail("inactive"));
     };
     let others: Vec<String> = {
-        repo.load_class(tx, "LedgerAccount")?;
+        for c in repo.reg.subclasses("LedgerAccount") {
+            repo.load_class(tx, &c)?;
+        }
         tx.state
             .objects
             .iter()
-            .filter(|(id, o)| o.class == "LedgerAccount" && **id != oid)
+            .filter(|(id, o)| is_account(repo.reg, &o.class) && **id != oid)
             .map(|(id, _)| id.clone())
             .collect()
     };

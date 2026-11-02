@@ -34,3 +34,34 @@ changes:
       group_by: [account, kind]
       aggregates:
         - {fn: sum, field: amount, as: amount}
+  # debits and credits per account (FIN-RP-001) and the lines of an account by document
+  # (FIN-GL-022; PH-2 step 10g-3, DEC-155)
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-00000000000e
+    slug: gl-sides
+    body:
+      name: gl-sides
+      source: JournalLine
+      group_by: [account, side]
+      aggregates:
+        - {fn: sum, field: amount, as: amount}
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-00000000000f
+    slug: gl-lines
+    body:
+      name: gl-lines
+      source: JournalLine
+      group_by: [account, document]
+      aggregates:
+        - {fn: sum, field: amount, as: amount}
+        - {fn: last, field: date, as: date}
+        - {fn: last, field: kind, as: kind}
+        - {fn: last, field: description, as: description}
+  - op: create
+    class: GeneralLedger
+    object_id: 01890a5d-ac96-7f03-8000-000000000001
+    slug: general-ledger
+    body:
+      name: General ledger

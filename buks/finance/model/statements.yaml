@@ -27,3 +27,31 @@ classes:
           - {name: closing, label: closing, description: the last day of the period, type: date, required: true}
         permission: read
         impl: ubos.finance.statements#render
+  - name: GeneralLedger
+    label: general ledger
+    description: The general ledger's reports (FIN-RP-001, FIN-GL-022)
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    fields:
+      - {name: name, label: name, description: the ledger's name, type: text, required: true}
+    ports:
+      - name: trial_balance
+        description: "per account the balance at `opening`, the debits and credits of the period and the balance at `closing`, with totals; with rollup, summary accounts carry the sum of the accounts below them (FIN-RP-001, FIN-GL-003)"
+        kind: query
+        params:
+          - {name: opening, label: opening, description: the last day before the period, type: date, required: true}
+          - {name: closing, label: closing, description: the last day of the period, type: date, required: true}
+          - {name: rollup, label: roll up, description: include the summary accounts, type: boolean}
+        permission: read
+        impl: ubos.finance.ledger#trial_balance
+      - name: inquiry
+        description: "an account's opening balance, its posted lines of a date range by document with the running balance, and the closing balance (FIN-GL-022)"
+        kind: query
+        params:
+          - {name: account, label: account, description: the account, type: reference, required: true, constraints: {target_class: GlAccount}}
+          - {name: from, label: from, description: the first day, type: date, required: true}
+          - {name: to, label: to, description: the last day, type: date, required: true}
+        permission: read
+        impl: ubos.finance.ledger#inquiry

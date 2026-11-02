@@ -23,6 +23,7 @@ classes:
       - {name: description, label: description, description: the entry's description, type: text, required: true}
       - {name: total, label: total, description: the sum of the debits; `post` refuses an entry whose lines do not add up to it, type: money, required: true}
       - {name: party, label: party, description: the customer or vendor code, type: text}
+      - {name: adjusting, label: adjusting, description: "an adjusting entry, the only kind a soft-closed period takes; a controller approves it (FIN-PC-003)", type: boolean}
       - {name: lines, label: lines, description: "the lines: {account (URI of a GlAccount), amount (money, debit positive), original? (money in the document currency), memo?}", type: json, required: true}
       - {name: control_exception, label: control exception, description: the logged reason that lets a manual entry post to a control account (FIN-GL-005), type: text}
       - {name: auto_reverse_on, label: auto-reverse on, description: the date on which the entry is reversed automatically; opening the period of that date posts the reversal (FIN-GL-018), type: date}

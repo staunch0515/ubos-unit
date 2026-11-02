@@ -15,7 +15,50 @@ classes:
       - {name: form_1099, label: Form 1099, description: "the form and box a payment is reported in (for example 1099-NEC box 1); none when not reportable", type: text}
       - {name: tin_on_file, label: TIN on file, description: whether a taxpayer identification number is on file, type: boolean}
       - {name: terms_days, label: terms, description: net days to the due date, type: integer, required: true}
+      - {name: terms, label: payment terms, description: "payment terms with a discount or end of month (FIN-AR-002, FIN-AP-012)", type: reference, constraints: {target_class: PaymentTerms}}
       - {name: payable_account, label: payable account, description: the payables control account, type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: dba_name, label: doing business as, description: the trade name (FIN-AP-001), type: text}
+      - {name: remit_to, label: remit to, description: the remittance address, type: text}
+      - {name: contacts, label: contacts, description: "the contacts: {name, role, email, phone}", type: json}
+      - {name: currency, label: currency, description: the billing currency, type: text}
+      - {name: default_account, label: default account, description: the default expense account of its bills, type: reference, constraints: {target_class: GlAccount}}
+      - name: payment_method
+        label: payment method
+        description: how the vendor is paid; card payments are reported by the card processor on Form 1099-K and left out of Forms 1099-NEC and -MISC (FIN-AP-020)
+        type: enum
+        constraints: {allowed_values: [ACH, check, wire, card]}
+      - {name: status, label: status, description: active or inactive, type: enum, constraints: {allowed_values: [active, inactive]}}
+      - {name: tin, label: TIN, description: "the taxpayer identification number; confidential, shown partially to payables clerks (FIN-AP-002, FIN-SC-004)", type: text, classification: confidential}
+      - {name: tin_type, label: TIN type, description: EIN or SSN, type: enum, constraints: {allowed_values: [EIN, SSN]}}
+      - {name: w9_date, label: W-9 date, description: the date of the Form W-9 on file, type: date}
+      - {name: w9_document, label: W-9 document, description: the reference of the stored Form W-9, type: text}
+      - name: tin_status
+        label: TIN status
+        description: the result of the TIN verification
+        type: enum
+        constraints: {allowed_values: [unverified, verified, mismatch]}
+      - {name: backup_withholding, label: backup withholding, description: payments are subject to backup withholding, type: boolean}
+      - {name: bank_name, label: bank, description: the vendor's bank (FIN-AP-001), type: text}
+      - {name: bank_routing, label: routing number, description: the bank's routing number, type: text}
+      - {name: bank_account_number, label: bank account number, description: "the vendor's account number; confidential, shown partially to payables clerks (FIN-SC-004)", type: text, classification: confidential}
+      - {name: bank_change, label: bank change, description: "bank details requested and waiting for a second person's approval: {bank_name, bank_routing, bank_account_number, reason}; payments to the vendor are held meanwhile (FIN-AP-003)", type: json, classification: confidential}
+    ports:
+      - name: request_bank_change
+        description: "request new bank details; they apply only when a second person approves apply_bank_change, and payments to the vendor are held meanwhile (FIN-AP-003)"
+        kind: command
+        params:
+          - {name: bank_name, label: bank, description: the bank, type: text, required: true}
+          - {name: bank_routing, label: routing number, description: the routing number, type: text, required: true}
+          - {name: bank_account_number, label: account number, description: the account number, type: text, required: true}
+          - {name: reason, label: reason, description: why, type: text, required: true}
+        permission: maintain
+        impl: ubos.finance.payables#request_bank_change
+      - name: apply_bank_change
+        description: "apply the requested bank details; the sheet ubos.finance.controls requires the approval of a controller who did not request them (FIN-AP-003, FIN-CT-001)"
+        kind: command
+        params: []
+        permission: maintain
+        impl: ubos.finance.payables#apply_bank_change
   - name: Form1099Threshold
     label: Form 1099 threshold
     description: The reporting threshold of Forms 1099-NEC and 1099-MISC per tax year, read from this table and never hard-coded (FIN-EXP-14)
@@ -47,6 +90,8 @@ classes:
       - {name: applies_to, label: applies to, description: the vendor invoice a credit is applied to; the credit stays open when absent, type: text}
       - {name: rate, label: rate, description: "the rate to the functional currency entered for a foreign-currency bill; the spot rate of the bill date when absent (FIN-FX-003)", type: decimal}
       - {name: functional_total, label: functional total, description: the total in the functional currency, computed on posting (FIN-FX-003), type: money}
+      - {name: discount_date, label: discount date, description: the last day an early-payment discount may be taken, computed on posting (FIN-AP-012), type: date}
+      - {name: discount, label: discount, description: the early-payment discount offered, computed on posting, type: money}
       - {name: duplicate_reason, label: duplicate reason, description: "the confirmation of a bill whose vendor, amount and date match another bill's (FIN-AP-005)", type: text}
       - {name: hold, label: hold, description: a held bill is left out of payment proposals (FIN-AP-010), type: boolean}
       - {name: vendor, label: vendor, description: the vendor, type: reference, required: true, constraints: {target_class: Vendor}}
@@ -54,7 +99,8 @@ classes:
       - {name: posting_date, label: posting date, description: "the date the bill posts on, in an open period, when it differs from the document date: a late bill of a closed period (FIN-PC-005)", type: date}
       - {name: due_date, label: due date, description: computed from the terms when absent, type: date}
       - {name: description, label: description, description: the bill's description, type: text, required: true}
-      - {name: lines, label: lines, description: "the lines: {description, account, amount (money, positive), use_tax_code? (URI of a TaxCode; accrues use tax, FIN-TX-007)}", type: json, required: true}
+      - {name: lines, label: lines, description: "the lines: {description, account, amount (money, positive), use_tax_code? (URI of a TaxCode; accrues use tax, FIN-TX-007), form_1099? (the form and box of the line, or none; overrides the vendor's, FIN-AP-020)}", type: json, required: true}
+      - {name: received_date, label: received date, description: the date the bill was received (FIN-AP-004), type: date}
       - {name: total, label: total, description: the amount owed, computed on posting, type: money}
       - name: state
         label: state
@@ -76,7 +122,7 @@ classes:
       - {name: run_date, label: date, description: the payment date, type: date, required: true}
       - {name: bank_account, label: bank account, description: the account paid from, type: reference, required: true, constraints: {target_class: GlAccount}}
       - {name: method, label: method, description: ACH, check or wire, type: text}
-      - {name: payments, label: payments, description: "{vendor (code), document (vendor invoice, or the number of a prepayment), amount (in the item's currency), prepayment?}; posting adds the functional amount paid and the carrying amount settled (FIN-FX-004)", type: json, required: true}
+      - {name: payments, label: payments, description: "{vendor (code), document (vendor invoice, or the number of a prepayment), amount (in the item's currency, paid), discount? (taken, FIN-AP-012), prepayment?}; posting adds the functional amount paid and the carrying amount settled (FIN-FX-004)", type: json, required: true}
       - {name: voided, label: voided, description: "the payments voided: {document, date, reason, entry} (FIN-AP-014)", type: json}
       - name: state
         label: state
@@ -106,6 +152,7 @@ classes:
       - {name: control_account, label: control account, description: the payables control account (FIN-RP-007), type: reference, required: true, constraints: {target_class: GlAccount}}
       - {name: functional_currency, label: functional currency, description: the functional currency of the company (FIN-FX-001), type: text, required: true}
       - {name: rate_type, label: rate type, description: the type of the FxRate objects the subledger converts with (FIN-FX-002), type: text, required: true}
+      - {name: discount_account, label: discount account, description: the account of early-payment discounts taken (FIN-AP-012), type: reference, constraints: {target_class: GlAccount}}
       - {name: realized_account, label: realized FX account, description: the realized exchange gain or loss account (FIN-FX-004), type: reference, required: true, constraints: {target_class: GlAccount}}
       - {name: unrealized_account, label: unrealized FX account, description: the unrealized exchange gain or loss account (FIN-FX-005), type: reference, required: true, constraints: {target_class: GlAccount}}
     ports:
@@ -132,6 +179,14 @@ classes:
           - {name: through, label: through, description: the last payment date counted, type: date, required: true}
         permission: read
         impl: ubos.finance.payables#form_1099
+      - name: review_1099
+        description: "the 1099 vendors paid in a tax year with their exceptions: no TIN, a TIN that failed verification, no address (FIN-AP-022)"
+        kind: query
+        params:
+          - {name: tax_year, label: tax year, description: the tax year, type: text, required: true}
+          - {name: through, label: through, description: the last payment date counted, type: date, required: true}
+        permission: read
+        impl: ubos.finance.payables#review_1099
       - name: propose_run
         description: "create a draft payment run of the posted, unheld open items due by a date (FIN-AP-010); the preparer may change it before posting"
         kind: command
@@ -170,3 +225,17 @@ classes:
       - {name: source, label: source, description: the document that wrote the entry, type: text, required: true}
       - {name: bill_date, label: bill date, description: the item's document date, type: date, required: true}
       - {name: due, label: due, description: the item's due date, type: date, required: true}
+  - name: Form1099Amount
+    label: Form 1099 amount
+    description: "The reportable amounts of payments by vendor and form and box, cash basis: written when a run pays, from the vendor's form or a bill line's override; card payments are left out (FIN-AP-020, -021)"
+    namespace: ubos.finance
+    parent: DataObject
+    kind: ledger
+    schema_version: 1
+    ledger: {key: [vendor], amounts: [amount], double_entry: false}
+    fields:
+      - {name: vendor, label: vendor, description: the vendor code, type: text, required: true}
+      - {name: form, label: form, description: "the form and box, for example 1099-NEC box 1", type: text, required: true}
+      - {name: amount, label: amount, description: the amount paid (a void negative), type: money, required: true}
+      - {name: payment, label: payment, description: the payment run or void, type: text, required: true}
+      - {name: document, label: document, description: the item paid, type: text, required: true}

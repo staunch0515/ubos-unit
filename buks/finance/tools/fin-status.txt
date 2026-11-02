@@ -1,0 +1,120 @@
+# Status of the US Basic Finance requirements (fin-req-v1.0) in the finance Buk (PH-2 step 10g-3,
+# DEC-155). tools/fin_coverage.py reads this file and the tests and writes docs/fin-coverage.md.
+#
+# A requirement whose ID a test name carries is "tested" and needs no line here. Every other
+# requirement has one line:  ID | status | evidence | note
+#   covered   implemented in the Buk and exercised by the tests whose names contain each of the
+#             ';'-separated evidence fragments (checked)
+#   platform  met by the kernel or the platform, verified there: the evidence names the reference
+#   assigned  built in a later step: the evidence names the step (PH-2 step N, or PH-3)
+#   gap       to be built in the Buk (none since step 10g-3)
+# Must requirements may not stay "gap" when step 10 closes (fin_coverage.py --closing).
+
+# ---- general ledger ----
+FIN-GL-001 | covered | FIN-EXP-01; SCN-501 the opening balances | GlAccount: number, name, type, normal balance, statement line; the sample chart loads in every test
+FIN-GL-002 | assigned | PH-2 step 17 | the sample chart as a template to copy (Bridge import)
+FIN-GL-006 | assigned | PH-3 | analysis dimensions (Should)
+FIN-GL-010 | covered | FIN-GL-015 JE-0002; FIN-EXP-02 | number, posting and document dates, description, source; attachments: PH-2 step 13
+FIN-GL-012 | covered | SCN-502 a posted line cannot be changed | the freeze of the entry object: the next BPA release candidate (DEC-154)
+FIN-GL-016 | assigned | PH-2 step 13 | attachments (files and content)
+FIN-GL-019 | assigned | PH-2 step 17 | journal import with validation of every row (Bridge)
+FIN-GL-020 | assigned | PH-2 step 15 | the bulk entry grid (Smart Grid)
+
+# ---- periods and close ----
+FIN-PC-001 | covered | FIN-PC-008; FIN-PC-005 closing January | monthly periods and the adjustment period of the year-end close
+FIN-PC-002 | covered | SCN-501 the opening balances; SCN-501…510 in process: January | one balanced opening entry; opening receivables, payables, assets and bank items
+FIN-PC-007 | covered | SCN-501…510 in process: January closed | BILL-OS-0120: document date in January, posting date in February
+FIN-PC-009 | assigned | PH-2 step 15 | the close overview (Should)
+
+# ---- receivables ----
+FIN-AR-005 | assigned | PH-2 step 15 | the invoice document (PDF): rendering and export
+FIN-AR-007 | covered | SCN-503 FIN-GL-021; FIN-AR-008 | receipts with method and reference, applied or unapplied
+FIN-AR-015 | assigned | PH-3 | deferred service revenue (Could)
+
+# ---- payables ----
+FIN-AP-001 | covered | FIN-EXP-14; FIN-AP-002 FIN-SC-004; FIN-AP-003 FIN-CT-001 | the eight vendors with entity type and 1099 form; trade name, remit-to, contacts, currency, default account, payment method, TIN and bank details
+FIN-AP-004 | covered | SCN-504 FIN-GL-021; FIN-AP-005; FIN-AP-006 | received date, terms and 1099 box per line: 10g-3 with FIN-AP-020
+FIN-AP-007 | covered | FIN-FA-005 FIN-EXP-11 | FA-003 capitalised from BILL-TS-5520
+FIN-AP-009 | covered | the payables aging at 2026-01-31 equals FIN-EXP-09 | the aging test also carries FIN-AP-010 in its name from 10c
+FIN-AP-013 | assigned | PH-2 step 12 | NACHA, pain.001 and check files
+FIN-AP-015 | covered | SCN-501…510 in process: January | STX-PAY-2512, a tax payment outside a run
+FIN-AP-023 | assigned | PH-2 step 12 | corrected-return data with the e-filing export (Should)
+
+# ---- cash and bank ----
+FIN-BK-010 | assigned | PH-2 step 15 | cash position (Should), with the dashboard
+FIN-BK-011 | assigned | PH-2 step 12 | payment and positive-pay files
+
+# ---- fixed assets ----
+FIN-FA-001 | covered | FIN-FA-005 FIN-EXP-11; FIN-FA-003 FIN-FA-004 | classes with accounts, method, life, convention and threshold
+FIN-FA-002 | covered | FIN-FA-005 FIN-EXP-11 | the register
+FIN-FA-008 | assigned | PH-3 | impairment (Could)
+FIN-FA-009 | covered | FIN-FA-005 FIN-EXP-11 | register and roll-forward; the projected schedule as a report: PH-2 step 15
+FIN-FA-010 | assigned | PH-3 | tax depreciation book (Could)
+
+# ---- multi-currency ----
+FIN-FX-001 | covered | SCN-510 FIN-SCN-09 | kernel currencies (STD-FND-028); USD functional, EUR documents
+FIN-FX-006 | assigned | PH-2 step 12 | foreign-currency statements with the statement formats; the balance is remeasured like payables (Should)
+
+# ---- sales tax ----
+FIN-TX-002 | covered | FIN-TX-004; FIN-TX-008 | taxability by customer code, certificate and line code
+FIN-TX-003 | covered | FIN-TX-008; SCN-503 FIN-GL-021 | per invoice and code on the sum of lines, half away from zero
+FIN-TX-006 | covered | SCN-501…510 in process: January | 2200 and the tax payment STX-PAY-2512
+
+# ---- reporting ----
+FIN-RP-002 | covered | FIN-EXP-05 | comparative columns: PH-2 step 15 (report layouts)
+FIN-RP-003 | covered | FIN-EXP-04 | multi-step income statement
+FIN-RP-004 | covered | FIN-EXP-06 | indirect method
+FIN-RP-005 | covered | FIN-EXP-07 | by component
+FIN-RP-006 | assigned | PH-2 step 15 | drill-down in the report viewer; the projection gl-document gives the entries of a line
+FIN-RP-008 | assigned | PH-2 step 15 | general-ledger detail and journal register with preparer and approver
+FIN-RP-009 | assigned | PH-2 step 15 | report runs stored with a hash; reproduction as known on a date is FIN-EXP-16
+FIN-RP-010 | assigned | PH-2 step 15 | PDF, Excel and CSV export
+FIN-RP-011 | assigned | PH-2 step 16 | report layouts without programming (Should)
+FIN-RP-012 | assigned | PH-2 step 15 | note schedules (Should)
+FIN-RP-020 | covered | FIN-EXP-16 | as of a posting date and as known on a recorded date
+FIN-RP-021 | assigned | PH-2 step 15 | dashboard (Should)
+
+# ---- controls, audit and security ----
+FIN-CT-002 | covered | SCN-509 FIN-SCN-10 the threshold | each posting binds the sheet version; sheet changes go through change sets (STD-VER-020)
+FIN-CT-003 | covered | FIN-GL-014 | a change to a submitted entry invalidates its approval (STD-TXN-060)
+FIN-CT-004 | covered | SCN-509 FIN-SCN-10 lower approval thresholds | simulation of rule changes (Should)
+FIN-CT-005 | covered | SCN-506 FIN-PC-004 | GlAccount.suspense and the checklist's suspense check
+FIN-CT-010 | platform | STD-VER-001; STD-CTX-011; DSN-DVM-823 | commits with author and time, process journals, security log
+FIN-CT-011 | platform | STD-PROOF-001…003; STD-PROOF-021 | content-addressed commits with state roots, consistency proofs
+FIN-CT-012 | assigned | PH-2 step 18 | audit evidence package (Should)
+FIN-CT-020 | assigned | PH-2 step 13 | retention by policy and protected disposal; STD-PROOF-060 is cited by the standard but not yet written
+FIN-CT-021 | platform | STD-PROOF-070 | archive export (ubos.archive.v1); report PDFs: PH-2 step 15
+FIN-SC-001 | assigned | PH-2 step 12 | OIDC, SAML, MFA
+FIN-SC-002 | platform | STD-LGS-050; DEC-136 | roles, relation-based authorization; approval limits by role in the sheet
+FIN-SC-003 | assigned | PH-2 step 12 | access review report
+FIN-SC-005 | platform | STD-VER-020 | configuration through change sets with approvers (Should)
+
+# ---- data and integration ----
+FIN-DI-001 | assigned | PH-2 step 17 | master-data import with mapping and preview (Bridge)
+FIN-DI-002 | assigned | PH-2 step 17 | migration of the sample company (EXIT-2-17)
+FIN-DI-003 | assigned | PH-2 step 17 | data-quality decisions (Should)
+FIN-DI-004 | assigned | PH-2 step 17 | payroll import mapping; PAYROLL-2601 posts as an imported entry today
+FIN-DI-005 | assigned | PH-2 step 12 | REST facade over the Buk's ports
+FIN-DI-006 | platform | STD-TXN-040 | idempotency keys of processes and imports
+FIN-DI-007 | assigned | PH-2 step 12 | webhooks (Should)
+FIN-DI-008 | platform | STD-PROOF-070 | full export
+FIN-DI-009 | assigned | PH-2 step 13 | notifications of tasks
+
+# ---- non-functional and user interface ----
+FIN-NF-001 | assigned | PH-2 step 18 | volumes (benchmarks)
+FIN-NF-002 | assigned | PH-2 step 18 | response times (benchmarks)
+FIN-NF-003 | platform | STD-TXN-024; SUITE-DVM-FAULT | serializable commits, crash recovery
+FIN-NF-004 | assigned | PH-2 step 11 | availability (Should)
+FIN-NF-005 | assigned | PH-2 step 11 | backup, point-in-time recovery
+FIN-NF-006 | assigned | PH-2 step 11 | installation and upgrade
+FIN-NF-007 | assigned | PH-2 step 11 | metrics catalogue (NR-OBS-002)
+FIN-UI-001 | assigned | PH-2 step 14 | workbench
+FIN-UI-002 | assigned | PH-2 step 15 | keyboard-first entry
+FIN-UI-003 | assigned | PH-2 step 15 | grid entry
+FIN-UI-004 | assigned | PH-2 step 15 | registers and drill-down
+FIN-UI-005 | assigned | PH-2 step 15 | number presentation
+FIN-UI-006 | assigned | PH-2 step 15 | close workspace over FiscalPeriod.checklist
+FIN-UI-007 | assigned | PH-2 step 14 | explanations (read.explain, rule bindings)
+FIN-UI-008 | assigned | PH-2 step 14 | history and as-of views
+FIN-UI-009 | assigned | PH-2 step 19 | WCAG 2.2 AA audit
+FIN-UI-010 | assigned | PH-2 step 15 | browsers and US locale
