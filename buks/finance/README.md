@@ -26,4 +26,4 @@ items and the back-dated correction, FIN-EXP-15…17; 9d — the financial state
 the step record. Step 9 is closed (DEC-145).
 Step 10 (DEC-146, parts 10a–10h): 10a-1 — journal entries with approval, control accounts and
 numbering; 10a-2 — recurring and reversing entries, governed reopening and the year-end close; 10b — receivables and
-sales tax; 10c — payables and Form 1099; 10d — bank reconciliation; 10e — fixed assets; 10f — multi-currency; 10g-1 — the sample company in process and SCN-501…510; 10g-2 — the open items of step 10; 10g-3 — every Must requirement accounted for (`docs/fin-coverage.md`).
+sales tax; 10c — payables and Form 1099; 10d — bank reconciliation; 10e — fixed assets; 10f — multi-currency; 10g-1 — the sample company in process and SCN-501…510; 10g-2 — the open items of step 10; 10g-3 — every Must requirement accounted for (`docs/fin-coverage.md`); 10h — step 10 closed (`docs/step-10-record.md`, `docs/tie-out.md`, `docs/review-package.md` for the accounting reviewer, DEC-156).
