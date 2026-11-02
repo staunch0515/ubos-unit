@@ -19,7 +19,7 @@ memos with Texas and Oregon sales tax, a euro invoice, receipts, bills with Form
 payment runs, payroll, accruals, depreciation of three assets, a bank reconciliation, the January
 close, February items and a back-dated correction.
 
-`docs/tie-out.md` lists the 77 checks and their 2,169 compared figures; all are equal on both
+`docs/tie-out.md` lists the 77 checks and their 2,170 compared figures; all are equal on both
 storage engines. Every expected-result section is compared twice: once from the journal lines of
 the dataset, and once with every document entered as a clerk would — through the documents,
 approvals, runs, the reconciliation and the close (`docs/step-10-record.md`, section 1).
@@ -85,12 +85,13 @@ Buk's data or logic and can be changed without changing the platform.
 
 ## 5. Known limits at this step
 
-- A posted document cannot change its ledger lines, but its document record can still be edited
-  by a privileged change until the next BPA release candidate lets the Buk freeze it (DEC-154).
-  The ledger and the reports are not affected.
-- The posting date of a ledger line is the date it is committed; a document dated in an earlier
-  open period posts with that date as its business date (DEC-147). The next release candidate
-  adds a posting-date field.
+- Since BPA 1.0-rc13 (DEC-158) posted journal entries, bills and receipts, and voided invoices, are
+  frozen: no change to them commits. A posted invoice that is not voided keeps two dated markers that
+  later documents set (`written_off_on`, `voided_on`), and a posted payment run its list of voided
+  payments; their ledger lines cannot change either.
+- The posting date of a ledger line is the posting date of its document (STD-KIND-025, DEC-158): a
+  correction dated in a reopened period counts in that period's next close even when it is entered
+  later.
 - Printed documents and exports (invoices, 1099 copies, payment files, PDF and Excel reports),
   the workbench and imports come in later steps (`docs/fin-coverage.md`, status `assigned`).
 

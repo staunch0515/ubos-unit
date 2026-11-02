@@ -7,7 +7,7 @@ classes:
     parent: DataObject
     kind: ledger
     schema_version: 1
-    ledger: {key: [account], amounts: [amount], double_entry: true, account: account, period_scope: FiscalPeriod}
+    ledger: {key: [account], amounts: [amount], double_entry: true, account: account, period_scope: FiscalPeriod, posting_date: date}
     fields:
       - name: account
         label: account

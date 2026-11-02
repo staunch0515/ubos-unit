@@ -99,7 +99,7 @@ assets:
         for s in segs {
           if s.from <= date && (s.to == () || s.to > date) { r = s.fields.rate; }
         }
-        if r == () { throw "no " + what + " rate at " + date; }
+        if r == () { throw #{code: "RULE.VALIDATION_FAILED", message: "no " + what + " rate at " + date}; }
         d(r)
       }
       fn with_original(line, x, cur, fc) {
@@ -124,12 +124,12 @@ assets:
         let fc = rcv.functional_currency;
         let cm = this.kind == "credit_memo";
         let sign = if cm { -1 } else { 1 };
-        if cust.status == "inactive" { throw "the customer " + cust.code + " is inactive"; }
+        if cust.status == "inactive" { throw #{code: "RULE.VALIDATION_FAILED", message: "the customer " + cust.code + " is inactive"}; }
         // quantity times unit price gives the amount of a line (FIN-AR-003)
         for l in this.lines {
           if "quantity" in l && "unit_price" in l {
             let x = round(d(l.quantity) * d(l.unit_price.amount), 2, "half_up");
-            if x != d(l.amount.amount) { throw "the amount of a line is not its quantity times its unit price"; }
+            if x != d(l.amount.amount) { throw #{code: "RULE.VALIDATION_FAILED", message: "the amount of a line is not its quantity times its unit price"}; }
           }
         }
         let cur = if this.currency == () { cust.currency } else { this.currency };
@@ -138,7 +138,7 @@ assets:
           if this.rate != () { rate = d(this.rate); } else {
             let fq = sys.search.query(#{query: #{from: "FxRate", where: rate_where(cur, fc, rcv.rate_type)}});
             let ids = fq.items;
-            if ids.len() != 1 { throw "no single " + rcv.rate_type + " rate " + cur + "/" + fc; }
+            if ids.len() != 1 { throw #{code: "RULE.VALIDATION_FAILED", message: "no single " + rcv.rate_type + " rate " + cur + "/" + fc}; }
             let segs = sys.read.timeline(#{target: ids[0], valid_from: this.invoice_date,
                                            valid_to: date_of(days(this.invoice_date) + 1)}).segments;
             rate = rate_in(segs, this.invoice_date, cur + "/" + fc);
@@ -172,7 +172,7 @@ assets:
           let ts = sys.read.timeline(#{target: uri, valid_from: tax_date, valid_to: date_of(days(tax_date) + 1)}).segments;
           let tc = ();
           for s in ts { if s.from <= tax_date && (s.to == () || s.to > tax_date) { tc = s.fields; } }
-          if tc == () { throw "no tax code " + uri + " on " + tax_date; }
+          if tc == () { throw #{code: "RULE.VALIDATION_FAILED", message: "no tax code " + uri + " on " + tax_date}; }
           let trate = d(tc.rate);
           let base = net[uri];
           // half away from zero to the cent (FIN-TX-003)
@@ -183,7 +183,7 @@ assets:
           if tc.components != () && !ftax.is_zero() {
             let sum_rates = dec("0");
             for c in tc.components { sum_rates += d(c.rate); }
-            if sum_rates != trate { throw "the components of " + tc.code + " do not add up to its rate"; }
+            if sum_rates != trate { throw #{code: "RULE.VALIDATION_FAILED", message: "the components of " + tc.code + " do not add up to its rate"}; }
             let left = ftax;
             for i in 0..tc.components.len() {
               let c = tc.components[i];
@@ -239,7 +239,7 @@ assets:
           if owed + ftotal > limit {
             warning = "the open items of " + two(owed) + " and this invoice exceed the credit limit of " + two(limit);
             if cust.credit_action == "approve" && this.credit_override == () {
-              throw warning + ": a credit override approved by a controller is needed";
+              throw #{code: "RULE.VALIDATION_FAILED", message: warning + ": a credit override approved by a controller is needed"};
             }
           }
         }
@@ -298,7 +298,7 @@ assets:
           if this.rate != () { rate = d(this.rate); } else {
             let fq = sys.search.query(#{query: #{from: "FxRate", where: rate_where(cur, fc, rcv.rate_type)}});
             let ids = fq.items;
-            if ids.len() != 1 { throw "no single " + rcv.rate_type + " rate " + cur + "/" + fc; }
+            if ids.len() != 1 { throw #{code: "RULE.VALIDATION_FAILED", message: "no single " + rcv.rate_type + " rate " + cur + "/" + fc}; }
             let segs = sys.read.timeline(#{target: ids[0], valid_from: this.receipt_date,
                                            valid_to: date_of(days(this.receipt_date) + 1)}).segments;
             rate = rate_in(segs, this.receipt_date, cur + "/" + fc);
@@ -313,21 +313,21 @@ assets:
         let apps = if this.applications == () { [] } else { this.applications };
         for app in apps {
           let g = sys.read.projection(#{projection: "ar-open", group: #{customer: cust.code, document: app.document}}).groups;
-          if g.len() == 0 { throw "no open item " + app.document; }
+          if g.len() == 0 { throw #{code: "RULE.VALIDATION_FAILED", message: "no open item " + app.document}; }
           let x = d(app.amount.amount);
           let c = carrying(sum_of(g[0].values, "open"), sum_of(g[0].values, "original"), x);
           // an early-payment discount taken by the discount date (FIN-AR-002)
           let disc = dec("0.00");
           if "discount" in app && app.discount != () {
             disc = d(app.discount.amount);
-            if cur != fc { throw "a discount is taken in the functional currency"; }
+            if cur != fc { throw #{code: "RULE.VALIDATION_FAILED", message: "a discount is taken in the functional currency"}; }
             let iq = sys.search.query(#{query: #{from: "Invoice", where: "this.number == \"" + app.document + "\""}});
             let inv = iq.items;
-            if inv.len() == 0 { throw "no invoice " + app.document + " to take a discount on"; }
+            if inv.len() == 0 { throw #{code: "RULE.VALIDATION_FAILED", message: "no invoice " + app.document + " to take a discount on"}; }
             let f = sys.read.get(#{target: inv[0]}).fields;
-            if f.discount_date == () || this.receipt_date > f.discount_date { throw "the discount of " + app.document + " has expired"; }
-            if disc > d(f.discount.amount) { throw "the discount exceeds the one offered on " + app.document; }
-            if rcv.discount_account == () { throw "the receivables have no discount account"; }
+            if f.discount_date == () || this.receipt_date > f.discount_date { throw #{code: "RULE.VALIDATION_FAILED", message: "the discount of " + app.document + " has expired"}; }
+            if disc > d(f.discount.amount) { throw #{code: "RULE.VALIDATION_FAILED", message: "the discount exceeds the one offered on " + app.document}; }
+            if rcv.discount_account == () { throw #{code: "RULE.VALIDATION_FAILED", message: "the receivables have no discount account"}; }
             discounts += disc;
           }
           items.push(#{document: app.document, functional: c + disc, original: x + disc,
@@ -385,12 +385,12 @@ assets:
         let today = this.receipt_date;
         for pair in [[from_document, x], [to_document, -x]] {
           let g = sys.read.projection(#{projection: "ar-open", group: #{customer: cust.code, document: pair[0]}}).groups;
-          if g.len() == 0 { throw "no open item " + pair[0]; }
+          if g.len() == 0 { throw #{code: "RULE.VALIDATION_FAILED", message: "no open item " + pair[0]}; }
           let o = sum_of(g[0].values, "original");
           let f = carrying(sum_of(g[0].values, "open"), o, x);
           let fcur = g[0].values.open[0].currency;
           let ocur = g[0].values.original[0].currency;
-          if ocur != cur { throw "the amount is not in the currency of " + pair[0]; }
+          if ocur != cur { throw #{code: "RULE.VALIDATION_FAILED", message: "the amount is not in the currency of " + pair[0]}; }
           let sgn = if pair[1] < 0 { -1 } else { 1 };
           sys.commit.append(#{class: "ArItem", ledger_key: #{customer: cust.code}, valid_at: today,
             fields: #{customer: cust.code, document: pair[0], amount: usd(f * sgn, fcur), original: usd(pair[1], cur),
@@ -503,7 +503,7 @@ assets:
         if !sim {
           let pw = "this.start <= d'" + period_end + "' and this.end > d'" + period_end + "'";
           for id in sys.search.query(#{query: #{from: "FiscalPeriod", where: pw}}).items {
-            if sys.read.get(#{target: id}).fields.state == "closed" { throw "the period of " + period_end + " is closed"; }
+            if sys.read.get(#{target: id}).fields.state == "closed" { throw #{code: "LEDG.PERIOD_CLOSED", message: "the period of " + period_end + " is closed"}; }
           }
         }
         let groups = sys.read.projection(#{projection: "ar-open", asof: period_end}).groups;
@@ -519,7 +519,7 @@ assets:
           if !(cur in rates) {
             let fq = sys.search.query(#{query: #{from: "FxRate", where: rate_where(cur, fc, this.rate_type)}});
             let ids = fq.items;
-            if ids.len() != 1 { throw "no single " + this.rate_type + " rate " + cur + "/" + fc; }
+            if ids.len() != 1 { throw #{code: "RULE.VALIDATION_FAILED", message: "no single " + this.rate_type + " rate " + cur + "/" + fc}; }
             let segs = sys.read.timeline(#{target: ids[0], valid_from: period_end,
                                            valid_to: date_of(days(period_end) + 1)}).segments;
             rates[cur] = rate_in(segs, period_end, cur + "/" + fc);
@@ -614,14 +614,14 @@ assets:
         let rq = sys.search.query(#{query: #{from: "Receivables"}});
         let rl = rq.items;
         let rcv = sys.read.get(#{target: rl[0]}).fields;
-        if rcv.allowance_account == () { throw "the receivables have no allowance account"; }
+        if rcv.allowance_account == () { throw #{code: "RULE.VALIDATION_FAILED", message: "the receivables have no allowance account"}; }
         let a = amount(this.amount);
         let cur = currency(this.amount);
-        if cur != rcv.functional_currency { throw "a write-off is in the functional currency"; }
+        if cur != rcv.functional_currency { throw #{code: "RULE.VALIDATION_FAILED", message: "a write-off is in the functional currency"}; }
         let g = sys.read.projection(#{projection: "ar-open", group: #{customer: cust.code, document: this.document}}).groups;
         let off = this.kind == "write_off";
         if off && (g.len() == 0 || sum_of(g[0].values, "open") < a) {
-          throw this.document + " has no open amount of " + two(a);
+          throw #{code: "RULE.VALIDATION_FAILED", message: this.document + " has no open amount of " + two(a)};
         }
         let sign = if off { -1 } else { 1 };
         let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
@@ -699,13 +699,13 @@ assets:
       // open period, the open item and the tax detail reversed (FIN-AR-004)
       fn void_invoice(void_date, reason) {
         sys.read.get(#{target: self_id});
-        if this.state != "posted" { throw "only a posted invoice is voided"; }
-        if this.voided_on != () { throw "the invoice is voided"; }
-        if this.kind != "invoice" { throw "a credit memo is reversed by an invoice"; }
+        if this.state != "posted" { throw #{code: "RULE.VALIDATION_FAILED", message: "only a posted invoice is voided"}; }
+        if this.voided_on != () { throw #{code: "RULE.VALIDATION_FAILED", message: "the invoice is voided"}; }
+        if this.kind != "invoice" { throw #{code: "RULE.VALIDATION_FAILED", message: "a credit memo is reversed by an invoice"}; }
         let cust = sys.read.get(#{target: this.customer}).fields;
         let g = sys.read.projection(#{projection: "ar-open", group: #{customer: cust.code, document: this.number}}).groups;
         if g.len() == 0 || sum_of(g[0].values, "original") != amount(this.total) {
-          throw "something was received or credited on " + this.number + ": issue a credit memo";
+          throw #{code: "RULE.VALIDATION_FAILED", message: "something was received or credited on " + this.number + ": issue a credit memo"};
         }
         let eq = sys.search.query(#{query: #{from: "JournalEntry", where: "this.number == \"" + this.number + "\""}});
         let es = eq.items;
@@ -744,9 +744,9 @@ assets:
         sys.read.get(#{target: self_id});
         let x = d(amount.amount);
         let cur = amount.currency;
-        if cur != this.functional_currency { throw "a refund is in the functional currency"; }
+        if cur != this.functional_currency { throw #{code: "RULE.VALIDATION_FAILED", message: "a refund is in the functional currency"}; }
         let g = sys.read.projection(#{projection: "ar-open", group: #{customer: customer, document: document}}).groups;
-        if g.len() == 0 || -sum_of(g[0].values, "open") < x { throw document + " has no credit of " + two(x); }
+        if g.len() == 0 || -sum_of(g[0].values, "open") < x { throw #{code: "RULE.VALIDATION_FAILED", message: document + " has no credit of " + two(x)}; }
         let cq = sys.search.query(#{query: #{from: "Customer", where: "this.code == \"" + customer + "\""}});
         let cs = cq.items;
         let cust = sys.read.get(#{target: cs[0]}).fields;

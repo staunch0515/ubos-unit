@@ -15,7 +15,6 @@ FIN-GL-001 | covered | FIN-EXP-01; SCN-501 the opening balances | GlAccount: num
 FIN-GL-002 | assigned | PH-2 step 17 | the sample chart as a template to copy (Bridge import)
 FIN-GL-006 | assigned | PH-3 | analysis dimensions (Should)
 FIN-GL-010 | covered | FIN-GL-015 JE-0002; FIN-EXP-02 | number, posting and document dates, description, source; attachments: PH-2 step 13
-FIN-GL-012 | covered | SCN-502 a posted line cannot be changed | the freeze of the entry object: the next BPA release candidate (DEC-154)
 FIN-GL-016 | assigned | PH-2 step 13 | attachments (files and content)
 FIN-GL-019 | assigned | PH-2 step 17 | journal import with validation of every row (Bridge)
 FIN-GL-020 | assigned | PH-2 step 15 | the bulk entry grid (Smart Grid)

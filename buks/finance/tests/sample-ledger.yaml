@@ -7705,7 +7705,7 @@
       }
      },
      "expect": {
-      "error_code": "LOGIC.TYPE_ERROR"
+      "error_code": "LEDG.UNBALANCED"
      }
     },
     {
@@ -11375,7 +11375,7 @@
       "params": {}
      },
      "expect": {
-      "error_code": "LOGIC.TYPE_ERROR"
+      "error_code": "LEDG.PERIOD_CLOSED"
      }
     },
     {
@@ -13095,7 +13095,7 @@
       }
      },
      "expect": {
-      "error_code": "LOGIC.TYPE_ERROR"
+      "error_code": "LEDG.PERIOD_CLOSED"
      }
     },
     {

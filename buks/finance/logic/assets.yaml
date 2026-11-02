@@ -117,13 +117,13 @@ assets:
 
       fn capitalize(bill, code, description, asset_class, in_service) {
         let bq = sys.search.query(#{query: #{from: "Bill", where: "this.number == \"" + bill + "\" and this.state == \"posted\""}});
-        if bq.items.len() == 0 { throw "no posted bill " + bill; }
+        if bq.items.len() == 0 { throw #{code: "RULE.VALIDATION_FAILED", message: "no posted bill " + bill}; }
         let b = sys.read.get(#{target: bq.items[0]}).fields;
         let cls = sys.read.get(#{target: asset_class}).fields;
         let cost = dec("0.00");
         let cur = "USD";
         for l in b.lines { if l.account == cls.cost_account { cost += d(l.amount.amount); cur = l.amount.currency; } }
-        if cost < d(cls.threshold.amount) { throw "the cost is below the class's capitalisation threshold"; }
+        if cost < d(cls.threshold.amount) { throw #{code: "RULE.VALIDATION_FAILED", message: "the cost is below the class's capitalisation threshold"}; }
         sys.commit.create(#{class: "FixedAsset", slug: code.to_lower(),
           fields: #{code: code, description: description, asset_class: asset_class, cost: m(cost, cur),
                     in_service: in_service, method: cls.method, life_months: cls.life_months, acquisition: bill,
@@ -142,7 +142,7 @@ assets:
         }
         let pw = "this.start <= d'" + period_end + "' and this.end > d'" + period_end + "'";
         for id in sys.search.query(#{query: #{from: "FiscalPeriod", where: pw}}).items {
-          if sys.read.get(#{target: id}).fields.state == "closed" { throw "the period of " + period_end + " is closed"; }
+          if sys.read.get(#{target: id}).fields.state == "closed" { throw #{code: "LEDG.PERIOD_CLOSED", message: "the period of " + period_end + " is closed"}; }
         }
         let per = #{};
         let keys = [];
@@ -184,7 +184,7 @@ assets:
 
       fn dispose(disposal_date, proceeds, kind, proceeds_account, number) {
         sys.read.get(#{target: self_id});
-        if this.status == "disposed" { throw "the asset is disposed"; }
+        if this.status == "disposed" { throw #{code: "RULE.VALIDATION_FAILED", message: "the asset is disposed"}; }
         let cls = sys.read.get(#{target: this.asset_class}).fields;
         let g = sys.read.projection(#{projection: "fa-book", group: #{asset: this.code}}).groups;
         let cost = sum_of(g[0].values, "cost");
@@ -214,7 +214,7 @@ assets:
         debits += acc2;
         lines.push(#{account: cls.cost_account, amount: m(-cost, cur)});
         if !gain.is_zero() {
-          if cls.disposal_account == () { throw "the asset class has no disposal account"; }
+          if cls.disposal_account == () { throw #{code: "RULE.VALIDATION_FAILED", message: "the asset class has no disposal account"}; }
           lines.push(#{account: cls.disposal_account, amount: m(-gain, cur)});
           if gain < 0 { debits -= gain; }
         }
@@ -285,10 +285,10 @@ assets:
       // a change in useful life or salvage, applied prospectively from a month (FIN-FA-006)
       fn change_estimate(effective, remaining_months, salvage) {
         sys.read.get(#{target: self_id});
-        if this.status != "in_service" { throw "the asset is not in service"; }
-        if effective.sub_string(8, 2) != "01" { throw "a change applies from the first day of a month"; }
-        if effective <= this.in_service { throw "a change applies after the asset is placed in service"; }
-        if this.estimate_from != () && effective <= this.estimate_from { throw "a later change applies after the earlier one"; }
+        if this.status != "in_service" { throw #{code: "RULE.VALIDATION_FAILED", message: "the asset is not in service"}; }
+        if effective.sub_string(8, 2) != "01" { throw #{code: "RULE.VALIDATION_FAILED", message: "a change applies from the first day of a month"}; }
+        if effective <= this.in_service { throw #{code: "RULE.VALIDATION_FAILED", message: "a change applies after the asset is placed in service"}; }
+        if this.estimate_from != () && effective <= this.estimate_from { throw #{code: "RULE.VALIDATION_FAILED", message: "a later change applies after the earlier one"}; }
         // the accumulated depreciation before the change, under the estimate in force: the
         // base the new estimate starts from, so that no earlier month is restated
         let cls = sys.read.get(#{target: this.asset_class}).fields;

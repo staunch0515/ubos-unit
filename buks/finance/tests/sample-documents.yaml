@@ -2455,7 +2455,7 @@
       "params": {}
      },
      "expect": {
-      "error_code": "LOGIC.TYPE_ERROR"
+      "error_code": "RULE.VALIDATION_FAILED"
      }
     }
    ]
@@ -4588,7 +4588,7 @@
       "params": {}
      },
      "expect": {
-      "error_code": "LOGIC.TYPE_ERROR"
+      "error_code": "RULE.VALIDATION_FAILED"
      }
     },
     {
@@ -4600,7 +4600,7 @@
       "params": {}
      },
      "expect": {
-      "error_code": "LOGIC.TYPE_ERROR"
+      "error_code": "RULE.VALIDATION_FAILED"
      }
     }
    ]
@@ -6821,7 +6821,7 @@
       }
      },
      "expect": {
-      "error_code": "LOGIC.TYPE_ERROR"
+      "error_code": "RULE.VALIDATION_FAILED"
      }
     },
     {

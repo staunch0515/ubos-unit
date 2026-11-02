@@ -4,7 +4,7 @@
 
 | Priority | tested | covered | platform | assigned | gap | Total |
 |---|---|---|---|---|---|---|
-| Must | 63 | 27 | 7 | 33 | 0 | 130 |
+| Must | 64 | 26 | 7 | 33 | 0 | 130 |
 | Should | 5 | 1 | 1 | 13 | 0 | 20 |
 | Could | 0 | 0 | 0 | 3 | 0 | 3 |
 
@@ -20,13 +20,13 @@ Statuses: *tested* — a test name carries the ID; *covered* — implemented and
 | FIN-GL-006 | Dimensions | Should | assigned | PH-3 | analysis dimensions (Should) |
 | FIN-GL-010 | Entry structure | Must | covered | FIN-GL-015 JE-0002; FIN-EXP-02 | number, posting and document dates, description, source; attachments: PH-2 step 13 |
 | FIN-GL-011 | Balanced entries | Must | tested | FIN-GL-003 FIN-GL-004 FIN-GL-011 a summary account rolls up and takes no postings; an ende |  |
-| FIN-GL-012 | Immutability of posted entries | Must | covered | SCN-502 a posted line cannot be changed | the freeze of the entry object: the next BPA release candidate (DEC-154) |
+| FIN-GL-012 | Immutability of posted entries | Must | tested | FIN-GL-018 FIN-GL-012 opening February posts FXR-2601-R with opposite amounts, once (FIN-E |  |
 | FIN-GL-013 | Gap-free numbering | Must | tested | FIN-GL-013 posted numbers per fiscal year and source have no gaps; drafts take none |  |
 | FIN-GL-014 | Entry lifecycle | Must | tested | FIN-GL-014 a change to a submitted entry invalidates its approval; the entry stays a draft |  |
 | FIN-GL-015 | Approval of manual entries | Must | tested | FIN-GL-015 JE-0002 (25,000.00) waits for a controller; the preparer cannot approve it; it ; FIN-GL-015 an entry of 1,362.90 posts without approval; without defer a large entry is ref |  |
 | FIN-GL-016 | Supporting documents | Must | assigned | PH-2 step 13 | attachments (files and content) |
 | FIN-GL-017 | Recurring entries | Must | tested | FIN-GL-017 the recurring template creates the January entry once; it posts as JE-0003 did |  |
-| FIN-GL-018 | Automatic reversing entries | Must | tested | FIN-GL-018 opening February posts FXR-2601-R with opposite amounts, once (FIN-EXP-15) |  |
+| FIN-GL-018 | Automatic reversing entries | Must | tested | FIN-GL-018 FIN-GL-012 opening February posts FXR-2601-R with opposite amounts, once (FIN-E |  |
 | FIN-GL-019 | Journal import | Must | assigned | PH-2 step 17 | journal import with validation of every row (Bridge) |
 | FIN-GL-020 | Bulk journal entry grid | Must | assigned | PH-2 step 15 | the bulk entry grid (Smart Grid) |
 | FIN-GL-021 | Posting from subledgers | Must | tested | SCN-504 FIN-GL-021 the January bills and payment runs post the journal lines of FIN-EXP-02; SCN-503 FIN-GL-021 the January receivables documents post the journal lines of FIN-EXP-02 |  |
@@ -36,7 +36,7 @@ Statuses: *tested* — a test name carries the ID; *covered* — implemented and
 | FIN-PC-003 | Period states | Must | tested | FIN-PC-003 receivables closed for January refuse a January invoice while the ledger takes ; FIN-PC-003 a soft-closed January takes an adjusting entry approved by a controller and ref |  |
 | FIN-PC-004 | Close checklist | Must | tested | SCN-506 FIN-PC-004 with the operating account not reconciled the close is refused, naming  |  |
 | FIN-PC-005 | Closing a period | Must | tested | FIN-PC-005 closing January: the close artefact holds FIN-EXP-03, and later January posting |  |
-| FIN-PC-006 | Governed reopen | Must | tested | FIN-PC-006 reopening January waits for a controller; a rejection keeps it closed; FIN-PC-006 SCN-507 an approved reopening and a second close; the first close artefact stay |  |
+| FIN-PC-006 | Governed reopen | Must | tested | FIN-PC-006 reopening January waits for a controller; a rejection keeps it closed; FIN-PC-006 SCN-507 an approved reopening, a correction dated 2026-01-31 posted in February |  |
 | FIN-PC-007 | Prior-period items in the current period | Must | covered | SCN-501…510 in process: January closed | BILL-OS-0120: document date in January, posting date in February |
 | FIN-PC-008 | Year-end close | Must | tested | FIN-PC-008 FIN-SCN-11 the year-end close zeroes income and expense, leaves the balance she |  |
 | FIN-PC-009 | Close status overview | Should | assigned | PH-2 step 15 | the close overview (Should) |

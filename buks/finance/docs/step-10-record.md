@@ -81,11 +81,10 @@ requirement is a gap** (130 Musts: 63 tested, 27 covered, 7 platform, 33 assigne
 
 ## 6. Open after step 10
 
-- **Next BPA release candidate (rc13):** the posting date of ledgers (STD-KIND-025, DEC-147);
-  explicit coordinates of `read.projection` and `read.get` (DEC-147, -152); `read_only` on the
-  version before a change, so posted documents can be frozen (DEC-154); a registered code for a
-  script's business refusal (DEC-151, -153); the conformance vectors of the two kernel fixes
-  (DEC-153, -155).
+- **BPA 1.0-rc13 (DEC-157), adopted by the Buk (DEC-158):** posting dates of journal lines,
+  frozen posted entries, bills, receipts and voided invoices, and registered refusal codes
+  (`LEDG.PERIOD_CLOSED`, `LEDG.UNBALANCED`, `RULE.VALIDATION_FAILED`) instead of `LOGIC.TYPE_ERROR`;
+  the conformance vectors of the two kernel fixes are VER-CONF-1138, -1139 and -5186.
 - **Later steps:** the assignments of `tools/fin-status.txt` — files and formats (step 12),
   attachments and retention (step 13), workbench and reports (steps 14, 15), Studio (16),
   Bridge imports (17), the HA Server run and benchmarks (18).

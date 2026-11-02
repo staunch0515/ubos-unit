@@ -18492,7 +18492,7 @@
       }
      },
      "expect": {
-      "error_code": "LOGIC.TYPE_ERROR"
+      "error_code": "RULE.VALIDATION_FAILED"
      }
     },
     {

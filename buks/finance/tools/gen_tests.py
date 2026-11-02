@@ -568,8 +568,17 @@ def period_tests():
     # FIN-GL-018: FXR-2601 marked auto-reversing on 2026-02-01
     fxr = je('FXR-2601', source='revaluation', auto_reverse_on='2026-02-01')
     rev = {(code, doc): c for (code, doc), c in exp_feb.items() if doc == 'FXR-2601-R'}
-    # FIN-PC-006: governed reopening of January
+    # FIN-PC-006: governed reopening of January, and a correction dated in it
     period = uid('period', '2026-01')
+    correction = {'op': 'create', 'class': 'JournalEntry', 'object_id': uid('entry', 'JE-CORR-01'),
+                  'slug': 'je-corr-01', 'body': {
+                      'number': 'JE-CORR-01', 'source': 'manual', 'kind': 'journal', 'posting_date': '2026-01-31',
+                      'description': 'Late utilities invoice for January', 'state': 'draft', 'total': money('500.00'),
+                      'lines': [{'account': account_uri('6400'), 'amount': money('500.00')},
+                                {'account': account_uri('2100'), 'amount': money('-500.00')}]}}
+    tb_corrected = dict(tb)
+    tb_corrected['6400'] = tb_corrected.get('6400', 0) + 50000
+    tb_corrected['2100'] = tb_corrected.get('2100', 0) - 50000
     pid = uid('process', 'reopen', '2026-01')
     reopen = lambda defer, exp: {'op': 'reopen_period', 'input': dict(
         {'branch': BRANCH, 'period': period, 'reason': 'late utilities invoice for January',
@@ -604,7 +613,8 @@ def period_tests():
             doc_groups('INS-AMORT-2026-01', jan3),
         ],
     }, {
-        'name': 'FIN-GL-018 opening February posts FXR-2601-R with opposite amounts, once (FIN-EXP-15)',
+        'name': 'FIN-GL-018 FIN-GL-012 opening February posts FXR-2601-R with opposite amounts, once (FIN-EXP-15); '
+                'the posted entry it reverses stays frozen',
         'kind': 'scenario',
         'steps': base + advance(START, datetime.datetime(2026, 1, 31, 12))[0] + [
             {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [fxr]}},
@@ -614,8 +624,13 @@ def period_tests():
                 {'match': 'subset', 'result': {'result': {'reversed': ['FXR-2601-R']}}}),
             run(uid('period', '2026-02'), 'open', {}, {'match': 'subset', 'result': {'result': {'reversed': []}}}),
             doc_groups('FXR-2601-R', rev),
-            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': uid('entry', 'FXR-2601')},
-             'expect': {'match': 'subset', 'result': {'body': {'reversed_by': 'FXR-2601-R'}}}},
+            # a posted entry is frozen (FIN-GL-012, STD-LGS-011 in BPA 1.0-rc13, DEC-158): the
+            # second opening finds the reversal by its `reverses`, and a change of the entry is refused
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': uid('entry', 'FXR-2601')}, 'label': 'fxr'},
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                {'op': 'update', 'object_id': uid('entry', 'FXR-2601'), 'base': {'$ref': 'fxr/version_hash'},
+                 'body': {'description': 'changed after posting'}}]},
+             'expect': {'error_code': 'RULE.DECLARATION_UNSATISFIED'}},
         ],
     }, {
         'name': 'FIN-PC-006 reopening January waits for a controller; a rejection keeps it closed',
@@ -633,7 +648,8 @@ def period_tests():
                 {'match': 'subset', 'result': {'result': {'reopen': 'use reopen_period'}}}),
         ],
     }, {
-        'name': 'FIN-PC-006 SCN-507 an approved reopening and a second close; the first close artefact stays as issued',
+        'name': 'FIN-PC-006 SCN-507 an approved reopening, a correction dated 2026-01-31 posted in February and a second '
+                'close that counts it; the first close artefact stays as issued',
         'kind': 'scenario',
         'steps': base + jan + feb[:1] + close_steps('2026-01', tb) + [
             reopen(True, {'match': 'subset', 'result': {'pending': {'state': 'pending'}}}),
@@ -643,12 +659,16 @@ def period_tests():
              'expect': {'match': 'subset', 'result': {'state': 'applied'}}},
             {'op': 'read', 'input': {'branch': BRANCH, 'object_id': period}, 'label': 'p2',
              'expect': {'match': 'subset', 'result': {'body': {'state': 'open'}}}},
+            # the late utilities invoice, posted in February with its January posting date: the
+            # journal lines carry it (STD-KIND-025, BPA 1.0-rc13, DEC-158), so the second close counts it
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [correction]}},
+            run(uid('entry', 'JE-CORR-01'), 'post', {}, {'match': 'subset', 'result': {'result': {'posted': True}}}),
             {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
                 {'op': 'update', 'object_id': period, 'base': {'$ref': 'p2/version_hash'}, 'body': {'state': 'closing'}}]}},
             {'op': 'close_period', 'input': {'branch': BRANCH, 'period': period, 'artefact_id': uid('artefact', '2026-01-2')},
              'expect': {'match': 'subset', 'result': {'tag': 'close-2026-01-2', 'sequence': 2, 'balances': [
                  {'class': 'JournalLine', 'ledger_key': g['key'], 'amounts': {'amount': g['values']['balance']}}
-                 for g in balance_groups(tb)]}}},
+                 for g in balance_groups(tb_corrected)]}}},
             {'op': 'read', 'input': {'branch': BRANCH, 'object_id': uid('artefact', '2026-01')},
              'expect': {'match': 'subset', 'result': {'body': {'sequence': 1, 'balances': [
                  {'class': 'JournalLine', 'ledger_key': g['key'], 'amounts': {'amount': g['values']['balance']}}
@@ -766,7 +786,7 @@ def ledger_tests():
             post('JE-T-1', {'error_code': 'MODEL.CONSTRAINT_VIOLATED'}),
             # the post reads each account at its date: an ended account is not found
             post('JE-T-2', {'error_code': 'IAM.NOT_FOUND'}),
-            post('JE-T-3', {'error_code': 'LOGIC.TYPE_ERROR'}),
+            post('JE-T-3', {'error_code': 'LEDG.UNBALANCED'}),
         ] + jan + [report('trial_balance', {'opening': '2025-12-31', 'closing': '2026-01-31', 'rollup': True},
                           {'rows': sorted(tb + [{'account': '1001', 'name': 'Cash and cash equivalents',
                                                  'opening': amount(cash), 'closing': amount(cash_end), 'summary': True}],
@@ -805,7 +825,7 @@ def period_state_tests():
                 CONTROLLER),
             {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [invoice, entry('JE-T-10')]}},
             {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('invoice', 'INV-9400'), 'port': 'post', 'params': {}},
-             'expect': {'error_code': 'LOGIC.TYPE_ERROR'}},
+             'expect': {'error_code': 'LEDG.PERIOD_CLOSED'}},
             post('JE-T-10', posted),
         ],
     }, {
@@ -814,7 +834,7 @@ def period_state_tests():
         'steps': base + [
             run('soft_close', {}, {'match': 'subset', 'result': {'result': {'state': 'closing'}}}, CONTROLLER),
             {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [entry('JE-T-11'), entry('JE-T-12', adjusting=True)]}},
-            post('JE-T-11', {'error_code': 'LOGIC.TYPE_ERROR'}),
+            post('JE-T-11', {'error_code': 'LEDG.PERIOD_CLOSED'}),
             post('JE-T-12', {'error_code': 'RULE.DECISION_REQUIRES'}),
             post('JE-T-12', {'match': 'subset', 'result': {'pending': {'state': 'pending'}}}, defer=True),
             {'op': 'approve', 'input': {'pending_change_id': pid('JE-T-12'), 'approver': CONTROLLER, 'roles': ['controller']},
@@ -1402,11 +1422,11 @@ def company_tests():
         ] + account_reads('2026-02-05', signed_column('FIN-EXP-16', 2), '2026-02-05T23:59:59.999999Z')
           + account_reads('2026-02-05', signed_column('FIN-EXP-16', 3), '2026-02-28T23:59:59.999999Z')
           + account_reads('2026-02-28', signed_column('FIN-EXP-17', 2)) + fx + [
-            # FIN-PC-005: a January bill without a posting date in an open period is refused (the
-            # code of a script's refusal is an open item of the next BPA release, DEC-153)
+            # FIN-PC-005: a January bill without a posting date in an open period is refused with
+            # LEDG.PERIOD_CLOSED (a script's refusal code, BPA 1.0-rc13, DEC-158)
             {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [late]}},
             {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('bill', 'BILL-LATE'), 'port': 'post',
-                                        'params': {}}, 'expect': {'error_code': 'LOGIC.TYPE_ERROR'}},
+                                        'params': {}}, 'expect': {'error_code': 'LEDG.PERIOD_CLOSED'}},
         ],
     }]
 
@@ -1467,7 +1487,7 @@ def scenario_tests():
         'steps': books + [
             {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [opening_entry('OB-BAD-1', drop=1),
                                                                      opening_entry('OB-BAD-2', account='9999')]}},
-            deferred('OB-BAD-1', {'error_code': 'LOGIC.TYPE_ERROR'}),
+            deferred('OB-BAD-1', {'error_code': 'LEDG.UNBALANCED'}),
             deferred('OB-BAD-2', {'error_code': 'IAM.NOT_FOUND'}),
             {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-balance', 'asof': '2025-12-31'},
              'expect': {'match': 'subset', 'result': {'groups': []}}},
@@ -1505,7 +1525,7 @@ def scenario_tests():
                                                                             for k, v in checks.items()]}}}},
             {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('period', '2026-01'), 'port': 'soft_close',
                                         'params': {}, 'process': {'initiator': CONTROLLER}},
-             'expect': {'error_code': 'LOGIC.TYPE_ERROR'}},
+             'expect': {'error_code': 'RULE.VALIDATION_FAILED'}},
             {'op': 'read', 'input': {'branch': BRANCH, 'object_id': uid('period', '2026-01')},
              'expect': {'match': 'subset', 'result': {'body': {'state': 'open'}}}},
         ],
@@ -1693,7 +1713,7 @@ def receivables_control_tests():
             post(uid('invoice', 'INV-9202'), 'INV-9202',
                  exp={'match': 'subset', 'result': {'result': {'posted': True, 'warning': warning}}}),
             post(uid('invoice', 'INV-9301'), 'INV-9301', exp=posted),
-            post(uid('invoice', 'INV-9302'), 'INV-9302', exp={'error_code': 'LOGIC.TYPE_ERROR'}),
+            post(uid('invoice', 'INV-9302'), 'INV-9302', exp={'error_code': 'RULE.VALIDATION_FAILED'}),
             post(uid('invoice', 'INV-9303'), 'INV-9303', exp={'error_code': 'RULE.DECISION_REQUIRES'}),
             post(uid('invoice', 'INV-9303'), 'INV-9303', defer=True),
             approve('INV-9303'),
@@ -1740,7 +1760,7 @@ def document_tests():
         'branch': BRANCH, 'target': uid(cls, number), 'port': port, 'params': params or {}}},
         **({'expect': exp} if exp else {}))
     ok = lambda **r: {'match': 'subset', 'result': {'result': dict({'posted': True}, **r)}}
-    refused = {'error_code': 'LOGIC.TYPE_ERROR'}
+    refused = {'error_code': 'RULE.VALIDATION_FAILED'}
     lines = lambda doc, pairs: {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document',
                                                                   'group': {'document': doc}},
                                 'expect': {'match': 'subset', 'result': {'groups': document_groups(
@@ -2102,7 +2122,7 @@ def payables_control_tests():
         'steps': base + document_steps(p7902) + [
             {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [same]}, 'expect': {'error_code': 'MODEL.KEY_CONFLICT'}},
             {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [twin]}, 'label': 'twin'},
-            post(uid('bill', 'BILL-DUP-2'), 'BILL-DUP-2', defer=True, exp={'error_code': 'LOGIC.TYPE_ERROR'}),
+            post(uid('bill', 'BILL-DUP-2'), 'BILL-DUP-2', defer=True, exp={'error_code': 'RULE.VALIDATION_FAILED'}),
             {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
                 {'op': 'update', 'object_id': uid('bill', 'BILL-DUP-2'),
                  'base': {'$ref': 'twin/versions/' + uid('bill', 'BILL-DUP-2')},
@@ -2119,7 +2139,7 @@ def payables_control_tests():
             post(p7902['object_id'], 'BILL-P-7902', exp={'error_code': 'RULE.DECISION_REQUIRES'}),
             post(p7902['object_id'], 'BILL-P-7902', defer=True,
                  exp={'match': 'subset', 'result': {'pending': {'state': 'pending'}}}),
-            post(uid('run', 'PAY-T-1'), 'PAY-T-1', defer=True, exp={'error_code': 'LOGIC.TYPE_ERROR'}),
+            post(uid('run', 'PAY-T-1'), 'PAY-T-1', defer=True, exp={'error_code': 'RULE.VALIDATION_FAILED'}),
             approve('BILL-P-7902', CONTROLLER, applied),
             post(uid('run', 'PAY-T-1'), 'PAY-T-1-2', defer=True),
             {'op': 'approve', 'input': {'pending_change_id': pid('PAY-T-1-2'), 'approver': PREPARER, 'roles': ['controller']},
@@ -2602,7 +2622,7 @@ def bank_control_tests():
             reconcile({'state': 'open', 'unmatched_statement_lines': [
                 {'line': line_of[receipt], 'reference': stmt[line_of[receipt]]['bank_reference'],
                  'amount': amount(cents(stmt[line_of[receipt]]['amount']))}]}),
-            sign('open', {'error_code': 'LOGIC.TYPE_ERROR'}),
+            sign('open', {'error_code': 'RULE.VALIDATION_FAILED'}),
             {'op': 'execute', 'input': {'branch': BRANCH, 'target': recon_id, 'port': 'match',
                                         'params': {'line': line_of[receipt], 'documents': receipt, 'note': 'checked'}}},
             reconcile({'state': 'reconciled', 'difference': '0.00'}),
@@ -2618,7 +2638,7 @@ def bank_control_tests():
             {'op': 'read', 'input': {'branch': BRANCH, 'object_id': recon_id},
              'expect': {'match': 'subset', 'result': {'body': {'state': 'signed_off', 'signed_result': {'difference': '0.00'}}}}},
             {'op': 'execute', 'input': {'branch': BRANCH, 'target': recon_id, 'port': 'reconcile', 'params': {}},
-             'expect': {'error_code': 'LOGIC.TYPE_ERROR'}},
+             'expect': {'error_code': 'RULE.VALIDATION_FAILED'}},
         ],
     }, {
         'name': 'FIN-BK-009 February carries PAYROLL-2601 forward from January and flags it after 10 days',
@@ -2768,7 +2788,7 @@ def asset_tests():
             {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
                 {'op': 'update', 'object_id': period, 'base': {'$ref': 'p/version_hash'}, 'body': {'state': 'closing'}}]}},
             {'op': 'close_period', 'input': {'branch': BRANCH, 'period': period, 'artefact_id': uid('artefact', 'fa')}},
-            run({'error_code': 'LOGIC.TYPE_ERROR'}),
+            run({'error_code': 'LEDG.PERIOD_CLOSED'}),
         ],
     }]
 

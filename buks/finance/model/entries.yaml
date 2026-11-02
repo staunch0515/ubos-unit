@@ -28,7 +28,7 @@ classes:
       - {name: control_exception, label: control exception, description: the logged reason that lets a manual entry post to a control account (FIN-GL-005), type: text}
       - {name: auto_reverse_on, label: auto-reverse on, description: the date on which the entry is reversed automatically; opening the period of that date posts the reversal (FIN-GL-018), type: date}
       - {name: reverses, label: reverses, description: the number of the entry this one reverses, type: text}
-      - {name: reversed_by, label: reversed by, description: the number of the entry that reversed this one, type: text}
+      - {name: reversed_by, label: reversed by, description: "the number of the entry that reversed this one; not set since BPA 1.0-rc13 (DEC-158), when posted entries are frozen: the reversing entry names this one in reverses", type: text}
       - {name: adjustment_period, label: adjustment period, description: an audit adjustment of the year's adjustment period 13 (FIN-PC-001), type: boolean}
       - name: state
         label: state

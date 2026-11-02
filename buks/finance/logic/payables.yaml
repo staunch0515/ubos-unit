@@ -92,7 +92,7 @@ assets:
         for s in segs {
           if s.from <= date && (s.to == () || s.to > date) { r = s.fields.rate; }
         }
-        if r == () { throw "no " + what + " rate at " + date; }
+        if r == () { throw #{code: "RULE.VALIDATION_FAILED", message: "no " + what + " rate at " + date}; }
         d(r)
       }
       fn with_original(line, x, cur, fc) {
@@ -123,7 +123,7 @@ assets:
           if this.rate != () { rate = d(this.rate); } else {
             let fq = sys.search.query(#{query: #{from: "FxRate", where: rate_where(cur, fc, pay.rate_type)}});
             let ids = fq.items;
-            if ids.len() != 1 { throw "no single " + pay.rate_type + " rate " + cur + "/" + fc; }
+            if ids.len() != 1 { throw #{code: "RULE.VALIDATION_FAILED", message: "no single " + pay.rate_type + " rate " + cur + "/" + fc}; }
             let segs = sys.read.timeline(#{target: ids[0], valid_from: this.bill_date,
                                            valid_to: date_of(days(this.bill_date) + 1)}).segments;
             rate = rate_in(segs, this.bill_date, cur + "/" + fc);
@@ -137,7 +137,7 @@ assets:
           for id in sys.search.query(#{query: #{from: "Bill", where: w}}).items {
             let o = sys.read.get(#{target: id}).fields;
             if o.amount != () && d(o.amount.amount) == declared {
-              throw "possible duplicate of " + o.number + " (" + o.vendor_invoice + "): confirm with a reason";
+              throw #{code: "RULE.VALIDATION_FAILED", message: "possible duplicate of " + o.number + " (" + o.vendor_invoice + "): confirm with a reason"};
             }
           }
         }
@@ -165,7 +165,7 @@ assets:
           }
         }
         if total != declared {
-          throw "the lines add up to " + two(total) + ", not to the amount " + two(declared);
+          throw #{code: "RULE.VALIDATION_FAILED", message: "the lines add up to " + two(total) + ", not to the amount " + two(declared)};
         }
         lines.push(with_original(#{account: v.payable_account, amount: usd(-ftotal * sign, fc)}, -total * sign, cur, fc));
         // the vendor's terms: net days, end of month, early-payment discount (FIN-AP-012)
@@ -194,8 +194,8 @@ assets:
         let item_due = due;
         if credit && this.applies_to != () {
           let g = sys.read.projection(#{projection: "ap-open", group: #{vendor: v.code, document: this.applies_to}}).groups;
-          if g.len() == 0 { throw "no open item " + this.applies_to; }
-          if sum_of(g[0].values, "original") < total { throw "the credit exceeds the open amount of " + this.applies_to; }
+          if g.len() == 0 { throw #{code: "RULE.VALIDATION_FAILED", message: "no open item " + this.applies_to}; }
+          if sum_of(g[0].values, "original") < total { throw #{code: "RULE.VALIDATION_FAILED", message: "the credit exceeds the open amount of " + this.applies_to}; }
           item = this.applies_to;
           item_date = g[0].values.bill_date;
           item_due = g[0].values.due;
@@ -250,7 +250,7 @@ assets:
           if cur != fc && !(cur in rates) {
             let fq = sys.search.query(#{query: #{from: "FxRate", where: rate_where(cur, fc, pay.rate_type)}});
             let ids = fq.items;
-            if ids.len() != 1 { throw "no single " + pay.rate_type + " rate " + cur + "/" + fc; }
+            if ids.len() != 1 { throw #{code: "RULE.VALIDATION_FAILED", message: "no single " + pay.rate_type + " rate " + cur + "/" + fc}; }
             let segs = sys.read.timeline(#{target: ids[0], valid_from: this.run_date,
                                            valid_to: date_of(days(this.run_date) + 1)}).segments;
             rates[cur] = rate_in(segs, this.run_date, cur + "/" + fc);
@@ -264,12 +264,12 @@ assets:
           let c = fa;
           if prepay {
             // a prepayment opens a debit item of the vendor, applied to a bill later (FIN-AP-008)
-            if g.len() > 0 { throw "the prepayment " + p.document + " is already an item"; }
+            if g.len() > 0 { throw #{code: "RULE.VALIDATION_FAILED", message: "the prepayment " + p.document + " is already an item"}; }
           } else {
-            if g.len() == 0 { throw "no open item " + p.document; }
+            if g.len() == 0 { throw #{code: "RULE.VALIDATION_FAILED", message: "no open item " + p.document}; }
             let open_o = sum_of(g[0].values, "original");
-            if a > open_o { throw "the payment of " + p.document + " exceeds its open amount"; }
-            if g[0].values.original[0].currency != cur { throw "the payment of " + p.document + " is not in its currency"; }
+            if a > open_o { throw #{code: "RULE.VALIDATION_FAILED", message: "the payment of " + p.document + " exceeds its open amount"}; }
+            if g[0].values.original[0].currency != cur { throw #{code: "RULE.VALIDATION_FAILED", message: "the payment of " + p.document + " is not in its currency"}; }
             c = carrying(sum_of(g[0].values, "open"), open_o, a);
             bill_date = g[0].values.bill_date;
             due = g[0].values.due;
@@ -279,22 +279,22 @@ assets:
           let disc = dec("0.00");
           if "discount" in p && p.discount != () {
             disc = d(p.discount.amount);
-            if cur != fc { throw "a discount is taken in the functional currency"; }
-            if pay.discount_account == () { throw "the payables have no discount account"; }
+            if cur != fc { throw #{code: "RULE.VALIDATION_FAILED", message: "a discount is taken in the functional currency"}; }
+            if pay.discount_account == () { throw #{code: "RULE.VALIDATION_FAILED", message: "the payables have no discount account"}; }
             let bq = sys.search.query(#{query: #{from: "Bill", where: "this.vendor_invoice == \"" + p.document + "\""}});
             let bs = bq.items;
-            if bs.len() == 0 { throw "no bill " + p.document + " to take a discount on"; }
+            if bs.len() == 0 { throw #{code: "RULE.VALIDATION_FAILED", message: "no bill " + p.document + " to take a discount on"}; }
             let b = sys.read.get(#{target: bs[0]}).fields;
-            if b.discount_date == () || this.run_date > b.discount_date { throw "the discount of " + p.document + " has expired"; }
-            if disc > d(b.discount.amount) { throw "the discount exceeds the one offered on " + p.document; }
-            if a + disc > sum_of(g[0].values, "original") { throw "the payment and discount of " + p.document + " exceed its open amount"; }
+            if b.discount_date == () || this.run_date > b.discount_date { throw #{code: "RULE.VALIDATION_FAILED", message: "the discount of " + p.document + " has expired"}; }
+            if disc > d(b.discount.amount) { throw #{code: "RULE.VALIDATION_FAILED", message: "the discount exceeds the one offered on " + p.document}; }
+            if a + disc > sum_of(g[0].values, "original") { throw #{code: "RULE.VALIDATION_FAILED", message: "the payment and discount of " + p.document + " exceed its open amount"}; }
             discounts += disc;
           }
           let vq = sys.search.query(#{query: #{from: "Vendor", where: "this.code == \"" + p.vendor + "\""}});
           let vs = vq.items;
           let v = sys.read.get(#{target: vs[0]}).fields;
           // payments wait while new bank details wait for approval (FIN-AP-003)
-          if v.bank_change != () { throw "the payment of " + p.document + " is held: bank details pending approval"; }
+          if v.bank_change != () { throw #{code: "RULE.VALIDATION_FAILED", message: "the payment of " + p.document + " is held: bank details pending approval"}; }
           lines.push(with_original(#{account: v.payable_account, amount: usd(c + disc, fc)}, a, cur, fc));
           paid += fa;
           let loss = fa - c;
@@ -347,7 +347,7 @@ assets:
         // the bank line carries the run's foreign amount, so the entry balances in it (FIN-GL-011)
         let bank = #{account: this.bank_account, amount: usd(-paid, fc)};
         let fcur = originals.keys();
-        if fcur.len() > 1 { throw "a run pays in one foreign currency at most"; }
+        if fcur.len() > 1 { throw #{code: "RULE.VALIDATION_FAILED", message: "a run pays in one foreign currency at most"}; }
         if fcur.len() == 1 { bank.original = usd(-originals[fcur[0]], fcur[0]); }
         lines.push(bank);
         let debits = dec("0.00");
@@ -394,7 +394,7 @@ assets:
       // threshold of the year's table (FIN-EXP-14)
       fn form_1099(tax_year, through) {
         let tq = sys.search.query(#{query: #{from: "Form1099Threshold", where: "this.tax_year == \"" + tax_year + "\""}});
-        if tq.items.len() == 0 { throw "no Form 1099 threshold for " + tax_year; }
+        if tq.items.len() == 0 { throw #{code: "RULE.VALIDATION_FAILED", message: "no Form 1099 threshold for " + tax_year}; }
         let threshold = d(sys.read.get(#{target: tq.items[0]}).fields.threshold.amount);
         // the amounts of the year by vendor and form, from the Form1099Amount ledger
         let start = date_of(days(tax_year + "-01-01") - 1);
@@ -432,12 +432,12 @@ assets:
       // again; the original payment and its entry stay (FIN-AP-014)
       fn void_payment(document, void_date, reason) {
         sys.read.get(#{target: self_id});
-        if this.state != "posted" { throw "only a posted run's payments are voided"; }
+        if this.state != "posted" { throw #{code: "RULE.VALIDATION_FAILED", message: "only a posted run's payments are voided"}; }
         let done = if this.voided == () { [] } else { this.voided };
-        for x in done { if x.document == document { throw "the payment of " + document + " is already voided"; } }
+        for x in done { if x.document == document { throw #{code: "RULE.VALIDATION_FAILED", message: "the payment of " + document + " is already voided"}; } }
         let p = ();
         for q in this.payments { if q.document == document { p = q; } }
-        if p == () { throw "the run does not pay " + document; }
+        if p == () { throw #{code: "RULE.VALIDATION_FAILED", message: "the run does not pay " + document}; }
         let a = d(p.amount.amount);
         let cur = p.amount.currency;
         let pq = sys.search.query(#{query: #{from: "Payables"}});
@@ -523,10 +523,10 @@ assets:
         let cur = amount.currency;
         let gf = sys.read.projection(#{projection: "ap-open", group: #{vendor: vendor, document: from_document}}).groups;
         let gt = sys.read.projection(#{projection: "ap-open", group: #{vendor: vendor, document: to_document}}).groups;
-        if gf.len() == 0 || -sum_of(gf[0].values, "original") < x { throw from_document + " has no credit of " + two(x); }
-        if gt.len() == 0 || sum_of(gt[0].values, "original") < x { throw to_document + " has no open amount of " + two(x); }
+        if gf.len() == 0 || -sum_of(gf[0].values, "original") < x { throw #{code: "RULE.VALIDATION_FAILED", message: from_document + " has no credit of " + two(x)}; }
+        if gt.len() == 0 || sum_of(gt[0].values, "original") < x { throw #{code: "RULE.VALIDATION_FAILED", message: to_document + " has no open amount of " + two(x)}; }
         for g in [gf, gt] {
-          if g[0].values.original[0].currency != cur { throw "the amount is not in the items' currency"; }
+          if g[0].values.original[0].currency != cur { throw #{code: "RULE.VALIDATION_FAILED", message: "the amount is not in the items' currency"}; }
         }
         // both items move the credit's carrying amount, so the subledger keeps its control total
         let f = -carrying(sum_of(gf[0].values, "open"), sum_of(gf[0].values, "original"), -x);
@@ -555,7 +555,7 @@ assets:
         if !sim {
           let pw = "this.start <= d'" + period_end + "' and this.end > d'" + period_end + "'";
           for id in sys.search.query(#{query: #{from: "FiscalPeriod", where: pw}}).items {
-            if sys.read.get(#{target: id}).fields.state == "closed" { throw "the period of " + period_end + " is closed"; }
+            if sys.read.get(#{target: id}).fields.state == "closed" { throw #{code: "LEDG.PERIOD_CLOSED", message: "the period of " + period_end + " is closed"}; }
           }
         }
         let rates = #{};
@@ -570,7 +570,7 @@ assets:
           if !(cur in rates) {
             let fq = sys.search.query(#{query: #{from: "FxRate", where: rate_where(cur, fc, this.rate_type)}});
             let ids = fq.items;
-            if ids.len() != 1 { throw "no single " + this.rate_type + " rate " + cur + "/" + fc; }
+            if ids.len() != 1 { throw #{code: "RULE.VALIDATION_FAILED", message: "no single " + this.rate_type + " rate " + cur + "/" + fc}; }
             let segs = sys.read.timeline(#{target: ids[0], valid_from: period_end,
                                            valid_to: date_of(days(period_end) + 1)}).segments;
             rates[cur] = rate_in(segs, period_end, cur + "/" + fc);
@@ -634,7 +634,7 @@ assets:
       // new bank details requested; they apply on a second person's approval (FIN-AP-003)
       fn request_bank_change(bank_name, bank_routing, bank_account_number, reason) {
         sys.read.get(#{target: self_id});
-        if this.bank_change != () { throw "a change of bank details is already pending"; }
+        if this.bank_change != () { throw #{code: "RULE.VALIDATION_FAILED", message: "a change of bank details is already pending"}; }
         sys.commit.update(#{target: self_id, set: #{bank_change: #{bank_name: bank_name, bank_routing: bank_routing,
                                                                   bank_account_number: bank_account_number, reason: reason}}});
         #{requested: this.code}
@@ -644,7 +644,7 @@ assets:
       // request them (FIN-AP-003, FIN-CT-001); the versions keep the old and new values
       fn apply_bank_change() {
         sys.read.get(#{target: self_id});
-        if this.bank_change == () { throw "no change of bank details is pending"; }
+        if this.bank_change == () { throw #{code: "RULE.VALIDATION_FAILED", message: "no change of bank details is pending"}; }
         let c = this.bank_change;
         sys.commit.update(#{target: self_id, set: #{bank_name: c.bank_name, bank_routing: c.bank_routing,
                                                     bank_account_number: c.bank_account_number, bank_change: ()}});

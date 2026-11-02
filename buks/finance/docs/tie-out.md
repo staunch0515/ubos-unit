@@ -54,9 +54,9 @@ The tests compare the Buk's results with `docs/finance-requirements/21-expected-
 | `sample-payables.yaml` | FIN-AP-010 the run proposed on 2026-01-08 for items due by 2026-01-20 holds P-7781 and CPL-1225 (32,300.00) | FIN-AP-010 | 3 | pass | pass |
 | `sample-payables.yaml` | FIN-AP-014 voiding the payment of DC-2025-12 on 2026-02-10 opens the item again and debits the bank on that date | FIN-AP-014 | 18 | pass | pass |
 | `sample-periods.yaml` | FIN-GL-017 the recurring template creates the January entry once; it posts as JE-0003 did | FIN-GL-017 | 7 | pass | pass |
-| `sample-periods.yaml` | FIN-GL-018 opening February posts FXR-2601-R with opposite amounts, once (FIN-EXP-15) | FIN-EXP-15, FIN-GL-018 | 4 | pass | pass |
+| `sample-periods.yaml` | FIN-GL-018 FIN-GL-012 opening February posts FXR-2601-R with opposite amounts, once (FIN-EXP-15); the posted entry it reverses stays frozen | FIN-EXP-15, FIN-GL-012, FIN-GL-018 | 4 | pass | pass |
 | `sample-periods.yaml` | FIN-PC-006 reopening January waits for a controller; a rejection keeps it closed | FIN-PC-006 | 41 | pass | pass |
-| `sample-periods.yaml` | FIN-PC-006 SCN-507 an approved reopening and a second close; the first close artefact stays as issued | FIN-PC-006, SCN-507 | 79 | pass | pass |
+| `sample-periods.yaml` | FIN-PC-006 SCN-507 an approved reopening, a correction dated 2026-01-31 posted in February and a second close that counts it; the first close artefact stays as issued | FIN-PC-006, SCN-507 | 80 | pass | pass |
 | `sample-periods.yaml` | FIN-PC-008 FIN-SCN-11 the year-end close zeroes income and expense, leaves the balance sheet unchanged; a re-close after an adjustment supersedes the first | FIN-PC-008, FIN-SCN-11 | 89 | pass | pass |
 | `sample-receivables.yaml` | SCN-503 FIN-GL-021 the January receivables documents post the journal lines of FIN-EXP-02 | FIN-EXP-02, FIN-GL-021, SCN-503 | 27 | pass | pass |
 | `sample-receivables.yaml` | FIN-AR-010 FIN-RP-007 FIN-FX-007 after the revaluation the aging at 2026-01-31 equals FIN-EXP-08 and the control account | FIN-AR-010, FIN-EXP-08, FIN-FX-007, FIN-RP-007 | 18 | pass | pass |
@@ -85,4 +85,4 @@ The tests compare the Buk's results with `docs/finance-requirements/21-expected-
 | `sample-vendors.yaml` | FIN-AP-022 the 1099 review lists the vendors paid in 2026 with their exceptions: V800 has no TIN | FIN-AP-022 | 16 | pass | pass |
 | `sample-vendors.yaml` | FIN-BK-001 a bank account maps to exactly one GL account and its number is shown partially to a clerk | FIN-BK-001 | 2 | pass | pass |
 
-**77 tests, 2169 figures compared, all pass on both backends.**
+**77 tests, 2170 figures compared, all pass on both backends.**

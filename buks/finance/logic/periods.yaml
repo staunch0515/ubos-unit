@@ -58,20 +58,24 @@ assets:
       // the automatic reversals dated in the period, each posted once (FIN-GL-018)
       fn open() {
         sys.read.get(#{target: self_id});
-        let w = "this.state == \"posted\" and this.reversed_by is null and this.auto_reverse_on >= d'"
+        let w = "this.state == \"posted\" and this.auto_reverse_on >= d'"
                 + this.start + "' and this.auto_reverse_on < d'" + this.end + "'";
         let q = sys.search.query(#{query: #{from: "JournalEntry", where: w}});
         let done = [];
         for id in q.items {
           let e = sys.read.get(#{target: id}).fields;
           let number = e.number + "-R";
+          // a posted entry is frozen (STD-LGS-011, DEC-158): its reversal is found by
+          // the reversing entry's `reverses`, not marked on the entry
+          let rq = "this.reverses == \"" + e.number + "\"";
+          let prior = sys.search.query(#{query: #{from: "JournalEntry", where: rq}}).items;
+          if prior.len() > 0 { continue; }
           let f = #{number: number, source: e.source, kind: e.kind + " reversal", posting_date: e.auto_reverse_on,
                     description: "Auto-reversal of " + e.number, lines: negated(e.lines), total: e.total,
                     state: "draft", reverses: e.number};
           if e.party != () { f.party = e.party; }
           let c = sys.commit.create(#{class: "JournalEntry", slug: number.to_lower(), fields: f});
           sys.run.port(#{target: c.object_id, port: "post", params: #{}});
-          sys.commit.update(#{target: id, set: #{reversed_by: number}});
           done.push(number);
         }
         #{reversed: done}
@@ -172,7 +176,7 @@ assets:
       // a subledger closed for the period (FIN-PC-003)
       fn close_subledger(subledger) {
         sys.read.get(#{target: self_id});
-        if this.state == "closed" { throw "the period is closed"; }
+        if this.state == "closed" { throw #{code: "LEDG.PERIOD_CLOSED", message: "the period is closed"}; }
         let list = if this.closed_subledgers == () { [] } else { this.closed_subledgers };
         if list.contains(subledger) { return #{closed: false, subledger: subledger}; }
         list.push(subledger);
@@ -183,12 +187,12 @@ assets:
       // soft close: to closing when every check passes, keeping the results (FIN-PC-004, -005)
       fn soft_close() {
         sys.read.get(#{target: self_id});
-        if this.state != "open" { throw "the period is " + this.state; }
+        if this.state != "open" { throw #{code: "RULE.VALIDATION_FAILED", message: "the period is " + this.state}; }
         let r = sys.run.port(#{target: self_id, port: "checklist", params: #{}});
         if !r.passed {
           let names = "";
           for f in r.failing { names += if names == "" { f } else { ", " + f }; }
-          throw "the close checklist fails: " + names;
+          throw #{code: "RULE.VALIDATION_FAILED", message: "the close checklist fails: " + names};
         }
         sys.commit.update(#{target: self_id, set: #{state: "closing", checklist: r.checks}});
         #{state: "closing", checks: r.checks}

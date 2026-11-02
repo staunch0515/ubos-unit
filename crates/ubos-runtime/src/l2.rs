@@ -1123,7 +1123,8 @@ fn map_error(e: &EvalAltResult) -> BpaError {
         }
         EvalAltResult::ErrorInFunctionCall(_, _, inner, _) => {
             let mut e = map_error(inner);
-            if e.details.is_none() {
+            // a business refusal keeps the script's own message (STD-CTX-020)
+            if e.details.is_none() && !thrown_refusal(inner) {
                 e.message = detail;
             }
             return e;
@@ -1182,6 +1183,15 @@ fn map_error(e: &EvalAltResult) -> BpaError {
         _ => codes::TYPE_ERROR,
     };
     BpaError::new(code, detail)
+}
+
+/// Whether an error is, below its function calls, a business refusal (STD-CTX-020).
+fn thrown_refusal(e: &EvalAltResult) -> bool {
+    match e {
+        EvalAltResult::ErrorRuntime(v, _) => refusal(v).is_some(),
+        EvalAltResult::ErrorInFunctionCall(_, _, inner, _) => thrown_refusal(inner),
+        _ => false,
+    }
 }
 
 /// The business refusal of a thrown value (STD-CTX-020): a map whose `code` is a catchable

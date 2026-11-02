@@ -79,10 +79,10 @@ assets:
       // account, the first bank rule whose pattern the description contains gives it (FIN-BK-005)
       fn record(line, number, account, description) {
         sys.read.get(#{target: self_id});
-        if this.state == "signed_off" { throw "the reconciliation is signed off"; }
+        if this.state == "signed_off" { throw #{code: "RULE.VALIDATION_FAILED", message: "the reconciliation is signed off"}; }
         let g = sys.read.projection(#{projection: "bank-lines",
           group: #{bank_account: this.bank_account, statement: this.statement, line: line}}).groups;
-        if g.len() == 0 { throw "no statement line " + line.to_string(); }
+        if g.len() == 0 { throw #{code: "RULE.VALIDATION_FAILED", message: "no statement line " + line.to_string()}; }
         let acct = account;
         if acct == () {
           let text = if g[0].values.description == () { "" } else { g[0].values.description.to_lower() };
@@ -90,7 +90,7 @@ assets:
             let r = sys.read.get(#{target: id}).fields;
             if acct == () && text.contains(r.pattern.to_lower()) { acct = r.account; }
           }
-          if acct == () { throw "no bank rule for line " + line.to_string(); }
+          if acct == () { throw #{code: "RULE.VALIDATION_FAILED", message: "no bank rule for line " + line.to_string()}; }
         }
         let a = sum_of(g[0].values, "amount");
         let cur = g[0].values.amount[0].currency;
@@ -107,7 +107,7 @@ assets:
 
       fn reconcile() {
         sys.read.get(#{target: self_id});
-        if this.state == "signed_off" { throw "the reconciliation is signed off"; }
+        if this.state == "signed_off" { throw #{code: "RULE.VALIDATION_FAILED", message: "the reconciliation is signed off"}; }
         let cur = currency(this.opening_balance);
         let key = rec_key(this.bank_account, this.statement);
         // the statement's lines
@@ -257,10 +257,10 @@ assets:
       // a manual match of a statement line with entries (FIN-BK-005, -006)
       fn match_line(line, documents, note) {
         sys.read.get(#{target: self_id});
-        if this.state == "signed_off" { throw "the reconciliation is signed off"; }
+        if this.state == "signed_off" { throw #{code: "RULE.VALIDATION_FAILED", message: "the reconciliation is signed off"}; }
         let g = sys.read.projection(#{projection: "bank-lines",
           group: #{bank_account: this.bank_account, statement: this.statement, line: line}}).groups;
-        if g.len() == 0 { throw "no statement line " + line.to_string(); }
+        if g.len() == 0 { throw #{code: "RULE.VALIDATION_FAILED", message: "no statement line " + line.to_string()}; }
         sys.commit.append(#{class: "BankMatch", ledger_key: #{reconciliation: rec_key(this.bank_account, this.statement)},
           valid_at: this.period_end,
           fields: #{reconciliation: rec_key(this.bank_account, this.statement), line: line, action: "match",
@@ -271,10 +271,10 @@ assets:
       // the undoing of a line's match: a new record; the history keeps both (FIN-BK-006)
       fn unmatch_line(line, note) {
         sys.read.get(#{target: self_id});
-        if this.state == "signed_off" { throw "the reconciliation is signed off"; }
+        if this.state == "signed_off" { throw #{code: "RULE.VALIDATION_FAILED", message: "the reconciliation is signed off"}; }
         let g = sys.read.projection(#{projection: "bank-lines",
           group: #{bank_account: this.bank_account, statement: this.statement, line: line}}).groups;
-        if g.len() == 0 { throw "no statement line " + line.to_string(); }
+        if g.len() == 0 { throw #{code: "RULE.VALIDATION_FAILED", message: "no statement line " + line.to_string()}; }
         sys.commit.append(#{class: "BankMatch", ledger_key: #{reconciliation: rec_key(this.bank_account, this.statement)},
           valid_at: this.period_end,
           fields: #{reconciliation: rec_key(this.bank_account, this.statement), line: line, action: "unmatch",
@@ -289,7 +289,7 @@ assets:
         if this.state == "signed_off" { return #{signed_off: false, reason: "already signed off"}; }
         if this.state != "reconciled" || this.result == () {
           let diff = if this.result == () { "not computed" } else { this.result.difference };
-          throw "the reconciliation is not complete: difference " + diff;
+          throw #{code: "RULE.VALIDATION_FAILED", message: "the reconciliation is not complete: difference " + diff};
         }
         sys.commit.update(#{target: self_id, set: #{state: "signed_off", signed_result: this.result}});
         #{signed_off: true, result: this.result}

@@ -1381,7 +1381,7 @@
    ]
   },
   {
-   "name": "FIN-GL-018 opening February posts FXR-2601-R with opposite amounts, once (FIN-EXP-15)",
+   "name": "FIN-GL-018 FIN-GL-012 opening February posts FXR-2601-R with opposite amounts, once (FIN-EXP-15); the posted entry it reverses stays frozen",
    "kind": "scenario",
    "steps": [
     {
@@ -2759,13 +2759,27 @@
       "branch": "feature/forge",
       "object_id": "7f0e99a4-9211-8428-88e4-3076c90cccd0"
      },
-     "expect": {
-      "match": "subset",
-      "result": {
-       "body": {
-        "reversed_by": "FXR-2601-R"
+     "label": "fxr"
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
+        "op": "update",
+        "object_id": "7f0e99a4-9211-8428-88e4-3076c90cccd0",
+        "base": {
+         "$ref": "fxr/version_hash"
+        },
+        "body": {
+         "description": "changed after posting"
+        }
        }
-      }
+      ]
+     },
+     "expect": {
+      "error_code": "RULE.DECLARATION_UNSATISFIED"
      }
     }
    ]
@@ -6292,7 +6306,7 @@
    ]
   },
   {
-   "name": "FIN-PC-006 SCN-507 an approved reopening and a second close; the first close artefact stays as issued",
+   "name": "FIN-PC-006 SCN-507 an approved reopening, a correction dated 2026-01-31 posted in February and a second close that counts it; the first close artefact stays as issued",
    "kind": "scenario",
    "steps": [
     {
@@ -9794,6 +9808,68 @@
       "branch": "feature/forge",
       "changes": [
        {
+        "op": "create",
+        "class": "JournalEntry",
+        "object_id": "3ab0a782-30bd-8167-898d-c938876db0e1",
+        "slug": "je-corr-01",
+        "body": {
+         "number": "JE-CORR-01",
+         "source": "manual",
+         "kind": "journal",
+         "posting_date": "2026-01-31",
+         "description": "Late utilities invoice for January",
+         "state": "draft",
+         "total": {
+          "amount": "500.00",
+          "currency": "USD"
+         },
+         "lines": [
+          {
+           "account": "ubos://acme/GlAccount/6400",
+           "amount": {
+            "amount": "500.00",
+            "currency": "USD"
+           }
+          },
+          {
+           "account": "ubos://acme/GlAccount/2100",
+           "amount": {
+            "amount": "-500.00",
+            "currency": "USD"
+           }
+          }
+         ]
+        }
+       }
+      ]
+     }
+    },
+    {
+     "op": "execute",
+     "input": {
+      "branch": "feature/forge",
+      "target": "3ab0a782-30bd-8167-898d-c938876db0e1",
+      "port": "post",
+      "params": {},
+      "process": {
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+      }
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "result": {
+        "posted": true
+       }
+      }
+     }
+    },
+    {
+     "op": "commit",
+     "input": {
+      "branch": "feature/forge",
+      "changes": [
+       {
         "op": "update",
         "object_id": "6cf0a7e9-f104-818a-8c4e-883883e4f466",
         "base": {
@@ -9967,7 +10043,7 @@
          "amounts": {
           "amount": [
            {
-            "amount": "-25000.00",
+            "amount": "-25500.00",
             "currency": "USD"
            }
           ]
@@ -10191,7 +10267,7 @@
          "amounts": {
           "amount": [
            {
-            "amount": "34000.00",
+            "amount": "34500.00",
             "currency": "USD"
            }
           ]
