@@ -13,3 +13,15 @@ changes:
         - {fn: last, field: date, as: date}
         - {fn: last, field: reference, as: reference}
         - {fn: last, field: description, as: description}
+  # the manual matches in force: the latest record of each line (FIN-BK-006)
+  - op: create
+    class: Projection
+    object_id: 01890a5d-ac96-7f00-8000-00000000000d
+    slug: bank-matches
+    body:
+      name: bank-matches
+      source: BankMatch
+      group_by: [reconciliation, line]
+      aggregates:
+        - {fn: last, field: action, as: action}
+        - {fn: last, field: documents, as: documents}

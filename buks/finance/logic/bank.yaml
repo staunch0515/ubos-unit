@@ -1,6 +1,8 @@
-# Bank reconciliation (FIN-CB-003…006; PH-2 step 10d, DEC-150): statement lines are matched with
-# the posted entries on the bank account by amount within a date window, then with the items
-# outstanding at the previous reconciliation; unmatched entries are outstanding.
+# Bank reconciliation (FIN-BK-002…009; PH-2 steps 10d and 10g-2, DEC-150, DEC-154): manual
+# matches first (the BankMatch ledger, FIN-BK-005, -006), then the rules: the bank's reference
+# equal to an entry's number, then the amount within a date window, then the items outstanding
+# at the previous reconciliation (FIN-BK-004); unmatched entries are outstanding and carried
+# forward (FIN-BK-009). A reconciliation is signed off by a second person (FIN-BK-008).
 assets:
   - name: ubos.finance.bank
     abi: "1.0"
@@ -8,7 +10,7 @@ assets:
     profile: standard
     state: committed
     capabilities: [read, commit, run, search]
-    exports: [record, reconcile]
+    exports: [record, reconcile, match_line, unmatch_line, sign_off, post_transfer]
     source: |
       fn d(v) { dec(v.to_string()) }
       fn two(x) {
@@ -37,6 +39,20 @@ assets:
         let doy = (153 * mp + 2) / 5 + dd - 1;
         era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy
       }
+      fn date_of(z) {
+        let era = z / 146097;
+        let doe = z - era * 146097;
+        let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+        let y = yoe + era * 400;
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+        let mp = (5 * doy + 2) / 153;
+        let dd = doy - (153 * mp + 2) / 5 + 1;
+        let m = if mp < 10 { mp + 3 } else { mp - 9 };
+        if m <= 2 { y += 1; }
+        let ms = if m < 10 { "0" + m.to_string() } else { m.to_string() };
+        let ds = if dd < 10 { "0" + dd.to_string() } else { dd.to_string() };
+        y.to_string() + "-" + ms + "-" + ds
+      }
       fn sum_of(values, name) {
         let t = dec("0.00");
         for m in values[name] { t += dec(m.amount); }
@@ -52,12 +68,30 @@ assets:
         out
       }
 
-      // a bank-originated item from a statement line: the entry of source bank
+      fn rec_key(acct, statement) { acct + "|" + statement }
+      fn text_of(list) {
+        let s = "";
+        for x in list { s += if s == "" { x } else { "," + x }; }
+        s
+      }
+
+      // a bank-originated item from a statement line: the entry of source bank; without an
+      // account, the first bank rule whose pattern the description contains gives it (FIN-BK-005)
       fn record(line, number, account, description) {
         sys.read.get(#{target: self_id});
+        if this.state == "signed_off" { throw "the reconciliation is signed off"; }
         let g = sys.read.projection(#{projection: "bank-lines",
           group: #{bank_account: this.bank_account, statement: this.statement, line: line}}).groups;
         if g.len() == 0 { throw "no statement line " + line.to_string(); }
+        let acct = account;
+        if acct == () {
+          let text = if g[0].values.description == () { "" } else { g[0].values.description.to_lower() };
+          for id in sys.search.query(#{query: #{from: "BankRule"}}).items {
+            let r = sys.read.get(#{target: id}).fields;
+            if acct == () && text.contains(r.pattern.to_lower()) { acct = r.account; }
+          }
+          if acct == () { throw "no bank rule for line " + line.to_string(); }
+        }
         let a = sum_of(g[0].values, "amount");
         let cur = g[0].values.amount[0].currency;
         let abs = if a < 0 { -a } else { a };
@@ -65,15 +99,17 @@ assets:
           fields: #{number: number, source: "bank", kind: "bank", posting_date: g[0].values.date,
                     document_date: g[0].values.date, description: description,
                     lines: [#{account: this.bank_account, amount: #{amount: two(a), currency: cur}},
-                            #{account: account, amount: #{amount: two(-a), currency: cur}}],
+                            #{account: acct, amount: #{amount: two(-a), currency: cur}}],
                     total: #{amount: two(abs), currency: cur}, state: "draft"}});
         sys.run.port(#{target: e.object_id, port: "post", params: #{}});
-        #{recorded: number, amount: two(a)}
+        #{recorded: number, amount: two(a), account: acct}
       }
 
       fn reconcile() {
         sys.read.get(#{target: self_id});
+        if this.state == "signed_off" { throw "the reconciliation is signed off"; }
         let cur = currency(this.opening_balance);
+        let key = rec_key(this.bank_account, this.statement);
         // the statement's lines
         let lines = [];
         for g in sys.read.projection(#{projection: "bank-lines", group: #{bank_account: this.bank_account,
@@ -82,7 +118,12 @@ assets:
                        amount: sum_of(g.values, "amount"), order: g.values.date + "|" + (100000 + g.key.line).to_string()});
         }
         lines = sorted(lines, "order");
-        // the posted entries on the bank account up to the period's end
+        // the manual matches and undos in force (FIN-BK-005, -006)
+        let manual = #{};
+        for g in sys.read.projection(#{projection: "bank-matches"}).groups {
+          if g.key.reconciliation == key { manual[g.key.line.to_string()] = g.values; }
+        }
+        // the posted entries on the bank account in the period
         let w = "this.state == \"posted\" and this.posting_date <= d'" + this.period_end + "'";
         let book = [];
         for id in sys.search.query(#{query: #{from: "JournalEntry", where: w}}).items {
@@ -93,44 +134,106 @@ assets:
           book.push(#{document: e.number, date: e.posting_date, amount: a, matched: false});
         }
         book = sorted(book, "date");
-        let prior = if this.prior_outstanding == () { [] } else { this.prior_outstanding };
+        // the items outstanding before: given, or carried from the reconciliation of the day
+        // before (FIN-BK-009)
+        let prior = this.prior_outstanding;
+        if prior == () {
+          prior = [];
+          let before = date_of(days(this.period_start) - 1);
+          let pw = "this.bank_account == \"" + this.bank_account + "\" and this.period_end == d'" + before + "'";
+          for id in sys.search.query(#{query: #{from: "BankReconciliation", where: pw}}).items {
+            let r = sys.read.get(#{target: id}).fields;
+            let res = if r.signed_result != () { r.signed_result } else { r.result };
+            if res != () {
+              for o in res.outstanding { prior.push(#{reference: o.document, amount: #{amount: o.amount, currency: cur}, date: o.date}); }
+            }
+          }
+        }
         let prior_open = [];
-        for p in prior { prior_open.push(#{reference: p.reference, amount: d(p.amount.amount), matched: false}); }
+        for p in prior {
+          prior_open.push(#{reference: p.reference, amount: d(p.amount.amount), matched: false,
+                            date: if "date" in p { p.date } else { this.period_start }});
+        }
         let matches = [];
         let breaks = [];
         let activity = dec("0.00");
+        let manual_lines = dec("0.00");
+        let manual_docs = dec("0.00");
+        // manual matches first; the documents they name are taken out of the automatic rules
         for l in lines {
-          activity += l.amount;
-          let found = false;
-          for i in 0..book.len() {
-            let b = book[i];
-            let gap = days(l.date) - days(b.date);
-            if gap < 0 { gap = -gap; }
-            if !b.matched && b.amount == l.amount && gap <= this.window_days {
-              b.matched = true; book[i] = b; found = true;
-              matches.push(#{line: l.line, document: b.document});
-              break;
+          let k = l.line.to_string();
+          if k in manual && manual[k].action == "match" {
+            let docs = manual[k].documents.split(",");
+            manual_lines += l.amount;
+            matches.push(#{line: l.line, documents: docs, rule: "manual", confidence: "1.0", reason: "matched by hand"});
+            for i in 0..book.len() {
+              let b = book[i];
+              if docs.contains(b.document) && !b.matched { b.matched = true; book[i] = b; manual_docs += b.amount; }
+            }
+            for i in 0..prior_open.len() {
+              let p = prior_open[i];
+              if docs.contains(p.reference) && !p.matched { p.matched = true; prior_open[i] = p; manual_docs += p.amount; }
             }
           }
+        }
+        for l in lines {
+          activity += l.amount;
+          let k = l.line.to_string();
+          if k in manual {
+            if manual[k].action == "unmatch" { breaks.push(#{line: l.line, reference: l.reference, amount: two(l.amount)}); }
+            continue;
+          }
+          let found = false;
+          // the bank's reference names the entry
+          if l.reference != () {
+            for i in 0..book.len() {
+              let b = book[i];
+              if !found && !b.matched && b.amount == l.amount && l.reference == b.document {
+                b.matched = true; book[i] = b; found = true;
+                matches.push(#{line: l.line, documents: [b.document], rule: "reference", confidence: "1.0",
+                               reason: "the bank's reference is the entry's number"});
+              }
+            }
+          }
+          // the amount within the date window
+          if !found {
+            for i in 0..book.len() {
+              let b = book[i];
+              let gap = days(l.date) - days(b.date);
+              if gap < 0 { gap = -gap; }
+              if !found && !b.matched && b.amount == l.amount && gap <= this.window_days {
+                b.matched = true; book[i] = b; found = true;
+                matches.push(#{line: l.line, documents: [b.document], rule: "amount-date", confidence: "0.9",
+                               reason: "same amount, " + gap.to_string() + " days apart"});
+              }
+            }
+          }
+          // an item outstanding before
           if !found {
             for i in 0..prior_open.len() {
               let p = prior_open[i];
-              if !p.matched && p.amount == l.amount {
+              if !found && !p.matched && p.amount == l.amount {
                 p.matched = true; prior_open[i] = p; found = true;
-                matches.push(#{line: l.line, document: p.reference});
-                break;
+                matches.push(#{line: l.line, documents: [p.reference], rule: "outstanding-before", confidence: "0.8",
+                               reason: "same amount as an item outstanding at the previous reconciliation"});
               }
             }
           }
           if !found { breaks.push(#{line: l.line, reference: l.reference, amount: two(l.amount)}); }
         }
+        let stale_days = if this.stale_days == () { 90 } else { this.stale_days };
         let outstanding = [];
+        let stale = [];
         let pending = dec("0.00");
         for b in book {
           if !b.matched { outstanding.push(#{document: b.document, date: b.date, amount: two(b.amount)}); pending += b.amount; }
         }
         for p in prior_open {
-          if !p.matched { outstanding.push(#{document: p.reference, date: this.period_start, amount: two(p.amount)}); pending += p.amount; }
+          if !p.matched {
+            outstanding.push(#{document: p.reference, date: p.date, amount: two(p.amount)});
+            pending += p.amount;
+            if days(this.period_end) - days(p.date) > stale_days { stale.push(p.reference); }
+          }
         }
         let closing = amount(this.closing_balance);
         let opening = amount(this.opening_balance);
@@ -140,11 +243,71 @@ assets:
         let books = if g.len() > 0 { sum_of(g[0].values, "balance") } else { dec("0.00") };
         let result = #{statement_opening: two(opening), statement_activity: two(activity),
                        statement_closing: two(closing), activity_difference: two(opening + activity - closing),
-                       outstanding: outstanding, adjusted_bank_balance: two(adjusted), book_balance: two(books),
-                       difference: two(adjusted - books), unmatched_statement_lines: breaks};
-        let state = if (adjusted - books).is_zero() && breaks.is_empty() { "reconciled" } else { "open" };
+                       outstanding: outstanding, stale: stale, adjusted_bank_balance: two(adjusted), book_balance: two(books),
+                       difference: two(adjusted - books), unmatched_statement_lines: breaks,
+                       manual_difference: two(manual_lines - manual_docs)};
+        let ok = (adjusted - books).is_zero() && breaks.is_empty() && (manual_lines - manual_docs).is_zero();
+        let state = if ok { "reconciled" } else { "open" };
         sys.commit.update(#{target: self_id, set: #{matches: matches, result: result, state: state}});
         result.state = state;
         result.matches = matches;
         result
+      }
+
+      // a manual match of a statement line with entries (FIN-BK-005, -006)
+      fn match_line(line, documents, note) {
+        sys.read.get(#{target: self_id});
+        if this.state == "signed_off" { throw "the reconciliation is signed off"; }
+        let g = sys.read.projection(#{projection: "bank-lines",
+          group: #{bank_account: this.bank_account, statement: this.statement, line: line}}).groups;
+        if g.len() == 0 { throw "no statement line " + line.to_string(); }
+        sys.commit.append(#{class: "BankMatch", ledger_key: #{reconciliation: rec_key(this.bank_account, this.statement)},
+          valid_at: this.period_end,
+          fields: #{reconciliation: rec_key(this.bank_account, this.statement), line: line, action: "match",
+                    documents: documents, amount: g[0].values.amount[0], note: note}});
+        #{matched: line, documents: documents}
+      }
+
+      // the undoing of a line's match: a new record; the history keeps both (FIN-BK-006)
+      fn unmatch_line(line, note) {
+        sys.read.get(#{target: self_id});
+        if this.state == "signed_off" { throw "the reconciliation is signed off"; }
+        let g = sys.read.projection(#{projection: "bank-lines",
+          group: #{bank_account: this.bank_account, statement: this.statement, line: line}}).groups;
+        if g.len() == 0 { throw "no statement line " + line.to_string(); }
+        sys.commit.append(#{class: "BankMatch", ledger_key: #{reconciliation: rec_key(this.bank_account, this.statement)},
+          valid_at: this.period_end,
+          fields: #{reconciliation: rec_key(this.bank_account, this.statement), line: line, action: "unmatch",
+                    documents: "", amount: g[0].values.amount[0], note: note}});
+        #{unmatched: line}
+      }
+
+      // completion: only a reconciliation without difference; the sheet requires a second
+      // person's approval (FIN-BK-007, -008); the result is kept as signed
+      fn sign_off(confirm, note) {
+        sys.read.get(#{target: self_id});
+        if this.state == "signed_off" { return #{signed_off: false, reason: "already signed off"}; }
+        if this.state != "reconciled" || this.result == () {
+          let diff = if this.result == () { "not computed" } else { this.result.difference };
+          throw "the reconciliation is not complete: difference " + diff;
+        }
+        sys.commit.update(#{target: self_id, set: #{state: "signed_off", signed_result: this.result}});
+        #{signed_off: true, result: this.result}
+      }
+
+      // a transfer between two bank accounts (FIN-BK-002)
+      fn post_transfer() {
+        if this.state == "posted" { return #{posted: false, reason: "already posted"}; }
+        sys.read.get(#{target: self_id});
+        let a = amount(this.amount);
+        let cur = currency(this.amount);
+        let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
+          fields: #{number: this.number, source: "bank", kind: "transfer", posting_date: this.transfer_date,
+                    document_date: this.transfer_date, description: "Transfer " + this.number,
+                    lines: [#{account: this.to_account, amount: #{amount: two(a), currency: cur}},
+                            #{account: this.from_account, amount: #{amount: two(-a), currency: cur}}],
+                    total: #{amount: two(a), currency: cur}, state: "draft"}});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        sys.commit.update(#{target: self_id, set: #{state: "posted"}});
+        #{posted: true, number: this.number, amount: two(a)}
       }

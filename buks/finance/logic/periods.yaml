@@ -108,7 +108,7 @@ assets:
         }
         let unreconciled = [];
         for b in banks {
-          let w = "this.bank_account == \"" + b + "\" and this.period_end == d'" + last + "' and this.state == \"reconciled\"";
+          let w = "this.bank_account == \"" + b + "\" and this.period_end == d'" + last + "' and (this.state == \"reconciled\" or this.state == \"signed_off\")";
           let rq = sys.search.query(#{query: #{from: "BankReconciliation", where: w}});
           let found = rq.items;
           if found.len() == 0 { unreconciled.push(b); }
@@ -133,9 +133,11 @@ assets:
           let dep = dq.items;
           if dep.len() == 0 { missing.push("DEP-" + yymm); }
         }
-        for id in sys.search.query(#{query: #{from: "Receivables"}}).items {
-          let r = sys.run.port(#{target: id, port: "revalue", params: #{period_end: last, simulate: true}});
-          if r.items.len() > 0 && !("posted" in r) { missing.push(r.number); }
+        for cls in ["Receivables", "Payables"] {
+          for id in sys.search.query(#{query: #{from: cls}}).items {
+            let r = sys.run.port(#{target: id, port: "revalue", params: #{period_end: last, simulate: true}});
+            if r.items.len() > 0 && !("posted" in r) { missing.push(r.number); }
+          }
         }
         let tw = "this.first_period_end <= d'" + last + "' and this.last_period_end >= d'" + last + "'";
         for id in sys.search.query(#{query: #{from: "RecurringEntry", where: tw}}).items {

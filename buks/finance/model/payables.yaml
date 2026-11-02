@@ -29,15 +29,26 @@ classes:
       - {name: threshold, label: threshold, description: the amount from which payments are reportable, type: money, required: true}
   - name: Bill
     label: bill
-    description: A vendor bill; `post` posts it to the general ledger and records the open item (FIN-AP-003…006)
+    description: A vendor bill or vendor credit; `post` posts it to the general ledger and records the open item (FIN-AP-004…006, -008). The sheet ubos.finance.controls requires a controller's approval of bills over 10,000.00 (FIN-AP-006).
     namespace: ubos.finance
     parent: DataObject
     kind: definition
     schema_version: 1
-    keys: [[number]]
+    keys: [[number], [vendor, vendor_invoice]]
     fields:
       - {name: number, label: number, description: the bill's document number, type: text, required: true}
-      - {name: vendor_invoice, label: vendor invoice, description: the vendor's invoice number, type: text, required: true}
+      - {name: vendor_invoice, label: vendor invoice, description: "the vendor's invoice number; a second bill of the vendor with the same number is refused by the class key (FIN-AP-005)", type: text, required: true}
+      - name: kind
+        label: kind
+        description: a bill, or a vendor credit that reduces what is owed (FIN-AP-008); a bill when absent
+        type: enum
+        constraints: {allowed_values: [bill, credit]}
+      - {name: amount, label: amount, description: "the document's total as received, without accrued use tax; `post` refuses lines that do not add up to it, and the approval rule reads it (FIN-AP-006)", type: money, required: true}
+      - {name: applies_to, label: applies to, description: the vendor invoice a credit is applied to; the credit stays open when absent, type: text}
+      - {name: rate, label: rate, description: "the rate to the functional currency entered for a foreign-currency bill; the spot rate of the bill date when absent (FIN-FX-003)", type: decimal}
+      - {name: functional_total, label: functional total, description: the total in the functional currency, computed on posting (FIN-FX-003), type: money}
+      - {name: duplicate_reason, label: duplicate reason, description: "the confirmation of a bill whose vendor, amount and date match another bill's (FIN-AP-005)", type: text}
+      - {name: hold, label: hold, description: a held bill is left out of payment proposals (FIN-AP-010), type: boolean}
       - {name: vendor, label: vendor, description: the vendor, type: reference, required: true, constraints: {target_class: Vendor}}
       - {name: bill_date, label: bill date, description: the document date; the posting date unless one is given, type: date, required: true}
       - {name: posting_date, label: posting date, description: "the date the bill posts on, in an open period, when it differs from the document date: a late bill of a closed period (FIN-PC-005)", type: date}
@@ -65,14 +76,24 @@ classes:
       - {name: run_date, label: date, description: the payment date, type: date, required: true}
       - {name: bank_account, label: bank account, description: the account paid from, type: reference, required: true, constraints: {target_class: GlAccount}}
       - {name: method, label: method, description: ACH, check or wire, type: text}
-      - {name: payments, label: payments, description: "{vendor (code), document (vendor invoice), amount}", type: json, required: true}
+      - {name: payments, label: payments, description: "{vendor (code), document (vendor invoice, or the number of a prepayment), amount (in the item's currency), prepayment?}; posting adds the functional amount paid and the carrying amount settled (FIN-FX-004)", type: json, required: true}
+      - {name: voided, label: voided, description: "the payments voided: {document, date, reason, entry} (FIN-AP-014)", type: json}
       - name: state
         label: state
-        description: draft until posted
+        description: "draft until posted; the sheet ubos.finance.controls requires a controller other than the preparer to approve a draft run's posting (FIN-AP-011)"
         type: enum
         constraints: {allowed_values: [draft, posted]}
     ports:
       - {name: post, description: post the run, kind: command, params: [], permission: post, impl: ubos.finance.payables#post_run}
+      - name: void
+        description: "void one payment of the posted run by a reversing entry dated in an open period: the bank is debited and the item is open again; the original payment stays (FIN-AP-014)"
+        kind: command
+        params:
+          - {name: document, label: document, description: the paid item, type: text, required: true}
+          - {name: void_date, label: void date, description: the date of the reversing entry, type: date, required: true}
+          - {name: reason, label: reason, description: why the payment is voided, type: text, required: true}
+        permission: void
+        impl: ubos.finance.payables#void_payment
   - name: Payables
     label: payables
     description: The payables subledger's reports
@@ -83,7 +104,19 @@ classes:
     fields:
       - {name: name, label: name, description: the subledger's name, type: text, required: true}
       - {name: control_account, label: control account, description: the payables control account (FIN-RP-007), type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: functional_currency, label: functional currency, description: the functional currency of the company (FIN-FX-001), type: text, required: true}
+      - {name: rate_type, label: rate type, description: the type of the FxRate objects the subledger converts with (FIN-FX-002), type: text, required: true}
+      - {name: realized_account, label: realized FX account, description: the realized exchange gain or loss account (FIN-FX-004), type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: unrealized_account, label: unrealized FX account, description: the unrealized exchange gain or loss account (FIN-FX-005), type: reference, required: true, constraints: {target_class: GlAccount}}
     ports:
+      - name: revalue
+        description: "remeasure the open foreign-currency payables at the rate of the period end, post the unrealized gain or loss as FXP-<yymm> reversing on the next day; with simulate, show the run and its difference to the posted one without posting (FIN-FX-005)"
+        kind: command
+        params:
+          - {name: period_end, label: period end, description: the last day of the period, type: date, required: true}
+          - {name: simulate, label: simulate, description: compute without posting, type: boolean}
+        permission: post
+        impl: ubos.finance.payables#revalue
       - name: aging
         description: the open bills by due-date bucket as of a date, with the control account (FIN-AP-010, FIN-RP-007)
         kind: query
@@ -99,6 +132,27 @@ classes:
           - {name: through, label: through, description: the last payment date counted, type: date, required: true}
         permission: read
         impl: ubos.finance.payables#form_1099
+      - name: propose_run
+        description: "create a draft payment run of the posted, unheld open items due by a date (FIN-AP-010); the preparer may change it before posting"
+        kind: command
+        params:
+          - {name: number, label: number, description: the run's number, type: text, required: true}
+          - {name: run_date, label: date, description: the payment date, type: date, required: true}
+          - {name: due_by, label: due by, description: the last due date proposed, type: date, required: true}
+          - {name: bank_account, label: bank account, description: the account paid from, type: reference, required: true, constraints: {target_class: GlAccount}}
+        permission: post
+        impl: ubos.finance.payables#propose_run
+      - name: apply
+        description: "apply a vendor credit or a prepayment to an open bill of the same vendor (FIN-AP-008)"
+        kind: command
+        params:
+          - {name: vendor, label: vendor, description: the vendor code, type: text, required: true}
+          - {name: from_document, label: from, description: the credit or prepayment, type: text, required: true}
+          - {name: to_document, label: to, description: the bill, type: text, required: true}
+          - {name: amount, label: amount, description: the amount applied, type: money, required: true}
+          - {name: apply_date, label: date, description: the date of the application, type: date, required: true}
+        permission: post
+        impl: ubos.finance.payables#apply
   - name: ApItem
     label: payable item
     description: The payables subledger; an item's balance owed is the sum of its document's entries
@@ -110,8 +164,9 @@ classes:
     fields:
       - {name: vendor, label: vendor, description: the vendor code, type: text, required: true}
       - {name: document, label: document, description: the vendor invoice, type: text, required: true}
-      - {name: amount, label: amount, description: positive for bills, negative for payments, type: money, required: true}
-      - {name: kind, label: kind, description: opening, bill or payment, type: text, required: true}
+      - {name: amount, label: amount, description: "in the functional currency: positive for bills and voided payments, negative for payments, prepayments and credits", type: money, required: true}
+      - {name: original, label: original, description: the amount in the document currency (FIN-FX-007), type: money, required: true}
+      - {name: kind, label: kind, description: "opening, bill, credit, payment (voids included), apply or revaluation", type: text, required: true}
       - {name: source, label: source, description: the document that wrote the entry, type: text, required: true}
       - {name: bill_date, label: bill date, description: the item's document date, type: date, required: true}
       - {name: due, label: due, description: the item's due date, type: date, required: true}

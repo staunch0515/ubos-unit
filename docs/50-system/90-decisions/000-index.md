@@ -165,11 +165,11 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); those of DEC-127 … DEC-14
 
 ### DEC-150 — The finance Buk, part 10d: bank reconciliation (PH-2 step 10)
 - **Date:** 2026-11-01 · **Status:** Accepted
-- **Context:** Part 10d of step 10 (DEC-146) builds the bank (FIN-CB) and SCN-505. It ties out the reconciliation of the operating account 1010 for January against FIN-EXP-10, whose statement is `bank-statement-2026-01.csv`.
+- **Context:** Part 10d of step 10 (DEC-146) builds the bank (FIN-BK) and SCN-505. It ties out the reconciliation of the operating account 1010 for January against FIN-EXP-10, whose statement is `bank-statement-2026-01.csv`.
 - **Decision:**
-  1. **Import.** `BankStatementLine` is a ledger with `ledger.statement` (STD-KIND-030). A statement is imported with the kernel's `ingest_statement`, so a second import of the same statement appends nothing (FIN-CB-002). The statement's opening and closing balances are members of the reconciliation.
+  1. **Import.** `BankStatementLine` is a ledger with `ledger.statement` (STD-KIND-030). A statement is imported with the kernel's `ingest_statement`, so a second import of the same statement appends nothing (FIN-BK-003). The statement's opening and closing balances are members of the reconciliation.
   2. **Reconciliation.** `BankReconciliation` belongs to one bank account and one statement. It holds the period, the statement balances, the items outstanding at the previous reconciliation, and a date window.
-     - `record(line, number, account, description)` posts a bank-originated item (interest, fees) from a statement line as an entry of source `bank` (FIN-CB-004).
+     - `record(line, number, account, description)` posts a bank-originated item (interest, fees) from a statement line as an entry of source `bank` (FIN-BK-005).
      - `reconcile()` matches each statement line, in date order, to a posted entry on the bank account with the same amount within the window; failing that, to an item outstanding before.
      - It reports the statement's balances and activity, the outstanding entries, the adjusted bank balance, the book balance from `gl-balance` and the difference. It keeps the matches, and the state becomes `reconciled` when nothing is left.
   3. **Document level, not kernel matching.** The kernel's matching (STD-KIND-027, -028) pairs ledger entries and records them by entry id, and it is an adapter operation. The reconciliation needs documents and their dates, and logic cannot read an entry by its id. The Buk therefore matches statement lines with posted entries. Kernel matching remains available for line-level matching of subledgers, and a logic instruction for it is a candidate for a later release of BPA.
@@ -190,7 +190,7 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); those of DEC-127 … DEC-14
   - the savings account's statement (no sample statement): not needed;
   - automatic rules for recurring bank items, reconciliation sign-off with approval, and statement file formats (BAI2, camt): step 12 (bank file formats) and 10g for the rules;
   - a logic instruction for kernel matching: the next BPA release candidate, with the two items of DEC-147.
-- **Affects:** DEC-146, DEC-147, FIN-CB-001…011, FIN-TX-006, STD-KIND-027, STD-KIND-028, STD-KIND-030
+- **Affects:** DEC-146, DEC-147, FIN-BK-001…011, FIN-TX-006, STD-KIND-027, STD-KIND-028, STD-KIND-030
 
 ### DEC-151 — The finance Buk, part 10e: fixed assets (PH-2 step 10)
 - **Date:** 2026-11-01 · **Status:** Accepted
@@ -315,11 +315,71 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); those of DEC-127 … DEC-14
   - `tests/sample-scenarios.yaml` holds the flows of the table that the tie-out does not show.
   - All 47 finance tests pass, with script coverage 1.0.
 - **Open, assigned:**
-  - posted documents frozen against edits by a lifecycle with read-only fields (STD-CLS-004), in place of the `state` field: 10g-2;
+  - posted documents frozen against edits: 10g-2 (moved to the next BPA release candidate by DEC-154);
   - a registered error code for a script's business refusal (now `LOGIC.TYPE_ERROR`), with the closed period of DEC-151: the next BPA release candidate;
   - the conformance vector of the simulation fix: the next BPA release candidate;
   - SCN-504 A1 (duplicate bills) and bill approval: 10g-2 with FIN-AP-005, -006;
   - SCN-505 automatic matching rules and undoing a match: 10g-2;
   - SCN-506 drill-down, SCN-508 impact report on reports, SCN-509 expense-coding rules and the chart review of SCN-501: steps 14 and 15 (workbench and reports).
 - **Affects:** DEC-146…152, FIN-PC-004, FIN-PC-005, FIN-GL-010, SCN-501…510, STD-LGS-044, STD-KIND-025
+
+### DEC-154 — The finance Buk, part 10g-2: the open items of step 10 (PH-2 step 10)
+- **Date:** 2026-11-02 · **Status:** Accepted
+- **Context:** Part 10g-2 of step 10 takes the open items that DEC-147…153 assigned to 10g: payables, receivables, fixed assets, foreign-currency payables, the bank, the freeze of posted documents and the review of the FIN-AP and FIN-TX-001 gaps. The owner confirmed it with the default suggestions.
+- **Decision:**
+  1. **Payables.**
+     - Duplicate bills (FIN-AP-005, SCN-504 A1). `Bill` gains the key `(vendor, vendor_invoice)`, so the kernel refuses a second bill with `MODEL.KEY_CONFLICT`. A bill matching another bill's vendor, amount and date under a different number posts only with a `duplicate_reason`.
+     - Bill approval (FIN-AP-006). `Bill.amount` is the total as received. `post` refuses lines that do not add up to it, and the sheet requires a controller's approval of bills over 10,000.00. An unapproved bill has no open item, so it cannot be paid.
+     - Vendor credits and prepayments (FIN-AP-008). A credit is a `Bill` of kind `credit`, applied to a bill or left open. A prepayment is a payment of a run marked `prepayment`. `Payables.apply` applies either to an open bill.
+     - The payment proposal (FIN-AP-010). `Payables.propose_run` creates a draft run of the posted, unheld items due by a date.
+     - Run approval (FIN-AP-011). The sheet requires a controller's approval of every draft run; maker–checker excludes its preparer.
+     - Voids (FIN-AP-014). `PaymentRun.void` reverses one payment by an entry dated in an open period. The item opens again and the original payment stays.
+  2. **Receivables.**
+     - Write-off and recovery (FIN-AR-012). `WriteOff` posts against the allowance with a controller's approval and marks the invoice written off. A recovery reinstates the item before it is received.
+     - Allowance (FIN-AR-011). `Receivables.allowance` applies the loss rates by bucket to the aging and compares the result with the allowance account. The adjustment is posted by a journal entry.
+     - Credit limit (FIN-AR-013). An invoice over the customer's credit limit warns, or, when the customer is set to `approve`, needs a `credit_override` that a controller approves.
+     - Recurring invoices (FIN-AR-014). `RecurringInvoice.run` creates and posts the invoice of a period once.
+  3. **Fixed assets.**
+     - The 150% declining balance (`DB150`, FIN-FA-003).
+     - The mid-month and next-month conventions (FIN-FA-004). Mid-month counts in half-months.
+     - Changes in estimates (FIN-FA-006). `FixedAsset.change_estimate` keeps the accumulated depreciation before the change and spreads the net book value less the new salvage straight-line over the remaining months. Earlier months are not restated, and a later change starts from the earlier one.
+  4. **Foreign-currency payables** (FIN-FX-003…005, as DEC-152 for receivables).
+     - Bills convert at the rate of their date and keep both amounts on lines and open items.
+     - Payment runs convert at the run date and post the realized gain or loss against the carrying amount. They keep, per payment, the functional amount and the carrying amount, which a void reverses.
+     - `Payables.revalue` posts FXP-<yymm> and reverses on the next day.
+     - The close checklist also requires the payables revaluation.
+  5. **Bank.**
+     - Matching rules with a rule, a confidence and a reason (FIN-BK-004): first the bank reference equal to an entry's number, then the amount within the date window, then the items outstanding before.
+     - Bank rules pre-fill the account of an entry recorded from a statement line (FIN-BK-005).
+     - Manual matches and their undoing (FIN-BK-005, -006). They are records of the append-only ledger `BankMatch`, so the history keeps both. The latest record of a line is in force, and a manual match may name several entries, or several lines one entry.
+     - Completion (FIN-BK-007, -008). `sign_off` is refused while a difference remains. A second person approves it (a sheet decision, maker–checker). The result is kept as signed, and the reconciliation no longer changes.
+     - Carry-forward (FIN-BK-009). Without given prior items, the outstanding items of the account's previous reconciliation are carried forward. Items older than `stale_days` (default 90) are flagged.
+     - Transfers (FIN-BK-002). `BankTransfer` posts between two bank accounts.
+     - Correction: DEC-150 and the Buk cited the bank requirements as FIN-CB-*, which do not exist. The citations now read FIN-BK-001…011.
+  6. **The freeze of posted documents goes to the next release candidate.**
+     - A sheet's `read_only` would freeze them, but the kernel evaluates it on the version a change writes. A rule matching `posted` would therefore refuse the posting itself.
+     - The release candidate after rc12 clarifies that `read_only` matches the version before the change (STD-LGS-011). The Buk then adds the rule for `JournalEntry`, `Invoice`, `Receipt`, `Bill` and `PaymentRun`.
+     - Until then, posted ledger lines are immutable (`LEDG.IMMUTABLE_ENTRY`, DEC-153), and a second posting posts nothing.
+  7. **Review of the remaining FIN-AP and FIN-TX-001 gaps.** These are Musts that need new structures, so they go to a part 10g-3:
+     - FIN-TX-001: jurisdictions combined into codes, with dated rates read at the invoice date and the report by state and local parts;
+     - FIN-AP-002: TIN, W-9 and backup-withholding warning, with masking by permission;
+     - FIN-AP-003: second-person control of bank-detail changes, holding payments;
+     - FIN-AP-020: 1099 boxes, per-line overrides and the exclusion of card payments;
+     - FIN-AP-021 acceptance 2: a test year with another threshold;
+     - FIN-AP-022: the review report.
+
+     The PDF copies and e-filing export of FIN-AP-022 and the payment files of FIN-AP-013 and FIN-BK-011 go to step 12, with the statement formats and import check of FIN-BK-003 (DEC-150). FIN-AP-023, FIN-FX-006 and FIN-BK-010 (Should) also go to 10g-3. 10g-3 starts with a table of every FIN Must against its port and test, since the reviews of 10b…10d missed several gaps.
+- **Consequences:**
+  - Sixteen new tests pass in memory and on PostgreSQL 16:
+    - payables: duplicates, approval before payment and the run's second person, credit and prepayment, the proposal of FIN-AP-010 (P-7781 and CPL-1225, 32,300.00), and the void of DC-2025-12;
+    - receivables: allowance 1,987.35 against 4,000.00, write-off and recovery, credit limit in both modes, and the recurring invoice;
+    - fixed assets: FA-001 in February at 1,489.36, and DB150 with mid-month and SL with next-month;
+    - FX: a euro bill from 10,850.00 to a payment with a gain of 50.00, and its void;
+    - bank: rules and matches, undo, refused completion and sign-off, carry-forward, and transfer.
+  - The company run and every tie-out pass unchanged, now with bill and payment-run approvals.
+  - All 63 finance tests pass, with script coverage 1.0. No kernel code was added.
+- **Open, assigned:**
+  - the gaps of decision 7: 10g-3;
+  - `read_only` on the version before a change, the business-refusal code (DEC-153) and the simulation vector (DEC-153): the next BPA release candidate.
+- **Affects:** DEC-147…153, FIN-AP-005, -006, -008, -010, -011, -014, FIN-AR-011…014, FIN-FA-003, -004, -006, FIN-FX-003…005, FIN-BK-001…011, STD-LGS-011
 

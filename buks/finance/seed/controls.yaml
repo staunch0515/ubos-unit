@@ -8,13 +8,28 @@ changes:
     body:
       name: ubos.finance.controls
       layer: vendor
-      description: approval of manual, imported and opening entries over 10,000.00 by a controller (SCN-501); no manual posting to control accounts without a logged exception; reopening a closed period needs a controller's approval
+      description: approval of manual, imported and opening entries over 10,000.00 by a controller (SCN-501), of bills over 10,000.00 (FIN-AP-006) and of every payment run by a controller other than its preparer (FIN-AP-011), of write-offs (FIN-AR-012) and of invoices over a credit limit (FIN-AR-013); the sign-off of a bank reconciliation by a second person (FIN-BK-008); no manual posting to control accounts without a logged exception; reopening a closed period needs a controller's approval
       source: |
         JournalEntry[this.source in ["manual", "import", "opening"] and amount(this.total) > 10000 and this.reverses is null] {
           approvals: {count: 1, roles: ["controller"]};
         }
         JournalEntry {
           decisions: [{name: "control-accounts", when: "this.source == \"manual\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)", outcome: "deny", message: "a manual entry posts to a control account only with a logged exception (FIN-GL-005)"}];
+        }
+        Bill[this.state == "draft" and amount(this.amount) > 10000] {
+          approvals: {count: 1, roles: ["controller"]};
+        }
+        PaymentRun[this.state == "draft"] {
+          approvals: {count: 1, roles: ["controller"]};
+        }
+        WriteOff[this.state == "draft"] {
+          approvals: {count: 1, roles: ["controller"]};
+        }
+        Invoice[this.state == "draft" and this.credit_override is not null] {
+          approvals: {count: 1, roles: ["controller"]};
+        }
+        BankReconciliation {
+          decisions: [{name: "sign-off", when: "params.confirm == true", outcome: "require", steps: ["approval"]}];
         }
         FiscalPeriod:closed {
           approvals: {count: 1, roles: ["controller"]};

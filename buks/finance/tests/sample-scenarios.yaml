@@ -5176,6 +5176,7 @@
          "control_account": "ubos://acme/GlAccount/1200",
          "functional_currency": "USD",
          "rate_type": "spot",
+         "allowance_account": "ubos://acme/GlAccount/1210",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }
@@ -5505,7 +5506,11 @@
         "slug": "payables",
         "body": {
          "name": "Payables",
-         "control_account": "ubos://acme/GlAccount/2000"
+         "control_account": "ubos://acme/GlAccount/2000",
+         "functional_currency": "USD",
+         "rate_type": "spot",
+         "realized_account": "ubos://acme/GlAccount/7200",
+         "unrealized_account": "ubos://acme/GlAccount/7210"
         }
        },
        {
@@ -5520,6 +5525,10 @@
          "vendor": "V100",
          "document": "P-7781",
          "amount": {
+          "amount": "28300.00",
+          "currency": "USD"
+         },
+         "original": {
           "amount": "28300.00",
           "currency": "USD"
          },
@@ -5544,6 +5553,10 @@
           "amount": "9000.00",
           "currency": "USD"
          },
+         "original": {
+          "amount": "9000.00",
+          "currency": "USD"
+         },
          "kind": "opening",
          "source": "opening",
          "bill_date": "2025-12-31",
@@ -5562,6 +5575,10 @@
          "vendor": "V600",
          "document": "CPL-1225",
          "amount": {
+          "amount": "4000.00",
+          "currency": "USD"
+         },
+         "original": {
           "amount": "4000.00",
           "currency": "USD"
          },
@@ -5751,6 +5768,10 @@
          "vendor_invoice": "MP-2026-01",
          "vendor": "ubos://acme/Vendor/v300",
          "bill_date": "2026-01-02",
+         "amount": {
+          "amount": "8500.00",
+          "currency": "USD"
+         },
          "description": "January rent",
          "lines": [
           {
@@ -5776,7 +5797,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "5998bed8-eaf8-8de7-8697-31d13e18e8b0"
       }
      },
      "expect": {
@@ -5834,7 +5856,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "95a8b886-07ec-894b-855c-f0796373e97d"
       }
      },
      "expect": {
@@ -5899,7 +5922,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "dea212b8-a580-8845-8d9f-c45ac58a1338"
       }
      },
      "expect": {
@@ -5961,8 +5985,10 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
-      }
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "2b4037f9-4f9c-856d-8772-8f337b56fc11"
+      },
+      "defer": true
      },
      "expect": {
       "match": "subset",
@@ -5970,6 +5996,22 @@
        "result": {
         "posted": true
        }
+      }
+     }
+    },
+    {
+     "op": "approve",
+     "input": {
+      "pending_change_id": "2b4037f9-4f9c-856d-8772-8f337b56fc11",
+      "approver": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2",
+      "roles": [
+       "controller"
+      ]
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "state": "applied"
       }
      }
     },
@@ -5991,6 +6033,10 @@
          "vendor_invoice": "P-7902",
          "vendor": "ubos://acme/Vendor/v100",
          "bill_date": "2026-01-09",
+         "amount": {
+          "amount": "22000.00",
+          "currency": "USD"
+         },
          "description": "Components purchased",
          "lines": [
           {
@@ -6016,8 +6062,10 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
-      }
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "5a97d37a-8219-8a9a-8fac-9c7128811a06"
+      },
+      "defer": true
      },
      "expect": {
       "match": "subset",
@@ -6025,6 +6073,22 @@
        "result": {
         "posted": true
        }
+      }
+     }
+    },
+    {
+     "op": "approve",
+     "input": {
+      "pending_change_id": "5a97d37a-8219-8a9a-8fac-9c7128811a06",
+      "approver": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2",
+      "roles": [
+       "controller"
+      ]
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "state": "applied"
       }
      }
     },
@@ -6073,7 +6137,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "deb86829-6692-8305-83fa-a6dd5d00a3e9"
       }
      },
      "expect": {
@@ -6129,7 +6194,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "d86a5b42-9b5e-84b1-88fb-6c09b06050db"
       }
      },
      "expect": {
@@ -6185,7 +6251,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "fd26afa1-9be2-851f-8c27-aaf900e9cca8"
       }
      },
      "expect": {
@@ -6241,7 +6308,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "1af9403a-2eb0-84ea-8d13-18360423262b"
       }
      },
      "expect": {
@@ -6268,6 +6336,10 @@
          "vendor_invoice": "TS-5520",
          "vendor": "ubos://acme/Vendor/v700",
          "bill_date": "2026-01-15",
+         "amount": {
+          "amount": "12000.00",
+          "currency": "USD"
+         },
          "description": "Application server, capitalized as FA-003",
          "lines": [
           {
@@ -6293,8 +6365,10 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
-      }
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "7954fb2f-245b-83cd-8c4e-6ef4d5598a32"
+      },
+      "defer": true
      },
      "expect": {
       "match": "subset",
@@ -6302,6 +6376,22 @@
        "result": {
         "posted": true
        }
+      }
+     }
+    },
+    {
+     "op": "approve",
+     "input": {
+      "pending_change_id": "7954fb2f-245b-83cd-8c4e-6ef4d5598a32",
+      "approver": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2",
+      "roles": [
+       "controller"
+      ]
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "state": "applied"
       }
      }
     },
@@ -6447,7 +6537,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "72376ef1-d549-89a3-86ac-f0c2b233d1cf"
       }
      },
      "expect": {
@@ -6477,6 +6568,10 @@
          "vendor_invoice": "DC-2026-01",
          "vendor": "ubos://acme/Vendor/v200",
          "bill_date": "2026-01-20",
+         "amount": {
+          "amount": "7500.00",
+          "currency": "USD"
+         },
          "description": "January consulting",
          "lines": [
           {
@@ -6502,7 +6597,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "94554960-e578-8de9-8818-711cabda3c32"
       }
      },
      "expect": {
@@ -6529,6 +6625,10 @@
          "vendor_invoice": "CS-0126",
          "vendor": "ubos://acme/Vendor/v400",
          "bill_date": "2026-01-20",
+         "amount": {
+          "amount": "1200.00",
+          "currency": "USD"
+         },
          "description": "Software subscription January",
          "lines": [
           {
@@ -6554,7 +6654,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "c18c322a-6c41-8bf1-8241-aeadcbc1cc1d"
       }
      },
      "expect": {
@@ -6640,6 +6741,10 @@
          "vendor_invoice": "JR-014",
          "vendor": "ubos://acme/Vendor/v800",
          "bill_date": "2026-01-21",
+         "amount": {
+          "amount": "1500.00",
+          "currency": "USD"
+         },
          "description": "Drafting services",
          "lines": [
           {
@@ -6665,7 +6770,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "9f7b7369-6611-8a08-89ac-d4e814d3bd51"
       }
      },
      "expect": {
@@ -6735,8 +6841,10 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
-      }
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "eefabec3-adfe-833d-8cb9-0e98ef408c42"
+      },
+      "defer": true
      },
      "expect": {
       "match": "subset",
@@ -6744,6 +6852,22 @@
        "result": {
         "posted": true
        }
+      }
+     }
+    },
+    {
+     "op": "approve",
+     "input": {
+      "pending_change_id": "eefabec3-adfe-833d-8cb9-0e98ef408c42",
+      "approver": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2",
+      "roles": [
+       "controller"
+      ]
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "state": "applied"
       }
      }
     },
@@ -6793,7 +6917,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "25f3f5b9-bacd-85cc-884a-c6bc9cc86c45"
       }
      },
      "expect": {
@@ -6823,6 +6948,10 @@
          "vendor_invoice": "CPL-0126",
          "vendor": "ubos://acme/Vendor/v600",
          "bill_date": "2026-01-28",
+         "amount": {
+          "amount": "3600.00",
+          "currency": "USD"
+         },
          "description": "Electricity January",
          "lines": [
           {
@@ -6848,7 +6977,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "7fb05e35-1dcd-8095-883f-7b55ea4ea9b2"
       }
      },
      "expect": {
@@ -8861,6 +8991,7 @@
          "control_account": "ubos://acme/GlAccount/1200",
          "functional_currency": "USD",
          "rate_type": "spot",
+         "allowance_account": "ubos://acme/GlAccount/1210",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }
@@ -9190,7 +9321,11 @@
         "slug": "payables",
         "body": {
          "name": "Payables",
-         "control_account": "ubos://acme/GlAccount/2000"
+         "control_account": "ubos://acme/GlAccount/2000",
+         "functional_currency": "USD",
+         "rate_type": "spot",
+         "realized_account": "ubos://acme/GlAccount/7200",
+         "unrealized_account": "ubos://acme/GlAccount/7210"
         }
        },
        {
@@ -9205,6 +9340,10 @@
          "vendor": "V100",
          "document": "P-7781",
          "amount": {
+          "amount": "28300.00",
+          "currency": "USD"
+         },
+         "original": {
           "amount": "28300.00",
           "currency": "USD"
          },
@@ -9229,6 +9368,10 @@
           "amount": "9000.00",
           "currency": "USD"
          },
+         "original": {
+          "amount": "9000.00",
+          "currency": "USD"
+         },
          "kind": "opening",
          "source": "opening",
          "bill_date": "2025-12-31",
@@ -9247,6 +9390,10 @@
          "vendor": "V600",
          "document": "CPL-1225",
          "amount": {
+          "amount": "4000.00",
+          "currency": "USD"
+         },
+         "original": {
           "amount": "4000.00",
           "currency": "USD"
          },
@@ -9436,6 +9583,10 @@
          "vendor_invoice": "MP-2026-01",
          "vendor": "ubos://acme/Vendor/v300",
          "bill_date": "2026-01-02",
+         "amount": {
+          "amount": "8500.00",
+          "currency": "USD"
+         },
          "description": "January rent",
          "lines": [
           {
@@ -9461,7 +9612,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "5998bed8-eaf8-8de7-8697-31d13e18e8b0"
       }
      },
      "expect": {
@@ -9519,7 +9671,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "95a8b886-07ec-894b-855c-f0796373e97d"
       }
      },
      "expect": {
@@ -9584,7 +9737,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "dea212b8-a580-8845-8d9f-c45ac58a1338"
       }
      },
      "expect": {
@@ -9646,8 +9800,10 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
-      }
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "2b4037f9-4f9c-856d-8772-8f337b56fc11"
+      },
+      "defer": true
      },
      "expect": {
       "match": "subset",
@@ -9655,6 +9811,22 @@
        "result": {
         "posted": true
        }
+      }
+     }
+    },
+    {
+     "op": "approve",
+     "input": {
+      "pending_change_id": "2b4037f9-4f9c-856d-8772-8f337b56fc11",
+      "approver": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2",
+      "roles": [
+       "controller"
+      ]
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "state": "applied"
       }
      }
     },
@@ -9676,6 +9848,10 @@
          "vendor_invoice": "P-7902",
          "vendor": "ubos://acme/Vendor/v100",
          "bill_date": "2026-01-09",
+         "amount": {
+          "amount": "22000.00",
+          "currency": "USD"
+         },
          "description": "Components purchased",
          "lines": [
           {
@@ -9701,8 +9877,10 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
-      }
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "5a97d37a-8219-8a9a-8fac-9c7128811a06"
+      },
+      "defer": true
      },
      "expect": {
       "match": "subset",
@@ -9710,6 +9888,22 @@
        "result": {
         "posted": true
        }
+      }
+     }
+    },
+    {
+     "op": "approve",
+     "input": {
+      "pending_change_id": "5a97d37a-8219-8a9a-8fac-9c7128811a06",
+      "approver": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2",
+      "roles": [
+       "controller"
+      ]
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "state": "applied"
       }
      }
     },
@@ -9758,7 +9952,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "deb86829-6692-8305-83fa-a6dd5d00a3e9"
       }
      },
      "expect": {
@@ -9814,7 +10009,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "d86a5b42-9b5e-84b1-88fb-6c09b06050db"
       }
      },
      "expect": {
@@ -9870,7 +10066,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "fd26afa1-9be2-851f-8c27-aaf900e9cca8"
       }
      },
      "expect": {
@@ -9926,7 +10123,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "1af9403a-2eb0-84ea-8d13-18360423262b"
       }
      },
      "expect": {
@@ -9953,6 +10151,10 @@
          "vendor_invoice": "TS-5520",
          "vendor": "ubos://acme/Vendor/v700",
          "bill_date": "2026-01-15",
+         "amount": {
+          "amount": "12000.00",
+          "currency": "USD"
+         },
          "description": "Application server, capitalized as FA-003",
          "lines": [
           {
@@ -9978,8 +10180,10 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
-      }
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "7954fb2f-245b-83cd-8c4e-6ef4d5598a32"
+      },
+      "defer": true
      },
      "expect": {
       "match": "subset",
@@ -9987,6 +10191,22 @@
        "result": {
         "posted": true
        }
+      }
+     }
+    },
+    {
+     "op": "approve",
+     "input": {
+      "pending_change_id": "7954fb2f-245b-83cd-8c4e-6ef4d5598a32",
+      "approver": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2",
+      "roles": [
+       "controller"
+      ]
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "state": "applied"
       }
      }
     },
@@ -10132,7 +10352,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "72376ef1-d549-89a3-86ac-f0c2b233d1cf"
       }
      },
      "expect": {
@@ -10162,6 +10383,10 @@
          "vendor_invoice": "DC-2026-01",
          "vendor": "ubos://acme/Vendor/v200",
          "bill_date": "2026-01-20",
+         "amount": {
+          "amount": "7500.00",
+          "currency": "USD"
+         },
          "description": "January consulting",
          "lines": [
           {
@@ -10187,7 +10412,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "94554960-e578-8de9-8818-711cabda3c32"
       }
      },
      "expect": {
@@ -10214,6 +10440,10 @@
          "vendor_invoice": "CS-0126",
          "vendor": "ubos://acme/Vendor/v400",
          "bill_date": "2026-01-20",
+         "amount": {
+          "amount": "1200.00",
+          "currency": "USD"
+         },
          "description": "Software subscription January",
          "lines": [
           {
@@ -10239,7 +10469,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "c18c322a-6c41-8bf1-8241-aeadcbc1cc1d"
       }
      },
      "expect": {
@@ -10325,6 +10556,10 @@
          "vendor_invoice": "JR-014",
          "vendor": "ubos://acme/Vendor/v800",
          "bill_date": "2026-01-21",
+         "amount": {
+          "amount": "1500.00",
+          "currency": "USD"
+         },
          "description": "Drafting services",
          "lines": [
           {
@@ -10350,7 +10585,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "9f7b7369-6611-8a08-89ac-d4e814d3bd51"
       }
      },
      "expect": {
@@ -10420,8 +10656,10 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
-      }
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "eefabec3-adfe-833d-8cb9-0e98ef408c42"
+      },
+      "defer": true
      },
      "expect": {
       "match": "subset",
@@ -10429,6 +10667,22 @@
        "result": {
         "posted": true
        }
+      }
+     }
+    },
+    {
+     "op": "approve",
+     "input": {
+      "pending_change_id": "eefabec3-adfe-833d-8cb9-0e98ef408c42",
+      "approver": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2",
+      "roles": [
+       "controller"
+      ]
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "state": "applied"
       }
      }
     },
@@ -10478,7 +10732,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "25f3f5b9-bacd-85cc-884a-c6bc9cc86c45"
       }
      },
      "expect": {
@@ -10508,6 +10763,10 @@
          "vendor_invoice": "CPL-0126",
          "vendor": "ubos://acme/Vendor/v600",
          "bill_date": "2026-01-28",
+         "amount": {
+          "amount": "3600.00",
+          "currency": "USD"
+         },
          "description": "Electricity January",
          "lines": [
           {
@@ -10533,7 +10792,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "7fb05e35-1dcd-8095-883f-7b55ea4ea9b2"
       }
      },
      "expect": {
@@ -10949,7 +11209,7 @@
          "$ref": "sheet-500000/version_hash"
         },
         "body": {
-         "source": "JournalEntry[this.source in [\"manual\", \"import\", \"opening\"] and amount(this.total) > 5000 and this.reverses is null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nJournalEntry {\n  decisions: [{name: \"control-accounts\", when: \"this.source == \\\"manual\\\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)\", outcome: \"deny\", message: \"a manual entry posts to a control account only with a logged exception (FIN-GL-005)\"}];\n}\nFiscalPeriod:closed {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice {\n  decisions: [{name: \"exemption-certificate\", when: \"any(this.lines, l -> ref(l.tax_code).certificate_required == true) and (ref(this.customer).certificate_valid_to is null or ref(this.customer).certificate_valid_to < this.invoice_date)\", outcome: \"deny\", message: \"an exempt sale needs the customer's valid exemption or resale certificate (FIN-TX-004)\"}];\n}\n"
+         "source": "JournalEntry[this.source in [\"manual\", \"import\", \"opening\"] and amount(this.total) > 5000 and this.reverses is null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nJournalEntry {\n  decisions: [{name: \"control-accounts\", when: \"this.source == \\\"manual\\\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)\", outcome: \"deny\", message: \"a manual entry posts to a control account only with a logged exception (FIN-GL-005)\"}];\n}\nBill[this.state == \"draft\" and amount(this.amount) > 10000] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nPaymentRun[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nWriteOff[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice[this.state == \"draft\" and this.credit_override is not null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nBankReconciliation {\n  decisions: [{name: \"sign-off\", when: \"params.confirm == true\", outcome: \"require\", steps: [\"approval\"]}];\n}\nFiscalPeriod:closed {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice {\n  decisions: [{name: \"exemption-certificate\", when: \"any(this.lines, l -> ref(l.tax_code).certificate_required == true) and (ref(this.customer).certificate_valid_to is null or ref(this.customer).certificate_valid_to < this.invoice_date)\", outcome: \"deny\", message: \"an exempt sale needs the customer's valid exemption or resale certificate (FIN-TX-004)\"}];\n}\n"
         },
         "valid": {
          "kind": "supersede_from",
@@ -11011,7 +11271,7 @@
          "$ref": "sheet-100000/version_hash"
         },
         "body": {
-         "source": "JournalEntry[this.source in [\"manual\", \"import\", \"opening\"] and amount(this.total) > 1000 and this.reverses is null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nJournalEntry {\n  decisions: [{name: \"control-accounts\", when: \"this.source == \\\"manual\\\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)\", outcome: \"deny\", message: \"a manual entry posts to a control account only with a logged exception (FIN-GL-005)\"}];\n}\nFiscalPeriod:closed {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice {\n  decisions: [{name: \"exemption-certificate\", when: \"any(this.lines, l -> ref(l.tax_code).certificate_required == true) and (ref(this.customer).certificate_valid_to is null or ref(this.customer).certificate_valid_to < this.invoice_date)\", outcome: \"deny\", message: \"an exempt sale needs the customer's valid exemption or resale certificate (FIN-TX-004)\"}];\n}\n"
+         "source": "JournalEntry[this.source in [\"manual\", \"import\", \"opening\"] and amount(this.total) > 1000 and this.reverses is null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nJournalEntry {\n  decisions: [{name: \"control-accounts\", when: \"this.source == \\\"manual\\\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)\", outcome: \"deny\", message: \"a manual entry posts to a control account only with a logged exception (FIN-GL-005)\"}];\n}\nBill[this.state == \"draft\" and amount(this.amount) > 10000] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nPaymentRun[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nWriteOff[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice[this.state == \"draft\" and this.credit_override is not null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nBankReconciliation {\n  decisions: [{name: \"sign-off\", when: \"params.confirm == true\", outcome: \"require\", steps: [\"approval\"]}];\n}\nFiscalPeriod:closed {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice {\n  decisions: [{name: \"exemption-certificate\", when: \"any(this.lines, l -> ref(l.tax_code).certificate_required == true) and (ref(this.customer).certificate_valid_to is null or ref(this.customer).certificate_valid_to < this.invoice_date)\", outcome: \"deny\", message: \"an exempt sale needs the customer's valid exemption or resale certificate (FIN-TX-004)\"}];\n}\n"
         },
         "valid": {
          "kind": "supersede_from",
@@ -12388,6 +12648,7 @@
          "control_account": "ubos://acme/GlAccount/1200",
          "functional_currency": "USD",
          "rate_type": "spot",
+         "allowance_account": "ubos://acme/GlAccount/1210",
          "realized_account": "ubos://acme/GlAccount/7200",
          "unrealized_account": "ubos://acme/GlAccount/7210"
         }
@@ -12717,7 +12978,11 @@
         "slug": "payables",
         "body": {
          "name": "Payables",
-         "control_account": "ubos://acme/GlAccount/2000"
+         "control_account": "ubos://acme/GlAccount/2000",
+         "functional_currency": "USD",
+         "rate_type": "spot",
+         "realized_account": "ubos://acme/GlAccount/7200",
+         "unrealized_account": "ubos://acme/GlAccount/7210"
         }
        },
        {
@@ -12732,6 +12997,10 @@
          "vendor": "V100",
          "document": "P-7781",
          "amount": {
+          "amount": "28300.00",
+          "currency": "USD"
+         },
+         "original": {
           "amount": "28300.00",
           "currency": "USD"
          },
@@ -12756,6 +13025,10 @@
           "amount": "9000.00",
           "currency": "USD"
          },
+         "original": {
+          "amount": "9000.00",
+          "currency": "USD"
+         },
          "kind": "opening",
          "source": "opening",
          "bill_date": "2025-12-31",
@@ -12774,6 +13047,10 @@
          "vendor": "V600",
          "document": "CPL-1225",
          "amount": {
+          "amount": "4000.00",
+          "currency": "USD"
+         },
+         "original": {
           "amount": "4000.00",
           "currency": "USD"
          },
@@ -12963,6 +13240,10 @@
          "vendor_invoice": "MP-2026-01",
          "vendor": "ubos://acme/Vendor/v300",
          "bill_date": "2026-01-02",
+         "amount": {
+          "amount": "8500.00",
+          "currency": "USD"
+         },
          "description": "January rent",
          "lines": [
           {
@@ -12988,7 +13269,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "5998bed8-eaf8-8de7-8697-31d13e18e8b0"
       }
      },
      "expect": {
@@ -13046,7 +13328,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "95a8b886-07ec-894b-855c-f0796373e97d"
       }
      },
      "expect": {
@@ -13111,7 +13394,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "dea212b8-a580-8845-8d9f-c45ac58a1338"
       }
      },
      "expect": {
@@ -13173,8 +13457,10 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
-      }
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "2b4037f9-4f9c-856d-8772-8f337b56fc11"
+      },
+      "defer": true
      },
      "expect": {
       "match": "subset",
@@ -13182,6 +13468,22 @@
        "result": {
         "posted": true
        }
+      }
+     }
+    },
+    {
+     "op": "approve",
+     "input": {
+      "pending_change_id": "2b4037f9-4f9c-856d-8772-8f337b56fc11",
+      "approver": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2",
+      "roles": [
+       "controller"
+      ]
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "state": "applied"
       }
      }
     },
@@ -13203,6 +13505,10 @@
          "vendor_invoice": "P-7902",
          "vendor": "ubos://acme/Vendor/v100",
          "bill_date": "2026-01-09",
+         "amount": {
+          "amount": "22000.00",
+          "currency": "USD"
+         },
          "description": "Components purchased",
          "lines": [
           {
@@ -13228,8 +13534,10 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
-      }
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "5a97d37a-8219-8a9a-8fac-9c7128811a06"
+      },
+      "defer": true
      },
      "expect": {
       "match": "subset",
@@ -13237,6 +13545,22 @@
        "result": {
         "posted": true
        }
+      }
+     }
+    },
+    {
+     "op": "approve",
+     "input": {
+      "pending_change_id": "5a97d37a-8219-8a9a-8fac-9c7128811a06",
+      "approver": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2",
+      "roles": [
+       "controller"
+      ]
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "state": "applied"
       }
      }
     },
@@ -13285,7 +13609,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "deb86829-6692-8305-83fa-a6dd5d00a3e9"
       }
      },
      "expect": {
@@ -13341,7 +13666,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "d86a5b42-9b5e-84b1-88fb-6c09b06050db"
       }
      },
      "expect": {
@@ -13397,7 +13723,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "fd26afa1-9be2-851f-8c27-aaf900e9cca8"
       }
      },
      "expect": {
@@ -13453,7 +13780,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "1af9403a-2eb0-84ea-8d13-18360423262b"
       }
      },
      "expect": {
@@ -13480,6 +13808,10 @@
          "vendor_invoice": "TS-5520",
          "vendor": "ubos://acme/Vendor/v700",
          "bill_date": "2026-01-15",
+         "amount": {
+          "amount": "12000.00",
+          "currency": "USD"
+         },
          "description": "Application server, capitalized as FA-003",
          "lines": [
           {
@@ -13505,8 +13837,10 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
-      }
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "7954fb2f-245b-83cd-8c4e-6ef4d5598a32"
+      },
+      "defer": true
      },
      "expect": {
       "match": "subset",
@@ -13514,6 +13848,22 @@
        "result": {
         "posted": true
        }
+      }
+     }
+    },
+    {
+     "op": "approve",
+     "input": {
+      "pending_change_id": "7954fb2f-245b-83cd-8c4e-6ef4d5598a32",
+      "approver": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2",
+      "roles": [
+       "controller"
+      ]
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "state": "applied"
       }
      }
     },
@@ -13659,7 +14009,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "72376ef1-d549-89a3-86ac-f0c2b233d1cf"
       }
      },
      "expect": {
@@ -13689,6 +14040,10 @@
          "vendor_invoice": "DC-2026-01",
          "vendor": "ubos://acme/Vendor/v200",
          "bill_date": "2026-01-20",
+         "amount": {
+          "amount": "7500.00",
+          "currency": "USD"
+         },
          "description": "January consulting",
          "lines": [
           {
@@ -13714,7 +14069,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "94554960-e578-8de9-8818-711cabda3c32"
       }
      },
      "expect": {
@@ -13741,6 +14097,10 @@
          "vendor_invoice": "CS-0126",
          "vendor": "ubos://acme/Vendor/v400",
          "bill_date": "2026-01-20",
+         "amount": {
+          "amount": "1200.00",
+          "currency": "USD"
+         },
          "description": "Software subscription January",
          "lines": [
           {
@@ -13766,7 +14126,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "c18c322a-6c41-8bf1-8241-aeadcbc1cc1d"
       }
      },
      "expect": {
@@ -13852,6 +14213,10 @@
          "vendor_invoice": "JR-014",
          "vendor": "ubos://acme/Vendor/v800",
          "bill_date": "2026-01-21",
+         "amount": {
+          "amount": "1500.00",
+          "currency": "USD"
+         },
          "description": "Drafting services",
          "lines": [
           {
@@ -13877,7 +14242,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "9f7b7369-6611-8a08-89ac-d4e814d3bd51"
       }
      },
      "expect": {
@@ -13947,8 +14313,10 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
-      }
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "eefabec3-adfe-833d-8cb9-0e98ef408c42"
+      },
+      "defer": true
      },
      "expect": {
       "match": "subset",
@@ -13956,6 +14324,22 @@
        "result": {
         "posted": true
        }
+      }
+     }
+    },
+    {
+     "op": "approve",
+     "input": {
+      "pending_change_id": "eefabec3-adfe-833d-8cb9-0e98ef408c42",
+      "approver": "did:ubos:acme:01900000-0000-7000-8000-0000000000e2",
+      "roles": [
+       "controller"
+      ]
+     },
+     "expect": {
+      "match": "subset",
+      "result": {
+       "state": "applied"
       }
      }
     },
@@ -14005,7 +14389,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "25f3f5b9-bacd-85cc-884a-c6bc9cc86c45"
       }
      },
      "expect": {
@@ -14035,6 +14420,10 @@
          "vendor_invoice": "CPL-0126",
          "vendor": "ubos://acme/Vendor/v600",
          "bill_date": "2026-01-28",
+         "amount": {
+          "amount": "3600.00",
+          "currency": "USD"
+         },
          "description": "Electricity January",
          "lines": [
           {
@@ -14060,7 +14449,8 @@
       "port": "post",
       "params": {},
       "process": {
-       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1"
+       "initiator": "did:ubos:acme:01900000-0000-7000-8000-0000000000e1",
+       "process_id": "7fb05e35-1dcd-8095-883f-7b55ea4ea9b2"
       }
      },
      "expect": {
@@ -14469,7 +14859,7 @@
          "$ref": "january/version_hash"
         },
         "body": {
-         "source": "JournalEntry[this.source in [\"manual\", \"import\", \"opening\"] and amount(this.total) > 5000 and this.reverses is null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nJournalEntry {\n  decisions: [{name: \"control-accounts\", when: \"this.source == \\\"manual\\\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)\", outcome: \"deny\", message: \"a manual entry posts to a control account only with a logged exception (FIN-GL-005)\"}];\n}\nFiscalPeriod:closed {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice {\n  decisions: [{name: \"exemption-certificate\", when: \"any(this.lines, l -> ref(l.tax_code).certificate_required == true) and (ref(this.customer).certificate_valid_to is null or ref(this.customer).certificate_valid_to < this.invoice_date)\", outcome: \"deny\", message: \"an exempt sale needs the customer's valid exemption or resale certificate (FIN-TX-004)\"}];\n}\n"
+         "source": "JournalEntry[this.source in [\"manual\", \"import\", \"opening\"] and amount(this.total) > 5000 and this.reverses is null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nJournalEntry {\n  decisions: [{name: \"control-accounts\", when: \"this.source == \\\"manual\\\" and this.control_exception is null and any(this.lines, z -> ref(z.account).control is not null)\", outcome: \"deny\", message: \"a manual entry posts to a control account only with a logged exception (FIN-GL-005)\"}];\n}\nBill[this.state == \"draft\" and amount(this.amount) > 10000] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nPaymentRun[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nWriteOff[this.state == \"draft\"] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice[this.state == \"draft\" and this.credit_override is not null] {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nBankReconciliation {\n  decisions: [{name: \"sign-off\", when: \"params.confirm == true\", outcome: \"require\", steps: [\"approval\"]}];\n}\nFiscalPeriod:closed {\n  approvals: {count: 1, roles: [\"controller\"]};\n}\nInvoice {\n  decisions: [{name: \"exemption-certificate\", when: \"any(this.lines, l -> ref(l.tax_code).certificate_required == true) and (ref(this.customer).certificate_valid_to is null or ref(this.customer).certificate_valid_to < this.invoice_date)\", outcome: \"deny\", message: \"an exempt sale needs the customer's valid exemption or resale certificate (FIN-TX-004)\"}];\n}\n"
         },
         "valid": {
          "kind": "supersede_from",

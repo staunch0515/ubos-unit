@@ -38,6 +38,12 @@ classes:
       - {name: certificate, label: certificate, description: the exemption or resale certificate number, type: text}
       - {name: certificate_valid_to, label: certificate valid to, description: the last day the certificate is valid, type: date}
       - {name: receivable_account, label: receivable account, description: the receivables control account, type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: credit_limit, label: credit limit, description: the most the customer may owe (FIN-AR-013), type: money}
+      - name: credit_action
+        label: credit action
+        description: "over the limit, warn on posting, or refuse unless the invoice carries a credit override, which a controller approves (FIN-AR-013); warn when absent"
+        type: enum
+        constraints: {allowed_values: [warn, approve]}
   - name: Invoice
     label: invoice
     description: A customer invoice or credit memo; `post` computes tax, posts to the general ledger and records the open item (FIN-AR-003, -004, -006, FIN-TX-003, -005)
@@ -65,6 +71,8 @@ classes:
       - {name: tax, label: tax, description: the tax computed on posting, type: money}
       - {name: total, label: total, description: the total with tax, computed on posting, type: money}
       - {name: functional_total, label: functional total, description: the total in the functional currency, computed on posting (FIN-FX-003), type: money}
+      - {name: credit_override, label: credit override, description: "why an invoice over the customer's credit limit is issued; the sheet ubos.finance.controls requires a controller's approval (FIN-AR-013)", type: text}
+      - {name: written_off_on, label: written off on, description: the date the invoice was written off (FIN-AR-012), type: date}
       - name: state
         label: state
         description: draft until posted; a posted document is not changed (FIN-AR-004)
@@ -119,6 +127,8 @@ classes:
       - {name: control_account, label: control account, description: the receivables control account (FIN-RP-007), type: reference, required: true, constraints: {target_class: GlAccount}}
       - {name: functional_currency, label: functional currency, description: the functional currency of the company (FIN-FX-001), type: text, required: true}
       - {name: rate_type, label: rate type, description: "the type of the FxRate objects the subledger converts with (FIN-FX-002)", type: text, required: true}
+      - {name: allowance_account, label: allowance account, description: the allowance for credit losses (FIN-AR-011, -012), type: reference, constraints: {target_class: GlAccount}}
+      - {name: loss_rates, label: loss rates, description: "the loss rate in percent by aging bucket, for the suggested allowance: {bucket: rate} (FIN-AR-011)", type: json}
       - {name: realized_account, label: realized FX account, description: the realized exchange gain or loss account (FIN-FX-004), type: reference, required: true, constraints: {target_class: GlAccount}}
       - {name: unrealized_account, label: unrealized FX account, description: the unrealized exchange gain or loss account (FIN-FX-005), type: reference, required: true, constraints: {target_class: GlAccount}}
     ports:
@@ -146,6 +156,13 @@ classes:
           - {name: closing, label: closing, description: the last day of the period, type: date, required: true}
         permission: read
         impl: ubos.finance.receivables#statement
+      - name: allowance
+        description: "the allowance suggested by the loss rates on the aging at a date, against the allowance account's balance (FIN-AR-011); it is recorded by a journal entry"
+        kind: query
+        params:
+          - {name: as_of, label: as of, description: the date, type: date, required: true}
+        permission: read
+        impl: ubos.finance.receivables#allowance
       - name: revalue
         description: "remeasure the open foreign-currency items at the rate of the period end, post the unrealized gain or loss as FXR-<yymm> reversing on the next day; with simulate, show the run and its difference to the posted one without posting (FIN-FX-005)"
         kind: command
@@ -204,7 +221,8 @@ classes:
     ledger: {key: [document], amounts: [amount], double_entry: false}
     fields:
       - {name: document, label: document, description: the foreign-currency item, type: text, required: true}
-      - {name: customer, label: customer, description: the customer code, type: text, required: true}
+      - {name: customer, label: customer, description: the customer code, for a receivable, type: text}
+      - {name: vendor, label: vendor, description: the vendor code, for a payable (10g-2), type: text}
       - name: kind
         label: kind
         description: realized or unrealized
@@ -214,3 +232,54 @@ classes:
       - {name: source, label: source, description: the journal entry that posted it, type: text, required: true}
       - {name: amount, label: amount, description: "the gain (negative) or loss (positive) in the functional currency", type: money, required: true}
       - {name: rate, label: rate, description: the rate applied, type: decimal}
+  - name: WriteOff
+    label: write-off
+    description: "The write-off of an uncollectible invoice against the allowance, or the recovery of an amount written off (FIN-AR-012). The sheet ubos.finance.controls requires a controller's approval to post one."
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[number]]
+    fields:
+      - {name: number, label: number, description: the document number, type: text, required: true}
+      - name: kind
+        label: kind
+        description: a write-off, or a recovery that reinstates the amount before it is received
+        type: enum
+        required: true
+        constraints: {allowed_values: [write_off, recovery]}
+      - {name: customer, label: customer, description: the customer, type: reference, required: true, constraints: {target_class: Customer}}
+      - {name: document, label: document, description: the open item written off or recovered, type: text, required: true}
+      - {name: amount, label: amount, description: the amount, type: money, required: true}
+      - {name: date, label: date, description: the posting date, type: date, required: true}
+      - {name: reason, label: reason, description: why, type: text, required: true}
+      - name: state
+        label: state
+        description: draft until posted
+        type: enum
+        constraints: {allowed_values: [draft, posted]}
+    ports:
+      - {name: post, description: post the write-off or recovery, kind: command, params: [], permission: post, impl: ubos.finance.receivables#post_write_off}
+  - name: RecurringInvoice
+    label: recurring invoice
+    description: "The template of a recurring invoice; `run` creates and posts the invoice of a period once (FIN-AR-014)"
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[code]]
+    fields:
+      - {name: code, label: code, description: the template's code; the invoice of a period is numbered <code>-<yyyy-mm>, type: text, required: true}
+      - {name: customer, label: customer, description: the customer, type: reference, required: true, constraints: {target_class: Customer}}
+      - {name: description, label: description, description: the invoices' description, type: text, required: true}
+      - {name: lines, label: lines, description: the invoice lines, as on Invoice, type: json, required: true}
+      - {name: first_period_end, label: first period end, description: the end of the first period, type: date, required: true}
+      - {name: last_period_end, label: last period end, description: the end of the last period, if any, type: date}
+    ports:
+      - name: run
+        description: create and post the invoice of the period ending on period_end, dated that day, once
+        kind: command
+        params:
+          - {name: period_end, label: period end, description: the last day of the period, type: date, required: true}
+        permission: run
+        impl: ubos.finance.receivables#run_recurring

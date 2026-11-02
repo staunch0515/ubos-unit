@@ -10,6 +10,7 @@ changes:
       group_by: [vendor, document]
       aggregates:
         - {fn: sum, field: amount, as: open}
+        - {fn: sum, field: original, as: original}
         - {fn: last, field: bill_date, as: bill_date}
         - {fn: last, field: due, as: due}
   - op: create

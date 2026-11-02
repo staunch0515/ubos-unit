@@ -7,7 +7,7 @@ assets:
     profile: standard
     state: committed
     capabilities: [read, commit, run, search]
-    exports: [post_invoice, post_receipt, reapply, aging, tax_report, statement, revalue, fx_report]
+    exports: [post_invoice, post_receipt, reapply, aging, tax_report, statement, revalue, fx_report, post_write_off, allowance, run_recurring]
     source: |
       fn d(v) { dec(v.to_string()) }
       fn two(x) {
@@ -167,6 +167,22 @@ assets:
           let g = sys.read.projection(#{projection: "ar-open", group: #{customer: cust.code, document: item}}).groups;
           if g.len() > 0 { item_date = g[0].values.invoice_date; item_due = g[0].values.due; }
         }
+        // the credit limit: a warning, or a refusal unless a controller approves an override
+        // (FIN-AR-013)
+        let warning = ();
+        if !cm && cust.credit_limit != () {
+          let owed = dec("0.00");
+          for g in sys.read.projection(#{projection: "ar-open"}).groups {
+            if g.key.customer == cust.code { owed += sum_of(g.values, "open"); }
+          }
+          let limit = d(cust.credit_limit.amount);
+          if owed + ftotal > limit {
+            warning = "the open items of " + two(owed) + " and this invoice exceed the credit limit of " + two(limit);
+            if cust.credit_action == "approve" && this.credit_override == () {
+              throw warning + ": a credit override approved by a controller is needed";
+            }
+          }
+        }
         let kind = if cm { "credit memo" } else { "invoice" };
         let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
           fields: #{number: this.number, source: "receivables", kind: kind, posting_date: this.invoice_date,
@@ -189,8 +205,10 @@ assets:
                     functional_total: usd(ftotal, fc)};
         if cur != fc { set.currency = cur; set.rate = rate.to_string(); }
         sys.commit.update(#{target: self_id, set: set});
-        #{posted: true, number: this.number, tax: two(tax_total), total: two(gross), currency: cur,
-          rate: rate.to_string(), functional_total: two(ftotal), due_date: due}
+        let out = #{posted: true, number: this.number, tax: two(tax_total), total: two(gross), currency: cur,
+                    rate: rate.to_string(), functional_total: two(ftotal), due_date: due};
+        if warning != () { out.warning = warning; }
+        out
       }
 
       // a receipt: cash against receivables; applications reduce open items at their carrying
@@ -480,4 +498,94 @@ assets:
         let out = [];
         for r in sorted(rows, "key") { out.push(#{document: r.document, kind: r.kind, source: r.source, amount: r.amount}); }
         #{opening: opening, closing: closing, rows: out, realized: two(realized), unrealized: two(unrealized)}
+      }
+
+      // a write-off against the allowance, or a recovery that reinstates the item before it is
+      // received (FIN-AR-012)
+      fn post_write_off() {
+        if this.state == "posted" { return #{posted: false, reason: "already posted"}; }
+        sys.read.get(#{target: self_id});
+        let cust = sys.read.get(#{target: this.customer}).fields;
+        let rq = sys.search.query(#{query: #{from: "Receivables"}});
+        let rl = rq.items;
+        let rcv = sys.read.get(#{target: rl[0]}).fields;
+        if rcv.allowance_account == () { throw "the receivables have no allowance account"; }
+        let a = amount(this.amount);
+        let cur = currency(this.amount);
+        if cur != rcv.functional_currency { throw "a write-off is in the functional currency"; }
+        let g = sys.read.projection(#{projection: "ar-open", group: #{customer: cust.code, document: this.document}}).groups;
+        let off = this.kind == "write_off";
+        if off && (g.len() == 0 || sum_of(g[0].values, "open") < a) {
+          throw this.document + " has no open amount of " + two(a);
+        }
+        let sign = if off { -1 } else { 1 };
+        let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
+          fields: #{number: this.number, source: "receivables", kind: if off { "write-off" } else { "recovery" },
+                    posting_date: this.date, document_date: this.date, party: cust.code,
+                    description: this.reason + " (" + this.document + ")",
+                    lines: [#{account: rcv.allowance_account, amount: usd(-a * sign, cur)},
+                            #{account: cust.receivable_account, amount: usd(a * sign, cur)}],
+                    total: usd(a, cur), state: "draft"}});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        let item_date = if g.len() > 0 { g[0].values.invoice_date } else { this.date };
+        let item_due = if g.len() > 0 { g[0].values.due } else { this.date };
+        sys.commit.append(#{class: "ArItem", ledger_key: #{customer: cust.code}, valid_at: this.date,
+          fields: #{customer: cust.code, document: this.document, amount: usd(a * sign, cur), original: usd(a * sign, cur),
+                    kind: if off { "write_off" } else { "recovery" }, source: this.number,
+                    invoice_date: item_date, due: item_due}});
+        if off {
+          let iq = sys.search.query(#{query: #{from: "Invoice", where: "this.number == \"" + this.document + "\""}});
+          for id in iq.items {
+            sys.read.get(#{target: id});
+            sys.commit.update(#{target: id, set: #{written_off_on: this.date}});
+          }
+        }
+        sys.commit.update(#{target: self_id, set: #{state: "posted"}});
+        #{posted: true, number: this.number, kind: this.kind, amount: two(a)}
+      }
+
+      // the allowance the loss rates suggest on the aging at a date, against the balance of the
+      // allowance account (FIN-AR-011)
+      fn allowance(as_of) {
+        sys.read.get(#{target: self_id});
+        let ag = sys.run.port(#{target: self_id, port: "aging", params: #{as_of: as_of}});
+        let rates = if this.loss_rates == () { #{} } else { this.loss_rates };
+        let by = #{};
+        for r in ag.rows {
+          if !(r.bucket in by) { by[r.bucket] = dec("0.00"); }
+          by[r.bucket] = by[r.bucket] + d(r.open);
+        }
+        let rows = [];
+        let total = dec("0.00");
+        for b in ["Current", "1–30", "31–60", "61–90", "Over 90"] {
+          if !(b in by) { continue; }
+          let rate = if b in rates { d(rates[b]) } else { dec("0") };
+          let x = div(by[b] * rate, 100, 2, "half_up");
+          rows.push(#{bucket: b, open: two(by[b]), rate: rate.to_string(), allowance: two(x)});
+          total += x;
+        }
+        let existing = dec("0.00");
+        if this.allowance_account != () {
+          let gq = sys.read.projection(#{projection: "gl-balance", asof: as_of, group: #{account: this.allowance_account}});
+          let gg = gq.groups;
+          if gg.len() > 0 { existing = -sum_of(gg[0].values, "balance"); }
+        }
+        #{as_of: as_of, rows: rows, suggested: two(total), existing: two(existing), adjustment: two(total - existing)}
+      }
+
+      // the invoice of a period from a template, created and posted once (FIN-AR-014)
+      fn run_recurring(period_end) {
+        sys.read.get(#{target: self_id});
+        if period_end < this.first_period_end || (this.last_period_end != () && period_end > this.last_period_end) {
+          return #{created: false, reason: "outside the template's periods"};
+        }
+        let number = this.code + "-" + period_end.sub_string(0, 7);
+        let q = sys.search.query(#{query: #{from: "Invoice", where: "this.number == \"" + number + "\""}});
+        let found = q.items;
+        if found.len() > 0 { return #{created: false, number: number}; }
+        let c = sys.commit.create(#{class: "Invoice", slug: number.to_lower(),
+          fields: #{number: number, kind: "invoice", customer: this.customer, invoice_date: period_end,
+                    description: this.description, lines: this.lines, state: "draft"}});
+        let r = sys.run.port(#{target: c.object_id, port: "post", params: #{}});
+        #{created: true, number: number, total: r.total}
       }

@@ -749,6 +749,7 @@ def receivables_setup():
     changes.append({'op': 'create', 'class': 'Receivables', 'object_id': uid('receivables'), 'slug': 'receivables',
                     'body': {'name': 'Receivables', 'control_account': account_uri('1200'),
                              'functional_currency': CURRENCY, 'rate_type': FX_TYPE,
+                             'allowance_account': account_uri('1210'),
                              'realized_account': account_uri('7200'), 'unrealized_account': account_uri('7210')}})
     for r in rows('open-receivables.csv'):
         changes.append({'op': 'append', 'class': 'ArItem', 'entry_id': uid('ar-open', r['document']),
@@ -1074,10 +1075,7 @@ def company_walk(month, clock, skip=()):
         steps += more
         if doc[1] in ('invoice', 'credit memo', 'receipt', 'bill', 'payment'):
             obj = ar_document(doc) if doc[1] in ('invoice', 'credit memo', 'receipt') else ap_document(doc)
-            steps += [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': [obj]}},
-                      {'op': 'execute', 'input': {'branch': BRANCH, 'target': obj['object_id'], 'port': 'post',
-                                                  'params': {}, 'process': {'initiator': PREPARER}},
-                       'expect': {'match': 'subset', 'result': {'result': {'posted': True}}}}]
+            steps += document_steps(obj)
             if doc[1] == 'bill':
                 steps += capitalize_step(doc)
         elif doc[1] == 'revaluation':
@@ -1175,7 +1173,8 @@ def company_tests():
                                    'original': [{'amount': amount(orig[1]), 'currency': orig[0]}]}}]}}})
     late = {'op': 'create', 'class': 'Bill', 'object_id': uid('bill', 'BILL-LATE'), 'slug': 'bill-late',
             'body': {'number': 'BILL-LATE', 'vendor_invoice': 'LATE-1', 'vendor': vendor_uri('V600'),
-                     'bill_date': '2026-01-25', 'description': 'January bill posted without a posting date',
+                     'bill_date': '2026-01-25', 'amount': money('100.00'),
+                     'description': 'January bill posted without a posting date',
                      'state': 'draft', 'lines': [{'description': 'power', 'account': account_uri('6300'),
                                                   'amount': money('100.00')}]}}
     checks = [{'check': c, 'passed': True, 'evidence': []} for c in
@@ -1393,6 +1392,128 @@ def rule_change_tests():
         ],
     }]
 
+def receivables_control_tests():
+    """The receivables items of 10g-2 (DEC-154): the suggested allowance (FIN-AR-011), write-off
+    and recovery with approval (FIN-AR-012), the credit limit (FIN-AR-013) and recurring
+    invoices (FIN-AR-014)."""
+    base = setup_steps() + receivables_setup()
+    steps, clock = ar_steps('2026-01', START)
+    pid = lambda n: uid('process', 'post', n)
+    post = lambda oid, n, defer=False, exp=None: dict({'op': 'execute', 'input': dict(
+        {'branch': BRANCH, 'target': oid, 'port': 'post', 'params': {},
+         'process': {'initiator': PREPARER, 'process_id': pid(n)}}, **({'defer': True} if defer else {}))},
+        **({'expect': exp} if exp else {}))
+    approve = lambda n: {'op': 'approve', 'input': {'pending_change_id': pid(n), 'approver': CONTROLLER,
+                                                    'roles': ['controller']},
+                         'expect': {'match': 'subset', 'result': {'state': 'applied'}}}
+    posted = {'match': 'subset', 'result': {'result': {'posted': True}}}
+    invoice = lambda number, cust, c, account='4100', code='OR-NONE', **extra: {
+        'op': 'create', 'class': 'Invoice', 'object_id': uid('invoice', number), 'slug': number.lower(),
+        'body': dict({'number': number, 'kind': 'invoice', 'customer': customer_uri(cust), 'invoice_date': '2026-01-20',
+                      'description': 'test invoice ' + number, 'state': 'draft',
+                      'lines': [{'description': 'services', 'account': account_uri(account), 'amount': money(amount(c)),
+                                 'tax_code': tax_uri(code)}]}, **extra)}
+    customer = lambda code, limit, action: {
+        'op': 'create', 'class': 'Customer', 'object_id': uid('customer', code), 'slug': code.lower(),
+        'body': {'code': code, 'name': 'Test customer ' + code, 'location': 'OR (Portland)', 'currency': CURRENCY,
+                 'tax_code': tax_uri('OR-NONE'), 'terms_days': 30, 'receivable_account': account_uri('1200'),
+                 'credit_limit': money(amount(limit)), 'credit_action': action}}
+    item = lambda cust, doc, c: {
+        'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'ar-open',
+                                           'group': {'customer': cust, 'document': doc}},
+        'expect': {'match': 'subset', 'result': {'groups': [
+            {'key': {'customer': cust, 'document': doc}, 'values': {'open': [money(amount(c))]}}]}}}
+    writeoff = lambda number, kind, doc, c: {
+        'op': 'create', 'class': 'WriteOff', 'object_id': uid('writeoff', number), 'slug': number.lower(),
+        'body': {'number': number, 'kind': kind, 'customer': customer_uri('C200'), 'document': doc,
+                 'amount': money(amount(c)), 'date': '2026-01-28', 'reason': 'customer insolvent', 'state': 'draft'}}
+    # FIN-AR-011: 1% of the current items and 5% of those 1-30 days late, at 2026-01-31
+    rates = {'Current': '1', '1–30': '5'}
+    by = {}
+    for r in ar_aging():
+        by[r['bucket']] = by.get(r['bucket'], 0) + cents(r['open'])
+    order = ['Current', '1–30', '31–60', '61–90', 'Over 90']
+    rows_ = []
+    for b in [b for b in order if b in by]:
+        x = (by[b] * int(rates.get(b, '0')) + 50) // 100
+        rows_.append({'bucket': b, 'open': amount(by[b]), 'rate': rates.get(b, '0'), 'allowance': amount(x)})
+    suggested = sum(cents(r['allowance']) for r in rows_)
+    existing = -trial_balance('FIN-EXP-03')['1210']
+    template = {'op': 'create', 'class': 'RecurringInvoice', 'object_id': uid('recurring-invoice', 'SUPPORT'),
+                'slug': 'support', 'body': {
+                    'code': 'SUPPORT', 'customer': customer_uri('C200'), 'description': 'Monthly support fee',
+                    'first_period_end': '2026-01-31', 'lines': [{'description': 'support', 'account': account_uri('4100'),
+                                                                 'amount': money('1500.00'), 'tax_code': tax_uri('OR-NONE')}]}}
+    run = lambda exp: {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('recurring-invoice', 'SUPPORT'),
+                                                  'port': 'run', 'params': {'period_end': '2026-02-28'}},
+                       'expect': {'match': 'subset', 'result': {'result': exp}}}
+    warning = 'the open items of 95000.00 and this invoice exceed the credit limit of 100000.00'
+    return [{
+        'name': 'FIN-AR-011 the allowance suggested at 2026-01-31 is %s against the existing %s' % (
+            amount(suggested), amount(existing)),
+        'kind': 'scenario',
+        'steps': base + steps + [revalue_step('2026-01-31', 'FXR-2601'),
+                                 {'op': 'read', 'input': {'branch': BRANCH, 'object_id': uid('receivables')}, 'label': 'r'},
+                                 {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                                     {'op': 'update', 'object_id': uid('receivables'), 'base': {'$ref': 'r/version_hash'},
+                                      'body': {'loss_rates': rates}}]}},
+                                 {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('receivables'),
+                                                             'port': 'allowance', 'params': {'as_of': '2026-01-31'}},
+                                  'expect': {'match': 'subset', 'result': {'result': {
+                                      'rows': rows_, 'suggested': amount(suggested), 'existing': amount(existing),
+                                      'adjustment': amount(suggested - existing)}}}}],
+    }, {
+        'name': 'FIN-AR-012 an invoice of 500.00 written off with a controller\'s approval; a recovery reinstates it',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                invoice('INV-9100', 'C200', 50000), writeoff('WO-0001', 'write_off', 'INV-9100', 50000),
+                writeoff('WR-0001', 'recovery', 'INV-9100', 50000)]}},
+            post(uid('invoice', 'INV-9100'), 'INV-9100', exp=posted),
+            post(uid('writeoff', 'WO-0001'), 'WO-0001', exp={'error_code': 'RULE.DECISION_REQUIRES'}),
+            post(uid('writeoff', 'WO-0001'), 'WO-0001', defer=True),
+            approve('WO-0001'),
+            item('C200', 'INV-9100', 0),
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document', 'group': {'document': 'WO-0001'}},
+             'expect': {'match': 'subset', 'result': {'groups': document_groups(
+                 {('1200', 'WO-0001'): -50000, ('1210', 'WO-0001'): 50000})}}},
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': uid('invoice', 'INV-9100')},
+             'expect': {'match': 'subset', 'result': {'body': {'written_off_on': '2026-01-28'}}}},
+            post(uid('writeoff', 'WR-0001'), 'WR-0001', defer=True),
+            approve('WR-0001'),
+            item('C200', 'INV-9100', 50000),
+        ],
+    }, {
+        'name': 'FIN-AR-013 over a credit limit of 100,000.00 with 95,000.00 open, an invoice of 10,000.00 warns, or needs an approved override',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                customer('C900', 10000000, 'warn'), customer('C901', 10000000, 'approve'),
+                invoice('INV-9201', 'C900', 9500000), invoice('INV-9202', 'C900', 1000000),
+                invoice('INV-9301', 'C901', 9500000), invoice('INV-9302', 'C901', 1000000),
+                invoice('INV-9303', 'C901', 1000000, credit_override='order confirmed by the sales director')]}},
+            post(uid('invoice', 'INV-9201'), 'INV-9201', exp=posted),
+            post(uid('invoice', 'INV-9202'), 'INV-9202',
+                 exp={'match': 'subset', 'result': {'result': {'posted': True, 'warning': warning}}}),
+            post(uid('invoice', 'INV-9301'), 'INV-9301', exp=posted),
+            post(uid('invoice', 'INV-9302'), 'INV-9302', exp={'error_code': 'LOGIC.TYPE_ERROR'}),
+            post(uid('invoice', 'INV-9303'), 'INV-9303', exp={'error_code': 'RULE.DECISION_REQUIRES'}),
+            post(uid('invoice', 'INV-9303'), 'INV-9303', defer=True),
+            approve('INV-9303'),
+            item('C901', 'INV-9303', 1000000),
+        ],
+    }, {
+        'name': 'FIN-AR-014 the February run of a monthly template for C200 executed twice creates one invoice',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [template]}},
+            run({'created': True, 'number': 'SUPPORT-2026-02', 'total': '1500.00'}),
+            run({'created': False, 'number': 'SUPPORT-2026-02'}),
+            item('C200', 'SUPPORT-2026-02', 150000),
+        ],
+    }]
+
+
 # ---- payables and Form 1099 (PH-2 step 10c, DEC-149) ----
 
 # the vendor invoice numbers of the bills: the document number without BILL-, except where the
@@ -1423,12 +1544,15 @@ def payables_setup():
                         'slug': 'fy-' + r['tax_year'],
                         'body': {'tax_year': r['tax_year'], 'threshold': money(amount(cents(r['nec_misc_threshold_usd'])))}})
     changes.append({'op': 'create', 'class': 'Payables', 'object_id': uid('payables'), 'slug': 'payables',
-                    'body': {'name': 'Payables', 'control_account': account_uri('2000')}})
+                    'body': {'name': 'Payables', 'control_account': account_uri('2000'),
+                             'functional_currency': CURRENCY, 'rate_type': FX_TYPE,
+                             'realized_account': account_uri('7200'), 'unrealized_account': account_uri('7210')}})
     for r in rows('open-payables.csv'):
         changes.append({'op': 'append', 'class': 'ApItem', 'entry_id': uid('ap-open', r['document']),
                         'ledger_key': {'vendor': r['vendor']}, 'valid_at': r['date'],
                         'body': {'vendor': r['vendor'], 'document': r['document'],
-                                 'amount': money(amount(cents(r['amount_usd']))), 'kind': 'opening',
+                                 'amount': money(amount(cents(r['amount_usd']))),
+                                 'original': money(amount(cents(r['amount_usd']))), 'kind': 'opening',
                                  'source': 'opening', 'bill_date': r['date'], 'due': r['due']}})
     return [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': changes}}]
 
@@ -1440,8 +1564,10 @@ def ap_document(doc):
         party = lines[0]['party']
         out = [{'description': r['description'], 'account': account_uri(r['account']),
                 'amount': money(amount(cents(r['debit'])))} for r in lines if r['account'] != '2000']
+        owed = sum(cents(r['credit']) for r in lines if r['account'] == '2000')
         body = {'number': name, 'vendor_invoice': vendor_invoice(name), 'vendor': vendor_uri(party),
-                'bill_date': posting, 'description': lines[0]['description'], 'lines': out, 'state': 'draft'}
+                'bill_date': posting, 'amount': money(amount(owed)), 'description': lines[0]['description'],
+                'lines': out, 'state': 'draft'}
         # a late bill of a closed period: its document date, posted in the open period (FIN-PC-005)
         m = re.search(r'document date (\d{4}-\d{2}-\d{2})', lines[0]['description'])
         if m:
@@ -1458,6 +1584,35 @@ def ap_document(doc):
                      'payments': pays, 'state': 'draft'}}
 
 
+def needs_approval(obj):
+    """Whether the sheet ubos.finance.controls requires a controller's approval to post a
+    document: bills over the limit (FIN-AP-006) and every payment run (FIN-AP-011)."""
+    b = obj['body']
+    if obj['class'] == 'Bill':
+        return cents(b['amount']['amount']) > APPROVAL_LIMIT
+    return obj['class'] == 'PaymentRun'
+
+
+def document_steps(obj, expect=True):
+    """Create a subledger document and post it, through a controller's approval when the sheet
+    requires one."""
+    pid = uid('process', 'post', obj['body']['number'])
+    i = {'branch': BRANCH, 'target': obj['object_id'], 'port': 'post', 'params': {},
+         'process': {'initiator': PREPARER, 'process_id': pid}}
+    big = needs_approval(obj)
+    if big:
+        i['defer'] = True
+    post = {'op': 'execute', 'input': i}
+    if expect:
+        post['expect'] = {'match': 'subset', 'result': {'result': {'posted': True}}}
+    steps = [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': [obj]}}, post]
+    if big:
+        steps.append({'op': 'approve', 'input': {'pending_change_id': pid, 'approver': CONTROLLER,
+                                                 'roles': ['controller']},
+                      'expect': {'match': 'subset', 'result': {'state': 'applied'}}})
+    return steps
+
+
 def ap_steps(month, clock):
     steps = []
     for doc in documents(month):
@@ -1465,11 +1620,7 @@ def ap_steps(month, clock):
             continue
         at = datetime.datetime.fromisoformat(doc[3]) + datetime.timedelta(hours=12)
         more, clock = advance(clock, at)
-        obj = ap_document(doc)
-        steps += more + [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': [obj]}},
-                         {'op': 'execute', 'input': {'branch': BRANCH, 'target': obj['object_id'], 'port': 'post',
-                                                     'params': {}, 'process': {'initiator': PREPARER}},
-                          'expect': {'match': 'subset', 'result': {'result': {'posted': True}}}}]
+        steps += more + document_steps(ap_document(doc))
     return steps, clock
 
 
@@ -1488,7 +1639,8 @@ def payables_tests():
                                            'expect': {'match': 'subset', 'result': {'result': result}}}
     use_tax = {'op': 'create', 'class': 'Bill', 'object_id': uid('bill', 'BILL-UT-1'), 'slug': 'bill-ut-1',
                'body': {'number': 'BILL-UT-1', 'vendor_invoice': 'UT-1', 'vendor': vendor_uri('V400'),
-                        'bill_date': '2026-01-20', 'description': 'software bought out of state, no tax charged',
+                        'bill_date': '2026-01-20', 'amount': money('1000.00'),
+                        'description': 'software bought out of state, no tax charged',
                         'state': 'draft', 'lines': [{'description': 'licence', 'account': account_uri('6500'),
                                                      'amount': money('1000.00'), 'use_tax_code': tax_uri('TX-AUSTIN')}]}}
     return [{
@@ -1520,6 +1672,195 @@ def payables_tests():
                                                 'group': {'document': 'BILL-UT-1'}},
              'expect': {'match': 'subset', 'result': {'groups': document_groups(
                  {('2000', 'BILL-UT-1'): -100000, ('2200', 'BILL-UT-1'): -8250, ('6500', 'BILL-UT-1'): 108250})}}},
+        ],
+    }]
+
+
+def payables_control_tests():
+    """The payables controls of 10g-2 (DEC-154): duplicate bills (FIN-AP-005), bill approval
+    before payment (FIN-AP-006), credits and prepayments (FIN-AP-008), the payment proposal
+    (FIN-AP-010), the run's approval by another person (FIN-AP-011) and voids (FIN-AP-014)."""
+    base = setup_steps() + receivables_setup() + payables_setup()
+    p7902 = ap_document(document_named('BILL-P-7902'))
+    big = cents(p7902['body']['amount']['amount'])
+    pid = lambda n: uid('process', 'post', n)
+    post = lambda oid, n, defer=False, exp=None: dict({'op': 'execute', 'input': dict(
+        {'branch': BRANCH, 'target': oid, 'port': 'post', 'params': {},
+         'process': {'initiator': PREPARER, 'process_id': pid(n)}}, **({'defer': True} if defer else {}))},
+        **({'expect': exp} if exp else {}))
+    approve = lambda n, who, exp: {'op': 'approve', 'input': {'pending_change_id': pid(n), 'approver': who,
+                                                              'roles': ['controller']}, 'expect': exp}
+    applied = {'match': 'subset', 'result': {'state': 'applied'}}
+    item = lambda vendor, doc, c, asof=None: {
+        'op': 'read_projection', 'input': dict({'branch': BRANCH, 'projection': 'ap-open',
+                                                'group': {'vendor': vendor, 'document': doc}},
+                                               **({'asof': asof} if asof else {})),
+        'expect': {'match': 'subset', 'result': {'groups': [
+            {'key': {'vendor': vendor, 'document': doc}, 'values': {'open': [money(amount(c))]}}]}}}
+    bill = lambda number, vendor, inv, c, when='2026-01-20', **extra: {
+        'op': 'create', 'class': 'Bill', 'object_id': uid('bill', number), 'slug': number.lower(),
+        'body': dict({'number': number, 'vendor_invoice': inv, 'vendor': vendor_uri(vendor), 'bill_date': when,
+                      'amount': money(amount(c)), 'description': 'test bill ' + number, 'state': 'draft',
+                      'lines': [{'description': 'power', 'account': account_uri('6300'), 'amount': money(amount(c))}]},
+                     **extra)}
+    run = lambda number, payments, when='2026-01-20': {
+        'op': 'create', 'class': 'PaymentRun', 'object_id': uid('run', number), 'slug': number.lower(),
+        'body': {'number': number, 'run_date': when, 'bank_account': account_uri('1010'), 'method': 'ACH',
+                 'payments': payments, 'state': 'draft'}}
+    twin = dict(p7902, object_id=uid('bill', 'BILL-DUP-2'), slug='bill-dup-2',
+                body=dict(p7902['body'], number='BILL-DUP-2', vendor_invoice='P-7902-B'))
+    same = dict(p7902, object_id=uid('bill', 'BILL-DUP-1'), slug='bill-dup-1',
+                body=dict(p7902['body'], number='BILL-DUP-1'))
+    pay = run('PAY-T-1', [{'vendor': 'V100', 'document': 'P-7902', 'amount': p7902['body']['amount']}])
+    opening = {r['document']: r for r in rows('open-payables.csv')}
+    proposal = [{'vendor': opening[d]['vendor'], 'document': d, 'amount': money(amount(cents(opening[d]['amount_usd'])))}
+                for d in ('P-7781', 'CPL-1225')]
+    jan, clock = ap_steps('2026-01', START)
+    void_at = datetime.datetime(2026, 2, 10, 12)
+    dc = opening['DC-2025-12']
+    return [{
+        'name': 'FIN-AP-005 SCN-504 a second bill with the vendor and vendor invoice of P-7902 is refused; one with its amount and date posts only with a reason',
+        'kind': 'scenario',
+        'steps': base + document_steps(p7902) + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [same]}, 'expect': {'error_code': 'MODEL.KEY_CONFLICT'}},
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [twin]}, 'label': 'twin'},
+            post(uid('bill', 'BILL-DUP-2'), 'BILL-DUP-2', defer=True, exp={'error_code': 'LOGIC.TYPE_ERROR'}),
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                {'op': 'update', 'object_id': uid('bill', 'BILL-DUP-2'),
+                 'base': {'$ref': 'twin/versions/' + uid('bill', 'BILL-DUP-2')},
+                 'body': {'duplicate_reason': 'second delivery of the same order, confirmed by the vendor'}}]}},
+            post(uid('bill', 'BILL-DUP-2'), 'BILL-DUP-2', defer=True),
+            approve('BILL-DUP-2', CONTROLLER, applied),
+            item('V100', 'P-7902-B', big),
+        ],
+    }, {
+        'name': 'FIN-AP-006 FIN-AP-011 P-7902 (22,000.00) cannot be paid before a controller approves it; the run needs a controller other than its preparer',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [p7902, pay]}},
+            post(p7902['object_id'], 'BILL-P-7902', exp={'error_code': 'RULE.DECISION_REQUIRES'}),
+            post(p7902['object_id'], 'BILL-P-7902', defer=True,
+                 exp={'match': 'subset', 'result': {'pending': {'state': 'pending'}}}),
+            post(uid('run', 'PAY-T-1'), 'PAY-T-1', defer=True, exp={'error_code': 'LOGIC.TYPE_ERROR'}),
+            approve('BILL-P-7902', CONTROLLER, applied),
+            post(uid('run', 'PAY-T-1'), 'PAY-T-1-2', defer=True),
+            {'op': 'approve', 'input': {'pending_change_id': pid('PAY-T-1-2'), 'approver': PREPARER, 'roles': ['controller']},
+             'expect': {'error_code': 'IAM.DENIED', 'details': {'sod': 'maker_checker'}}},
+            {'op': 'approve', 'input': {'pending_change_id': pid('PAY-T-1-2'), 'approver': CONTROLLER, 'roles': ['controller']},
+             'expect': applied},
+            item('V100', 'P-7902', 0),
+        ],
+    }, {
+        'name': 'FIN-AP-008 a vendor credit of 500.00 applied to a bill of 1,200.00 leaves 700.00; a prepayment of 300.00 applied leaves 400.00',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                bill('BILL-T-1', 'V600', 'T-1', 120000),
+                bill('BILL-T-1C', 'V600', 'T-1C', 50000, kind='credit', applies_to='T-1'),
+                run('PRE-T-1', [{'vendor': 'V600', 'document': 'PRE-T-1', 'amount': money('300.00'), 'prepayment': True}])]}},
+            post(uid('bill', 'BILL-T-1'), 'BILL-T-1', exp={'match': 'subset', 'result': {'result': {'posted': True}}}),
+            post(uid('bill', 'BILL-T-1C'), 'BILL-T-1C', exp={'match': 'subset', 'result': {'result': {'posted': True}}}),
+            item('V600', 'T-1', 70000),
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document', 'group': {'document': 'BILL-T-1C'}},
+             'expect': {'match': 'subset', 'result': {'groups': document_groups(
+                 {('2000', 'BILL-T-1C'): 50000, ('6300', 'BILL-T-1C'): -50000})}}},
+            post(uid('run', 'PRE-T-1'), 'PRE-T-1', defer=True),
+            approve('PRE-T-1', CONTROLLER, applied),
+            item('V600', 'PRE-T-1', -30000),
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('payables'), 'port': 'apply',
+                                        'params': {'vendor': 'V600', 'from_document': 'PRE-T-1', 'to_document': 'T-1',
+                                                   'amount': money('300.00'), 'apply_date': '2026-01-21'}},
+             'expect': {'match': 'subset', 'result': {'result': {'open': '400.00'}}}},
+            item('V600', 'T-1', 40000),
+            item('V600', 'PRE-T-1', 0),
+        ],
+    }, {
+        'name': 'FIN-AP-010 the run proposed on 2026-01-08 for items due by 2026-01-20 holds P-7781 and CPL-1225 (32,300.00)',
+        'kind': 'scenario',
+        'steps': base + advance(START, datetime.datetime(2026, 1, 8, 12))[0] + [
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('payables'), 'port': 'propose_run',
+                                        'params': {'number': 'PAY-PROP-01', 'run_date': '2026-01-08', 'due_by': '2026-01-20',
+                                                   'bank_account': account_uri('1010')}},
+             'expect': {'match': 'subset', 'result': {'result': {
+                 'payments': proposal, 'total': amount(sum(cents(p['amount']['amount']) for p in proposal))}}}},
+        ],
+    }, {
+        'name': 'FIN-AP-014 voiding the payment of DC-2025-12 on 2026-02-10 opens the item again and debits the bank on that date',
+        'kind': 'scenario',
+        'steps': base + jan + advance(clock, void_at)[0] + [
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('run', 'PAY-RUN-02'), 'port': 'void',
+                                        'params': {'document': 'DC-2025-12', 'void_date': '2026-02-10',
+                                                   'reason': 'payment returned by the bank'}},
+             'expect': {'match': 'subset', 'result': {'result': {'entry': 'PAY-RUN-02-V1'}}}},
+            item(dc['vendor'], 'DC-2025-12', 0, '2026-02-09'),
+            item(dc['vendor'], 'DC-2025-12', cents(dc['amount_usd']), '2026-02-10'),
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document', 'group': {'document': 'PAY-RUN-02-V1'}},
+             'expect': {'match': 'subset', 'result': {'groups': document_groups(
+                 {('1010', 'PAY-RUN-02-V1'): cents(dc['amount_usd']), ('2000', 'PAY-RUN-02-V1'): -cents(dc['amount_usd'])})}}},
+        ],
+    }]
+
+
+def payables_fx_tests():
+    """A euro bill from entry to payment (10g-2, DEC-154; FIN-FX-003…005 for payables): the rates
+    of fx-rates.csv, EUR 10,000.00 billed on 2026-01-12, remeasured on 2026-01-31, reversed on
+    2026-02-01 and paid on 2026-02-20; then the payment is voided."""
+    base = setup_steps() + receivables_setup() + payables_setup()
+    rates = {r['date']: r['eur_usd'] for r in rows('fx-rates.csv')}
+    (d1, r1), (d2, r2), (d3, r3) = sorted(rates.items())
+    eur_c = 1000000
+    conv = lambda c, r: int((c * int(r.replace('.', '')) + 5000) // 10000)   # 4-decimal rates
+    f1, f2, f3 = conv(eur_c, r1), conv(eur_c, r2), conv(eur_c, r3)
+    eur = lambda c: {'amount': amount(c), 'currency': 'EUR'}
+    bill = {'op': 'create', 'class': 'Bill', 'object_id': uid('bill', 'BILL-EUR-1'), 'slug': 'bill-eur-1',
+            'body': {'number': 'BILL-EUR-1', 'vendor_invoice': 'DE-4711', 'vendor': vendor_uri('V100'), 'bill_date': d1,
+                     'amount': eur(eur_c), 'description': 'Spindles from Germany', 'state': 'draft',
+                     'lines': [{'description': 'spindles', 'account': account_uri('5000'), 'amount': eur(eur_c)}]}}
+    run = {'op': 'create', 'class': 'PaymentRun', 'object_id': uid('run', 'PAY-EUR-1'), 'slug': 'pay-eur-1',
+           'body': {'number': 'PAY-EUR-1', 'run_date': d3, 'bank_account': account_uri('1010'), 'method': 'wire',
+                    'payments': [{'vendor': 'V100', 'document': 'DE-4711', 'amount': eur(eur_c)}], 'state': 'draft'}}
+    item = lambda asof, f, o: {
+        'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'ap-open', 'asof': asof,
+                                           'group': {'vendor': 'V100', 'document': 'DE-4711'}},
+        'expect': {'match': 'subset', 'result': {'groups': [
+            {'key': {'vendor': 'V100', 'document': 'DE-4711'},
+             'values': {'open': [money(amount(f))], 'original': [eur(o)]}}]}}}
+    lines = lambda doc, pairs: {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document',
+                                                                  'group': {'document': doc}},
+                                'expect': {'match': 'subset', 'result': {'groups': document_groups(
+                                    {(k, doc): c for k, c in pairs.items()})}}}
+    at = lambda day: advance(START, datetime.datetime.fromisoformat(day) + datetime.timedelta(hours=12))[0]
+    return [{
+        'name': 'FIN-FX-003 FIN-FX-004 FIN-FX-005 a euro bill: %s at %s, remeasured to %s, paid at %s with a gain of %s; the void reverses it'
+                % (amount(f1), r1, amount(f2), r3, amount(f1 - f3)),
+        'kind': 'scenario',
+        'steps': base + at(d1) + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [bill]}},
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('bill', 'BILL-EUR-1'), 'port': 'post', 'params': {}},
+             'expect': {'match': 'subset', 'result': {'result': {'currency': 'EUR', 'rate': rate_text(r1),
+                                                                 'functional_total': amount(f1)}}}},
+            lines('BILL-EUR-1', {'5000': f1, '2000': -f1}),
+            item(d1, f1, eur_c),
+            {'advance': '%dm' % ((datetime.date.fromisoformat(d2) - datetime.date.fromisoformat(d1)).days * 1440)},
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('payables'), 'port': 'revalue',
+                                        'params': {'period_end': d2}},
+             'expect': {'match': 'subset', 'result': {'result': {'posted': True, 'number': 'FXP-2601',
+                                                                 'total': amount(f2 - f1)}}}},
+            lines('FXP-2601', {'7210': f2 - f1, '2000': -(f2 - f1)}),
+            item(d2, f2, eur_c),
+            {'advance': '1440m'},
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('period', '2026-02'), 'port': 'open', 'params': {}},
+             'expect': {'match': 'subset', 'result': {'result': {'reversed': ['FXP-2601-R']}}}},
+            item('2026-02-01', f1, eur_c),
+            {'advance': '%dm' % ((datetime.date.fromisoformat(d3) - datetime.date(2026, 2, 1)).days * 1440)},
+        ] + document_steps(run) + [
+            lines('PAY-EUR-1', {'2000': f1, '1010': -f3, '7200': f3 - f1}),
+            item(d3, 0, 0),
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('run', 'PAY-EUR-1'), 'port': 'void',
+                                        'params': {'document': 'DE-4711', 'void_date': d3, 'reason': 'wire returned'}},
+             'expect': {'match': 'subset', 'result': {'result': {'entry': 'PAY-EUR-1-V1'}}}},
+            lines('PAY-EUR-1-V1', {'1010': f3, '2000': -f1, '7200': f1 - f3}),
+            item(d3, f1, eur_c),
         ],
     }]
 
@@ -1579,10 +1920,7 @@ def month_steps(month, clock, skip=()):
         steps += more
         if doc[1] in ('invoice', 'credit memo', 'receipt', 'bill', 'payment'):
             obj = ar_document(doc) if doc[1] in ('invoice', 'credit memo', 'receipt') else ap_document(doc)
-            steps += [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': [obj]}},
-                      {'op': 'execute', 'input': {'branch': BRANCH, 'target': obj['object_id'], 'port': 'post',
-                                                  'params': {}, 'process': {'initiator': PREPARER}},
-                       'expect': {'match': 'subset', 'result': {'result': {'posted': True}}}}]
+            steps += document_steps(obj)
         elif doc[1] == 'revaluation':
             steps.append(revalue_step(doc[2], doc[0]))
         else:
@@ -1605,7 +1943,7 @@ def statement_lines():
 
 def reconciliation_steps():
     """Import the January statement, record interest and fee from it and reconcile 1010; the
-    result is FIN-EXP-10 (FIN-CB-001…005)."""
+    result is FIN-EXP-10 (FIN-BK-003…007)."""
     stmt = rows('bank-statement-2026-01.csv')
     line_of = {r['expected_match']: n for n, r in enumerate(stmt)}
     opening = next(r for r in stmt if r['bank_reference'] == 'OPENING')
@@ -1656,7 +1994,7 @@ def reconciliation_steps():
     ]
 
 
-RECORDED = ('BANK-INT-2601', 'BANK-FEE-2601')   # recorded from the statement (FIN-CB-004)
+RECORDED = ('BANK-INT-2601', 'BANK-FEE-2601')   # recorded from the statement (FIN-BK-005)
 
 
 def bank_tests():
@@ -1678,11 +2016,121 @@ def bank_tests():
              'expect': {'match': 'subset', 'result': {'groups': balance_groups(trial_balance('FIN-EXP-03'))}}},
         ],
     }, {
-        'name': 'FIN-CB-002 importing the same statement again appends nothing',
+        'name': 'FIN-BK-003 importing the same statement again appends nothing',
         'kind': 'scenario',
         'steps': base + [
             dict(ingest, label='first'),
             dict(ingest, expect={'match': 'subset', 'result': {'appended': [], 'duplicates': {'$ref': 'first/appended'}}}),
+        ],
+    }]
+
+
+def bank_control_tests():
+    """The bank items of 10g-2 (DEC-154): matching rules with reasons (FIN-BK-004), bank rules and
+    manual matches (FIN-BK-005), match history (FIN-BK-006), completion and sign-off by a second
+    person (FIN-BK-007, -008), carry-forward and stale items (FIN-BK-009) and transfers
+    (FIN-BK-002)."""
+    base = setup_steps() + receivables_setup() + payables_setup()
+    steps, clock = month_steps('2026-01', START, skip=RECORDED)
+    more, clock = advance(clock, datetime.datetime(2026, 2, 3, 10))
+    recon_id = uid('recon', '1010', '2026-01')
+    stmt = rows('bank-statement-2026-01.csv')
+    opening = next(r for r in stmt if r['bank_reference'] == 'OPENING')
+    closing = next(r for r in stmt if r['bank_reference'] == 'CLOSING')
+    prior = [{'reference': m.group(1), 'amount': money(amount(cents(r['amount'])))} for r in stmt
+             for m in [re.match(r'(\S+) \(outstanding at', r['expected_match'])] if m]
+    recon = {'op': 'create', 'class': 'BankReconciliation', 'object_id': recon_id, 'slug': '1010-2026-01',
+             'body': {'bank_account': account_uri('1010'), 'statement': '2026-01', 'period_start': '2026-01-01',
+                      'period_end': '2026-01-31', 'opening_balance': money(amount(cents(opening['amount']))),
+                      'closing_balance': money(amount(cents(closing['amount']))), 'prior_outstanding': prior,
+                      'window_days': 3, 'state': 'open'}}
+    rules = [{'op': 'create', 'class': 'BankRule', 'object_id': uid('bank-rule', code), 'slug': code.lower(),
+              'body': {'code': code, 'pattern': pattern, 'account': account_uri(acct)}}
+             for code, pattern, acct in (('FEE', 'service fee', next(r['account'] for r in document_named('BANK-FEE-2601')[4] if r['account'] != '1010')),
+                                         ('INTEREST', 'loan interest', next(r['account'] for r in document_named('BANK-INT-2601')[4] if r['account'] != '1010')))]
+    line_of = {r['expected_match'].split(' ')[0]: n for n, r in enumerate(stmt) if r['expected_match']}
+    record = lambda doc: {'op': 'execute', 'input': {'branch': BRANCH, 'target': recon_id, 'port': 'record',
+                                                     'params': {'line': line_of[doc], 'number': doc,
+                                                                'description': document_named(doc)[4][0]['description']}},
+                          'expect': {'match': 'subset', 'result': {'result': {'recorded': doc}}}}
+    ingest = {'op': 'ingest_statement', 'input': {'branch': BRANCH, 'class': 'BankStatementLine', 'lines': statement_lines()}}
+    expected = []
+    for n, r in sorted(((n, r) for n, r in enumerate(stmt) if r['expected_match']), key=lambda x: (x[1]['date'], x[0])):
+        doc = r['expected_match'].split(' ')[0]
+        expected.append({'line': n, 'documents': [doc],
+                         'rule': 'outstanding-before' if 'outstanding at' in r['expected_match'] else 'amount-date'})
+    reconcile = lambda exp: {'op': 'execute', 'input': {'branch': BRANCH, 'target': recon_id, 'port': 'reconcile', 'params': {}},
+                             'expect': {'match': 'subset', 'result': {'result': exp}}}
+    pid = lambda n: uid('process', 'sign-off', n)
+    sign = lambda n, exp: {'op': 'execute', 'input': {'branch': BRANCH, 'target': recon_id, 'port': 'sign_off', 'defer': True,
+                                                      'params': {'confirm': True, 'note': 'January'},
+                                                      'process': {'initiator': PREPARER, 'process_id': pid(n)}},
+                           'expect': exp}
+    receipt = 'RCPT-0003'
+    setup = base + steps + more + [dict(ingest), {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [recon] + rules}},
+                                   record('BANK-INT-2601'), record('BANK-FEE-2601')]
+    feb = {'op': 'create', 'class': 'BankReconciliation', 'object_id': uid('recon', '1010', '2026-02'), 'slug': '1010-2026-02',
+           'body': {'bank_account': account_uri('1010'), 'statement': '2026-02', 'period_start': '2026-02-01',
+                    'period_end': '2026-02-28', 'opening_balance': money(amount(cents(closing['amount']))),
+                    'closing_balance': money(amount(cents(closing['amount']))), 'window_days': 3, 'stale_days': 10,
+                    'state': 'open'}}
+    payroll = next(d for d in documents('2026-01') if d[0] == 'PAYROLL-2601')
+    pay_amount = sum(cents(r['debit']) - cents(r['credit']) for r in payroll[4] if r['account'] == '1010')
+    transfer = {'op': 'create', 'class': 'BankTransfer', 'object_id': uid('transfer', 'TRF-0001'), 'slug': 'trf-0001',
+                'body': {'number': 'TRF-0001', 'from_account': account_uri('1050'), 'to_account': account_uri('1010'),
+                         'amount': money('50000.00'), 'transfer_date': '2026-01-25', 'state': 'draft'}}
+    return [{
+        'name': 'FIN-BK-004 FIN-BK-005 bank rules give the accounts of the fee and the interest; matching proposes every expected match of the statement with its rule',
+        'kind': 'scenario',
+        'steps': setup + [reconcile({'state': 'reconciled', 'matches': expected})],
+    }, {
+        'name': 'FIN-BK-006 FIN-BK-007 FIN-BK-008 an undone match leaves the reconciliation open and refuses its completion; matched by hand it is signed off by a second person and no longer changes',
+        'kind': 'scenario',
+        'steps': setup + [
+            reconcile({'state': 'reconciled'}),
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': recon_id, 'port': 'unmatch',
+                                        'params': {'line': line_of[receipt], 'note': 'deposit to be checked'}}},
+            reconcile({'state': 'open', 'unmatched_statement_lines': [
+                {'line': line_of[receipt], 'reference': stmt[line_of[receipt]]['bank_reference'],
+                 'amount': amount(cents(stmt[line_of[receipt]]['amount']))}]}),
+            sign('open', {'error_code': 'LOGIC.TYPE_ERROR'}),
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': recon_id, 'port': 'match',
+                                        'params': {'line': line_of[receipt], 'documents': receipt, 'note': 'checked'}}},
+            reconcile({'state': 'reconciled', 'difference': '0.00'}),
+            {'op': 'read_ledger', 'input': {'branch': BRANCH, 'class': 'BankMatch', 'ledger_key': {'reconciliation': account_uri('1010') + '|2026-01'}},
+             'expect': {'match': 'subset', 'result': {'entries': [
+                 {'body': {'line': line_of[receipt], 'action': 'unmatch'}},
+                 {'body': {'line': line_of[receipt], 'action': 'match', 'documents': receipt}}]}}},
+            sign('done', {'match': 'subset', 'result': {'pending': {'state': 'pending'}}}),
+            {'op': 'approve', 'input': {'pending_change_id': pid('done'), 'approver': PREPARER, 'roles': ['controller']},
+             'expect': {'error_code': 'IAM.DENIED', 'details': {'sod': 'maker_checker'}}},
+            {'op': 'approve', 'input': {'pending_change_id': pid('done'), 'approver': CONTROLLER, 'roles': ['controller']},
+             'expect': {'match': 'subset', 'result': {'state': 'applied'}}},
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': recon_id},
+             'expect': {'match': 'subset', 'result': {'body': {'state': 'signed_off', 'signed_result': {'difference': '0.00'}}}}},
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': recon_id, 'port': 'reconcile', 'params': {}},
+             'expect': {'error_code': 'LOGIC.TYPE_ERROR'}},
+        ],
+    }, {
+        'name': 'FIN-BK-009 February carries PAYROLL-2601 forward from January and flags it after 10 days',
+        'kind': 'scenario',
+        'steps': setup + [reconcile({'state': 'reconciled'}),
+                          {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [feb]}},
+                          {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('recon', '1010', '2026-02'),
+                                                      'port': 'reconcile', 'params': {}},
+                           'expect': {'match': 'subset', 'result': {'result': {
+                               'outstanding': [{'document': 'PAYROLL-2601', 'date': payroll[2], 'amount': amount(pay_amount)}],
+                               'stale': ['PAYROLL-2601'], 'difference': '0.00', 'state': 'reconciled'}}}}],
+    }, {
+        'name': 'FIN-BK-002 a transfer of 50,000.00 from savings to operating moves both accounts',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [transfer]}},
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('transfer', 'TRF-0001'), 'port': 'post', 'params': {}},
+             'expect': {'match': 'subset', 'result': {'result': {'posted': True}}}},
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document', 'group': {'document': 'TRF-0001'}},
+             'expect': {'match': 'subset', 'result': {'groups': document_groups(
+                 {('1010', 'TRF-0001'): 5000000, ('1050', 'TRF-0001'): -5000000})}}},
         ],
     }]
 
@@ -1740,8 +2188,7 @@ def asset_steps():
     obj = ap_document(bill)
     at = datetime.datetime.fromisoformat(bill[3]) + datetime.timedelta(hours=12)
     steps, clock = advance(START, at)
-    steps += [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': [obj]}},
-              {'op': 'execute', 'input': {'branch': BRANCH, 'target': obj['object_id'], 'port': 'post', 'params': {}}},
+    steps += document_steps(obj, expect=False) + [
               {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('register'), 'port': 'capitalize', 'params': {
                   'bill': bill[0], 'code': fa3['id'], 'description': fa3['description'],
                   'asset_class': class_uri(ASSET_CLASS[fa3['account']]), 'in_service': fa3['in_service']}},
@@ -1817,6 +2264,82 @@ def asset_tests():
     }]
 
 
+def asset_estimate_tests():
+    """10g-2 (DEC-154): a change in estimate (FIN-FA-006), the 150% declining balance (FIN-FA-003)
+    and the mid-month and next-month conventions (FIN-FA-004)."""
+    base = setup_steps() + payables_setup() + assets_setup()
+    steps, clock = asset_steps()
+    run = lambda end, exp=None: dict({'op': 'execute', 'input': {
+        'branch': BRANCH, 'target': uid('register'), 'port': 'run_depreciation', 'params': {'period_end': end}}},
+        **({'expect': {'match': 'subset', 'result': {'result': exp}}} if exp else {}))
+    book = lambda code, asof, cost, acc: {
+        'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'fa-book', 'asof': asof, 'group': {'asset': code}},
+        'expect': {'match': 'subset', 'result': {'groups': [
+            {'key': {'asset': code}, 'values': {'cost': [money(amount(cost))], 'accumulated': [money(amount(acc))]}}]}}}
+    fa1 = next(r for r in rows('fixed-assets.csv') if r['method'] == 'SL' and r['in_service'] < '2026-01-01')
+    cost = cents(fa1['cost'])
+    life = int(fa1['life_months'])
+    acc_jan = cents(fa1['accumulated_at_2025_12_31']) + cost // life
+    used = (2026 - int(fa1['in_service'][:4])) * 12 + 1 - int(fa1['in_service'][5:7]) + 1
+    remaining = life - used + 12
+    feb = (cost - acc_jan) * 100 // remaining
+    feb = (feb + 50) // 100
+    dep = next(d for d in documents('2026-01') if d[1] == 'depreciation')[0]
+    jan_lines = {k: c for k, c in posted_lines('FIN-EXP-02').items() if k[1] == dep}
+    feb_end = advance(clock, datetime.datetime(2026, 2, 28, 15))[0]
+    # two test classes and assets placed in service on 2026-01-20
+    cls = lambda code, method, conv: {
+        'op': 'create', 'class': 'AssetClass', 'object_id': uid('class', code), 'slug': code.lower(),
+        'body': {'code': code, 'description': 'test class ' + code, 'cost_account': account_uri('1520'),
+                 'accumulated_account': account_uri('1590'), 'expense_account': account_uri('6700'), 'method': method,
+                 'life_months': 60, 'convention': conv, 'threshold': money('1000.00')}}
+    fa = lambda code, klass, method, c: {
+        'op': 'create', 'class': 'FixedAsset', 'object_id': uid('asset', code), 'slug': code.lower(),
+        'body': {'code': code, 'description': 'test asset ' + code, 'asset_class': class_uri(klass),
+                 'cost': money(amount(c)), 'in_service': '2026-01-20', 'method': method, 'life_months': 60,
+                 'status': 'in_service'}}
+    opening = [{'op': 'append', 'class': 'AssetBook', 'entry_id': uid('fa-open', code), 'ledger_key': {'asset': code},
+                'valid_at': '2026-01-20', 'body': {'asset': code, 'kind': 'addition', 'document': 'test',
+                                                   'cost': money(amount(c)), 'accumulated': money('0.00')}}
+               for code, c in (('FA-T1', 1000000), ('FA-T2', 1200000))]
+    # FA-T1: 10,000.00, 150% over 5 years: 3,000.00 in the first year, 125.00 for half of January,
+    # 250.00 for February; FA-T2: 12,000.00 straight line, nothing in January, 200.00 in February
+    return [{
+        'name': 'FIN-FA-006 FA-001\'s remaining life extended by 12 months from 2026-02: February is %s; January is not restated'
+                % amount(feb),
+        'kind': 'scenario',
+        'steps': base + steps + [
+            run('2026-01-31', {'created': True, 'number': dep}),
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('asset', fa1['id']), 'port': 'change_estimate',
+                                        'params': {'effective': '2026-02-01', 'remaining_months': remaining}},
+             'expect': {'match': 'subset', 'result': {'result': {'base': amount(acc_jan),
+                                                                 'net_book_value': amount(cost - acc_jan)}}}},
+        ] + feb_end + [
+            run('2026-02-28', {'created': True, 'number': 'DEP-2602'}),
+            book(fa1['id'], '2026-02-28', cost, acc_jan + feb),
+            book(fa1['id'], '2026-01-31', cost, acc_jan),
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document', 'group': {'document': dep}},
+             'expect': {'match': 'subset', 'result': {'groups': document_groups(jan_lines)}}},
+        ],
+    }, {
+        'name': 'FIN-FA-003 FIN-FA-004 150% declining balance with the mid-month convention, straight line with the next-month convention',
+        'kind': 'scenario',
+        'steps': base + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                cls('T-MID', 'DB150', 'mid_month'), cls('T-NEXT', 'SL', 'next_month'),
+                fa('FA-T1', 'T-MID', 'DB150', 1000000), fa('FA-T2', 'T-NEXT', 'SL', 1200000)] + opening}},
+        ] + advance(START, datetime.datetime(2026, 1, 31, 15))[0] + [
+            run('2026-01-31'),
+            book('FA-T1', '2026-01-31', 1000000, 12500),
+            book('FA-T2', '2026-01-31', 1200000, 0),
+            {'advance': '%dm' % (28 * 1440)},
+            run('2026-02-28'),
+            book('FA-T1', '2026-02-28', 1000000, 37500),
+            book('FA-T2', '2026-02-28', 1200000, 20000),
+        ],
+    }]
+
+
 def asset_id(name):
     """The object id `forge test` gives a logic asset (`ubos_dvm::packages::asset_object_id`)."""
     h = hashlib.sha256(b'ubos.chunk.v1\x00' + json.dumps(name).encode()).hexdigest()
@@ -1854,11 +2377,11 @@ def main():
              'tests/sample-statements.yaml': dump(statement_tests()),
              'tests/sample-entries.yaml': dump(entry_tests()),
              'tests/sample-periods.yaml': dump(period_tests()),
-             'tests/sample-receivables.yaml': dump(receivables_tests()),
-             'tests/sample-payables.yaml': dump(payables_tests()),
-             'tests/sample-bank.yaml': dump(bank_tests()),
-             'tests/sample-assets.yaml': dump(asset_tests()),
-             'tests/sample-fx.yaml': dump(fx_tests()),
+             'tests/sample-receivables.yaml': dump(receivables_tests() + receivables_control_tests()),
+             'tests/sample-payables.yaml': dump(payables_tests() + payables_control_tests()),
+             'tests/sample-bank.yaml': dump(bank_tests() + bank_control_tests()),
+             'tests/sample-assets.yaml': dump(asset_tests() + asset_estimate_tests()),
+             'tests/sample-fx.yaml': dump(fx_tests() + payables_fx_tests()),
              'tests/sample-company.yaml': dump(company_tests()),
              'tests/sample-scenarios.yaml': dump(scenario_tests() + rule_change_tests())}
     check = '--check' in sys.argv

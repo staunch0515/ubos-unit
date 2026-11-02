@@ -20,14 +20,14 @@ classes:
         description: the default method
         type: enum
         required: true
-        constraints: {allowed_values: [SL, DDB]}
+        constraints: {allowed_values: [SL, DDB, DB150]}
       - {name: life_months, label: life, description: the default useful life in months, type: integer, required: true}
       - name: convention
         label: convention
-        description: full month in the month placed in service
+        description: "the month placed in service depreciates in full (full_month), by half (mid_month) or not at all (next_month) (FIN-FA-004)"
         type: enum
         required: true
-        constraints: {allowed_values: [full_month]}
+        constraints: {allowed_values: [full_month, mid_month, next_month]}
       - {name: threshold, label: capitalisation threshold, description: the smallest cost capitalised, type: money, required: true}
   - name: FixedAsset
     label: fixed asset
@@ -46,10 +46,10 @@ classes:
       - {name: in_service, label: in service, description: the date placed in service, type: date, required: true}
       - name: method
         label: method
-        description: straight line or double-declining balance with the switch to straight line (FIN-FA-003)
+        description: straight line, or double-declining (DDB) or 150% (DB150) declining balance with the switch to straight line (FIN-FA-003)
         type: enum
         required: true
-        constraints: {allowed_values: [SL, DDB]}
+        constraints: {allowed_values: [SL, DDB, DB150]}
       - {name: life_months, label: life, description: the useful life in months, type: integer, required: true}
       - {name: acquisition, label: acquisition, description: the bill or entry the asset came from, type: text}
       - {name: location, label: location, description: where the asset is, type: text}
@@ -61,7 +61,20 @@ classes:
         required: true
         constraints: {allowed_values: [in_service, fully_depreciated, disposed]}
       - {name: disposed_on, label: disposed on, description: the disposal date, type: date}
+      - {name: estimate_from, label: estimate from, description: "the first day of the month a change in estimate applies from (FIN-FA-006)", type: date}
+      - {name: remaining_months, label: remaining months, description: "the remaining useful life from estimate_from, in months", type: integer}
+      - {name: estimate_salvage, label: estimate salvage, description: the salvage value of the changed estimate, type: money}
+      - {name: estimate_base, label: estimate base, description: the accumulated depreciation before the change in estimate, from which the new estimate starts, type: money}
     ports:
+      - name: change_estimate
+        description: "change the remaining useful life and the salvage value prospectively: from the month of `effective`, the net book value less salvage is spread straight-line over the remaining months; earlier months are not restated (FIN-FA-006)"
+        kind: command
+        params:
+          - {name: effective, label: effective, description: the first day of the month the change applies from, type: date, required: true}
+          - {name: remaining_months, label: remaining months, description: the remaining useful life from that month, type: integer, required: true}
+          - {name: salvage, label: salvage, description: the new salvage value; unchanged when absent, type: money}
+        permission: dispose
+        impl: ubos.finance.assets#change_estimate
       - name: dispose
         description: sell, scrap or write off the asset (FIN-FA-007)
         kind: command

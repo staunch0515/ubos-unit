@@ -7,7 +7,7 @@ assets:
     profile: standard
     state: committed
     capabilities: [read, commit, run, search]
-    exports: [post_bill, post_run, aging, form_1099]
+    exports: [post_bill, post_run, aging, form_1099, void_payment, propose_run, apply, revalue]
     source: |
       fn d(v) { dec(v.to_string()) }
       fn two(x) {
@@ -70,83 +70,205 @@ assets:
         out
       }
 
-      // a bill: expenses (and accrued use tax) against payables, and the open item
+      // multi-currency (FIN-FX; 10g-2, DEC-154), as in ubos.finance.receivables (DEC-152)
+      fn fx(x, rate) { round(x * rate, 2, "half_even") }
+      fn rate_where(base, quote, rt) {
+        "this.base == \"" + base + "\" and this.quote == \"" + quote + "\" and this.rate_type == \"" + rt + "\""
+      }
+      fn rate_in(segs, date, what) {
+        let r = ();
+        for s in segs {
+          if s.from <= date && (s.to == () || s.to > date) { r = s.fields.rate; }
+        }
+        if r == () { throw "no " + what + " rate at " + date; }
+        d(r)
+      }
+      fn with_original(line, x, cur, fc) {
+        if cur != fc { line.original = usd(x, cur); }
+        line
+      }
+      fn carrying(open_f, open_o, x) {
+        if open_o == x { open_f } else if open_o.is_zero() { x } else { div(open_f * x, open_o, 2, "half_even") }
+      }
+
+      // a bill: expenses (and accrued use tax) against payables, and the open item; a vendor
+      // credit the other way round, reducing the bill it applies to (FIN-AP-004, -008)
       fn post_bill() {
         if this.state == "posted" { return #{posted: false, reason: "already posted"}; }
         sys.read.get(#{target: self_id});
         let v = sys.read.get(#{target: this.vendor}).fields;
-        let cur = "USD";
+        let credit = this.kind == "credit";
+        let sign = if credit { -1 } else { 1 };
+        let cur = currency(this.amount);
+        let declared = amount(this.amount);
+        let pq = sys.search.query(#{query: #{from: "Payables"}});
+        let pl = pq.items;
+        let pay = sys.read.get(#{target: pl[0]}).fields;
+        let fc = pay.functional_currency;
+        // a foreign-currency bill at the entered rate, or the spot rate of its date (FIN-FX-003)
+        let rate = dec("1");
+        if cur != fc {
+          if this.rate != () { rate = d(this.rate); } else {
+            let fq = sys.search.query(#{query: #{from: "FxRate", where: rate_where(cur, fc, pay.rate_type)}});
+            let ids = fq.items;
+            if ids.len() != 1 { throw "no single " + pay.rate_type + " rate " + cur + "/" + fc; }
+            let segs = sys.read.timeline(#{target: ids[0], valid_from: this.bill_date,
+                                           valid_to: date_of(days(this.bill_date) + 1)}).segments;
+            rate = rate_in(segs, this.bill_date, cur + "/" + fc);
+          }
+        }
+        // a bill of the vendor with the same amount and date under another number needs a
+        // confirmed reason (FIN-AP-005)
+        if this.duplicate_reason == () {
+          let w = "this.state == \"posted\" and this.vendor == \"" + this.vendor + "\" and this.bill_date == d'"
+                  + this.bill_date + "' and this.number != \"" + this.number + "\"";
+          for id in sys.search.query(#{query: #{from: "Bill", where: w}}).items {
+            let o = sys.read.get(#{target: id}).fields;
+            if o.amount != () && d(o.amount.amount) == declared {
+              throw "possible duplicate of " + o.number + " (" + o.vendor_invoice + "): confirm with a reason";
+            }
+          }
+        }
         let lines = [];
         let total = dec("0.00");
+        let ftotal = dec("0.00");
         let debits = dec("0.00");
         for l in this.lines {
           let a = d(l.amount.amount);
-          cur = l.amount.currency;
-          lines.push(#{account: l.account, amount: usd(a, cur)});
+          let fa = fx(a, rate);
+          lines.push(with_original(#{account: l.account, amount: usd(fa * sign, fc)}, a * sign, cur, fc));
           total += a;
-          debits += a;
+          ftotal += fa;
+          debits += fa;
+          if credit { continue; }
           // use tax: the buyer accrues the tax the vendor did not charge (FIN-TX-007)
           if "use_tax_code" in l && l.use_tax_code != () {
             let tc = sys.read.get(#{target: l.use_tax_code}).fields;
-            let tax = div(a * d(tc.rate), 100, 2, "half_up");
+            let tax = fx(div(a * d(tc.rate), 100, 2, "half_up"), rate);
             if !tax.is_zero() {
-              lines.push(#{account: l.account, amount: usd(tax, cur)});
-              lines.push(#{account: tc.payable_account, amount: usd(-tax, cur)});
+              lines.push(#{account: l.account, amount: usd(tax, fc)});
+              lines.push(#{account: tc.payable_account, amount: usd(-tax, fc)});
               debits += tax;
             }
           }
         }
-        lines.push(#{account: v.payable_account, amount: usd(-total, cur)});
+        if total != declared {
+          throw "the lines add up to " + two(total) + ", not to the amount " + two(declared);
+        }
+        lines.push(with_original(#{account: v.payable_account, amount: usd(-ftotal * sign, fc)}, -total * sign, cur, fc));
         let due = if this.due_date == () { date_of(days(this.bill_date) + v.terms_days) } else { this.due_date };
         // the document date ages the item; the posting date books it (FIN-PC-005)
         let posting = if this.posting_date == () { this.bill_date } else { this.posting_date };
         let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
-          fields: #{number: this.number, source: "payables", kind: "bill", posting_date: posting,
+          fields: #{number: this.number, source: "payables", kind: if credit { "vendor credit" } else { "bill" }, posting_date: posting,
                     document_date: this.bill_date, description: this.description, party: v.code,
-                    lines: lines, total: usd(debits, cur), state: "draft"}});
+                    lines: lines, total: usd(debits, fc), state: "draft"}});
         sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        // a credit reduces the bill it applies to, or stays open as its own item
+        let item = this.vendor_invoice;
+        let item_date = this.bill_date;
+        let item_due = due;
+        if credit && this.applies_to != () {
+          let g = sys.read.projection(#{projection: "ap-open", group: #{vendor: v.code, document: this.applies_to}}).groups;
+          if g.len() == 0 { throw "no open item " + this.applies_to; }
+          if sum_of(g[0].values, "original") < total { throw "the credit exceeds the open amount of " + this.applies_to; }
+          item = this.applies_to;
+          item_date = g[0].values.bill_date;
+          item_due = g[0].values.due;
+        }
         sys.commit.append(#{class: "ApItem", ledger_key: #{vendor: v.code}, valid_at: posting,
-          fields: #{vendor: v.code, document: this.vendor_invoice, amount: usd(total, cur), kind: "bill",
-                    source: this.number, bill_date: this.bill_date, due: due}});
-        sys.commit.update(#{target: self_id, set: #{state: "posted", due_date: due, total: usd(total, cur)}});
-        #{posted: true, number: this.number, total: two(total), due_date: due}
+          fields: #{vendor: v.code, document: item, amount: usd(ftotal * sign, fc), original: usd(total * sign, cur),
+                    kind: if credit { "credit" } else { "bill" }, source: this.number, bill_date: item_date, due: item_due}});
+        let set = #{state: "posted", due_date: due, total: usd(total, cur), functional_total: usd(ftotal, fc)};
+        if cur != fc { set.rate = rate.to_string(); }
+        sys.commit.update(#{target: self_id, set: set});
+        #{posted: true, number: this.number, total: two(total), currency: cur, rate: rate.to_string(),
+          functional_total: two(ftotal), due_date: due}
       }
 
-      // a payment run: payables against the bank, each payment reducing its open item
+      // a payment run: payables against the bank, each payment reducing its open item at its
+      // carrying amount; a foreign-currency payment is converted at the run date and the
+      // difference is the realized gain or loss (FIN-FX-004); the run keeps, per payment, the
+      // functional amount paid and the carrying amount settled, for a void
       fn post_run() {
         if this.state == "posted" { return #{posted: false, reason: "already posted"}; }
         sys.read.get(#{target: self_id});
-        let total = dec("0.00");
-        let cur = "USD";
+        let pq = sys.search.query(#{query: #{from: "Payables"}});
+        let pl = pq.items;
+        let pay = sys.read.get(#{target: pl[0]}).fields;
+        let fc = pay.functional_currency;
+        let rates = #{};
+        let paid = dec("0.00");
+        let realized = dec("0.00");
         let lines = [];
         let parties = [];
+        let done = [];
+        let gains = [];
         for p in this.payments {
-          let g = sys.read.projection(#{projection: "ap-open", group: #{vendor: p.vendor, document: p.document}}).groups;
-          if g.len() == 0 { throw "no open item " + p.document; }
-          let open = sum_of(g[0].values, "open");
           let a = d(p.amount.amount);
-          if a > open { throw "the payment of " + p.document + " exceeds its open amount"; }
-          cur = p.amount.currency;
+          let cur = p.amount.currency;
+          if cur != fc && !(cur in rates) {
+            let fq = sys.search.query(#{query: #{from: "FxRate", where: rate_where(cur, fc, pay.rate_type)}});
+            let ids = fq.items;
+            if ids.len() != 1 { throw "no single " + pay.rate_type + " rate " + cur + "/" + fc; }
+            let segs = sys.read.timeline(#{target: ids[0], valid_from: this.run_date,
+                                           valid_to: date_of(days(this.run_date) + 1)}).segments;
+            rates[cur] = rate_in(segs, this.run_date, cur + "/" + fc);
+          }
+          let rate = if cur == fc { dec("1") } else { rates[cur] };
+          let fa = fx(a, rate);
+          let prepay = "prepayment" in p && p.prepayment == true;
+          let g = sys.read.projection(#{projection: "ap-open", group: #{vendor: p.vendor, document: p.document}}).groups;
+          let bill_date = this.run_date;
+          let due = this.run_date;
+          let c = fa;
+          if prepay {
+            // a prepayment opens a debit item of the vendor, applied to a bill later (FIN-AP-008)
+            if g.len() > 0 { throw "the prepayment " + p.document + " is already an item"; }
+          } else {
+            if g.len() == 0 { throw "no open item " + p.document; }
+            let open_o = sum_of(g[0].values, "original");
+            if a > open_o { throw "the payment of " + p.document + " exceeds its open amount"; }
+            if g[0].values.original[0].currency != cur { throw "the payment of " + p.document + " is not in its currency"; }
+            c = carrying(sum_of(g[0].values, "open"), open_o, a);
+            bill_date = g[0].values.bill_date;
+            due = g[0].values.due;
+          }
           let vq = sys.search.query(#{query: #{from: "Vendor", where: "this.code == \"" + p.vendor + "\""}});
-          let v = sys.read.get(#{target: vq.items[0]}).fields;
-          lines.push(#{account: v.payable_account, amount: usd(a, cur)});
-          total += a;
+          let vs = vq.items;
+          let v = sys.read.get(#{target: vs[0]}).fields;
+          lines.push(with_original(#{account: v.payable_account, amount: usd(c, fc)}, a, cur, fc));
+          paid += fa;
+          let loss = fa - c;
+          realized += loss;
+          if !loss.is_zero() { gains.push(#{document: p.document, vendor: p.vendor, amount: loss, rate: rate}); }
           if !(p.vendor in parties) { parties.push(p.vendor); }
           sys.commit.append(#{class: "ApItem", ledger_key: #{vendor: p.vendor}, valid_at: this.run_date,
-            fields: #{vendor: p.vendor, document: p.document, amount: usd(-a, cur), kind: "payment",
-                      source: this.number, bill_date: g[0].values.bill_date, due: g[0].values.due}});
+            fields: #{vendor: p.vendor, document: p.document, amount: usd(-c, fc), original: usd(-a, cur),
+                      kind: "payment", source: this.number, bill_date: bill_date, due: due}});
+          let q = p;
+          q.functional = usd(fa, fc);
+          q.carrying = usd(c, fc);
+          done.push(q);
         }
-        lines.push(#{account: this.bank_account, amount: usd(-total, cur)});
+        if !realized.is_zero() { lines.push(#{account: pay.realized_account, amount: usd(realized, fc)}); }
+        lines.push(#{account: this.bank_account, amount: usd(-paid, fc)});
+        let debits = dec("0.00");
+        for l in lines { let x = d(l.amount.amount); if x > 0 { debits += x; } }
         let party = "";
         for x in parties { party = if party == "" { x } else { party + ", " + x }; }
         let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
           fields: #{number: this.number, source: "payables", kind: "payment", posting_date: this.run_date,
                     document_date: this.run_date, description: "Payment run " + this.number,
-                    party: party,
-                    lines: lines, total: usd(total, cur), state: "draft"}});
+                    party: party, lines: lines, total: usd(debits, fc), state: "draft"}});
         sys.run.port(#{target: e.object_id, port: "post", params: #{}});
-        sys.commit.update(#{target: self_id, set: #{state: "posted"}});
-        #{posted: true, number: this.number, total: two(total)}
+        for gl in gains {
+          sys.commit.append(#{class: "FxGain", ledger_key: #{document: gl.document}, valid_at: this.run_date,
+            fields: #{document: gl.document, vendor: gl.vendor, kind: "realized", source: this.number,
+                      amount: usd(gl.amount, fc), rate: gl.rate.to_string()}});
+        }
+        sys.commit.update(#{target: self_id, set: #{state: "posted", payments: done}});
+        #{posted: true, number: this.number, total: two(paid), realized: two(realized)}
       }
 
       fn aging(as_of) {
@@ -160,6 +282,7 @@ assets:
           if open.is_zero() { continue; }
           rows.push(#{vendor: g.key.vendor, document: g.key.document, date: g.values.bill_date, due: g.values.due,
                       bucket: bucket(days(as_of) - days(g.values.due)), open: two(open),
+                      currency: g.values.original[0].currency, original: two(sum_of(g.values, "original")),
                       order: g.values.bill_date + "|" + g.key.vendor});
           total += open;
         }
@@ -190,4 +313,189 @@ assets:
           rows.push(#{vendor: v.code, name: v.name, form: v.form_1099, paid: two(p), reportable: p >= threshold});
         }
         #{tax_year: tax_year, through: through, threshold: two(threshold), rows: sorted(rows, "vendor")}
+      }
+
+      // void one payment of a posted run: a reversing entry in an open period, the item open
+      // again; the original payment and its entry stay (FIN-AP-014)
+      fn void_payment(document, void_date, reason) {
+        sys.read.get(#{target: self_id});
+        if this.state != "posted" { throw "only a posted run's payments are voided"; }
+        let done = if this.voided == () { [] } else { this.voided };
+        for x in done { if x.document == document { throw "the payment of " + document + " is already voided"; } }
+        let p = ();
+        for q in this.payments { if q.document == document { p = q; } }
+        if p == () { throw "the run does not pay " + document; }
+        let a = d(p.amount.amount);
+        let cur = p.amount.currency;
+        let pq = sys.search.query(#{query: #{from: "Payables"}});
+        let pl = pq.items;
+        let pay = sys.read.get(#{target: pl[0]}).fields;
+        let fc = pay.functional_currency;
+        // the functional amount paid and the carrying amount settled, as the run posted them
+        let fa = if "functional" in p { d(p.functional.amount) } else { a };
+        let c = if "carrying" in p { d(p.carrying.amount) } else { a };
+        let vq = sys.search.query(#{query: #{from: "Vendor", where: "this.code == \"" + p.vendor + "\""}});
+        let vs = vq.items;
+        let v = sys.read.get(#{target: vs[0]}).fields;
+        let g = sys.read.projection(#{projection: "ap-open", group: #{vendor: p.vendor, document: document}}).groups;
+        let number = this.number + "-V" + (done.len() + 1).to_string();
+        let lines = [with_original(#{account: this.bank_account, amount: usd(fa, fc)}, a, cur, fc),
+                     with_original(#{account: v.payable_account, amount: usd(-c, fc)}, -a, cur, fc)];
+        if fa != c { lines.push(#{account: pay.realized_account, amount: usd(c - fa, fc)}); }
+        let debits = dec("0.00");
+        for l in lines { let x = d(l.amount.amount); if x > 0 { debits += x; } }
+        let e = sys.commit.create(#{class: "JournalEntry", slug: number.to_lower(),
+          fields: #{number: number, source: "payables", kind: "payment void", posting_date: void_date,
+                    document_date: void_date, description: "Void of the payment of " + document + " in " + this.number + ": " + reason,
+                    party: p.vendor, reverses: this.number, lines: lines, total: usd(debits, fc), state: "draft"}});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        sys.commit.append(#{class: "ApItem", ledger_key: #{vendor: p.vendor}, valid_at: void_date,
+          fields: #{vendor: p.vendor, document: document, amount: usd(c, fc), original: usd(a, cur), kind: "payment",
+                    source: number, bill_date: g[0].values.bill_date, due: g[0].values.due}});
+        if fa != c {
+          sys.commit.append(#{class: "FxGain", ledger_key: #{document: document}, valid_at: void_date,
+            fields: #{document: document, vendor: p.vendor, kind: "realized", source: number, amount: usd(c - fa, fc)}});
+        }
+        done.push(#{document: document, date: void_date, reason: reason, entry: number});
+        sys.commit.update(#{target: self_id, set: #{voided: done}});
+        #{voided: document, entry: number, amount: two(a)}
+      }
+
+      // a draft payment run of the posted, unheld open items due by a date (FIN-AP-010)
+      fn propose_run(number, run_date, due_by, bank_account) {
+        sys.read.get(#{target: self_id});
+        let held = [];
+        for id in sys.search.query(#{query: #{from: "Bill", where: "this.hold == true"}}).items {
+          held.push(sys.read.get(#{target: id}).fields.vendor_invoice);
+        }
+        let rows = [];
+        let total = dec("0.00");
+        for g in sys.read.projection(#{projection: "ap-open", asof: run_date}).groups {
+          let open = sum_of(g.values, "open");
+          if open <= 0 || g.values.due > due_by || held.contains(g.key.document) { continue; }
+          rows.push(#{vendor: g.key.vendor, document: g.key.document, amount: usd(open, "USD"),
+                      order: g.values.due + "|" + g.key.document});
+          total += open;
+        }
+        let payments = [];
+        for r in sorted(rows, "order") { r.remove("order"); payments.push(r); }
+        let c = sys.commit.create(#{class: "PaymentRun", slug: number.to_lower(),
+          fields: #{number: number, run_date: run_date, bank_account: bank_account, method: "ACH",
+                    payments: payments, state: "draft"}});
+        #{number: number, run: c.object_id, payments: payments, total: two(total)}
+      }
+
+      // a credit or prepayment applied to an open bill of the same vendor (FIN-AP-008)
+      fn apply(vendor, from_document, to_document, amount, apply_date) {
+        sys.read.get(#{target: self_id});
+        let x = d(amount.amount);
+        let cur = amount.currency;
+        let gf = sys.read.projection(#{projection: "ap-open", group: #{vendor: vendor, document: from_document}}).groups;
+        let gt = sys.read.projection(#{projection: "ap-open", group: #{vendor: vendor, document: to_document}}).groups;
+        if gf.len() == 0 || -sum_of(gf[0].values, "original") < x { throw from_document + " has no credit of " + two(x); }
+        if gt.len() == 0 || sum_of(gt[0].values, "original") < x { throw to_document + " has no open amount of " + two(x); }
+        for g in [gf, gt] {
+          if g[0].values.original[0].currency != cur { throw "the amount is not in the items' currency"; }
+        }
+        // both items move the credit's carrying amount, so the subledger keeps its control total
+        let f = -carrying(sum_of(gf[0].values, "open"), sum_of(gf[0].values, "original"), -x);
+        let fcur = gf[0].values.open[0].currency;
+        for pair in [[from_document, x, gf, f], [to_document, -x, gt, -f]] {
+          sys.commit.append(#{class: "ApItem", ledger_key: #{vendor: vendor}, valid_at: apply_date,
+            fields: #{vendor: vendor, document: pair[0], amount: usd(pair[3], fcur),
+                      original: usd(pair[1], cur), kind: "apply",
+                      source: from_document, bill_date: pair[2][0].values.bill_date, due: pair[2][0].values.due}});
+        }
+        #{applied: two(x), from: from_document, to: to_document, open: two(sum_of(gt[0].values, "original") - x)}
+      }
+
+      // the period-end remeasurement of the open foreign-currency payables, as for receivables
+      // (FIN-FX-005, DEC-152): FXP-<yymm> between the unrealized account and the control
+      // account, reversing on the next day; a simulation of a posted run starts from the
+      // carrying amounts before it
+      fn revalue(period_end, simulate) {
+        sys.read.get(#{target: self_id});
+        let sim = simulate == true;
+        let fc = this.functional_currency;
+        let number = "FXP-" + period_end.sub_string(2, 2) + period_end.sub_string(5, 2);
+        let eq = sys.search.query(#{query: #{from: "JournalEntry", where: "this.number == \"" + number + "\""}});
+        let existing = eq.items;
+        if !sim && existing.len() > 0 { return #{posted: false, reason: "already posted", number: number}; }
+        if !sim {
+          let pw = "this.start <= d'" + period_end + "' and this.end > d'" + period_end + "'";
+          for id in sys.search.query(#{query: #{from: "FiscalPeriod", where: pw}}).items {
+            if sys.read.get(#{target: id}).fields.state == "closed" { throw "the period of " + period_end + " is closed"; }
+          }
+        }
+        let rates = #{};
+        let items = [];
+        let total = dec("0.00");
+        let parties = [];
+        for g in sys.read.projection(#{projection: "ap-open", asof: period_end}).groups {
+          let o = sum_of(g.values, "original");
+          if o.is_zero() { continue; }
+          let cur = g.values.original[0].currency;
+          if cur == fc { continue; }
+          if !(cur in rates) {
+            let fq = sys.search.query(#{query: #{from: "FxRate", where: rate_where(cur, fc, this.rate_type)}});
+            let ids = fq.items;
+            if ids.len() != 1 { throw "no single " + this.rate_type + " rate " + cur + "/" + fc; }
+            let segs = sys.read.timeline(#{target: ids[0], valid_from: period_end,
+                                           valid_to: date_of(days(period_end) + 1)}).segments;
+            rates[cur] = rate_in(segs, period_end, cur + "/" + fc);
+          }
+          let f = sum_of(g.values, "open");
+          if existing.len() > 0 {
+            let pg = sys.read.projection(#{projection: "fx-gains", asof: period_end,
+              group: #{document: g.key.document, kind: "unrealized", source: number}}).groups;
+            if pg.len() > 0 { f -= sum_of(pg[0].values, "amount"); }
+          }
+          let target = fx(o, rates[cur]);
+          let diff = target - f;
+          if diff.is_zero() { continue; }
+          items.push(#{vendor: g.key.vendor, document: g.key.document, currency: cur, original: two(o),
+                       rate: rates[cur].to_string(), carrying: two(f), remeasured: two(target), difference: two(diff),
+                       due: g.values.due, bill_date: g.values.bill_date, diff: diff});
+          total += diff;
+          if !parties.contains(g.key.vendor) { parties.push(g.key.vendor); }
+        }
+        let out_items = [];
+        for it in items {
+          out_items.push(#{vendor: it.vendor, document: it.document, currency: it.currency, original: it.original,
+                           rate: it.rate, carrying: it.carrying, remeasured: it.remeasured, difference: it.difference});
+        }
+        if sim {
+          let r = #{simulated: true, number: number, period_end: period_end, items: out_items, total: two(total)};
+          if existing.len() > 0 {
+            let pe = sys.read.get(#{target: existing[0]}).fields;
+            let p = dec("0.00");
+            for l in pe.lines { if l.account == this.control_account { p -= d(l.amount.amount); } }
+            r.posted = two(p);
+            r.difference = two(total - p);
+          }
+          return r;
+        }
+        if items.len() == 0 { return #{posted: false, reason: "nothing to remeasure", number: number}; }
+        let reverse_on = date_of(days(period_end) + 1);
+        let debit = if total > 0 { total } else { -total };
+        let fields = #{number: number, source: "revaluation", kind: "revaluation", posting_date: period_end,
+                       document_date: period_end, description: "Remeasure open foreign-currency payables at " + period_end,
+                       lines: [#{account: this.unrealized_account, amount: usd(total, fc)},
+                               #{account: this.control_account, amount: usd(-total, fc)}],
+                       total: usd(debit, fc), auto_reverse_on: reverse_on, state: "draft"};
+        if parties.len() == 1 { fields.party = parties[0]; }
+        let e = sys.commit.create(#{class: "JournalEntry", slug: number.to_lower(), fields: fields});
+        sys.run.port(#{target: e.object_id, port: "post", params: #{}});
+        for it in items {
+          for pair in [[period_end, it.diff, number], [reverse_on, -it.diff, number + "-R"]] {
+            sys.commit.append(#{class: "ApItem", ledger_key: #{vendor: it.vendor}, valid_at: pair[0],
+              fields: #{vendor: it.vendor, document: it.document, amount: usd(pair[1], fc),
+                        original: usd(dec("0.00"), it.currency), kind: "revaluation", source: pair[2],
+                        bill_date: it.bill_date, due: it.due}});
+            sys.commit.append(#{class: "FxGain", ledger_key: #{document: it.document}, valid_at: pair[0],
+              fields: #{document: it.document, vendor: it.vendor, kind: "unrealized", source: pair[2],
+                        amount: usd(pair[1], fc), rate: it.rate}});
+          }
+        }
+        #{posted: true, number: number, reverses_on: reverse_on, items: out_items, total: two(total)}
       }

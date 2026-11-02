@@ -1,11 +1,15 @@
 # Fixed assets (FIN-FA-001…009; PH-2 step 10e, DEC-151).
 #
-# The schedule is per asset year: straight line, or double-declining balance on the net book
-# value at the start of the asset year with the switch to straight line when that yields more;
-# the last year takes the rest. Month m of an asset year depreciates
-# round(year · m / 12) − round(year · (m − 1) / 12), so the residue of rounding falls in the
-# year's last month and the life's total is cost less salvage (FIN-FA-004). The full-month
-# convention counts the month placed in service as month 1.
+# The schedule is per asset year: straight line, or double-declining (DDB) or 150% (DB150)
+# declining balance on the net book value at the start of the asset year with the switch to
+# straight line when that yields more; the last year takes the rest. Month m of an asset year
+# depreciates round(year · m / 12) − round(year · (m − 1) / 12), so the residue of rounding falls
+# in the year's last month and the life's total is cost less salvage (FIN-FA-004). The
+# full-month convention counts the month placed in service as month 1, the next-month
+# convention as month 0, and the mid-month convention as half a month (in half-month units, 24
+# a year). A change in estimate (FIN-FA-006, 10g-2, DEC-154) spreads the net book value less the
+# new salvage straight-line over the remaining months, from the accumulated depreciation
+# before the change.
 assets:
   - name: ubos.finance.assets
     abi: "1.0"
@@ -13,7 +17,7 @@ assets:
     profile: standard
     state: committed
     capabilities: [read, commit, run, search]
-    exports: [capitalize, run_depreciation, register, roll_forward, dispose]
+    exports: [capitalize, run_depreciation, register, roll_forward, dispose, change_estimate]
     source: |
       fn d(v) { dec(v.to_string()) }
       fn two(x) {
@@ -47,8 +51,9 @@ assets:
           let rest = nbv - salvage;
           let y = rest;
           if j < years - 1 {
-            if method == "DDB" {
-              let ddb = div(nbv * 2, years, 2, "half_up");
+            if method == "DDB" || method == "DB150" {
+              let factor = if method == "DDB" { dec("2") } else { dec("1.5") };
+              let ddb = div(nbv * factor, years, 2, "half_up");
               let sl = div(rest, years - j, 2, "half_up");
               y = if ddb > sl { ddb } else { sl };
             } else {
@@ -61,22 +66,53 @@ assets:
         }
         out
       }
-      // accumulated depreciation after n months of service
-      fn cum(n, sched) {
+      // accumulated depreciation after n units of service, u units a year (12 months, or 24
+      // half-months for the mid-month convention)
+      fn cumu(n, sched, u) {
         let acc = dec("0.00");
         if n <= 0 { return acc; }
-        if n >= sched.len() * 12 {
+        if n >= sched.len() * u {
           for y in sched { acc += y; }
           return acc;
         }
-        let k = (n - 1) / 12;
-        let mm = n - 12 * k;
+        let k = (n - 1) / u;
+        let mm = n - u * k;
         for j in 0..k { acc += sched[j]; }
-        acc + div(sched[k] * mm, 12, 2, "half_up")
+        acc + div(sched[k] * mm, u, 2, "half_up")
       }
-      fn asset_schedule(fa) {
+      // the units of service after n months under a convention (FIN-FA-004)
+      fn units(n, convention) {
+        if convention == "next_month" { [n - 1, 12] } else if convention == "mid_month" { [2 * n - 1, 24] } else { [n, 12] }
+      }
+      // the accumulated depreciation of an asset after n months of service: its schedule, and
+      // from a change in estimate the rest spread straight-line over the remaining months
+      // (FIN-FA-006). `p` holds cost, salvage, life, method, in_service, convention and the
+      // estimate fields, as decimals, integers and dates.
+      fn cum_asset(p, n) {
+        let sched = schedule(p.cost, p.salvage, p.life, p.method);
+        if p.estimate_from == () {
+          let x = units(n, p.convention);
+          return cumu(x[0], sched, x[1]);
+        }
+        let n0 = month_no(p.estimate_from) - month_no(p.in_service);
+        let base = p.estimate_base;
+        if n == n0 { return base; }
+        if n < n0 {
+          let x = units(n, p.convention);
+          return cumu(x[0], sched, x[1]);
+        }
+        let rest = p.cost - base - p.estimate_salvage;
+        let k = n - n0;
+        if k >= p.remaining { return base + rest; }
+        base + div(rest * k, p.remaining, 2, "half_up")
+      }
+      fn params_of(fa, cls) {
         let salvage = if fa.salvage == () { dec("0.00") } else { d(fa.salvage.amount) };
-        schedule(d(fa.cost.amount), salvage, fa.life_months, fa.method)
+        let es = if fa.estimate_salvage == () { salvage } else { d(fa.estimate_salvage.amount) };
+        #{cost: d(fa.cost.amount), salvage: salvage, life: fa.life_months, method: fa.method,
+          in_service: fa.in_service, convention: cls.convention, estimate_from: fa.estimate_from,
+          remaining: fa.remaining_months, estimate_salvage: es,
+          estimate_base: if fa.estimate_base == () { () } else { d(fa.estimate_base.amount) }}
       }
 
       fn capitalize(bill, code, description, asset_class, in_service) {
@@ -117,11 +153,11 @@ assets:
           let fa = sys.read.get(#{target: id}).fields;
           if fa.in_service > period_end { continue; }
           let n = month_no(period_end) - month_no(fa.in_service) + 1;
-          let sched = asset_schedule(fa);
-          let dep = cum(n, sched) - cum(n - 1, sched);
+          let cls = sys.read.get(#{target: fa.asset_class}).fields;
+          let p = params_of(fa, cls);
+          let dep = cum_asset(p, n) - cum_asset(p, n - 1);
           if dep.is_zero() { continue; }
           cur = fa.cost.currency;
-          let cls = sys.read.get(#{target: fa.asset_class}).fields;
           let k = cls.expense_account + "|" + cls.accumulated_account;
           if !(k in per) { per[k] = dec("0.00"); keys.push(k); }
           per[k] = per[k] + dep;
@@ -156,8 +192,12 @@ assets:
         let cur = currency(this.cost);
         // depreciation up to the disposal month, as far as not yet run
         let salvage = if this.salvage == () { dec("0.00") } else { amount(this.salvage) };
-        let sched = schedule(amount(this.cost), salvage, this.life_months, this.method);
-        let catch_up = cum(month_no(disposal_date) - month_no(this.in_service) + 1, sched) - acc;
+        let es = if this.estimate_salvage == () { salvage } else { amount(this.estimate_salvage) };
+        let p = #{cost: amount(this.cost), salvage: salvage, life: this.life_months, method: this.method,
+                  in_service: this.in_service, convention: cls.convention, estimate_from: this.estimate_from,
+                  remaining: this.remaining_months, estimate_salvage: es,
+                  estimate_base: if this.estimate_base == () { () } else { amount(this.estimate_base) }};
+        let catch_up = cum_asset(p, month_no(disposal_date) - month_no(this.in_service) + 1) - acc;
         if catch_up < 0 { catch_up = dec("0.00"); }
         let acc2 = acc + catch_up;
         let p = d(proceeds.amount);
@@ -240,4 +280,29 @@ assets:
         #{opening: opening, closing: closing,
           cost: #{opening: two(c0), additions: two(add_c), disposals: two(dis_c), closing: two(c1)},
           accumulated: #{opening: two(a0), depreciation: two(dep_a), disposals: two(dis_a), closing: two(a1)}}
+      }
+
+      // a change in useful life or salvage, applied prospectively from a month (FIN-FA-006)
+      fn change_estimate(effective, remaining_months, salvage) {
+        sys.read.get(#{target: self_id});
+        if this.status != "in_service" { throw "the asset is not in service"; }
+        if effective.sub_string(8, 2) != "01" { throw "a change applies from the first day of a month"; }
+        if effective <= this.in_service { throw "a change applies after the asset is placed in service"; }
+        if this.estimate_from != () && effective <= this.estimate_from { throw "a later change applies after the earlier one"; }
+        // the accumulated depreciation before the change, under the estimate in force: the
+        // base the new estimate starts from, so that no earlier month is restated
+        let cls = sys.read.get(#{target: this.asset_class}).fields;
+        let salvage0 = if this.salvage == () { dec("0.00") } else { amount(this.salvage) };
+        let es = if this.estimate_salvage == () { salvage0 } else { amount(this.estimate_salvage) };
+        let p = #{cost: amount(this.cost), salvage: salvage0, life: this.life_months, method: this.method,
+                  in_service: this.in_service, convention: cls.convention, estimate_from: this.estimate_from,
+                  remaining: this.remaining_months, estimate_salvage: es,
+                  estimate_base: if this.estimate_base == () { () } else { amount(this.estimate_base) }};
+        let base = cum_asset(p, month_no(effective) - month_no(this.in_service));
+        let set = #{estimate_from: effective, remaining_months: remaining_months,
+                    estimate_base: m(base, currency(this.cost))};
+        if salvage != () { set.estimate_salvage = salvage; }
+        sys.commit.update(#{target: self_id, set: set});
+        #{changed: this.code, from: effective, remaining_months: remaining_months, base: two(base),
+          net_book_value: two(amount(this.cost) - base)}
       }

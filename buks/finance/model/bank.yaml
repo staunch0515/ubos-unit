@@ -1,8 +1,8 @@
-# Bank statements and reconciliation (FIN-CB; PH-2 step 10d, DEC-150).
+# Bank statements and reconciliation (FIN-BK; PH-2 step 10d, DEC-150).
 classes:
   - name: BankStatementLine
     label: bank statement line
-    description: A line of a bank statement, ingested idempotently (STD-KIND-030, FIN-CB-002)
+    description: A line of a bank statement, ingested idempotently (STD-KIND-030, FIN-BK-003)
     namespace: ubos.finance
     parent: DataObject
     kind: ledger
@@ -19,7 +19,7 @@ classes:
       - {name: description, label: description, description: the bank's description, type: text}
   - name: BankReconciliation
     label: bank reconciliation
-    description: The reconciliation of a bank account with one statement (FIN-CB-003…006)
+    description: The reconciliation of a bank account with one statement (FIN-BK-004…007)
     namespace: ubos.finance
     parent: DataObject
     kind: definition
@@ -32,24 +32,104 @@ classes:
       - {name: period_end, label: period end, description: the last day of the statement, type: date, required: true}
       - {name: opening_balance, label: opening balance, description: the statement's opening balance, type: money, required: true}
       - {name: closing_balance, label: closing balance, description: the statement's closing balance, type: money, required: true}
-      - {name: prior_outstanding, label: prior outstanding, description: "the items outstanding at the previous reconciliation: {reference, amount}", type: json}
+      - {name: prior_outstanding, label: prior outstanding, description: "the items outstanding at the previous reconciliation: {reference, amount, date?}; when absent, the outstanding items of the account's reconciliation that ends the day before are carried forward (FIN-BK-009)", type: json}
       - {name: window_days, label: window, description: the largest distance in days between a book date and a bank date that still match, type: integer, required: true}
-      - {name: matches, label: matches, description: "the matches of the last run: {line, document}", type: json}
+      - {name: stale_days, label: stale after, description: "the age in days from which an outstanding item is flagged for follow-up; 90 when absent (FIN-BK-009)", type: integer}
+      - {name: matches, label: matches, description: "the matches of the last run: {line, documents, rule, confidence, reason} (FIN-BK-004)", type: json}
       - {name: result, label: result, description: the reconciliation as last computed, type: json}
+      - {name: signed_result, label: signed result, description: the reconciliation as signed off, reproduced as it was (FIN-BK-008), type: json}
       - name: state
         label: state
-        description: open until reconciled with no difference
+        description: "open until reconciled with no difference; signed off by a second person, after which it no longer changes (FIN-BK-007, -008)"
         type: enum
-        constraints: {allowed_values: [open, reconciled]}
+        constraints: {allowed_values: [open, reconciled, signed_off]}
     ports:
       - name: record
-        description: post a bank-originated item (interest, fees) from a statement line (FIN-CB-004)
+        description: post a bank-originated item (interest, fees) from a statement line (FIN-BK-005)
         kind: command
         params:
           - {name: line, label: line, description: the statement line, type: integer, required: true}
           - {name: number, label: number, description: the entry's number, type: text, required: true}
-          - {name: account, label: account, description: the account against the bank, type: text, required: true}
+          - {name: account, label: account, description: "the account against the bank; when absent, the account of the first bank rule whose pattern the line's description contains (FIN-BK-005)", type: text}
           - {name: description, label: description, description: the entry's description, type: text, required: true}
         permission: post
         impl: ubos.finance.bank#record
-      - {name: reconcile, description: match the statement with the book and compute the reconciliation, kind: command, params: [], permission: reconcile, impl: ubos.finance.bank#reconcile}
+      - {name: reconcile, description: "match the statement with the book by the rules (reference, then amount within the date window, then the items outstanding before) after the manual matches, and compute the reconciliation (FIN-BK-004, -007)", kind: command, params: [], permission: reconcile, impl: ubos.finance.bank#reconcile}
+      - name: match
+        description: "match a statement line manually with one or more posted entries; several lines may name the same entry (FIN-BK-005); recorded in the BankMatch ledger (FIN-BK-006)"
+        kind: command
+        params:
+          - {name: line, label: line, description: the statement line, type: integer, required: true}
+          - {name: documents, label: documents, description: "the entries' numbers, comma-separated", type: text, required: true}
+          - {name: note, label: note, description: why, type: text}
+        permission: reconcile
+        impl: ubos.finance.bank#match_line
+      - name: unmatch
+        description: "undo the match of a statement line: a new record in the BankMatch ledger; the line stays unmatched until matched manually (FIN-BK-006)"
+        kind: command
+        params:
+          - {name: line, label: line, description: the statement line, type: integer, required: true}
+          - {name: note, label: note, description: why, type: text, required: true}
+        permission: reconcile
+        impl: ubos.finance.bank#unmatch_line
+      - name: sign_off
+        description: "complete the reconciliation: refused unless it is reconciled with no difference; the sheet ubos.finance.controls requires the approval of a person other than the preparer (FIN-BK-007, -008)"
+        kind: command
+        params:
+          - {name: confirm, label: confirm, description: the preparer's request for sign-off, type: boolean, required: true}
+          - {name: note, label: note, description: a note for the reviewer, type: text}
+        permission: reconcile
+        impl: ubos.finance.bank#sign_off
+  - name: BankMatch
+    label: bank match
+    description: "The manual matches of statement lines and their undoing, append-only: the latest record of a line is in force, and the history shows every action with its author and time (FIN-BK-005, -006)"
+    namespace: ubos.finance
+    parent: DataObject
+    kind: ledger
+    schema_version: 1
+    ledger: {key: [reconciliation], amounts: [amount], double_entry: false}
+    fields:
+      - {name: reconciliation, label: reconciliation, description: "the reconciliation: <bank account>|<statement>", type: text, required: true}
+      - {name: line, label: line, description: the statement line, type: integer, required: true}
+      - name: action
+        label: action
+        description: match or unmatch
+        type: enum
+        required: true
+        constraints: {allowed_values: [match, unmatch]}
+      - {name: documents, label: documents, description: "the entries matched, comma-separated; empty for unmatch", type: text}
+      - {name: amount, label: amount, description: the statement line's amount, type: money, required: true}
+      - {name: note, label: note, description: why, type: text}
+  - name: BankRule
+    label: bank rule
+    description: "A rule that pre-fills the account of an entry created from a statement line whose description contains its pattern (FIN-BK-005)"
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[code]]
+    fields:
+      - {name: code, label: code, description: the rule's code, type: text, required: true}
+      - {name: pattern, label: pattern, description: text the line's description contains (case-insensitive), type: text, required: true}
+      - {name: account, label: account, description: the account the entry posts against the bank, type: reference, required: true, constraints: {target_class: GlAccount}}
+  - name: BankTransfer
+    label: bank transfer
+    description: "A transfer between two bank accounts; both reconciliations can match its entry (FIN-BK-002)"
+    namespace: ubos.finance
+    parent: DataObject
+    kind: definition
+    schema_version: 1
+    keys: [[number]]
+    fields:
+      - {name: number, label: number, description: the transfer's number, type: text, required: true}
+      - {name: from_account, label: from, description: the account paid from, type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: to_account, label: to, description: the account paid into, type: reference, required: true, constraints: {target_class: GlAccount}}
+      - {name: amount, label: amount, description: the amount, type: money, required: true}
+      - {name: transfer_date, label: date, description: the date, type: date, required: true}
+      - name: state
+        label: state
+        description: draft until posted
+        type: enum
+        constraints: {allowed_values: [draft, posted]}
+    ports:
+      - {name: post, description: post the transfer, kind: command, params: [], permission: post, impl: ubos.finance.bank#post_transfer}
