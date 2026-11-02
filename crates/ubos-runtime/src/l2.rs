@@ -1108,6 +1108,12 @@ fn map_error(e: &EvalAltResult) -> BpaError {
             Some(h) => return h.0.clone(),
             None => codes::TYPE_ERROR,
         },
+        // STD-CTX-020 (1.0-rc13): a thrown map `#{code, message}` with a catchable
+        // registered code is a business refusal with that code
+        EvalAltResult::ErrorRuntime(v, _) => match refusal(v) {
+            Some(e) => return e,
+            None => codes::TYPE_ERROR,
+        },
         EvalAltResult::ErrorTerminated(token, _) => {
             if token.clone().into_string().ok().as_deref() == Some(codes::CANCELLED) {
                 codes::CANCELLED
@@ -1176,6 +1182,23 @@ fn map_error(e: &EvalAltResult) -> BpaError {
         _ => codes::TYPE_ERROR,
     };
     BpaError::new(code, detail)
+}
+
+/// The business refusal of a thrown value (STD-CTX-020): a map whose `code` is a catchable
+/// registered code and whose `message`, if present, is text.
+fn refusal(v: &Dynamic) -> Option<BpaError> {
+    let m = v.read_lock::<rhai::Map>()?;
+    let code = m.get("code")?.clone().into_string().ok()?;
+    if crate::isa::catchable(&code) != Some(true) {
+        return None;
+    }
+    let message = match m.get("message") {
+        None => String::new(),
+        Some(x) if x.is_unit() => String::new(),
+        Some(x) => x.clone().into_string().ok()?,
+    };
+    let code = crate::isa::registered(&code)?;
+    Some(BpaError::new(code, message))
 }
 
 /// True when the source holds a floating-point literal (`1.5`, `1e9`, `2.5e-3`) outside

@@ -3487,6 +3487,69 @@
    "expect": {
     "value": null
    }
+  },
+  {
+   "id": "L2E-383",
+   "category": "business-refusal",
+   "title": "a thrown map with a catchable registered code fails with that code",
+   "script": "throw #{code: \"LEDG.PERIOD_CLOSED\", message: \"the period is closed\"}",
+   "expect": {
+    "error": "LEDG.PERIOD_CLOSED"
+   }
+  },
+  {
+   "id": "L2E-384",
+   "category": "business-refusal",
+   "title": "a thrown map without a message fails with its code",
+   "script": "throw #{code: \"RULE.VALIDATION_FAILED\"}",
+   "expect": {
+    "error": "RULE.VALIDATION_FAILED"
+   }
+  },
+  {
+   "id": "L2E-385",
+   "category": "business-refusal",
+   "title": "a thrown map with an unregistered code is a script error",
+   "script": "throw #{code: \"ACME.NOT_A_CODE\", message: \"x\"}",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-386",
+   "category": "business-refusal",
+   "title": "a thrown map cannot raise a code that is not catchable",
+   "script": "throw #{code: \"LOGIC.LIMIT_EXCEEDED\"}",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-387",
+   "category": "business-refusal",
+   "title": "a thrown map whose message is not text is a script error",
+   "script": "throw #{code: \"LEDG.PERIOD_CLOSED\", message: 1}",
+   "expect": {
+    "error": "LOGIC.TYPE_ERROR"
+   }
+  },
+  {
+   "id": "L2E-388",
+   "category": "business-refusal",
+   "title": "a thrown map is caught inside the script like any thrown value",
+   "script": "let r = \"\"; try { throw #{code: \"LEDG.PERIOD_CLOSED\"} } catch (e) { r = e.code } r",
+   "expect": {
+    "value": "LEDG.PERIOD_CLOSED"
+   }
+  },
+  {
+   "id": "L2E-389",
+   "category": "business-refusal",
+   "title": "a map thrown in a function fails the execution with its code",
+   "script": "fn f() { throw #{code: \"MODEL.CONSTRAINT_VIOLATED\", message: \"duplicate\"} } f()",
+   "expect": {
+    "error": "MODEL.CONSTRAINT_VIOLATED"
+   }
   }
  ],
  "notes": "Version 0.2 (PH-1 step 5d-2, DEC-058) runs on the production L2 host: the typed handle is `this` (the PH-0 `rec`), decimals are `dec(...)`, float literals are refused (W-5), `sys.random_bytes` argument errors carry the gateway code MODEL.INVALID_VALUE, raising a limit above the profile is refused, so L2E-096 runs under the standard profile and L2E-097 cancels after units; `journaled` expectations became `deterministic`."
