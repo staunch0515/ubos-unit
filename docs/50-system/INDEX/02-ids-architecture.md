@@ -90,7 +90,7 @@ depends_on: [UBS-IDX-00]
 | CTR-071 | Notification providers (NOD → providers) | `20-architecture/02-contracts.md` |
 | CTR-072 | Telemetry and SIEM export (NOD → collectors) | `20-architecture/02-contracts.md` |
 
-## DEC (156)
+## DEC (157)
 
 | ID | Title | Defined in |
 |---|---|---|
@@ -250,4 +250,5 @@ depends_on: [UBS-IDX-00]
 | DEC-154 | The finance Buk, part 10g-2: the open items of step 10 (PH-2 step 10) | `90-decisions/000-index.md` |
 | DEC-155 | The finance Buk, part 10g-3: every Must requirement accounted for (PH-2 step 10) | `90-decisions/000-index.md` |
 | DEC-156 | Step 10 closed: the finance Buk, part 2 (PH-2 step 10h) | `90-decisions/000-index.md` |
+| DEC-157 | BPA 1.0-rc13: posting dates, explicit coordinates, frozen objects and script refusals | `90-decisions/000-index.md` |
 

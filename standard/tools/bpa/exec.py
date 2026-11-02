@@ -623,7 +623,12 @@ class Run:
         t = a['target']
         explicit = isinstance(t, str) and '?' in t
         if explicit:
-            r = self.s.resolve(t)
+            # STD-ISA-030 (1.0-rc13): the branch defaults to the process's branch, and without
+            # commit, tag or time the target is read at the process snapshot
+            sel = {x.partition('=')[0] for x in t.partition('?')[2].split('&') if x}
+            if not sel & {'branch', 'commit', 'tag', 'time'}:
+                self.state()
+            r = self.s.resolve(t, branch_default=self.branch, pins=self.pins)
             self.authorize(d['authorization'], self.s.versions[r['version_hash']]['class'])
             out = {'object_id': r['object_id'], 'class': self.s.versions[r['version_hash']]['class'],
                    'version': r['version_hash'], 'fields': r['body'], 'valid': r['valid'],
@@ -909,7 +914,16 @@ class Run:
         st = self.state()
         _, decl = self.s._projection(st, a.get('projection'))
         self.authorize(d['authorization'], decl['source'])
-        r = self.s._read_projection(self.branch, dict(a, evaluated_at=self.pins))
+        # STD-ISA-037 (1.0-rc13): `time` reads the projection as known at an earlier instant,
+        # never later than the process snapshot
+        at = a.get('time')
+        if at is not None:
+            validate_value('instant', None, at)
+            a = {k: v for k, v in a.items() if k != 'time'}
+            cid = self.s._by_id(self.branch, self.pins[self.branch])
+            if at < self.s.commits[cid]['tx_time']:
+                a['tx_time'] = at
+        r = self.s._read_projection(self.branch, a if 'tx_time' in a else dict(a, evaluated_at=self.pins))
         self.per_item(d, len(r['groups']))
         return r
 

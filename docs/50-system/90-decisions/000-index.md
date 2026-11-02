@@ -476,3 +476,23 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); those of DEC-127 … DEC-14
   - the HA Server run of SCN-501…510: step 18.
 - **Affects:** DEC-146…155, EXIT-2-04, EXIT-2-16, MET-BIZ-003, VER-INSP-0002, SCN-501…510
 
+
+### DEC-157 — BPA 1.0-rc13: posting dates, explicit coordinates, frozen objects and script refusals
+- **Date:** 2026-11-02 · **Status:** Accepted
+- **Context:** DEC-156 fixed the scope of the release candidate that follows PH-2 step 10. The finance Buk had met five gaps of BPA 1.0-rc12: no member names the posting-date field of STD-KIND-025 (DEC-147); `read.projection` has no explicit coordinates and an explicit `read.get` in a process resolves on `main` (DEC-147, -152); `read_only` is matched on the new version, so a selector over a document's state cannot freeze posted documents (DEC-154); a script's refusal can only fail with `LOGIC.TYPE_ERROR` (DEC-151, -153); two kernel conformance fixes have no vectors (DEC-153, -155). The owner confirmed the plan with the default suggestions: the standard first, then the kernel, then the finance Buk.
+- **Decision:**
+  1. **BPA 1.0-rc13** is opened by the scope rule on base 1.0-rc12. It adds no clause and changes six:
+     - STD-KIND-025: the member `ledger.posting_date` names a `date` field; an entry with a value in it posts on that date, otherwise on its commit date; a reversal posts on its commit date. The period check and the close balances (STD-KIND-026) follow each entry's posting date; projections still fold by valid time.
+     - STD-ISA-030: an explicit target in a process resolves on the process's branch unless it names another; without `commit`, `tag` or `time` it is read at the process snapshot.
+     - STD-ISA-037: the parameter `time` reads a projection as known at an earlier transaction time, never later than the snapshot.
+     - STD-LGS-011: `read_only` is matched on the version before the change, with the sheets in force after it.
+     - STD-CTX-020: an uncaught `throw #{code, message}` with a catchable registered code fails with that code; other thrown values fail with `LOGIC.TYPE_ERROR`.
+     - DAT-ClassDecl and STD-CONF-005 rule 3 name the new member.
+  2. **Vector ranges.** A clause may hold further VER-CONF ranges after its first. STD-KIND-025, whose range is full, gains VER-CONF-1155…1159, the free numbers of the KIND area. `genvectors.py` and `build_release.py` read every range.
+  3. **Reference model and vectors.** The oracle implements the six changes and the two kernel fixes (`store.py`, `periods.py`, `classes.py`, `exec.py`, `lang.py`, `rules.py`, `finance.py`, `approvals.py`). `cases/refinements.py` adds 20 vectors, among them VER-CONF-1138, -1139 (accounts of a subclass of `LedgerAccount`) and VER-CONF-5186 (a simulated call that committed nothing). VER-CONF-3005, the catalogue of 1.0-rc12, is superseded by VER-CONF-3006. The release has 259 clauses and 2,294 vectors, and MUST coverage is 221/221 (VER-INSP-9011). Every vector of 1.0-rc12 that is not superseded is unchanged.
+  4. **L2 refusals** are verified by the L2 escape suite (cases L2E-383…389), which the kernel part adds with its implementation; the oracle has no L2 engine.
+  5. **Not in the release:** a logic instruction for kernel matching (STD-KIND-027, DEC-150). The finance Buk matches in its own logic, and no second package needs it; it waits for a later release candidate.
+- **Consequences:**
+  - The release follows in three parts: rc13-1 the standard (this record), rc13-2 the kernel with `NEXT_RELEASE = "1.0-rc13"` in the conformance test, rc13-3 the finance Buk's adoption (posting dates, frozen posted documents, refusal codes). PH-2 step 11 follows.
+  - The tag `bpa-v1.0.0-rc13` is signed by the owner, like rc8…rc12.
+- **Affects:** STD-KIND-025, STD-KIND-026, STD-KIND-027, STD-KIND-029, STD-ISA-001, STD-ISA-030, STD-ISA-037, STD-LGS-011, STD-LGS-044, STD-CTX-020, STD-CONF-005, DAT-ClassDecl, VER-INSP-9011, DEC-147, DEC-150…156

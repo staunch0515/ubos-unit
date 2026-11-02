@@ -984,7 +984,12 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
             raise BpaError('MODEL.INVALID_VALUE', 'entry_id is a UUID')
         if self._entry_owner(st, entry['entry_id'])[1] or entry['entry_id'] in st['objects']:
             raise BpaError('TXN.ALREADY_EXISTS')
-        self._check_period(st, cls)
+        if op == 'reverse':
+            pf = self._decl(cls).get('ledger', {}).get('posting_date')
+            if pf and entry['body'].get(pf) is not None:
+                # STD-KIND-025 (1.0-rc13): a reversal posts on the date of its commit
+                entry['body'] = dict(entry['body'], **{pf: self._today()})
+        self._check_period(st, cls, [entry])
         key = (cls, canonical(entry['ledger_key']))
         q = st['ledger'].setdefault(key, [])
         entry['seq'] = len(q) + 1
@@ -1014,18 +1019,26 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
         rec['body_ref'] = content_id('ubos.chunk.v1', e['body'])
         return content_id('ubos.entry.v1', rec)
 
-    def _check_period(self, st, cls):
+    def _posting_date(self, e, default):
+        """STD-KIND-025: the posting date of an entry — the value of the class's posting-date
+        field when the entry has one (1.0-rc13), otherwise `default`, the date of the commit."""
+        pf = self._decl(e['class']).get('ledger', {}).get('posting_date')
+        v = e['body'].get(pf) if pf else None
+        return v[:10] if isinstance(v, str) else default
+
+    def _check_period(self, st, cls, entries):
         scope = self._decl(cls).get('ledger', {}).get('period_scope')
         if not scope:
             return
-        day = self._today()
+        days = sorted({self._posting_date(e, self._today()) for e in entries if e['class'] == cls})
         for o in st['objects'].values():
             if o['class'] != scope:
                 continue
-            seg = tl_at(o['timeline'], day)
-            body = self.versions[o['head']]['body'] if seg is None else self.versions[seg[2]]['body']
-            if body.get('state') == 'closed' and body['start'] <= day < body['end']:
-                raise BpaError('LEDG.PERIOD_CLOSED')
+            for day in days:
+                seg = tl_at(o['timeline'], day)
+                body = self.versions[o['head']]['body'] if seg is None else self.versions[seg[2]]['body']
+                if body.get('state') == 'closed' and body['start'] <= day < body['end']:
+                    raise BpaError('LEDG.PERIOD_CLOSED')
 
     def _check_double_entry(self, appended):
         groups = {}
@@ -1597,7 +1610,7 @@ class Store(Workflow, Proofs, Lang, Exec, Sheets, Rules, Ubtp, Flow, Periods, Ta
             self._cardinality(st)
             self._check_double_entry(entries)
             for cls in sorted({e['class'] for e in entries}):
-                self._check_period(st, cls)
+                self._check_period(st, cls, entries)
             self._check_extensions(st)
         finally:
             self._exts = None

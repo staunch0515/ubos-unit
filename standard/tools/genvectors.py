@@ -25,7 +25,7 @@ from bpa.store import Store                              # noqa: E402
 OUT = os.path.join(REPO, 'standard', 'vectors')
 AREAS = ['fnd', 'obj', 'cls', 'kind', 'ver', 'time', 'txn', 'proof', 'err', 'model', 'history', 'proofs', 'language', 'execution',
          'sheets', 'rules', 'core1b', 'ubtp', 'flow', 'periods', 'approvals', 'workflows', 'evolution',
-         'protection', 'integration', 'search', 'finance', 'work', 'ruleops', 'durable']
+         'protection', 'integration', 'search', 'finance', 'work', 'ruleops', 'durable', 'refinements']
 # Stateful operations whose expected results are stripped of implementation-dependent members
 # and compared as subsets by default (STD-CONF-005, rule 6); the operations of step 1b keep
 # exact matching.
@@ -74,9 +74,14 @@ class Gen:
 
     def vector(self, clause, description, steps, setup=(), also=(), prototype=True, determinism=None):
         cl = self.catalogue[clause]
-        lo, hi = cl['range']
-        n = self.next.get(clause, lo)
-        if n > hi:
+        ranges = cl['ranges']
+        n = self.next.get(clause, ranges[0][0])
+        for k, (lo, hi) in enumerate(ranges):
+            if n <= hi:
+                break
+            if k + 1 < len(ranges):
+                n = max(n, ranges[k + 1][0])
+        else:
             raise SystemExit('%s: VER-CONF range exhausted' % clause)
         self.next[clause] = n + 1
         store, results = Store(), {}

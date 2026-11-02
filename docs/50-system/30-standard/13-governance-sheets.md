@@ -91,7 +91,7 @@ DAT-PropertyDecl:
   | `require_signature` | boolean | action | override | command ports require a signature step (`require: signature`) |
   | `approvals` | integer or composite `{count, roles, order}` | action | max (by `count`) | approval requirement (STD-TXN-060) |
   | `maker_checker` | boolean | action | override | the initiator cannot approve |
-  | `read_only` | boolean | commit | override | changes to matched objects are rejected |
+  | `read_only` | boolean | commit | override | changes to matched objects are rejected; since 1.0-rc13 matched on the version before the change |
   | `field_required` | list of fields | commit | union | additional required fields |
   | `field_default` | map | commit | override per key | defaults applied on create |
   | `field_visibility` | map field → `visible`, `hidden`, `read_only` | view | override per key | view payload flags |
@@ -109,6 +109,7 @@ DAT-PropertyDecl:
 - **Conformance vectors:** VER-CONF-4880…4939
 - **Satisfies:** FR-RULE-013, SCN-009, SCN-012
 - **Notes:** Since 1.0-rc2 (DEC-066): `approvals` accepts an integer as the shorthand of `{count}`; `retention` members are ISO 8601 durations and a trigger name; `notify` items are JSON rules. The vectors of this clause cover the value schemas and the combination rules; the enforcement of each property is verified where its enforcement point is implemented: the `commit` properties and the `action` properties `approvals`, `require_signature` and `maker_checker` with STD-LGS-030 and STD-LGS-031 (PH-1 step 10c, DEC-067), `rate_limit` with the Server of step 14 (it counts calls per principal and port), `read` and `view` properties with the queries and views of step 13, `retention` and `notify` in PH-2. Commit enforcement (DEC-067): `read_only` rejects an update or end of a matched object and `field_required` a matched object without the field, both with `RULE.DECLARATION_UNSATISFIED` naming the property; `field_default` fills the absent fields of a created object before validation; `audit_level: strict` requires the commit's process to carry `message` and `reason` (STD-TXN-001); `write_policy: change_set` requires a change set on a protected branch like the class policy (`VER.CHANGE_SET_REQUIRED`); `classification` raises the effective classification of the field. The objects of `ConfigAsset` and `LogicAsset` classes (sheets, extensions, logic) are not subject to the declarations they carry: write policy and change sets govern them.
+  - **`read_only` before the change.** Since 1.0-rc13 (DEC-157), `read_only` is evaluated on the version an update or end changes: its body and lifecycle state, with the sheets in force after the commit. A selector over the object's state or fields therefore freezes the objects that already match it, while the change that brings an object into the match commits. A create is never rejected by `read_only`.
 
 ## 3. Cascade
 

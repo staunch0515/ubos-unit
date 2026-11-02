@@ -42,11 +42,16 @@ class Finance:
 
     # ---- helpers ----
 
+    def _is_account(self, cls):
+        """STD-KIND-029: `LedgerAccount` or a class extending it (1.0-rc13 vectors)."""
+        return cls == 'LedgerAccount' or (cls in self.classes and 'LedgerAccount' in self._cls(cls)['linearization'])
+
     def _live_of(self, st, cls):
-        """[(object id, object, head body)] of the live objects of a class."""
+        """[(object id, object, head body)] of the live objects of a class; for
+        `LedgerAccount`, of every class extending it."""
         out = []
         for oid, o in sorted(st['objects'].items()):
-            if o['class'] != cls:
+            if o['class'] != cls and not (cls == 'LedgerAccount' and self._is_account(o['class'])):
                 continue
             v = self.versions[o['head']]
             if not v['tombstone']:
@@ -138,11 +143,12 @@ class Finance:
         written = {}
         for oid, vh in self._written:
             v = self.versions[vh]
-            if not v['tombstone'] and v['class'] in ('Currency', 'FxRate', 'LedgerAccount', 'Projection') \
+            if not v['tombstone'] and (v['class'] in ('Currency', 'FxRate', 'Projection') or self._is_account(v['class'])) \
                     and self._live(st, oid):
                 written[oid] = v
         for oid, v in written.items():
-            getattr(self, '_check_' + v['class'].lower())(st, oid, v['body'])
+            name = 'LedgerAccount' if self._is_account(v['class']) else v['class']
+            getattr(self, '_check_' + name.lower())(st, oid, v['body'])
         for e in appended:
             spec = self._decl(e['class']).get('ledger') or {}
             if spec.get('account'):
@@ -195,7 +201,7 @@ class Finance:
         if uri is None:
             return
         oid = self._resolve(st, uri)
-        if oid is None or st['objects'][oid]['class'] != 'LedgerAccount':
+        if oid is None or not self._is_account(st['objects'][oid]['class']):
             return                                      # reported by the reference checks
         at = self._at(st['objects'][oid], e['valid_at'])
         if at is None:

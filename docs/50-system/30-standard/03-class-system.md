@@ -42,7 +42,7 @@ DAT-ClassDecl:
   classification_default: { type: enum, required: false, description: "default classification for fields" }
   overlay_policy: { type: map, required: false, description: "per member: overridable | extend_only | locked" }
   lens: { type: reference, required: false, description: "lens from the previous schema version (STD-CLS-060)" }
-  ledger: { type: composite, required: false, description: "Ledger kind only: {key: [field], amounts: [field], double_entry: boolean, period_scope: text, account: field (since 1.0-rc9), statement: {source, account, statement, line} (since 1.0-rc9)}" }
+  ledger: { type: composite, required: false, description: "Ledger kind only: {key: [field], amounts: [field], double_entry: boolean, period_scope: text, account: field (since 1.0-rc9), statement: {source, account, statement, line} (since 1.0-rc9), posting_date: field (since 1.0-rc13)}" }
 ```
 
 ### STD-CLS-002 — Field declaration schema

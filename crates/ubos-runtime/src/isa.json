@@ -898,6 +898,11 @@
      "type": "date"
     },
     {
+     "name": "time",
+     "optional": true,
+     "type": "instant"
+    },
+    {
      "name": "rollup",
      "optional": true,
      "type": "boolean"

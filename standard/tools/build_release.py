@@ -92,7 +92,7 @@ def write(path, text):
 
 
 def main():
-    version = sys.argv[1] if len(sys.argv) > 1 else '1.0-rc12'
+    version = sys.argv[1] if len(sys.argv) > 1 else '1.0-rc13'
     rel = os.path.join(STD, 'release', version)
     scope_doc = json.load(open(os.path.join(rel, 'scope.json')))
     cat = clauses()
@@ -171,9 +171,9 @@ def main():
             for c in v['clauses']:
                 if c not in scope:
                     errors.append((where, '%s is not in release %s' % (c, version)))
-            rng = cat.get(first, {}).get('range')
+            rngs = cat.get(first, {}).get('ranges') or []
             num = int(v['id'].split('-')[-1])
-            if not rng or not rng[0] <= num <= rng[1]:
+            if not any(lo <= num <= hi for lo, hi in rngs):
                 errors.append((where, 'id outside the VER-CONF range of %s' % first))
             if cat.get(first, {}).get('profile') != v['profile']:
                 errors.append((where, 'profile differs from the clause profile'))

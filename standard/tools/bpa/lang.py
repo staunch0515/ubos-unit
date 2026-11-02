@@ -121,11 +121,11 @@ class Lang:
     def _slugs(self, oid):
         return {v['slug'] for v in self.versions.values() if v['object_id'] == oid}
 
-    def resolve(self, uri):
+    def resolve(self, uri, branch_default='main', pins=None):
         # STD-ADDR-003 (1.0-rc8): short forms and VFS paths are normalised first
         if isinstance(uri, str) and not uri.startswith('ubos://'):
             q = dict(x.partition('=')[::2] for x in uri.partition('?')[2].split('&') if x)
-            uri = self._canonical_ref(self._state(q.get('branch', 'main'))[0], uri)
+            uri = self._canonical_ref(self._state(q.get('branch', branch_default))[0], uri)
         p = addr.parse_uri(uri)
         if p['tenant'] != self.TENANT or 'vae' in p:
             raise BpaError('IAM.NOT_FOUND', 'unknown authority')
@@ -150,7 +150,11 @@ class Lang:
             branch, i['tag'] = t['branch'], sel['tag']
         if 'time' in sel:
             i['tx_time'] = sel['time']
-        branch = branch or 'main'
+        branch = branch or branch_default
+        # STD-ISA-030 (1.0-rc13): in a process, a target without commit, tag or time is read at
+        # the process snapshot of its branch
+        if pins and not i and branch in pins:
+            i['evaluated_at'] = pins
         st, prov, ev, cid = self._state(branch, i)
         cands = sorted(oid for oid, o in st['objects'].items() if o['class'] == p['class'] and o['slug'] == p['slug'])
         redirected = False

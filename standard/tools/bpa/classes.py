@@ -388,6 +388,10 @@ def check_decl(d):
     pf = d.get('principal_field')
     if pf is not None and (pf not in fields or fields[pf]['type'] != 'text'):
         raise BpaError('MODEL.INVALID_VALUE', 'principal_field names a text field')
+    # STD-KIND-025 (1.0-rc13): the posting-date field of a ledger class is a date field
+    pd = (d.get('ledger') or {}).get('posting_date') if isinstance(d.get('ledger'), dict) else None
+    if pd is not None and (pd not in fields or fields[pd]['type'] != 'date'):
+        raise BpaError('MODEL.INVALID_VALUE', 'ledger.posting_date names a date field')
     # STD-CLS-004 (1.0-rc3): the lifecycle is a URI; a class with a lifecycle has no field state
     if 'lifecycle' in d:
         if not isinstance(d['lifecycle'], str) or not d['lifecycle']:

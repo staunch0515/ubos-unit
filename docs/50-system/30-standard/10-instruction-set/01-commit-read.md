@@ -171,6 +171,7 @@ branch is the process branch unless a `branch` parameter is allowed and authoris
 - **Conformance vectors:** VER-CONF-3300…3329
 - **Satisfies:** FR-VER-101, FR-TIME-031, FR-VER-085
 - **Notes:** Reads at explicit past coordinates do not extend the process's serializable read set.
+  - **Explicit coordinates in a process.** Since 1.0-rc13 (DEC-157), a target with selectors is resolved on the process's branch unless it names `branch`, `commit` or `tag`. Without `commit`, `tag` or `time` it is read at the process snapshot of that branch, so `asof` alone reads the version valid at that date in the snapshot; the first such read of the branch fixes the snapshot.
 
 ### STD-ISA-031 — `read.history`
 - **Clause:** Returns the versions of an object (or entries of a ledger key) in a transaction-time range, with commit metadata, paged.
@@ -266,7 +267,7 @@ branch is the process branch unless a `branch` parameter is allowed and authoris
 
   | Aspect | Value |
   |---|---|
-  | Params | `projection: text`, `group: map?`, `asof: date?`, `rollup: boolean?`, `at_least: integer?`, `timeout_ms: integer?` |
+  | Params | `projection: text`, `group: map?`, `asof: date?`, `time: instant?`, `rollup: boolean?`, `at_least: integer?`, `timeout_ms: integer?` |
   | Result | `{projection, groups, watermark}` |
   | Errors | `IAM.NOT_FOUND`, `QRY.INVALID_QUERY`, `QRY.WATERMARK_TIMEOUT` |
   | Determinism | `snapshot` |
@@ -281,3 +282,4 @@ branch is the process branch unless a `branch` parameter is allowed and authoris
   - **Names.** `projection` is the `name` of a live projection; an unknown name fails with `IAM.NOT_FOUND`.
   - **Defaults.** Without `asof`, entries of every valid time count. `timeout_ms` defaults to 0, so a read with `at_least` above the watermark fails at once.
   - **Snapshot.** The first read of a branch fixes the process snapshot (STD-TXN-002), as for `read.get`.
+  - **As known at.** Since 1.0-rc13 (DEC-157), `time` reads the projection at the last commit of the process's branch at or before that transaction time: the entries as known then, with `asof` selecting by valid time as before. A `time` at or after the transaction time of the snapshot reads at the snapshot. The read does not extend the serializable read set.

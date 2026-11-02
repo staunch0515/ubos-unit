@@ -257,7 +257,14 @@ class Approvals:
             for n, (when, cid, pid) in enumerate(procs[:budget], 1):
                 actual = self._outcome_of(pid)
                 name = 'sandbox/sim-%s-%d' % (rid[:8], n)
-                cseq = self.commits[cid]['cseq'] - 1 if cid is not None else self.commits[self.branches[target]['head']]['cseq']
+                if cid is not None:
+                    cseq = self.commits[cid]['cseq'] - 1
+                else:
+                    # STD-LGS-044 (1.0-rc13 vector, DEC-153): a call that committed nothing re-runs
+                    # on the snapshot its journal pinned
+                    pin = (self.journals[pid].get('snapshots') or {}).get(target)
+                    at = self._by_id(target, pin) if pin else self.branches[target]['head']
+                    cseq = self.commits[at]['cseq']
                 self.create_branch(name, target, cseq)
                 st = self._state(name)[0]
                 changes = []

@@ -35,11 +35,14 @@ def clauses():
             profile = (pm.group(1) if pm else section or (h1.group(1) if h1 else None)
                        or AREA_PROFILE.get(area, 'Core'))
             cv = re.search(r'\*\*Conformance vectors:\*\* (.*)', b)
+            # a clause may hold further ranges after its first (since 1.0-rc13, DEC-157)
+            rngs = [(int(a), int(b)) for a, b in RANGE.findall(cv.group(1))] if cv else []
             rng = RANGE.search(cv.group(1)) if cv else None
             clause = re.search(r'\*\*Clause:\*\*(.*?)(?=\n- \*\*Grammar|\Z)', b, re.S)
             ctext = clause.group(1) if clause else ''
             out[cid] = {'file': f, 'title': MARK.sub('', title).strip(), 'profile': profile,
                         'must': bool(re.search(r'\bMUST\b', ctext)),
                         'range': (int(rng.group(1)), int(rng.group(2))) if rng else None,
+                        'ranges': rngs,
                         'block': b.rstrip() + '\n'}
     return out

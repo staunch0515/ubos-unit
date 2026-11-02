@@ -108,7 +108,7 @@ class Periods:
             sums = {a: {} for a in self._amounts(cls)}
             n = 0
             for e in q:
-                if dates.get(e['cseq'], '9999-12-31') >= end:
+                if self._posting_date(e, dates.get(e['cseq'], '9999-12-31')) >= end:
                     continue
                 n += 1
                 for a in sums:

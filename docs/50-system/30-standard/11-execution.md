@@ -190,10 +190,13 @@ DAT-Journal:
   Implementations in other languages MUST provide an L2 language with equivalent observable semantics for the conformance vectors, or declare the L2 profile unsupported.
 
   Static analysis of L2 sources rejects `eval`, `print`, `debug`, module statements (`import`, `export`), function pointers and reflection (`Fn`, `call`, `curry`, `is_def_fn`, `is_def_var`), `sleep`, `exit` and `parse_json`, and closures that name `sys`. Instructions are bound as `sys.<family>.<operation>(…)`. An implementation without an L2 engine fails L2 execution with `LOGIC.NOT_AVAILABLE`. The run-time behaviour of the engine is verified by the L2 escape suite (EXIT-1-10) (DEC-044).
+
+  A script refuses with a business error by throwing a map `#{code, message}`. When `code` is a code of the registry that is catchable (STD-ERR-002) and `message`, if present, is text, an uncaught throw MUST fail the execution with that code and message; any other uncaught thrown value fails with `LOGIC.TYPE_ERROR`. Inside the script the map is caught like any other thrown value.
 - **Grammar / Schema:** —
 - **Conformance vectors:** VER-CONF-4200…4239
 - **Satisfies:** FR-LOGIC-041, FR-LOGIC-042, FR-LOGIC-045
 - **Notes:** The Rhai language is part of profile `Core` for scripts. Third-party engines may certify without L2 if they execute only L1 and L3 logic.
+  - **Business refusals.** Since 1.0-rc13 (DEC-157). A thrown map is the L2 form of the L1 statement `{fail, message}` (STD-CONF-005, rule 11), limited to catchable codes: a code that is not registered, or that the registry marks not catchable, such as `LOGIC.LIMIT_EXCEEDED`, fails with `LOGIC.TYPE_ERROR`. Engines without L2 fail such scripts with `LOGIC.NOT_AVAILABLE` like every L2 execution; the escape suite verifies the behaviour (L2E-383…389).
 
 ### STD-CTX-021 — L3 component world
 - **Clause:** L3 components MUST be WebAssembly components (component model) that:

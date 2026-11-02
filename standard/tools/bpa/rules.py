@@ -66,6 +66,15 @@ class Rules:
 
     # -- commit enforcement (STD-LGS-011 commit properties, STD-LGS-030) --
 
+    def _read_only_before(self, st, view, branch, oid, ctx):
+        """STD-LGS-011 (1.0-rc13): `read_only` is matched on the version before the change —
+        its body and lifecycle state — with the sheets in force after it."""
+        o = view['objects'][oid]
+        old = self.versions[o['head']]['body']
+        out, _ = self._cascade_in(st, branch, oid, o, old, ctx, self._default_valid(o['class']))
+        v = out.get('read_only')
+        return v[0] if v else None
+
     def _enforce(self, branch, st, view, result, p, via_change_set):
         """Commit-enforced declarations and the validations and invariants of the objects
         written; raises `RULE.DECLARATION_UNSATISFIED`, `VER.CHANGE_SET_REQUIRED` or
@@ -86,6 +95,8 @@ class Rules:
                 continue
             eff, bound = self._effective(st, branch, oid, ctx, self._default_valid(st['objects'][oid]['class']))
             self._sheets_bound |= set(bound)
+            if oid in view['objects']:
+                eff = dict(eff, read_only=self._read_only_before(st, view, branch, oid, ctx))
             if eff.get('read_only') is True:
                 raise BpaError('RULE.DECLARATION_UNSATISFIED', {'property': 'read_only', 'object_id': oid})
         for oid, vh in written:
@@ -96,7 +107,7 @@ class Rules:
             old = self.versions[view['objects'][oid]['head']]['body'] if existed else None
             eff, bound = self._effective(st, branch, oid, ctx, self._default_valid(cls), body=body)
             self._sheets_bound |= set(bound)
-            if eff.get('read_only') is True and existed:
+            if existed and self._read_only_before(st, view, branch, oid, ctx) is True:
                 raise BpaError('RULE.DECLARATION_UNSATISFIED', {'property': 'read_only', 'object_id': oid})
             for f in eff.get('field_required') or []:
                 if body.get(f) is None:
