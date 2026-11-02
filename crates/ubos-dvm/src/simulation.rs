@@ -53,6 +53,19 @@ impl Engine {
         })
     }
 
+    /// The cseq after which a call without a process record re-runs: the commit of the
+    /// target its journal pinned as its snapshot, plus one (STD-LGS-044).
+    fn snapshot_of_call(&mut self, target: &str, journal: &Value) -> Result<Option<u64>, BpaError> {
+        let Some(pin) = s(&journal["snapshots"], target) else {
+            return Ok(None);
+        };
+        let mut repo = Repo::new(self.store.as_mut(), &self.registry);
+        let Ok(c) = repo.by_id(target, pin) else {
+            return Ok(None);
+        };
+        Ok(Some(repo.commit(c)?.cseq + 1))
+    }
+
     /// The historical port calls of `target` in the window, by an optional port, in commit
     /// order.
     fn calls(
@@ -92,7 +105,7 @@ impl Engine {
             if from.is_some_and(|f| when.as_str() < f) || to.is_some_and(|t| when.as_str() >= t) {
                 continue;
             }
-            let cseq = self.store.process_rec(&pid)?.and_then(|r| {
+            let recorded = self.store.process_rec(&pid)?.and_then(|r| {
                 r["commits"]
                     .as_array()
                     .into_iter()
@@ -100,6 +113,12 @@ impl Engine {
                     .find(|c| c[0].as_str() == Some(target))
                     .and_then(|c| c[1].as_u64())
             });
+            // a call without a process record (no explicit process id, or deferred) re-runs on
+            // the snapshot its journal pinned
+            let cseq = match recorded {
+                Some(c) => Some(c),
+                None => self.snapshot_of_call(target, &j)?,
+            };
             out.push(((when, cseq, pid), j));
         }
         out.sort_by(|a, b| {

@@ -98,12 +98,14 @@ assets:
         }
         lines.push(#{account: v.payable_account, amount: usd(-total, cur)});
         let due = if this.due_date == () { date_of(days(this.bill_date) + v.terms_days) } else { this.due_date };
+        // the document date ages the item; the posting date books it (FIN-PC-005)
+        let posting = if this.posting_date == () { this.bill_date } else { this.posting_date };
         let e = sys.commit.create(#{class: "JournalEntry", slug: this.number.to_lower(),
-          fields: #{number: this.number, source: "payables", kind: "bill", posting_date: this.bill_date,
+          fields: #{number: this.number, source: "payables", kind: "bill", posting_date: posting,
                     document_date: this.bill_date, description: this.description, party: v.code,
                     lines: lines, total: usd(debits, cur), state: "draft"}});
         sys.run.port(#{target: e.object_id, port: "post", params: #{}});
-        sys.commit.append(#{class: "ApItem", ledger_key: #{vendor: v.code}, valid_at: this.bill_date,
+        sys.commit.append(#{class: "ApItem", ledger_key: #{vendor: v.code}, valid_at: posting,
           fields: #{vendor: v.code, document: this.vendor_invoice, amount: usd(total, cur), kind: "bill",
                     source: this.number, bill_date: this.bill_date, due: due}});
         sys.commit.update(#{target: self_id, set: #{state: "posted", due_date: due, total: usd(total, cur)}});

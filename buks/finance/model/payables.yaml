@@ -39,7 +39,8 @@ classes:
       - {name: number, label: number, description: the bill's document number, type: text, required: true}
       - {name: vendor_invoice, label: vendor invoice, description: the vendor's invoice number, type: text, required: true}
       - {name: vendor, label: vendor, description: the vendor, type: reference, required: true, constraints: {target_class: Vendor}}
-      - {name: bill_date, label: bill date, description: the document and posting date, type: date, required: true}
+      - {name: bill_date, label: bill date, description: the document date; the posting date unless one is given, type: date, required: true}
+      - {name: posting_date, label: posting date, description: "the date the bill posts on, in an open period, when it differs from the document date: a late bill of a closed period (FIN-PC-005)", type: date}
       - {name: due_date, label: due date, description: computed from the terms when absent, type: date}
       - {name: description, label: description, description: the bill's description, type: text, required: true}
       - {name: lines, label: lines, description: "the lines: {description, account, amount (money, positive), use_tax_code? (URI of a TaxCode; accrues use tax, FIN-TX-007)}", type: json, required: true}

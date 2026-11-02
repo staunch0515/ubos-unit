@@ -7,8 +7,42 @@ assets:
     profile: standard
     state: committed
     capabilities: [read, commit, run, search]
-    exports: [open, reopen]
+    exports: [open, reopen, checklist, soft_close]
     source: |
+      fn num(s) {
+        let n = 0;
+        for c in s.chars() { n = n * 10 + "0123456789".index_of(c); }
+        n
+      }
+      fn days(s) {
+        let y = num(s.sub_string(0, 4));
+        let m = num(s.sub_string(5, 2));
+        let dd = num(s.sub_string(8, 2));
+        if m <= 2 { y -= 1; }
+        let era = y / 400;
+        let yoe = y - era * 400;
+        let mp = (m + 9) % 12;
+        let doy = (153 * mp + 2) / 5 + dd - 1;
+        era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy
+      }
+      fn date_of(z) {
+        let era = z / 146097;
+        let doe = z - era * 146097;
+        let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+        let y = yoe + era * 400;
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+        let mp = (5 * doy + 2) / 153;
+        let dd = doy - (153 * mp + 2) / 5 + 1;
+        let m = if mp < 10 { mp + 3 } else { mp - 9 };
+        if m <= 2 { y += 1; }
+        let ms = if m < 10 { "0" + m.to_string() } else { m.to_string() };
+        let ds = if dd < 10 { "0" + dd.to_string() } else { dd.to_string() };
+        y.to_string() + "-" + ms + "-" + ds
+      }
+      fn in_period(field, start, end) {
+        "this." + field + " >= d'" + start + "' and this." + field + " < d'" + end + "'"
+      }
+      fn check(name, failing) { #{check: name, passed: failing.len() == 0, evidence: failing} }
       fn negated(lines) {
         let out = [];
         for l in lines {
@@ -45,6 +79,106 @@ assets:
       // reopening goes through reopen_period, which evaluates this port's decisions
       fn reopen(reason) {
         #{reopen: "use reopen_period", reason: reason}
+      }
+
+      // the automatic close checks of the period (FIN-PC-004): each with its result and the
+      // evidence of what fails
+      fn checklist() {
+        sys.read.get(#{target: self_id});
+        let start = this.start;
+        let end = this.end;
+        let last = date_of(days(end) - 1);
+        let yymm = last.sub_string(2, 2) + last.sub_string(5, 2);
+        let checks = [];
+        // 1. no unposted documents dated in the period
+        let drafts = [];
+        for cd in [["JournalEntry", "posting_date"], ["Invoice", "invoice_date"], ["Receipt", "receipt_date"],
+                   ["Bill", "bill_date"], ["PaymentRun", "run_date"]] {
+          let w = "this.state == \"draft\" and " + in_period(cd[1], start, end);
+          for id in sys.search.query(#{query: #{from: cd[0], where: w}}).items {
+            drafts.push(cd[0] + " " + sys.read.get(#{target: id}).fields.number);
+          }
+        }
+        checks.push(check("unposted-documents", drafts));
+        // 2. every bank account with statement lines in the period is reconciled for it
+        let banks = [];
+        for g in sys.read.projection(#{projection: "bank-lines", asof: last}).groups {
+          let dt = g.values.date;
+          if dt >= start && dt < end && !banks.contains(g.key.bank_account) { banks.push(g.key.bank_account); }
+        }
+        let unreconciled = [];
+        for b in banks {
+          let w = "this.bank_account == \"" + b + "\" and this.period_end == d'" + last + "' and this.state == \"reconciled\"";
+          let rq = sys.search.query(#{query: #{from: "BankReconciliation", where: w}});
+          let found = rq.items;
+          if found.len() == 0 { unreconciled.push(b); }
+        }
+        checks.push(check("bank-reconciled", unreconciled));
+        // 3. the subledgers equal their control accounts
+        let differ = [];
+        for cls in ["Receivables", "Payables"] {
+          for id in sys.search.query(#{query: #{from: cls}}).items {
+            let r = sys.run.port(#{target: id, port: "aging", params: #{as_of: last}});
+            if r.difference != "0.00" { differ.push(cls + " " + r.difference); }
+          }
+        }
+        checks.push(check("subledgers-agree", differ));
+        // 4. the runs of the period: depreciation, revaluation and recurring entries
+        let missing = [];
+        let fw = "this.status == \"in_service\" and this.in_service < d'" + end + "'";
+        let fq = sys.search.query(#{query: #{from: "FixedAsset", where: fw}});
+        let fas = fq.items;
+        if fas.len() > 0 {
+          let dq = sys.search.query(#{query: #{from: "JournalEntry", where: "this.number == \"DEP-" + yymm + "\" and this.state == \"posted\""}});
+          let dep = dq.items;
+          if dep.len() == 0 { missing.push("DEP-" + yymm); }
+        }
+        for id in sys.search.query(#{query: #{from: "Receivables"}}).items {
+          let r = sys.run.port(#{target: id, port: "revalue", params: #{period_end: last, simulate: true}});
+          if r.items.len() > 0 && !("posted" in r) { missing.push(r.number); }
+        }
+        let tw = "this.first_period_end <= d'" + last + "' and this.last_period_end >= d'" + last + "'";
+        for id in sys.search.query(#{query: #{from: "RecurringEntry", where: tw}}).items {
+          let n = sys.read.get(#{target: id}).fields.code + "-" + last.sub_string(0, 7);
+          let eq = sys.search.query(#{query: #{from: "JournalEntry", where: "this.number == \"" + n + "\""}});
+          let made = eq.items;
+          if made.len() == 0 { missing.push(n); }
+        }
+        checks.push(check("runs-done", missing));
+        // 5. the suspense accounts are at zero
+        let open = [];
+        let susp = [];
+        for id in sys.search.query(#{query: #{from: "GlAccount", where: "this.suspense == true"}}).items {
+          susp.push(sys.read.get(#{target: id}).fields.number);
+        }
+        if susp.len() > 0 {
+          for x in sys.read.projection(#{projection: "gl-balance", asof: last}).groups {
+            let p = x.key.account.split("/");
+            let n = p[p.len() - 1];
+            if susp.contains(n) {
+              for m in x.values.balance { if !dec(m.amount).is_zero() && !open.contains(n) { open.push(n); } }
+            }
+          }
+        }
+        checks.push(check("suspense-zero", open));
+        let passed = true;
+        let failing = [];
+        for c in checks { if !c.passed { passed = false; failing.push(c.check); } }
+        #{period: start, last_day: last, passed: passed, failing: failing, checks: checks}
+      }
+
+      // soft close: to closing when every check passes, keeping the results (FIN-PC-004, -005)
+      fn soft_close() {
+        sys.read.get(#{target: self_id});
+        if this.state != "open" { throw "the period is " + this.state; }
+        let r = sys.run.port(#{target: self_id, port: "checklist", params: #{}});
+        if !r.passed {
+          let names = "";
+          for f in r.failing { names += if names == "" { f } else { ", " + f }; }
+          throw "the close checklist fails: " + names;
+        }
+        sys.commit.update(#{target: self_id, set: #{state: "closing", checklist: r.checks}});
+        #{state: "closing", checks: r.checks}
       }
   - name: ubos.finance.years
     abi: "1.0"

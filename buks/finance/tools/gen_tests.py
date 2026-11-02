@@ -1045,6 +1045,354 @@ def fx_tests():
     }]
 
 
+# ---- the sample company in process (PH-2 step 10g, DEC-153) ----
+
+def capitalize_step(doc):
+    """The capitalisation of a new asset from the bill coded to its cost account (FIN-AP-007)."""
+    out = []
+    for fa in rows('fixed-assets.csv'):
+        if fa['in_service'] >= '2026-01-01' and any(r['account'] == fa['account'] for r in doc[4]):
+            out.append({'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('register'), 'port': 'capitalize',
+                                                   'params': {'bill': doc[0], 'code': fa['id'],
+                                                              'description': fa['description'],
+                                                              'asset_class': class_uri(ASSET_CLASS[fa['account']]),
+                                                              'in_service': fa['in_service']}},
+                        'expect': {'match': 'subset', 'result': {'result': {'capitalized': fa['id']}}}})
+    return out
+
+
+def company_walk(month, clock, skip=()):
+    """Every document of a month through the port that owns it, at noon of its recording date:
+    subledger documents posted (a bill for a new asset capitalised), the depreciation and
+    revaluation runs, the other entries posted (approved over the limit); the reversal of the
+    revaluation comes from opening the next period."""
+    steps = []
+    for doc in documents(month):
+        if doc[0] in skip or doc[1] == 'revaluation reversal':
+            continue
+        more, clock = advance(clock, datetime.datetime.fromisoformat(doc[3]) + datetime.timedelta(hours=12))
+        steps += more
+        if doc[1] in ('invoice', 'credit memo', 'receipt', 'bill', 'payment'):
+            obj = ar_document(doc) if doc[1] in ('invoice', 'credit memo', 'receipt') else ap_document(doc)
+            steps += [{'op': 'commit', 'input': {'branch': BRANCH, 'changes': [obj]}},
+                      {'op': 'execute', 'input': {'branch': BRANCH, 'target': obj['object_id'], 'port': 'post',
+                                                  'params': {}, 'process': {'initiator': PREPARER}},
+                       'expect': {'match': 'subset', 'result': {'result': {'posted': True}}}}]
+            if doc[1] == 'bill':
+                steps += capitalize_step(doc)
+        elif doc[1] == 'revaluation':
+            steps.append(revalue_step(doc[2], doc[0]))
+        elif doc[1] == 'depreciation':
+            steps.append({'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('register'),
+                                                     'port': 'run_depreciation', 'params': {'period_end': doc[2]},
+                                                     'process': {'initiator': PREPARER}},
+                          'expect': {'match': 'subset', 'result': {'result': {'created': True, 'number': doc[0]}}}})
+        else:
+            steps += entry_steps(entry_of(doc))
+    return steps, clock
+
+
+def company_base():
+    return setup_steps() + receivables_setup() + payables_setup() + assets_setup()
+
+
+def soft_close_steps(slug, tb):
+    """Soft-close a period through its checklist (FIN-PC-004), then close it (STD-KIND-026)."""
+    balances = [{'class': 'JournalLine', 'ledger_key': g['key'],
+                 'amounts': {'amount': g['values']['balance']}} for g in balance_groups(tb)]
+    return [
+        {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('period', slug), 'port': 'soft_close',
+                                    'params': {}, 'process': {'initiator': CONTROLLER}},
+         'expect': {'match': 'subset', 'result': {'result': {'state': 'closing'}}}},
+        {'op': 'close_period', 'input': {'branch': BRANCH, 'period': uid('period', slug),
+                                         'artefact_id': uid('artefact', slug)},
+         'expect': {'match': 'subset', 'result': {'tag': 'close-%s-1' % slug, 'balances': balances}}},
+    ]
+
+
+def company_steps():
+    """January and February of the sample company from their documents: the statement
+    reconciled on 31 January, February opened (FXR-2601-R), January closed through its
+    checklist on 2 February, then the February documents."""
+    jan, clock = company_walk('2026-01', START, skip=RECORDED)
+    # the statement arrives on the evening of 31 January: interest and fee recorded from it post
+    # in January, whose posting date is the commit date (STD-KIND-025)
+    more, clock = advance(clock, datetime.datetime(2026, 1, 31, 20))
+    jan += more + reconciliation_steps()
+    more, clock = advance(clock, datetime.datetime(2026, 2, 1, 8))
+    jan += more + [{'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('period', '2026-02'), 'port': 'open',
+                                               'params': {}, 'process': {'initiator': PREPARER}},
+                    'expect': {'match': 'subset', 'result': {'result': {'reversed': ['FXR-2601-R']}}}}]
+    more, clock = advance(clock, datetime.datetime(2026, 2, 2, 9))
+    jan += more + soft_close_steps('2026-01', trial_balance('FIN-EXP-03'))
+    feb, clock = company_walk('2026-02', clock)
+    return jan, feb
+
+
+def company_tests():
+    base = company_base()
+    jan, feb = company_steps()
+    report = lambda target, port, params, result: {
+        'op': 'execute', 'input': {'branch': BRANCH, 'target': target, 'port': port, 'params': params},
+        'expect': {'match': 'subset', 'result': {'result': result}}}
+    gl = lambda projection, asof, groups: {'op': 'read_projection',
+                                           'input': {'branch': BRANCH, 'projection': projection, 'asof': asof},
+                                           'expect': {'match': 'subset', 'result': {'groups': groups}}}
+    jan_lines = dict(opening_lines())
+    jan_lines.update(posted_lines('FIN-EXP-02'))
+    all_lines = dict(jan_lines)
+    for k, c in posted_feb().items():
+        all_lines[k] = all_lines.get(k, 0) + c
+    statements = []
+    for fid, slug, title, columns in STATEMENTS:
+        key = 'values' if columns else 'amount'
+        statements.append(report('ubos://%s/FinancialStatement/%s' % (VAE, slug), 'render',
+                                 {'opening': '2025-12-31', 'closing': '2026-01-31'},
+                                 {'lines': [{'label': r['label'], key: r[key]} for r in statement_rows(fid, columns)]}))
+    aging = ar_aging()
+    ar_total = amount(sum(cents(r['open']) for r in aging))
+    tax = []
+    for cells in section('FIN-EXP-13'):
+        tax.append({'tax_code': cells[0].split(' ')[0], 'taxable': amount(cents(cells[1])),
+                    'exempt': amount(cents(cells[2])), 'tax': amount(cents(cells[3])),
+                    'documents': sorted(re.findall(r'(?:INV|CM)-\d+', cells[4]))})
+    tax.sort(key=lambda r: r['tax_code'])
+    ap_aging = [{'vendor': c[0], 'document': c[1], 'date': c[2], 'due': c[3], 'bucket': c[4],
+                 'open': amount(cents(c[5]))} for c in section('FIN-EXP-09') if c[0]]
+    ap_total = amount(sum(cents(r['open']) for r in ap_aging))
+    f1099 = [{'vendor': c[0], 'name': c[1], 'form': c[2], 'paid': amount(cents(c[3])),
+              'reportable': c[4].startswith('yes')} for c in section('FIN-EXP-14')]
+    register = [{'asset': c[0], 'cost': amount(cents(c[3])), 'accumulated_closing': amount(cents(c[9])),
+                 'net_book_value': amount(cents(c[10]))} for c in section('FIN-EXP-11')]
+    fx = []
+    for cells in section('FIN-EXP-12')[:3]:
+        orig = fx_note(document_named('INV-1005')[4][0]['description'])
+        fx.append({'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'ar-open', 'asof': cells[0],
+                                                       'group': {'customer': 'C400', 'document': 'INV-1005'}},
+                   'expect': {'match': 'subset', 'result': {'groups': [
+                       {'key': {'customer': 'C400', 'document': 'INV-1005'},
+                        'values': {'open': [money(amount(cents(cells[2])))],
+                                   'original': [{'amount': amount(orig[1]), 'currency': orig[0]}]}}]}}})
+    late = {'op': 'create', 'class': 'Bill', 'object_id': uid('bill', 'BILL-LATE'), 'slug': 'bill-late',
+            'body': {'number': 'BILL-LATE', 'vendor_invoice': 'LATE-1', 'vendor': vendor_uri('V600'),
+                     'bill_date': '2026-01-25', 'description': 'January bill posted without a posting date',
+                     'state': 'draft', 'lines': [{'description': 'power', 'account': account_uri('6300'),
+                                                  'amount': money('100.00')}]}}
+    checks = [{'check': c, 'passed': True, 'evidence': []} for c in
+              ('unposted-documents', 'bank-reconciled', 'subledgers-agree', 'runs-done', 'suspense-zero')]
+    return [{
+        'name': 'SCN-501…510 in process: January from the documents ties out FIN-EXP-01…11, -13 and -14',
+        'kind': 'scenario',
+        'steps': base + jan + [
+            gl('gl-balance', '2025-12-31', balance_groups(trial_balance('FIN-EXP-01'))),
+            gl('gl-document', '2026-01-31', document_groups(jan_lines)),
+            gl('gl-balance', '2026-01-31', balance_groups(trial_balance('FIN-EXP-03'))),
+        ] + statements + [
+            report(uid('receivables'), 'aging', {'as_of': '2026-01-31'},
+                   {'rows': aging, 'total': ar_total, 'control_balance': ar_total, 'difference': '0.00'}),
+            report(uid('receivables'), 'tax_report', {'opening': '2025-12-31', 'closing': '2026-01-31'}, {'rows': tax}),
+            report(uid('payables'), 'aging', {'as_of': '2026-01-31'},
+                   {'rows': ap_aging, 'total': ap_total, 'control_balance': ap_total, 'difference': '0.00'}),
+            report(uid('payables'), 'form_1099', {'tax_year': '2026', 'through': '2026-01-31'}, {'rows': f1099}),
+            report(uid('register'), 'register', {'opening': '2025-12-31', 'closing': '2026-01-31'}, {'rows': register}),
+        ],
+    }, {
+        'name': 'SCN-501…510 in process: January closed through its checklist; February from the documents ties out FIN-EXP-12, -15, -16 and -17',
+        'kind': 'scenario',
+        'steps': base + jan + feb + [
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': uid('period', '2026-01')},
+             'expect': {'match': 'subset', 'result': {'body': {'state': 'closed', 'checklist': checks}}}},
+            gl('gl-document', '2026-02-28', document_groups(all_lines)),
+        ] + account_reads('2026-02-05', signed_column('FIN-EXP-16', 2), '2026-02-05T23:59:59.999999Z')
+          + account_reads('2026-02-05', signed_column('FIN-EXP-16', 3), '2026-02-28T23:59:59.999999Z')
+          + account_reads('2026-02-28', signed_column('FIN-EXP-17', 2)) + fx + [
+            # FIN-PC-005: a January bill without a posting date in an open period is refused (the
+            # code of a script's refusal is an open item of the next BPA release, DEC-153)
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [late]}},
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('bill', 'BILL-LATE'), 'port': 'post',
+                                        'params': {}}, 'expect': {'error_code': 'LOGIC.TYPE_ERROR'}},
+        ],
+    }]
+
+
+def opening_entry(name='OB-2025-12-31', drop=0, account=None):
+    """The opening balances as one balanced entry (SCN-501); `drop` leaves lines out and
+    `account` replaces the first line's account, to show the refusals."""
+    lines = []
+    for r in rows('opening-balances.csv'):
+        lines.append({'account': account_uri(r['account']), 'amount': money(amount(cents(r['debit']) - cents(r['credit'])))})
+    if drop:
+        lines = lines[:-drop]
+    if account:
+        lines[0]['account'] = account_uri(account)
+    debits = sum(max(cents(l['amount']['amount']), 0) for l in lines)
+    return {'op': 'create', 'class': 'JournalEntry', 'object_id': uid('entry', name), 'slug': name.lower(),
+            'body': {'number': name, 'source': 'opening', 'kind': 'opening', 'posting_date': '2025-12-31',
+                     'description': 'Opening balances from the legacy trial balance', 'lines': lines,
+                     'total': money(amount(debits)), 'state': 'draft'}}
+
+
+def scenario_tests():
+    """The flows of SCN-501, -502, -506 and -509 that the tie-out runs do not show."""
+    books = setup_steps()[:2]
+    deferred = lambda name, exp=None: dict({'op': 'execute', 'input': {
+        'branch': BRANCH, 'target': uid('entry', name), 'port': 'post', 'params': {}, 'defer': True,
+        'process': {'initiator': PREPARER, 'process_id': uid('process', 'post', name)}}}, **({'expect': exp} if exp else {}))
+    approve = lambda name, exp: {'op': 'approve', 'input': {'pending_change_id': uid('process', 'post', name),
+                                                            'approver': CONTROLLER, 'roles': ['controller']},
+                                 'expect': exp}
+    base = company_base()
+    jan, _ = company_walk('2026-01', START, skip=RECORDED)
+    ingest = {'op': 'ingest_statement', 'input': {'branch': BRANCH, 'class': 'BankStatementLine',
+                                                  'lines': statement_lines()}}
+    evening = advance(datetime.datetime(2026, 1, 31, 12), datetime.datetime(2026, 2, 2, 9))[0]
+    checks = {'unposted-documents': [], 'bank-reconciled': [account_uri('1010')], 'subledgers-agree': [],
+              'runs-done': [], 'suspense-zero': []}
+    big = je('JE-0002')
+    rev = je('JE-0002')
+    rev['object_id'], rev['slug'] = uid('entry', 'JE-0002-REV'), 'je-0002-rev'
+    rev['body'].update({'number': 'JE-0002-REV', 'reverses': 'JE-0002', 'description': 'Reversal of JE-0002',
+                        'lines': [{'account': l['account'], 'amount': money(amount(-cents(l['amount']['amount'])))}
+                                  for l in big['body']['lines']]})
+    first = big['body']['lines'][0]['account']
+    return [{
+        'name': 'SCN-501 the opening balances post as one entry approved by a controller; the trial balance equals FIN-EXP-01',
+        'kind': 'scenario',
+        'steps': books + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [opening_entry()]}},
+            deferred('OB-2025-12-31', {'match': 'subset', 'result': {'pending': {'state': 'pending'}}}),
+            approve('OB-2025-12-31', {'match': 'subset', 'result': {'state': 'applied'}}),
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-balance', 'asof': '2025-12-31'},
+             'expect': {'match': 'subset', 'result': {'groups': balance_groups(trial_balance('FIN-EXP-01'))}}},
+        ],
+    }, {
+        'name': 'SCN-501 an opening entry that does not balance, or names an unknown account, posts nothing',
+        'kind': 'scenario',
+        'steps': books + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [opening_entry('OB-BAD-1', drop=1),
+                                                                     opening_entry('OB-BAD-2', account='9999')]}},
+            deferred('OB-BAD-1', {'error_code': 'LOGIC.TYPE_ERROR'}),
+            deferred('OB-BAD-2', {'error_code': 'IAM.NOT_FOUND'}),
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-balance', 'asof': '2025-12-31'},
+             'expect': {'match': 'subset', 'result': {'groups': []}}},
+        ],
+    }, {
+        'name': 'SCN-502 a posted line cannot be changed; the correction is a reversal that names the original',
+        'kind': 'scenario',
+        'steps': setup_steps() + [
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [big, rev]}},
+            deferred('JE-0002'),
+            approve('JE-0002', {'match': 'subset', 'result': {'state': 'applied'}}),
+            {'op': 'read_ledger', 'input': {'branch': BRANCH, 'class': 'JournalLine', 'ledger_key': {'account': first}},
+             'label': 'lines'},
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                {'op': 'update', 'object_id': {'$ref': 'lines/entries/0/entry_id'}, 'body': {'amount': money('1.00')}}]},
+             'expect': {'error_code': 'LEDG.IMMUTABLE_ENTRY'}},
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('entry', 'JE-0002-REV'), 'port': 'post',
+                                        'params': {}, 'process': {'initiator': PREPARER}},
+             'expect': {'match': 'subset', 'result': {'result': {'posted': True}}}},
+            {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-balance', 'asof': '2026-01-31',
+                                                'group': {'account': first}},
+             'expect': {'match': 'subset', 'result': {'groups': [
+                 {'key': {'account': first}, 'values': {'balance': [money(amount(trial_balance('FIN-EXP-01').get(
+                     first.rsplit('/', 1)[1], 0)))]}}]}}},
+        ],
+    }, {
+        'name': 'SCN-506 FIN-PC-004 with the operating account not reconciled the close is refused, naming the check',
+        'kind': 'scenario',
+        'steps': base + jan + evening + [
+            dict(ingest, expect={'match': 'subset', 'result': {'duplicates': []}}),
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('period', '2026-01'), 'port': 'checklist',
+                                        'params': {}},
+             'expect': {'match': 'subset', 'result': {'result': {'passed': False, 'failing': ['bank-reconciled'],
+                                                                 'checks': [{'check': k, 'evidence': v}
+                                                                            for k, v in checks.items()]}}}},
+            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('period', '2026-01'), 'port': 'soft_close',
+                                        'params': {}, 'process': {'initiator': CONTROLLER}},
+             'expect': {'error_code': 'LOGIC.TYPE_ERROR'}},
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': uid('period', '2026-01')},
+             'expect': {'match': 'subset', 'result': {'body': {'state': 'open'}}}},
+        ],
+    }]
+
+
+SHEET = '01890a5d-ac96-7f02-8000-000000000001'   # ubos.finance.controls (seed/controls.yaml)
+
+
+def sheet_text():
+    """The source of the sheet ubos.finance.controls: the block scalar of seed/controls.yaml."""
+    lines = open(os.path.join(BUK, 'seed', 'controls.yaml'), encoding='utf-8').read().split('\n')
+    start = next(n for n, l in enumerate(lines) if l.strip() == 'source: |') + 1
+    out = []
+    for l in lines[start:]:
+        if l.strip() and not l.startswith('        '):
+            break
+        out.append(l[8:])
+    while out and not out[-1]:
+        out.pop()
+    return '\n'.join(out) + '\n'
+
+
+def rule_change_tests():
+    """SCN-509, FIN-SCN-10: the approval threshold lowered from 10,000.00, simulated on January's
+    postings in candidate branches, then published effective 2026-03-01; January's postings keep
+    the sheet version they were decided by (STD-LGS-044, STD-TIME-040)."""
+    base = company_base()
+    jan, clock = company_walk('2026-01', START, skip=RECORDED)
+    source = sheet_text()
+    rule = 'amount(this.total) > %d' % (APPROVAL_LIMIT // 100)
+    assert rule in source
+    # the entries of January a threshold would newly route to a controller: manual or imported,
+    # not reversals, posted by the entry's own port, over the threshold and up to the limit
+    entries = [entry_of(d)['body'] for d in documents('2026-01')
+               if d[1] not in ('invoice', 'credit memo', 'receipt', 'bill', 'payment', 'revaluation',
+                               'revaluation reversal', 'depreciation') and d[0] not in RECORDED]
+    # the port calls named post: every document but the runs (revaluation, depreciation)
+    calls = len([d for d in documents('2026-01') if d[0] not in RECORDED
+                 and d[1] not in ('revaluation', 'revaluation reversal', 'depreciation')])
+    newly = lambda limit: [b['number'] for b in entries if b['source'] in ('manual', 'import')
+                           and limit < cents(b['total']['amount']) <= APPROVAL_LIMIT]
+
+    def candidate(limit):
+        name = 'feature/threshold-%d' % (limit // 100)
+        lowered = source.replace(rule, 'amount(this.total) > %d' % (limit // 100))
+        return [
+            {'op': 'create_branch', 'input': {'name': name, 'from': BRANCH}},
+            {'op': 'read', 'input': {'branch': name, 'object_id': SHEET}, 'label': 'sheet-%d' % limit},
+            {'op': 'commit', 'input': {'branch': name, 'changes': [
+                {'op': 'update', 'object_id': SHEET, 'base': {'$ref': 'sheet-%d/version_hash' % limit},
+                 'body': {'source': lowered}, 'valid': {'kind': 'supersede_from', 'from': '2026-01-01'}}]}},
+            {'op': 'simulate', 'input': {'source': name, 'target': BRANCH, 'run_id': uid('simulation', limit),
+                                         'budget': {'processes': 200}, 'select': {'port': 'post'}},
+             'expect': {'match': 'subset', 'result': {'changed': len(newly(limit)), 'coverage': {
+                 'processes': calls, 'selected': calls, 'complete': True}}}},
+        ]
+    published = source.replace(rule, 'amount(this.total) > 5000')
+    small = next(b['number'] for b in entries if b['source'] == 'manual' and cents(b['total']['amount']) <= APPROVAL_LIMIT)
+    return [{
+        'name': 'SCN-509 FIN-SCN-10 lower approval thresholds simulated on January: 5,000.00 changes %d postings, 1,000.00 changes %d'
+                % (len(newly(500000)), len(newly(100000))),
+        'kind': 'scenario',
+        'steps': base + jan + candidate(500000) + candidate(100000),
+    }, {
+        'name': 'SCN-509 FIN-SCN-10 the threshold of 5,000.00 published from 2026-03-01; %s keeps the sheet version it was decided by' % small,
+        'kind': 'scenario',
+        'steps': base + jan + [
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': SHEET}, 'label': 'january'},
+            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [
+                {'op': 'update', 'object_id': SHEET, 'base': {'$ref': 'january/version_hash'},
+                 'body': {'source': published}, 'valid': {'kind': 'supersede_from', 'from': '2026-03-01'}}]}},
+            # the sheet is stored in canonical form, so its versions are compared, not its text
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': SHEET, 'asof': '2026-03-01'},
+             'expect': {'match': 'subset', 'result': {'valid': {'from': '2026-03-01'}}}},
+            {'op': 'read', 'input': {'branch': BRANCH, 'object_id': SHEET, 'asof': '2026-01-31'},
+             'expect': {'match': 'subset', 'result': {'version_hash': {'$ref': 'january/version_hash'}}}},
+            {'op': 'process_info', 'input': {'process_id': uid('process', 'post', small)}, 'label': 'posted'},
+            {'op': 'commit_info', 'input': {'branch': BRANCH, 'time': {'$ref': 'posted/commits/0/cseq'}},
+             'expect': {'match': 'subset', 'result': {'rule_binding': {'sheets': [{'$ref': 'january/version_hash'}]}}}},
+        ],
+    }]
+
 # ---- payables and Form 1099 (PH-2 step 10c, DEC-149) ----
 
 # the vendor invoice numbers of the bills: the document number without BILL-, except where the
@@ -1092,9 +1440,13 @@ def ap_document(doc):
         party = lines[0]['party']
         out = [{'description': r['description'], 'account': account_uri(r['account']),
                 'amount': money(amount(cents(r['debit'])))} for r in lines if r['account'] != '2000']
-        return {'op': 'create', 'class': 'Bill', 'object_id': uid('bill', name), 'slug': name.lower(),
-                'body': {'number': name, 'vendor_invoice': vendor_invoice(name), 'vendor': vendor_uri(party),
-                         'bill_date': posting, 'description': lines[0]['description'], 'lines': out, 'state': 'draft'}}
+        body = {'number': name, 'vendor_invoice': vendor_invoice(name), 'vendor': vendor_uri(party),
+                'bill_date': posting, 'description': lines[0]['description'], 'lines': out, 'state': 'draft'}
+        # a late bill of a closed period: its document date, posted in the open period (FIN-PC-005)
+        m = re.search(r'document date (\d{4}-\d{2}-\d{2})', lines[0]['description'])
+        if m:
+            body['bill_date'], body['posting_date'] = m.group(1), posting
+        return {'op': 'create', 'class': 'Bill', 'object_id': uid('bill', name), 'slug': name.lower(), 'body': body}
     owner = {r['document']: r['vendor'] for r in rows('open-payables.csv')}
     for d in documents('2026-01') + documents('2026-02'):
         if d[1] == 'bill':
@@ -1251,10 +1603,9 @@ def statement_lines():
     return out
 
 
-def bank_tests():
-    base = setup_steps() + receivables_setup() + payables_setup()
-    recorded = ('BANK-INT-2601', 'BANK-FEE-2601')
-    steps, clock = month_steps('2026-01', START, skip=recorded)
+def reconciliation_steps():
+    """Import the January statement, record interest and fee from it and reconcile 1010; the
+    result is FIN-EXP-10 (FIN-CB-001…005)."""
     stmt = rows('bank-statement-2026-01.csv')
     line_of = {r['expected_match']: n for n, r in enumerate(stmt)}
     opening = next(r for r in stmt if r['bank_reference'] == 'OPENING')
@@ -1288,8 +1639,6 @@ def bank_tests():
             exp['difference'] = amount(cents(value))
     exp.update({'outstanding': outstanding, 'unmatched_statement_lines': [], 'state': 'reconciled',
                 'activity_difference': '0.00'})
-    at = datetime.datetime(2026, 2, 3, 10)
-    more, _ = advance(clock, at)
     record = lambda doc, account: {'op': 'execute', 'input': {
         'branch': BRANCH, 'target': uid('recon', '1010', '2026-01'), 'port': 'record',
         'params': {'line': line_of[doc], 'number': doc, 'account': account_uri(account),
@@ -1297,18 +1646,32 @@ def bank_tests():
         'expect': {'match': 'subset', 'result': {'result': {'recorded': doc}}}}
     ingest = {'op': 'ingest_statement', 'input': {'branch': BRANCH, 'class': 'BankStatementLine',
                                                   'lines': statement_lines()}}
+    return [
+        dict(ingest, expect={'match': 'subset', 'result': {'duplicates': []}}),
+        {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [recon]}},
+        record('BANK-INT-2601', next(r['account'] for r in document_named('BANK-INT-2601')[4] if r['account'] != '1010')),
+        record('BANK-FEE-2601', next(r['account'] for r in document_named('BANK-FEE-2601')[4] if r['account'] != '1010')),
+        {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('recon', '1010', '2026-01'), 'port': 'reconcile',
+                                    'params': {}}, 'expect': {'match': 'subset', 'result': {'result': exp}}},
+    ]
+
+
+RECORDED = ('BANK-INT-2601', 'BANK-FEE-2601')   # recorded from the statement (FIN-CB-004)
+
+
+def bank_tests():
+    base = setup_steps() + receivables_setup() + payables_setup()
+    recorded = RECORDED
+    steps, clock = month_steps('2026-01', START, skip=recorded)
+    at = datetime.datetime(2026, 2, 3, 10)
+    more, _ = advance(clock, at)
+    ingest = {'op': 'ingest_statement', 'input': {'branch': BRANCH, 'class': 'BankStatementLine',
+                                                  'lines': statement_lines()}}
     posted = posted_lines('FIN-EXP-02')
     return [{
         'name': 'SCN-505 FIN-EXP-10 the January statement is imported, interest and fee recorded from it, and the reconciliation equals FIN-EXP-10',
         'kind': 'scenario',
-        'steps': base + steps + more + [
-            dict(ingest, expect={'match': 'subset', 'result': {'duplicates': []}}),
-            {'op': 'commit', 'input': {'branch': BRANCH, 'changes': [recon]}},
-            record('BANK-INT-2601', next(r['account'] for r in document_named('BANK-INT-2601')[4] if r['account'] != '1010')),
-            record('BANK-FEE-2601', next(r['account'] for r in document_named('BANK-FEE-2601')[4] if r['account'] != '1010')),
-            {'op': 'execute', 'input': {'branch': BRANCH, 'target': uid('recon', '1010', '2026-01'), 'port': 'reconcile',
-                                        'params': {}}, 'expect': {'match': 'subset', 'result': {'result': exp}}},
-            ] + [{'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document', 'group': {'document': d}},
+        'steps': base + steps + more + reconciliation_steps() + [{'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-document', 'group': {'document': d}},
                   'expect': {'match': 'subset', 'result': {'groups': document_groups(
                       {k: c for k, c in posted.items() if k[1] == d})}}} for d in recorded] + [
             {'op': 'read_projection', 'input': {'branch': BRANCH, 'projection': 'gl-balance', 'asof': '2026-01-31'},
@@ -1495,7 +1858,9 @@ def main():
              'tests/sample-payables.yaml': dump(payables_tests()),
              'tests/sample-bank.yaml': dump(bank_tests()),
              'tests/sample-assets.yaml': dump(asset_tests()),
-             'tests/sample-fx.yaml': dump(fx_tests())}
+             'tests/sample-fx.yaml': dump(fx_tests()),
+             'tests/sample-company.yaml': dump(company_tests()),
+             'tests/sample-scenarios.yaml': dump(scenario_tests() + rule_change_tests())}
     check = '--check' in sys.argv
     stale = []
     for rel, text in files.items():

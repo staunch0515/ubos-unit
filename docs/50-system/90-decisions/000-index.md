@@ -262,3 +262,64 @@ DEC-126 in `05-records-dec-110-126.md` (UBS-DEC-05); those of DEC-127 … DEC-14
   - the currency columns of the reports in the workbench: step 15.
 - **Affects:** DEC-146, DEC-147, DEC-148, FIN-FX-001…005, FIN-FX-007, STD-FND-029
 
+### DEC-153 — The finance Buk, part 10g-1: the sample company in process and SCN-501…510 (PH-2 step 10)
+- **Date:** 2026-11-02 · **Status:** Accepted
+- **Context:** Part 10g of step 10 (DEC-146) runs SCN-501…510 in process and ties out every expected result from documents. It also takes the open items that DEC-147…152 assigned to it. The owner confirmed the plan with the default suggestions. The part is done in two halves: 10g-1 (this record) covers the scenarios and the tie-out, and 10g-2 covers the open items.
+- **Decision:**
+  1. **The company in process.** The generator walks January and February of `transactions.csv` and sends each document through the port that owns it, at noon of its recording date:
+     - invoices, credit memos and receipts through `Invoice` and `Receipt`;
+     - bills and payment runs through `Bill` and `PaymentRun`, with the bill of FA-003 capitalised;
+     - the depreciation run through `AssetRegister.run_depreciation` and the revaluation through `Receivables.revalue`;
+     - the other entries through `JournalEntry.post`, with those over the limit approved by a controller.
+
+     On the evening of 31 January the statement is imported and reconciled, with interest and fee recorded from it. On 1 February `FiscalPeriod.open` posts FXR-2601-R. On 2 February January is closed through its checklist. February follows.
+  2. **The close checklist** (FIN-PC-004, SCN-506). `FiscalPeriod.checklist` runs five automatic checks, each with its result and evidence:
+     - no unposted entry or document dated in the period;
+     - every bank account with statement lines in the period reconciled for it;
+     - receivables and payables equal to their control accounts;
+     - the depreciation, revaluation and recurring runs of the period done;
+     - the accounts marked `suspense` at zero.
+
+     `soft_close` moves the period to `closing` only when every check passes, keeps the results on the period and otherwise is refused naming the failing checks. `close_period` then closes it as before.
+  3. **Posting date and closed periods** (FIN-PC-005).
+     - The kernel refuses postings by commit date (STD-KIND-025). The Buk now also refuses an entry whose posting date lies in a closed period.
+     - `Bill` gains an optional `posting_date`. BILL-OS-0120 therefore keeps its document date 2026-01-20 for aging and posts on 2026-02-10. The open item takes the posting date as its valid time.
+     - Since the posting date is the commit date, a statement's interest and fee must be recorded before the period's close to fall in it.
+  4. **Entries are checked before approval** (FIN-GL-010, SCN-501). Before approval is asked, `JournalEntry.post` refuses an entry whose lines do not balance or that names an account it cannot read. The ledger's own check would otherwise come only when the approved change is applied.
+  5. **Opening balances** (SCN-501). The opening balances can post as one entry of source `opening`. The sheet `ubos.finance.controls` now requires a controller's approval for opening entries over 10,000.00, as for manual and imported ones.
+  6. **Kernel fix: simulation of calls without a process record** (STD-LGS-044).
+     - `simulate` cut the sandbox of a historical call before the commit named in the call's process record. Calls without an explicit process id, and deferred calls, have no such record, so they re-ran on the head. Every document then answered "already posted" and was reported as changed.
+     - Such a call now re-runs on the snapshot its journal pinned (`snapshots`), which is the state it ran on.
+     - The change is in `crates/ubos-dvm/src/simulation.rs`. The release candidate after rc12 gets a conformance vector for it.
+  7. **Scenario coverage.**
+
+     | Scenario | Shown by |
+     |---|---|
+     | SCN-501 | opening entry approved by a controller; refusals of an unbalanced entry and an unknown account; FIN-EXP-01 |
+     | SCN-502 | approval, maker–checker and invalidation (DEC-146); a posted line is immutable (`LEDG.IMMUTABLE_ENTRY`); correction by a reversal naming the original; gap-free numbers |
+     | SCN-503 | receivables documents, credit memo, partial receipt, reapplication, statement and aging (DEC-148); the company run |
+     | SCN-504 | bills, payment runs and 1099 (DEC-149); the company run |
+     | SCN-505 | idempotent import, recorded items and reconciliation equal to FIN-EXP-10 (DEC-150) |
+     | SCN-506 | depreciation run, close checklist, close artefact equal to FIN-EXP-03, statements FIN-EXP-04…07; close refused while 1010 is not reconciled |
+     | SCN-507 | refusal after the close, governed reopening and second close (DEC-147); a January bill refused after the close |
+     | SCN-508 | FIN-EXP-16 as known on 2026-02-05 and 2026-02-28 in the company run |
+     | SCN-509 | thresholds of 5,000.00 and 1,000.00 simulated on January's 24 calls of `post` (0 and 1 changed, the other calls reproduced); 5,000.00 published from 2026-03-01; the posting of JE-0003 records the January version in its rule binding |
+     | SCN-510 | FIN-SCN-09 (DEC-152) |
+- **Consequences:**
+  - Eight new tests pass in memory and on PostgreSQL 16.
+  - `tests/sample-company.yaml` runs the company from its documents:
+    - January ties out FIN-EXP-01…03, the statements FIN-EXP-04…07, the agings FIN-EXP-08 and -09, the reconciliation FIN-EXP-10, the register FIN-EXP-11, the tax report FIN-EXP-13 and the 1099 summary FIN-EXP-14;
+    - the January close artefact equals FIN-EXP-03 with every check passed;
+    - February ties out FIN-EXP-12, -15, -16 and -17;
+    - a late January bill is refused.
+  - `tests/sample-scenarios.yaml` holds the flows of the table that the tie-out does not show.
+  - All 47 finance tests pass, with script coverage 1.0.
+- **Open, assigned:**
+  - posted documents frozen against edits by a lifecycle with read-only fields (STD-CLS-004), in place of the `state` field: 10g-2;
+  - a registered error code for a script's business refusal (now `LOGIC.TYPE_ERROR`), with the closed period of DEC-151: the next BPA release candidate;
+  - the conformance vector of the simulation fix: the next BPA release candidate;
+  - SCN-504 A1 (duplicate bills) and bill approval: 10g-2 with FIN-AP-005, -006;
+  - SCN-505 automatic matching rules and undoing a match: 10g-2;
+  - SCN-506 drill-down, SCN-508 impact report on reports, SCN-509 expense-coding rules and the chart review of SCN-501: steps 14 and 15 (workbench and reports).
+- **Affects:** DEC-146…152, FIN-PC-004, FIN-PC-005, FIN-GL-010, SCN-501…510, STD-LGS-044, STD-KIND-025
+

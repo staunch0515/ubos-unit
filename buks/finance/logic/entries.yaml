@@ -6,7 +6,7 @@ assets:
     tier: l2
     profile: standard
     state: committed
-    capabilities: [read, commit]
+    capabilities: [read, commit, search]
     exports: [post]
     source: |
       fn post() {
@@ -14,13 +14,26 @@ assets:
         sys.read.get(#{target: self_id});
         // the declared total, which the approval rules read, is the sum of the debits
         let debits = dec("0.00");
+        let net = dec("0.00");
         for l in this.lines {
           let a = dec(l.amount.amount);
           if a > 0 { debits += a; }
+          net += a;
         }
+        // debits equal credits (FIN-GL-010); the ledger checks it again when the lines commit
+        if !net.is_zero() { throw "the entry does not balance: debits less credits " + net.to_string(); }
+        // every line names an account of the chart (SCN-501 A2): an unknown one is not found
+        for l in this.lines { sys.read.get(#{target: l.account}); }
         if debits != amount(this.total) {
           throw "the total " + amount(this.total).to_string() + " is not the sum of the debits " + debits.to_string();
         }
+        // the posting date must lie in a period that is not closed (FIN-PC-005): the kernel
+        // checks the commit date (STD-KIND-025), the Buk the business date
+        let pw = "this.state == \"closed\" and this.start <= d'" + this.posting_date + "' and this.end > d'"
+                 + this.posting_date + "'";
+        let cq = sys.search.query(#{query: #{from: "FiscalPeriod", where: pw}});
+        let closed = cq.items;
+        if closed.len() > 0 { throw "the period of " + this.posting_date + " is closed"; }
         let year = this.posting_date.sub_string(0, 4);
         let source = this.source;
         // the number: the next entry of the gap-free sequence of (fiscal year, source)

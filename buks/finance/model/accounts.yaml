@@ -30,6 +30,7 @@ classes:
         description: the subledger a control account belongs to; only it posts to the account (FIN-GL-005)
         type: enum
         constraints: {allowed_values: [receivables, payables, fixed_assets, bank]}
+      - {name: suspense, label: suspense, description: "a suspense or clearing account, which must be zero to close a period (FIN-PC-004)", type: boolean}
   - name: FiscalPeriod
     label: fiscal period
     description: A fiscal period [start, end) that governs the journal (STD-KIND-025)
@@ -48,8 +49,21 @@ classes:
         constraints: {allowed_values: [open, closing, closed]}
       - {name: fiscal_year, label: fiscal year, description: the fiscal year the period belongs to, type: text}
       - {name: number, label: number, description: the period's number in its year (1-12; 13 for the adjustment period), type: integer}
+      - {name: checklist, label: checklist, description: "the results of the automatic close checks when the period was soft-closed: {check, passed, evidence} (FIN-PC-004, -005)", type: json}
     ports:
       - {name: open, description: post the automatic reversals dated in the period (FIN-GL-018), kind: command, params: [], permission: open, impl: ubos.finance.periods#open}
+      - name: checklist
+        description: "the automatic close checks: no unposted documents dated in the period, every bank account with statement lines in the period reconciled, receivables and payables equal to their control accounts, the depreciation and revaluation runs done, the recurring entries created, the suspense accounts at zero (FIN-PC-004)"
+        kind: query
+        params: []
+        permission: read
+        impl: ubos.finance.periods#checklist
+      - name: soft_close
+        description: "move the period to closing when every check passes, keeping the results; refused naming the failing checks (FIN-PC-004, SCN-506). close_period then closes it."
+        kind: command
+        params: []
+        permission: close
+        impl: ubos.finance.periods#soft_close
       - name: reopen
         description: reopen the closed period through reopen_period; the sheet ubos.finance.controls requires a controller's approval (FIN-PC-006)
         kind: command
