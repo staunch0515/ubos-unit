@@ -31,3 +31,4 @@ Sundays from 2026-10-14 on (the mutation shard too), within the Actions budget.
 | 2026-10-31 | 207570000–207579999 | 0 | clean | 19 | 10 properties, 0 failures | no run |
 | 2026-11-01 | 207580000–207589999 | 0 | clean | 20 | 10 properties, 0 failures | macos-aarch64: 10000/10000, replays 1000/1000; linux-aarch64: 10000/10000, replays 1000/1000; linux-x86_64: 10000/10000, replays 1000/1000 |
 | 2026-11-02 | 207590000–207599999 | 0 | clean | 21 | 10 properties, 0 failures | no run |
+| 2026-11-03 | 207600000–207609999 | 0 | clean | 22 | 10 properties, 0 failures | no run |
