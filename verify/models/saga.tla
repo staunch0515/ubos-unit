@@ -389,18 +389,22 @@ EndJustified ==
 \* Liveness: every saga ends.
 Terminates == <>(saga.status \in End)
 
-\* DSN-DVM-566 as stated: under backward recovery, without escalation and with
-\* compensations that do not fail, every saga ends completed or compensated.
-EndsCompletedOrCompensated ==
-    (/\ decl.recovery = "backward"
-     /\ \A s \in Steps : decl.onTimeout[s] # "escalate"
-     /\ ~CompCanFail)
-    => <>(saga.status \in {"completed", "compensated"})
+\* The saga ended failed because a compensation process failed (STD-TXN-080 "States").
+CompensationFailed ==
+    /\ saga.status = "failed"
+    /\ \E s \in Steps : results[Key(s, 1, "compensate")] = "error"
 
-\* Under backward recovery a saga ends failed only by a failed compensation, and escalated
-\* only where declared (liveness form of the statement with escalation).
+\* DSN-DVM-566: under backward recovery without escalation every saga ends completed or
+\* compensated, unless a compensation fails (never, where CompCanFail is FALSE).
+EndsCompletedOrCompensated ==
+    (decl.recovery = "backward" /\ \A s \in Steps : decl.onTimeout[s] # "escalate")
+    => <>(saga.status \in {"completed", "compensated"} \/ CompensationFailed)
+
+\* With escalation: a saga under backward recovery ends completed, compensated, or
+\* escalated by a step that declares it, unless a compensation fails.
 EndsAsDeclared ==
-    (decl.recovery = "backward" /\ ~CompCanFail)
+    decl.recovery = "backward"
     => <>(\/ saga.status \in {"completed", "compensated"}
-          \/ saga.status = "escalated" /\ decl.onTimeout[saga.err.step] = "escalate")
+          \/ saga.status = "escalated" /\ decl.onTimeout[saga.err.step] = "escalate"
+          \/ CompensationFailed)
 =============================================================================
