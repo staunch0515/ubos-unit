@@ -294,13 +294,14 @@ Exec(k) ==
 Next == \/ \E c \in Coords : Load(c) \/ Advance(c) \/ Invoke(c) \/ Timeout(c) \/ Crash(c) \/ Restart(c)
         \/ \E k \in Keys : Exec(k)
 
-\* Fairness: a coordinator that is up keeps working and a crashed one restarts; an
-\* invocation in flight is eventually executed. Timeouts and crashes are not fair.
-Fairness == /\ \A c \in Coords : /\ WF_vars(Load(c))
-                                 /\ WF_vars(Advance(c))
-                                 /\ WF_vars(Invoke(c))
-                                 /\ WF_vars(Restart(c))
-            /\ \A k \in Keys : WF_vars(Exec(k))
+\* Fairness: a coordinator that is up keeps working (it reads the saga object, commits the
+\* next transition and invokes the process it waits for) and a crashed one restarts; an
+\* invocation in flight is eventually executed. Timeouts and crashes are not fair. Work(c)
+\* joins three actions of which at most one is enabled in a state.
+Work(c) == Load(c) \/ Advance(c) \/ Restart(c)
+
+Fairness == /\ \A c \in Coords : WF_vars(Work(c)) /\ WF_vars(Invoke(c))
+            /\ WF_vars(\E k \in Keys : Exec(k))
 
 Spec == Init /\ [][Next]_vars /\ Fairness
 
