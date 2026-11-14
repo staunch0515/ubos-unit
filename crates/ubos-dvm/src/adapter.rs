@@ -303,6 +303,9 @@ impl Adapter {
             "calendar" => self.engine.calendar(i)?,
             "business_day" => self.engine.business_day(i)?,
             "ledger_totals" => self.engine.ledger_totals(i)?,
+            // kernel host API of PH-2 step 3b (DSN-DVM-441)
+            "ledger_rollup" => self.engine.ledger_rollup(i)?,
+            "ledger_hierarchy" => self.engine.ledger_hierarchy(i)?,
             "create_branch" | "merge" | "diff" | "export_state" | "merge_preview"
             | "change_set" | "tag" | "delete_tag" | "tag_info" | "release" | "revert"
             | "branch_info" | "set_parent_line" | "commit_info" | "tree_diff" | "process_info"

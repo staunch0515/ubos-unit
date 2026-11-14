@@ -374,7 +374,7 @@ impl Engine {
         checks.integrity(&written)?;
         checks.cardinality_check()?;
         checks.extensions_apply(&self.registry, &written)?;
-        repo.check_double_entry(tx)?;
+        crate::posting::check_groups(repo.reg, &tx.appended)?;
         let classes: BTreeSet<String> = tx.appended.iter().map(|e| e.class.clone()).collect();
         for c in classes {
             repo.check_period(tx, &c, &self.now[..10])?;

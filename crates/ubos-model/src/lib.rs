@@ -358,6 +358,30 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("description", "text", false),
             ],
         ),
+        // DSN-DVM-441 (PH-2 step 3b, DEC-098): the nodes of a hierarchy of ledger keys are
+        // Definition objects: the node above, whether entries may be posted to the node
+        // and the currencies it accepts. A ledger class whose key field references this
+        // class (or a class below it) posts to the leaves, and its totals roll up over the
+        // subtrees. What a node means is declared by the Buk class below this one. Kernel
+        // class, below `DataObject` as the rates; a standard clause follows with a later
+        // release.
+        g(
+            "LedgerNode",
+            Some("definition"),
+            Some("DataObject"),
+            false,
+            vec![
+                {
+                    let mut f = field("parent", "reference", false);
+                    f["constraints"] = json!({"target_class": "LedgerNode"});
+                    f
+                },
+                field("posting", "boolean", false),
+                list_field("currencies", json!({"type": "text"})),
+                field("name", "text", false),
+                field("description", "text", false),
+            ],
+        ),
         g(
             "Release",
             Some("definition"),
@@ -418,6 +442,7 @@ pub fn is_genesis(name: &str) -> bool {
             | "Policy"
             | "FxRate"
             | "BusinessCalendar"
+            | "LedgerNode"
             | "Release"
             | "MatchRecord"
     )

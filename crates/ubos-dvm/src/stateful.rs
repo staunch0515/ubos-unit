@@ -1678,7 +1678,7 @@ pub(crate) fn commit_on(
             _ => return Err(BpaError::new("MODEL.INVALID_VALUE", "unknown change")),
         }
     }
-    repo.check_double_entry(&tx)?;
+    crate::posting::check_commit(&mut repo, &mut tx, &result)?;
     // STD-CLS-004: the shape and the extension rule of the lifecycle objects written
     {
         let written: Vec<(String, String)> = result["versions"]
