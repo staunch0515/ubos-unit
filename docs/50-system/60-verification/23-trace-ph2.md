@@ -136,8 +136,8 @@ naming the requirement directly.
 | Translatable content fields | FR-LOC-012 | Should | CONF | DSN-WSP-207 | SUITE-WSP-A11Y, SUITE-WSP-RENDER, SUITE-WSP-USE | — |
 | Currency reference data | FR-LOC-021 | Must | CONF | DSN-DVM-410, STD-FND-023 | SUITE-DVM-CONF, SUITE-DVM-PROP, SUITE-DVM-REPLAY, SUITE-DVM-STORE … | — |
 | Bitemporal FX rates | FR-LOC-022 | Must | CONF | DSN-DVM-410 | SUITE-DVM-CONF, SUITE-DVM-PROP, SUITE-DVM-REPLAY, SUITE-DVM-STORE … | — |
-| Holiday calendars and business days | FR-LOC-041 | Must | CONF, PROP | STD-EXPR-005 | SUITE-DVM-CONF | — |
-| Cut-offs | FR-LOC-042 | Must | CONF | STD-EXPR-005 | SUITE-DVM-CONF | — |
+| Holiday calendars and business days | FR-LOC-041 | Must | CONF, PROP | DSN-DVM-447, STD-EXPR-005 | SUITE-DVM-CONF, SUITE-DVM-PROP, SUITE-DVM-REPLAY, SUITE-DVM-STORE … | — |
+| Cut-offs | FR-LOC-042 | Must | CONF | DSN-DVM-447, STD-EXPR-005 | SUITE-DVM-CONF, SUITE-DVM-PROP, SUITE-DVM-REPLAY, SUITE-DVM-STORE … | — |
 | Locale formats | FR-LOC-051 | Must | CONF | DSN-WSP-120, DSN-WSP-207, DSN-WSP-213 | SUITE-WSP-A11Y, SUITE-WSP-RENDER, SUITE-WSP-USE | — |
 | Canonical storage independent of locale | FR-LOC-052 | Must | CONF | DSN-WSP-207 | SUITE-WSP-A11Y, SUITE-WSP-RENDER, SUITE-WSP-USE | — |
 | Versioned function library | FR-LOGIC-035 | Should | CONF | DSN-DVM-611, STD-EXPR-005 | SUITE-DVM-CONF, SUITE-DVM-REPLAY, SUITE-DVM-STORE, SUITE-DVM-XIMPL | — |

@@ -10,6 +10,7 @@ members = [
     "crates/ubos-version",
     "crates/ubos-proof",
     "crates/ubos-time",
+    "crates/ubos-ledger",
     "crates/ubos-model",
     "crates/ubos-expr",
     "crates/ubos-rules",
@@ -43,6 +44,7 @@ ubos-proof = { path = "crates/ubos-proof" }
 ubos-verify = { path = "verify/ubos-verify" }
 ubos-node = { path = "crates/ubos-node" }
 ubos-time = { path = "crates/ubos-time" }
+ubos-ledger = { path = "crates/ubos-ledger" }
 ubos-dvm = { path = "crates/ubos-dvm" }
 ubos-model = { path = "crates/ubos-model" }
 ubos-expr = { path = "crates/ubos-expr" }

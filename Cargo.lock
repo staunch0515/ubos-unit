@@ -3132,6 +3132,7 @@ dependencies = [
  "ubos-crypto",
  "ubos-expr",
  "ubos-flow",
+ "ubos-ledger",
  "ubos-model",
  "ubos-proof",
  "ubos-proto",
@@ -3177,6 +3178,13 @@ dependencies = [
  "toml",
  "ubos-dvm",
  "ubos-sdk",
+]
+
+[[package]]
+name = "ubos-ledger"
+version = "0.0.0"
+dependencies = [
+ "ubos-types",
 ]
 
 [[package]]

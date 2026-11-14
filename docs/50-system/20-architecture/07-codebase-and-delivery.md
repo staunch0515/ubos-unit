@@ -32,7 +32,7 @@ component names below are used throughout this volume; each maps to a top-level 
 | `ubos-model` | engine | classes, traits, C3, value types, constraints, extensions, lenses, reflection, schema export | `ubos-types` |
 | `ubos-version` | engine | commits, branches, change sets, merge, revert, inheritance resolution | `ubos-model`, `ubos-store`, `ubos-tree` |
 | `ubos-time` | engine | bitemporal timelines, `asof`/`time` resolution, retroactive impact | `ubos-version` |
-| `ubos-ledger` | engine | ledger classes, sequencing, reversal, double entry, periods, balance projections | `ubos-version` |
+| `ubos-ledger` | engine | ledger classes, sequencing, reversal, double entry, periods, balance projections; currencies and FX rates, business calendars, matching (DEC-098) | `ubos-types`, `ubos-version` |
 | `ubos-expr` | engine | L1 expression language: parser, type checker, evaluator | `ubos-model` |
 | `ubos-rules` | engine | governance sheets, cascade, validations, invariants, decision tables, decisions | `ubos-expr`, `ubos-model` |
 | `ubos-authz` | engine | policy engine integration (the `cedar-policy` crate, DEC-065), relations, masking, row filters | `ubos-model` |

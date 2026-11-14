@@ -21,6 +21,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-095 | PH-2 step 1g: search and views in BPA 1.0-rc8 — `search.aggregate` (STD-ISA-081), `search.traverse` (STD-ISA-082), `search.text` (STD-ISA-083) with declared parameters, view resolution (STD-CLS-023) | Accepted |
 | DEC-096 | PH-2 step 1h: release of BPA 1.0-rc8 — notes finalised, VER-INSP-9006, the owner's signed tag `bpa-v1.0.0-rc8`, freeze; the candidate part of EXIT-2-01 | Accepted |
 | DEC-097 | PH-2 step 2: extended formal models — approvals and deferred commits (`approval.tla`, VER-FORM-0100) and sagas (`saga.tla`, VER-FORM-0101) checked with 0 violations; liveness in separate modules; findings A-1…A-8 and S-1…S-6 taken up by the clause and design changes of steps 4 and 6; EXIT-2-02 met | Accepted |
+| DEC-098 | PH-2 step 3: money and periods in the kernel in parts 3a–3f — crate `ubos-ledger` (pure library, no finance vocabulary), FX and calendars (new DSN-DVM-447), posting groups, periods and restatement, matching, balance projections; the conformance test claims the 1.0-rc8 clauses as each part implements them; rates entered as data until the connectors of step 12 | Accepted |
 
 ---
 
@@ -298,3 +299,21 @@ DEC-090 on follow.
   - Correcting the clauses now in 1.0-rc8 was rejected: the candidate is frozen once tagged, and the corrections belong to the steps that implement them.
   - Waiting about two hours for an exhaustive liveness run of the saga model at the stated bound was rejected for this step: DEC-031 accepts simulation where TLC does not complete, and the invariants, which carry the at-most-once and ordering guarantees, completed exhaustively. The longer run can follow on the reference hardware.
 - **Affects:** EXIT-2-02, VER-FORM-0100, VER-FORM-0101, DSN-DVM-550, DSN-DVM-551, DSN-DVM-552, DSN-DVM-564, DSN-DVM-565, DSN-DVM-566, DSN-DVM-746, STD-TXN-060, STD-TXN-080, STD-LGS-041, STD-LGS-042, STD-LGS-043, DEC-031, DEC-096
+
+### DEC-098 — Money and periods in the kernel (PH-2 step 3)
+- **Date:** 2026-11-14 · **Status:** Accepted
+- **Context:** PH-2 step 3 (UBS-PH-2 §11) implements money and periods in the kernel: currencies and rates, business calendars, double entry, period close, retroactive correction and restatement, reconciliation and matching, and the balance projections carried over by DEC-087. BPA 1.0-rc8 holds the clauses (DEC-090: STD-KIND-025…028, STD-TIME-041, -042; 50 vectors), which the kernel does not implement yet. The owner confirmed the plan with the default suggestions on 2026-11-14.
+- **Decision:**
+  1. **Parts.** 3a: currency reference data, bitemporal FX rates, currency-safe aggregation, business calendars and cut-offs (DSN-DVM-409, -410, -447). 3b: balanced posting groups and account hierarchies (DSN-DVM-440, -441). 3c: periods and locks, close artefacts, governed reopen, restatement with re-evaluation modes and compensation proposals (STD-KIND-025, -026, STD-TIME-041, -042; DSN-DVM-322, -323, -442…-444). 3d: matching, match records and idempotent statement ingestion (STD-KIND-027, -028; DSN-DVM-445, -446). 3e: declared balance projections, freshness and rebuild with a benchmark (FR-LEDG-031, -033, FR-ANL-021; DSN-DVM-420, -423). 3f: the PostgreSQL run of the claimed clauses, report `verify/reports/ph2-3/`, records.
+  2. **Crate.** The crate `ubos-ledger` of UBS-ARC-07 §2 is created as a pure library (no storage, no commits); `ubos-dvm` integrates it. It holds general mechanisms only: account hierarchies, posting groups and periods are declared by Buks, and no finance identifier enters the kernel (EXIT-2-04, VER-INSP-0002).
+  3. **Calendars.** DSN-DVM-447 (new) makes business calendars and cut-offs effective-dated objects whose value is the L1 calendar of STD-EXPR-005; the kernel ships no market calendars.
+  4. **Rates.** FX rates are Definition objects entered as data (DSN-DVM-410); the sample company's rates come from its dataset. Fetching rates from external sources waits for the connectors of step 12.
+  5. **Claims.** The conformance test takes BPA 1.0-rc8 as the release in implementation and claims each clause when its part implements it; every claimed vector must pass in memory and on PostgreSQL.
+  6. **Execution.** Parts run as AI sessions coordinated by one session: 3a and 3d in parallel in separate worktrees, then 3b, 3c and 3e; each part is committed after `regen_all.sh`, `cargo fmt`, `clippy` and `check_deps.py` pass.
+- **Consequences:**
+  - The money, period and matching mechanisms that the `finance` Buk of steps 9 and 10 needs exist in the kernel; the Buk adds the accounting content.
+  - FR-LEDG-031, -033 and FR-ANL-021, carried over from PH-1 (DEC-087), are built in 3e.
+- **Alternatives considered:**
+  - Putting the ledger mechanisms directly in `ubos-dvm` was rejected: UBS-ARC-07 already names `ubos-ledger`, and a pure library can be property-tested without storage.
+  - Shipping US market calendars in the kernel was rejected: calendars are business data and belong to Buks.
+- **Affects:** DSN-DVM-322, DSN-DVM-323, DSN-DVM-409, DSN-DVM-410, DSN-DVM-420, DSN-DVM-423, DSN-DVM-440, DSN-DVM-441, DSN-DVM-442, DSN-DVM-443, DSN-DVM-444, DSN-DVM-445, DSN-DVM-446, DSN-DVM-447, FR-LEDG-031, FR-LEDG-033, FR-ANL-021, FR-LOC-021, FR-LOC-022, FR-LOC-041, FR-LOC-042, DEC-087, DEC-090

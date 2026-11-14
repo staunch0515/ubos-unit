@@ -39,6 +39,7 @@ ubos-runtime.workspace = true
 ubos-store.workspace = true
 ubos-version.workspace = true
 ubos-time.workspace = true
+ubos-ledger.workspace = true
 serde_json.workspace = true
 ubos-crypto.workspace = true
 sha2.workspace = true

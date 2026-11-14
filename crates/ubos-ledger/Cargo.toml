@@ -1,0 +1,15 @@
+[package]
+name = "ubos-ledger"
+description = "Money and periods: currencies and FX rates, business calendars, balanced posting groups, periods and close, matching, balance projections"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+ubos-types.workspace = true
+
+[lints]
+workspace = true

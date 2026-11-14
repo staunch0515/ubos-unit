@@ -453,3 +453,13 @@ This file designs the crates `ubos-time` and `ubos-ledger`; `ubos-txn` is in `03
   1. Given the same bank statement ingested three times, when counted, then each line exists once.
 - **Verification:** CONF
 - **Origin:** FR-LEDG-074, STD-TXN-040
+
+### DSN-DVM-447 — Business calendars and cut-offs as objects
+- **Statement:** Business calendars MUST be Definition-kind objects with valid time, holding the weekend days and holidays of one market (FR-LOC-041); a calendar MAY be declared as the union of other calendars, resolved at the coordinates of the read. The L1 calendar value `{weekend, holidays}` of STD-EXPR-005 MUST be obtainable from a calendar object, so business-day arithmetic and `cutoff` work on stored calendars. Cut-off rules (a local time in a zone per calendar, FR-LOC-042) MUST be declarable on the calendar and readable by guards. The kernel ships no market calendars; they are data of Buks.
+- **Rationale:** FR-LOC-041, FR-LOC-042; dealing, settlement and deadlines need calendars that change over time and are shared by several Buks.
+- **Priority:** Must · **Phase:** PH-2 · **Systems:** DVM
+- **Personas:** PER-FundOperationsManager
+- **Acceptance:**
+  1. Given a calendar that is the union of two calendars, when a holiday is added to one of them from a valid date, then business-day arithmetic read before that date ignores it and arithmetic read after it skips it.
+- **Verification:** CONF, PROP
+- **Origin:** FR-LOC-041, FR-LOC-042, STD-EXPR-005, DEC-098
