@@ -41,7 +41,8 @@
 (*                                                                         *)
 (* The declaration of the saga (recovery, timeout action and compensation  *)
 (* per step) is chosen in the initial state from the configured sets, so   *)
-(* one run covers every declaration.                                       *)
+(* one run covers every declaration. A timeout may pass at any moment or   *)
+(* never, so a step without a timeout is covered by one that declares one. *)
 (*                                                                         *)
 (* Mutation selects a deliberately wrong variant for the sensitivity       *)
 (* checks of reports/saga.section.md; "none" is the design.                *)
@@ -96,8 +97,13 @@ Min(X) == CHOOSE x \in X : \A y \in X : x <= y
 InitSaga == [ver |-> 0, status |-> "pending", completed |-> <<>>, compensated |-> <<>>,
              cur |-> NoCur, err |-> NoErr]
 
-Init == /\ decl \in [recovery : Recoveries, onTimeout : [Steps -> TimeoutActions],
-                     comp : [Steps -> CompChoices]]
+\* The declarations. Under forward recovery no compensation ever runs, so one compensation
+\* declaration stands for all of them.
+Decls == {d \in [recovery : Recoveries, onTimeout : [Steps -> TimeoutActions],
+                 comp : [Steps -> CompChoices]] :
+              d.recovery = "forward" => \A s \in Steps : d.comp[s] = (TRUE \in CompChoices)}
+
+Init == /\ decl \in Decls
         /\ saga = InitSaga
         /\ results = [k \in Keys |-> "none"]
         /\ fx = <<>>
@@ -315,8 +321,7 @@ SagaType == [ver : Nat,
              cur : Keys \cup {NoCur},
              err : [step : 0..N, why : {"none", "error", "timeout", "compensation"}]]
 
-TypeOK == /\ decl \in [recovery : Recoveries, onTimeout : [Steps -> TimeoutActions],
-                       comp : [Steps -> CompChoices]]
+TypeOK == /\ decl \in Decls
           /\ saga \in SagaType
           /\ results \in [Keys -> {"none", "ok", "error", "cancelled"}]
           /\ fx \in Seq(Steps) /\ ux \in Seq(Steps)
