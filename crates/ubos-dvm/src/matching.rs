@@ -24,7 +24,7 @@ fn incomplete(message: &str) -> BpaError {
 
 impl Engine {
     /// The entries of a ledger class on a branch at its head, of one ledger key or of all.
-    fn ledger_entries(
+    pub(crate) fn ledger_entries(
         &mut self,
         branch: &str,
         class: &str,

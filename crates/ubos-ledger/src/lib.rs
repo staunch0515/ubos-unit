@@ -17,6 +17,7 @@ pub mod currency;
 pub mod fx;
 pub mod matching;
 pub mod money;
+pub mod periods;
 pub mod posting;
 
 #[cfg(test)]

@@ -171,6 +171,9 @@ pub struct Core {
     pub process_id: String,
     /// Process kind.
     pub process_kind: String,
+    /// The re-evaluation mode recorded in the derivations of the process (STD-TIME-041):
+    /// `as_effective` unless a restatement runs the process in another mode.
+    pub mode: String,
 }
 
 /// The engine side of the instructions: everything that touches the store.
@@ -275,6 +278,7 @@ impl Core {
             context: Value::Null,
             process_id: process_id.to_string(),
             process_kind: process_kind.to_string(),
+            mode: "as_effective".to_string(),
         })
     }
 
@@ -439,7 +443,7 @@ impl Core {
         if matches!(s(&change, "op"), Some("create" | "update" | "append")) {
             let vh = self.frames.last().and_then(|f| f.vh.clone());
             change["derivation"] =
-                json!({"logic": [vh], "inputs": self.triples, "mode": "as_effective"});
+                json!({"logic": [vh], "inputs": self.triples, "mode": self.mode});
         }
         self.uow.push(change);
         Ok(self.uow.len() - 1)

@@ -25,6 +25,8 @@ pub struct Engine {
     pub registry: Registry,
     /// Set by `system_commit` for the one commit it makes.
     pub(crate) system_write: bool,
+    /// The re-evaluation mode of the process a restatement re-runs (STD-TIME-041).
+    pub(crate) logic_mode: Option<crate::periods::LogicMode>,
     /// Adapter clock.
     pub now: String,
     /// Classes that have instances on some branch (STD-KIND-080).
@@ -87,6 +89,7 @@ impl Engine {
     pub fn new(store: Box<dyn Store>) -> Result<Engine, BpaError> {
         let mut e = Engine {
             system_write: false,
+            logic_mode: None,
             store,
             registry: crate::expressions::registry(),
             now: DEFAULT_NOW.into(),
@@ -115,6 +118,7 @@ impl Engine {
     pub fn attach(store: Box<dyn Store>, classes: &Value) -> Result<Engine, BpaError> {
         let mut e = Engine {
             system_write: false,
+            logic_mode: None,
             store,
             registry: crate::expressions::registry(),
             now: DEFAULT_NOW.into(),
@@ -256,6 +260,7 @@ impl Engine {
     pub fn open_existing(store: Box<dyn Store>) -> Result<Engine, BpaError> {
         let mut e = Engine {
             system_write: false,
+            logic_mode: None,
             store,
             registry: crate::expressions::registry(),
             now: DEFAULT_NOW.into(),
@@ -1310,6 +1315,8 @@ fn update(
         repo.reg
             .check_body(&o.class, &Value::Object(body.clone()), false)?;
         crate::money::check_definition(repo.reg, &o.class, &Value::Object(body.clone()))?;
+        // STD-KIND-025 (1.0-rc8): period transitions
+        crate::periods::check_update(repo.reg, &o.class, &base_body, &body, ch)?;
         let slug = s(ch, "slug").unwrap_or(&o.slug).to_string();
         names::check_name("slug", &slug)?;
         let kind = s(&valid, "kind").unwrap_or("supersede_from");
@@ -1515,6 +1522,8 @@ pub(crate) fn commit_on(
         }
         match s(ch, "op").unwrap_or_default() {
             "create" => {
+                // STD-KIND-026: a close artefact extends the commit its balances were read at
+                crate::periods::check_artefact(ch, tx.cseq)?;
                 create(
                     &mut repo,
                     &mut tx,

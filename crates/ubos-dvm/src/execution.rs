@@ -753,6 +753,19 @@ impl<'a> EngineHost<'a> {
                 "not a logic asset",
             ));
         }
+        // STD-TIME-041 (1.0-rc8): under a restatement, the version of its mode
+        let head = match self.e.logic_mode.clone() {
+            Some(lm) if !core.pinned.contains_key(&oid) => {
+                let timeline = self
+                    .state(core)?
+                    .objects
+                    .get(&oid)
+                    .map(|o| o.timeline.clone())
+                    .unwrap_or_default();
+                lm.version(&head, &timeline)
+            }
+            _ => head,
+        };
         let vh = core.pinned.entry(oid).or_insert(head).clone();
         let body = self.version(&vh)?["body"].clone();
         self.check_asset(core, &body)?;
@@ -1956,6 +1969,9 @@ impl Engine {
             };
             let mut core = Core::new(i, seed, &p.id, s(&p.p, "kind").unwrap_or("action"))?;
             core.replay = replay.clone();
+            if let Some(lm) = &self.logic_mode {
+                core.mode = lm.mode.as_str().to_string();
+            }
             if let Some(r) = &replay {
                 core.pins = r.pins.clone();
             }

@@ -417,6 +417,24 @@ fn genesis() -> BTreeMap<String, Value> {
             d["ledger"] = json!({"key": ["match_set"], "amounts": [], "double_entry": false});
             d
         },
+        // STD-KIND-026 (BPA 1.0-rc8, DEC-090): close artefacts are System objects written by
+        // `close_period` only.
+        g(
+            "CloseArtefact",
+            Some("system"),
+            Some("SystemObject"),
+            false,
+            vec![
+                field("period", "text", true),
+                field("period_slug", "text", true),
+                field("sequence", "integer", true),
+                field("start", "date", true),
+                field("end", "date", true),
+                field("tag", "text", true),
+                field("as_of", "json", true),
+                field("balances", "json", true),
+            ],
+        ),
     ];
     list.into_iter()
         .map(|d| (s(&d, "name").unwrap_or_default().to_string(), d))
@@ -445,6 +463,7 @@ pub fn is_genesis(name: &str) -> bool {
             | "LedgerNode"
             | "Release"
             | "MatchRecord"
+            | "CloseArtefact"
     )
 }
 

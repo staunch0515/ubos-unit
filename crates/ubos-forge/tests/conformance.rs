@@ -74,6 +74,11 @@ const RC2_CLAUSES: &[&str] = &[
     // BPA 1.0-rc8 (PH-2 step 3d, DEC-098): matching and match records
     "STD-KIND-027",
     "STD-KIND-028",
+    // BPA 1.0-rc8 (PH-2 step 3c, DEC-098): periods, close artefacts, re-evaluation and restatement
+    "STD-KIND-025",
+    "STD-KIND-026",
+    "STD-TIME-041",
+    "STD-TIME-042",
 ];
 
 /// The clauses a vector verifies.

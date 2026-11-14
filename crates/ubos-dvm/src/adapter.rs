@@ -87,6 +87,10 @@ pub const STATEFUL_OPERATIONS: &[&str] = &[
     "match",
     "unmatch",
     "ingest",
+    // BPA 1.0-rc8 (PH-2 step 3c, DEC-098): periods, close artefacts and restatement
+    "close_period",
+    "reopen_period",
+    "restate",
 ];
 
 const ENVELOPE_REQUIRED: &[&str] = &[
@@ -343,6 +347,9 @@ impl Adapter {
             "match" => self.engine.match_entries(i)?,
             "unmatch" => self.engine.unmatch(i)?,
             "ingest" => self.engine.ingest(i)?,
+            "close_period" => self.engine.close_period(i)?,
+            "reopen_period" => self.engine.reopen_period(i)?,
+            "restate" => self.engine.restate(i)?,
             "explain_cascade" => self.engine.explain_cascade(i)?,
             "actions" => self.engine.actions(i)?,
             "authorize" => self.engine.authorize_op(i)?,

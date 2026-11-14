@@ -461,6 +461,26 @@ impl Vae {
         self.call("ingest", &Self::with_ctx(ctx, input))
     }
 
+    /// `close_period`: close a period in `closing` — the period becomes `closed`, a close
+    /// artefact records the balances and a signed tag names the closing commit
+    /// (STD-KIND-026; DSN-DVM-442, -443).
+    pub fn close_period(&mut self, ctx: &Context, input: Value) -> Result<Value, BpaError> {
+        self.call("close_period", &Self::with_ctx(ctx, input))
+    }
+
+    /// `reopen_period`: reopen a closed period with a reason; its close artefacts stay
+    /// (STD-KIND-025; DSN-DVM-444).
+    pub fn reopen_period(&mut self, ctx: &Context, input: Value) -> Result<Value, BpaError> {
+        self.call("reopen_period", &Self::with_ctx(ctx, input))
+    }
+
+    /// `restate`: re-run the processes behind the impact set of a correcting commit on a
+    /// correction branch, in a re-evaluation mode, and report the changes and the
+    /// compensation proposals (STD-TIME-041, -042; DSN-DVM-322, -323).
+    pub fn restate(&mut self, ctx: &Context, input: Value) -> Result<Value, BpaError> {
+        self.call("restate", &Self::with_ctx(ctx, input))
+    }
+
     /// `merge`.
     pub fn merge(&mut self, ctx: &Context, input: Value) -> Result<Value, BpaError> {
         self.call("merge", &Self::with_ctx(ctx, input))
