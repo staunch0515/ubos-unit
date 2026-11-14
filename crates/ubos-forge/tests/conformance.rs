@@ -71,6 +71,9 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-TIME-050",
     // BPA 1.0-rc7 (step 18d-3b): the sheets of the rule binding
     "STD-TIME-040",
+    // BPA 1.0-rc8 (PH-2 step 3d, DEC-098): matching and match records
+    "STD-KIND-027",
+    "STD-KIND-028",
 ];
 
 /// The clauses a vector verifies.

@@ -445,6 +445,22 @@ impl Vae {
         self.call("execute", &Self::with_ctx(ctx, input))
     }
 
+    /// `match`: run matching rules over two ledger sides and, with `commit`, append the
+    /// match records (STD-KIND-027, -028; DSN-DVM-445).
+    pub fn match_entries(&mut self, ctx: &Context, input: Value) -> Result<Value, BpaError> {
+        self.call("match", &Self::with_ctx(ctx, input))
+    }
+
+    /// `unmatch`: undo a match by a superseding record (STD-KIND-028).
+    pub fn unmatch(&mut self, ctx: &Context, input: Value) -> Result<Value, BpaError> {
+        self.call("unmatch", &Self::with_ctx(ctx, input))
+    }
+
+    /// `ingest`: append the lines of a delivered statement, each line once (DSN-DVM-446).
+    pub fn ingest(&mut self, ctx: &Context, input: Value) -> Result<Value, BpaError> {
+        self.call("ingest", &Self::with_ctx(ctx, input))
+    }
+
     /// `merge`.
     pub fn merge(&mut self, ctx: &Context, input: Value) -> Result<Value, BpaError> {
         self.call("merge", &Self::with_ctx(ctx, input))

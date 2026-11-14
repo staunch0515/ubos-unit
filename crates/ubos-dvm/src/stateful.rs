@@ -1642,7 +1642,29 @@ pub(crate) fn commit_on(
                 }
             }
             op @ ("append" | "reverse" | "adjust") => {
+                // STD-KIND-028: match records are appended by the matching operations only
+                if op == "append"
+                    && s(ch, "class") == Some(ubos_ledger::matching::RECORD_CLASS)
+                    && ch.get(SYSTEM_MARK) != Some(&json!(true))
+                {
+                    return Err(BpaError::new(
+                        "LOGIC.FORBIDDEN_TARGET",
+                        "match records are appended by match and unmatch",
+                    ));
+                }
                 let (id, seq) = repo.append(&mut tx, ch, op, &today, &default_valid, rid)?;
+                // a match record is undone by `unmatch`, not corrected by a commit
+                if op != "append"
+                    && tx
+                        .appended
+                        .last()
+                        .is_some_and(|e| e.class == ubos_ledger::matching::RECORD_CLASS)
+                {
+                    return Err(BpaError::new(
+                        "LOGIC.FORBIDDEN_TARGET",
+                        "a match record is undone by unmatch",
+                    ));
+                }
                 if let Some(d) = &deriv
                     && let Some(eh) = tx.appended.last().map(|e| e.entry_hash.clone())
                 {

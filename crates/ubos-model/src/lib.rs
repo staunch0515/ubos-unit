@@ -310,6 +310,28 @@ fn genesis() -> BTreeMap<String, Value> {
                 ext_json("approvals"),
             ],
         ),
+        // STD-KIND-028 (BPA 1.0-rc8, DEC-090): match records are entries of a genesis ledger
+        // class, appended by the matching operations only.
+        {
+            let mut d = g(
+                "MatchRecord",
+                Some("ledger"),
+                Some("Object"),
+                false,
+                vec![
+                    field("match_set", "text", true),
+                    field("left", "json", true),
+                    field("right", "json", true),
+                    field("rule", "text", false),
+                    field("rule_ref", "text", false),
+                    field("actor", "text", true),
+                    field("unmatches", "text", false),
+                    field("reason", "text", false),
+                ],
+            );
+            d["ledger"] = json!({"key": ["match_set"], "amounts": [], "double_entry": false});
+            d
+        },
     ];
     list.into_iter()
         .map(|d| (s(&d, "name").unwrap_or_default().to_string(), d))
@@ -334,6 +356,7 @@ pub fn is_genesis(name: &str) -> bool {
             | "Lifecycle"
             | "Policy"
             | "Release"
+            | "MatchRecord"
     )
 }
 

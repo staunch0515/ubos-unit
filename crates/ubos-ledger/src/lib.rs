@@ -11,3 +11,5 @@
 //! - 3c: periods, locks, close artefacts, reopen, restatement (DSN-DVM-322, -323, -442…-444);
 //! - 3d: matching, match records, statement ingestion (DSN-DVM-445, DSN-DVM-446);
 //! - 3e: balance projections and their rebuild (DSN-DVM-420, DSN-DVM-423).
+
+pub mod matching;
