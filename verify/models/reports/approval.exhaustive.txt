@@ -1,0 +1,22 @@
+# approval: exhaustive run at the stated bound, approval.cfg (VER-FORM-0100, DEC-031): 2 approvers x 3 editors x 3 objects,
+# 2 pending changes, count 1 or 2, 2 direct edits, 1 incompatible call, 1 re-run per pending change; symmetry over all model values
+# command: TLC_WORKERS=2 sh verify/models/check.sh full approval
+#          (tlc2.TLC -workers 2 -config approval.cfg approval.tla)
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 117 and seed 870462579699973525 with 2 workers on 4 cores with 3040MB heap and 64MB offheap memory [pid: 3671] (Linux 6.18.44-fc-v470 amd64, Ubuntu 21.0.12.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-11-14 02:13:18)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-14 02:13:19.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 3.0E-4
+  based on the actual fingerprints:  val = 2.2E-4
+160761591 states generated, 50992122 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 16.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 31 and the 95th percentile is 4).
+Finished in 01h 23min at (2026-11-14 03:36:23)
+
+real	83m5.621s
+user	146m54.057s
+sys	1m47.460s

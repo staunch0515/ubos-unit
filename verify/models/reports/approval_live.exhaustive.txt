@@ -1,0 +1,28 @@
+# approval_live: exhaustive run with liveness, approval_live.cfg (VER-FORM-0100): 2 approvers x 3 editors x 3 objects,
+# 1 pending change, count 1 or 2, 2 direct edits, 1 incompatible call, 2 re-runs; specification FairSpec, no symmetry
+# command: tlc2.TLC -workers 1 -config approval_live.cfg approval_live.tla
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 20 and seed 6136688994114152785 with 1 worker on 4 cores with 3040MB heap and 64MB offheap memory [pid: 5226] (Linux 6.18.44-fc-v470 amd64, Ubuntu 21.0.12.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-11-14 02:52:51)
+Implied-temporal checking--satisfiability problem has 1 branches.
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-14 02:52:52.
+Checking temporal properties for the current state space with 32742 total distinct states at (2026-11-14 02:52:55)
+Finished checking temporal properties in 00s at 2026-11-14 02:52:55
+Checking temporal properties for the current state space with 815119 total distinct states at (2026-11-14 02:53:55)
+Finished checking temporal properties in 13s at 2026-11-14 02:54:08
+Checking temporal properties for the complete state space with 956578 total distinct states at (2026-11-14 02:54:27)
+Finished checking temporal properties in 16s at 2026-11-14 02:54:43
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 8.0E-8
+  based on the actual fingerprints:  val = 1.5E-8
+2494419 states generated, 956578 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 12.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 31 and the 95th percentile is 4).
+Finished in 01min 52s at (2026-11-14 02:54:43)
+
+real	1m53.326s
+user	1m44.150s
+sys	0m12.986s
