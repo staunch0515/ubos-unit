@@ -1,4 +1,4 @@
-# Formal models (PH-0 step 2, EXIT-0-02; PH-1 step 2, EXIT-1-07)
+# Formal models (PH-0 step 2, EXIT-0-02; PH-1 step 2, EXIT-1-07; PH-2 step 2, EXIT-2-02)
 
 TLA+ models of the core semantics, checked with TLC before any kernel code exists
 (AR-033, DEC-030). Each model states its properties as TLC invariants. `group_commit` has a
@@ -11,6 +11,14 @@ constant `Mutation` that selects the deliberately wrong variants of the sensitiv
 | `merge.tla` | VER-FORM-0002 | STD-VER-040, STD-VER-050, STD-VER-052, STD-VER-054, STD-VER-056, STD-KIND-022, DSN-DVM-240, DSN-DVM-243, DSN-DVM-244, DSN-DVM-249 | `MergeParents` (parents `[target, source]`), `LedgerWellFormed` (gap-free sequences, no duplicated entries), `NoLostEntries`, `ConflictsComplete`, `Determinism` (base and result independent of argument order) |
 | `timeline.tla` | VER-FORM-0003 | STD-TIME-010…012, STD-TIME-031, DSN-DVM-303, DSN-DVM-326, AR-016 | `NoOverlap`, `IndexMatchesLog` (materialised index equals the replayed timeline), `PastAnswersStable` (answers at past `(cseq, asof)` never change), `ImpactComplete` (impact set ⊇ results whose inputs changed) |
 | `group_commit.tla` | VER-FORM-0004 | DSN-DVM-006, DSN-DVM-402, DSN-DVM-404, DSN-DVM-424, STD-TXN-021, STD-TXN-024, STD-KIND-022 (W-8) | `DenseCseq`, `GapFree` (sequences 1…n per key and counter row equal to n, also after failed storage transactions), `PerKeyOrder`, `ProcessAtomic` (a transaction is committed at most once and whole), `SerialEquivalent` (each commit equals running its process alone at its position: bases current, next sequence, balance invariant), `BalanceSafe`, `NoFalseConflict` (append-only processes fail only on the balance invariant), `FailuresJustified` (only the offending process of a batch is aborted) |
+| `approval.tla` (liveness: `approval_live.tla`) | VER-FORM-0100 | STD-TXN-060, STD-VER-021, STD-LGS-041, STD-LGS-042, STD-LGS-043, DSN-DVM-550, DSN-DVM-551, DSN-DVM-552, DSN-DVM-746 | `NoCommitWithoutValidApprovals` (an applied change has at least `count` approvals of distinct eligible approvers, made on the committed preview, and no rejection), `StaleApprovalsNeverCount` (every approval a commit references was made on the committed preview; every approval that is not void was made on the current preview), `SoDHolds` (the initiator is neither approver nor `on_behalf_of`; no principal decides twice, directly or through `on_behalf_of`; no actor had made a committed call of an incompatible port on an object of the change), `CommittedEqualsApproved` (the commit writes exactly the objects of the approved preview, each over the base the approvers saw), `TargetUnchangedWhilePending` (action property: a head moves only by a direct edit or by the commit applying an approved change), `Terminates` (liveness under fairness: every pending change ends applied, rejected, expired or invalidated) |
+
+`approval` models pending changes with base versions and preview, approvals and rejections
+with `on_behalf_of`, the applying process, invalidation, re-run and expiry, against
+concurrent direct edits and committed calls of incompatible ports. Like `group_commit` it has
+a constant `Mutation` for the sensitivity checks; the configurations use `"none"`.
+`approval_live.tla` only extends `approval.tla`, so that the liveness property has its own
+configurations (`FairSpec`, no symmetry, one pending change).
 
 ## Running
 
