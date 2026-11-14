@@ -79,6 +79,8 @@ const RC2_CLAUSES: &[&str] = &[
     "STD-KIND-026",
     "STD-TIME-041",
     "STD-TIME-042",
+    // the merge validation of 1.0-rc1 (DEC-041), claimed so that VER-CONF-1108 runs
+    "STD-VER-055",
 ];
 
 /// The clauses a vector verifies.
