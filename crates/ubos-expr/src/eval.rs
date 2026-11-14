@@ -894,7 +894,16 @@ impl<'a> Evaluator<'a> {
                 let (x, from) = money(0)?;
                 let cur = text(1)?;
                 let rate_ref = text(2)?;
-                let Some(r) = self.rates.get(rate_ref) else {
+                // a rate given to the evaluation, else the stored rate object in scope
+                // (DSN-DVM-410)
+                let stored = match self.rates.get(rate_ref) {
+                    Some(r) => Some(r.clone()),
+                    None => match crate::reference::in_scope() {
+                        Some(data) => data.rate(rate_ref)?,
+                        None => None,
+                    },
+                };
+                let Some(r) = stored else {
                     return Err(BpaError::new(
                         "MODEL.REFERENCE_INVALID",
                         format!("unknown rate {rate_ref}"),
@@ -1124,7 +1133,16 @@ impl<'a> Evaluator<'a> {
     }
 
     fn cal(&self, name: &str) -> Result<(Vec<u32>, Vec<String>), BpaError> {
-        let Some(c) = self.calendars.get(name) else {
+        // a calendar given to the evaluation, else the stored calendar in scope
+        // (DSN-DVM-447)
+        let stored = match self.calendars.get(name) {
+            Some(c) => Some(c.clone()),
+            None => match crate::reference::in_scope() {
+                Some(data) => data.calendar(name)?,
+                None => None,
+            },
+        };
+        let Some(c) = stored else {
             return Err(BpaError::new(
                 "MODEL.REFERENCE_INVALID",
                 format!("unknown calendar {name}"),

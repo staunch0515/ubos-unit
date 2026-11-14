@@ -64,14 +64,10 @@ pub const LEVELS: &[&str] = &[
     "sensitive_personal",
 ];
 
-/// ISO 4217 minor units of the currencies used by release 0.1.
+/// The ISO 4217 minor unit of a currency of the reference table (`currency`), or `None`
+/// for a code the table does not list (FR-LOC-021, DSN-DVM-410).
 pub fn minor_unit(currency: &str) -> Option<u32> {
-    Some(match currency {
-        "USD" | "EUR" | "GBP" | "CHF" | "CAD" | "CNY" => 2,
-        "JPY" | "KRW" => 0,
-        "BHD" | "KWD" => 3,
-        _ => return None,
-    })
+    crate::currency::currency(currency).map(|c| c.minor_unit)
 }
 
 fn full_match(pattern: &str, text: &str) -> Result<bool, BpaError> {

@@ -257,6 +257,18 @@ impl Engine {
             || selects.iter().any(|(_, a)| ubos_query::reaches_objects(a))
             || groups.iter().any(ubos_query::reaches_objects)
             || aggs.iter().flatten().any(ubos_query::reaches_objects);
+        let names_reference = [&spec.where_]
+            .into_iter()
+            .flatten()
+            .chain(spec.order_by.iter().map(|o| &o.path))
+            .chain(spec.select.iter())
+            .chain(spec.group_by.iter())
+            .any(|t| ubos_expr::mentions_reference(t))
+            || spec
+                .aggregates
+                .iter()
+                .any(|a| s(a, "path").is_some_and(ubos_expr::mentions_reference));
+        let reaches = reaches || names_reference;
         let profile = s(i, "profile").unwrap_or("standard");
         let budget = self
             .max_scan
@@ -510,6 +522,19 @@ impl Engine {
                 this: from_json(&this_t, &Value::Object(body)),
             });
         }
+        // the stored calendars and rates at the coordinates, for expressions that name
+        // one (DSN-DVM-410, -447); such a query takes the view path
+        let reference = if names_reference {
+            Some(std::rc::Rc::new(crate::money::Snapshot::build(
+                &mut repo,
+                &st,
+                &authority,
+                asof.as_deref(),
+                &default_valid,
+            )?))
+        } else {
+            None
+        };
         let reader = Reader {
             repo: RefCell::new(&mut repo),
             st: &st,
@@ -522,7 +547,7 @@ impl Engine {
             let mut e = Evaluator::new(&env);
             e.this = Some(this.clone());
             e.resolver = Some(&reader);
-            e.eval(ast)
+            crate::money::scoped(&reference, || e.eval(ast))
         };
         let mut rows: Vec<(Row, Vec<Option<OrderKey>>)> = Vec::new();
         for row in cands {
@@ -592,11 +617,28 @@ impl Engine {
                     .collect::<Result<_, _>>()?;
                 grouped.push((ks, vs));
             }
-            let groups = ubos_query::aggregate(&spec, grouped)?;
             drop(reader);
             drop(repo);
+            // FR-QRY-042: money is grouped by currency unless the query asks for an
+            // explicit conversion, whose rates the result references
+            let convert = i.get("convert").filter(|c| !c.is_null());
+            let mut rates = None;
+            if let Some(c) = convert {
+                let mut cv = self.converter(c, &branch, &commit_id, asof.as_deref())?;
+                for (_, vs) in grouped.iter_mut() {
+                    for v in vs.iter_mut() {
+                        *v = cv.value(std::mem::replace(v, Val::Null))?;
+                    }
+                }
+                rates = Some(cv.references());
+            }
+            let groups = ubos_query::aggregate(&spec, grouped)?;
             self.decision_log.extend(denied_log);
-            return Ok(json!({"groups": groups, "evaluated_at": evaluated_at}));
+            let mut out = json!({"groups": groups, "evaluated_at": evaluated_at});
+            if let Some(r) = rates {
+                out["rates"] = Value::Array(r);
+            }
+            return Ok(out);
         }
         rows.sort_by(|a, b| a.0.oid.cmp(&b.0.oid));
         for (n, (_, desc)) in orders.iter().enumerate().rev() {

@@ -12,4 +12,11 @@
 //! - 3d: matching, match records, statement ingestion (DSN-DVM-445, DSN-DVM-446);
 //! - 3e: balance projections and their rebuild (DSN-DVM-420, DSN-DVM-423).
 
+pub mod calendar;
+pub mod currency;
+pub mod fx;
 pub mod matching;
+pub mod money;
+
+#[cfg(test)]
+pub(crate) mod testing;

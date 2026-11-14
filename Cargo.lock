@@ -3184,6 +3184,8 @@ dependencies = [
 name = "ubos-ledger"
 version = "0.0.0"
 dependencies = [
+ "chrono",
+ "chrono-tz",
  "serde_json",
  "sha2",
  "ubos-types",

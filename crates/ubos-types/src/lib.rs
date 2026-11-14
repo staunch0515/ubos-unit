@@ -10,6 +10,7 @@
 
 pub mod addr;
 pub mod canon;
+pub mod currency;
 pub mod decimal;
 pub mod error;
 pub mod names;

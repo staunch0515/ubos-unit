@@ -78,6 +78,10 @@ pub struct EngineHost<'a> {
     policies: Option<Option<crate::authz::PolicySet>>,
     /// Decisions of this attempt by `(action, class, object)` (DSN-DVM-806).
     decisions: BTreeMap<(String, String, Option<String>), Option<&'static str>>,
+    /// The stored calendars and rates at the pinned snapshot and the valid time of the
+    /// process, resolved when an expression first names one (DSN-DVM-410, -447): the
+    /// key is `(pinned commit, asof)`.
+    reference: Option<((String, String), std::rc::Rc<crate::money::Snapshot>)>,
 }
 
 impl<'a> EngineHost<'a> {
@@ -91,6 +95,55 @@ impl<'a> EngineHost<'a> {
             flow: ubos_flow::Flow::default(),
             policies: None,
             decisions: BTreeMap::new(),
+            reference: None,
+        }
+    }
+
+    // ---- stored calendars and rates (DSN-DVM-410, -447; PH-2 step 3a) ----
+
+    /// The calendars and rates at the coordinates of the process, when `text` (an
+    /// expression, or a declaration that holds expressions) may name one.
+    fn stored_reference(
+        &mut self,
+        core: &mut Core,
+        text: &str,
+    ) -> Result<Option<std::rc::Rc<crate::money::Snapshot>>, BpaError> {
+        if !ubos_expr::mentions_reference(text) {
+            return Ok(None);
+        }
+        let st = self.state(core)?.clone();
+        let asof = core.asof();
+        let key = (
+            core.pins.get(&core.branch).cloned().unwrap_or_default(),
+            asof.clone(),
+        );
+        if let Some((k, data)) = &self.reference
+            && *k == key
+        {
+            return Ok(Some(data.clone()));
+        }
+        let lazy = self.lazy();
+        let data = std::rc::Rc::new(self.e.reference_in(
+            &st,
+            lazy,
+            Some(asof.as_str()).filter(|a| !a.is_empty()),
+        )?);
+        self.reference = Some((key, data.clone()));
+        Ok(Some(data))
+    }
+
+    /// The versions of calendars and rates an evaluation used become inputs of the
+    /// process, so that the derivation of its changes names them (DSN-DVM-410: the rate
+    /// version of a conversion is part of the evidence).
+    fn note_reference(&mut self, core: &mut Core) {
+        let Some((_, data)) = &self.reference else {
+            return;
+        };
+        for (oid, version) in data.take_used() {
+            let trip = json!({"object": oid, "version": version, "asof": core.asof()});
+            if !core.triples.contains(&trip) {
+                core.triples.push(trip);
+            }
         }
     }
 
@@ -310,8 +363,12 @@ impl<'a> EngineHost<'a> {
         let params = ubos_flow::params_json(&frame.params)?;
         let ctx = self.decision_ctx(core)?;
         let ctx = ctx.as_object().cloned().unwrap_or_default();
-        let failed =
-            ubos_flow::failed_transition_guards(&reg, &cls, &t, &decls, &body, &params, &ctx)?;
+        let stored = self.stored_reference(core, &format!("{t}{lc}"))?;
+        let failed = crate::money::scoped(&stored, || {
+            ubos_flow::failed_transition_guards(&reg, &cls, &t, &decls, &body, &params, &ctx)
+        });
+        self.note_reference(core);
+        let failed = failed?;
         if !failed.is_empty() {
             return Err(BpaError::with_details(
                 "FLOW.GUARD_FAILED",
@@ -328,14 +385,16 @@ impl<'a> EngineHost<'a> {
                                 return Err(invalid(&format!("undeclared field {f}")));
                             }
                             let text = text.as_str().unwrap_or_default();
-                            let v = ubos_flow::eval_value(
-                                &reg,
-                                &cls,
-                                text,
-                                &body,
-                                Some((&decls, &params)),
-                                Some(&ctx),
-                            )?;
+                            let v = crate::money::scoped(&stored, || {
+                                ubos_flow::eval_value(
+                                    &reg,
+                                    &cls,
+                                    text,
+                                    &body,
+                                    Some((&decls, &params)),
+                                    Some(&ctx),
+                                )
+                            })?;
                             body[f] = v.clone();
                             sets.insert(f.clone(), v);
                         }
@@ -1497,7 +1556,12 @@ impl<'a> EngineHost<'a> {
         // STD-ISA-050 (1.0-rc3): the port's guards, L1 booleans over this, params and ctx
         let dctx = self.decision_ctx(core)?;
         let dctx = dctx.as_object().cloned().unwrap_or_default();
-        let failed = ubos_flow::failed_port_guards(&reg, &cls, &decl, &body, &params, &dctx)?;
+        let stored = self.stored_reference(core, &decl.to_string())?;
+        let failed = crate::money::scoped(&stored, || {
+            ubos_flow::failed_port_guards(&reg, &cls, &decl, &body, &params, &dctx)
+        });
+        self.note_reference(core);
+        let failed = failed?;
         if !failed.is_empty() {
             let failed: Vec<Value> = failed.iter().map(|(_, g)| json!({"guard": g})).collect();
             return Err(BpaError::with_details(
@@ -1706,6 +1770,20 @@ impl Host for EngineHost<'_> {
 
     fn class_type(&mut self, class: &str) -> Result<Ty, BpaError> {
         ubos_expr::class_type(&self.e.registry, class)
+    }
+
+    fn reference(
+        &mut self,
+        core: &mut Core,
+    ) -> Result<Option<std::rc::Rc<dyn ubos_expr::ReferenceData>>, BpaError> {
+        Ok(self
+            .stored_reference(core, "convert")?
+            .map(|d| d as std::rc::Rc<dyn ubos_expr::ReferenceData>))
+    }
+
+    fn reference_used(&mut self, core: &mut Core) -> Result<(), BpaError> {
+        self.note_reference(core);
+        Ok(())
     }
 }
 

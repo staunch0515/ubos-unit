@@ -208,19 +208,39 @@ impl Engine {
             None => &mut allow,
         };
         let empty = json!({});
+        // guards that name a stored calendar or rate read it at the same coordinates
+        // (DSN-DVM-447)
+        let names_reference = eff
+            .ports
+            .values()
+            .any(|p| ubos_expr::mentions_reference(&p.decl.to_string()))
+            || lc
+                .as_ref()
+                .is_some_and(|l| ubos_expr::mentions_reference(&l.2.to_string()));
+        let stored = if names_reference {
+            Some(std::rc::Rc::new(self.reference_in(
+                st,
+                lazy.clone(),
+                None,
+            )?))
+        } else {
+            None
+        };
         let mut decide =
             |port: &str| self.decide_in(st, branch, oid, port, &empty, ctx, lazy.clone());
-        ubos_flow::actions(
-            &reg,
-            &o.class,
-            &eff.ports,
-            lc.as_ref().map(|l| &l.2),
-            state.as_deref(),
-            &body,
-            ctx,
-            permit,
-            &mut decide,
-        )
+        crate::money::scoped(&stored, || {
+            ubos_flow::actions(
+                &reg,
+                &o.class,
+                &eff.ports,
+                lc.as_ref().map(|l| &l.2),
+                state.as_deref(),
+                &body,
+                ctx,
+                permit,
+                &mut decide,
+            )
+        })
     }
 
     /// The adapter operation `actions` (STD-CONF-005, since 1.0-rc3): every port permitted,

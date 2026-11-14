@@ -110,6 +110,19 @@ fn enum_field(name: &str, allowed: &[&str]) -> Value {
     f
 }
 
+/// An optional list field with the given item type.
+fn list_field(name: &str, item_type: Value) -> Value {
+    let mut f = field(name, "list", false);
+    f["constraints"] = json!({"item_type": item_type});
+    f
+}
+
+/// A declaration with one unique key (STD-CLS-001 `keys`).
+fn keyed(mut decl: Value, key: &[&str]) -> Value {
+    decl["keys"] = json!([key]);
+    decl
+}
+
 /// Genesis declarations (STD-CLS-010; `ClassExtension` STD-CLS-030; `ChangeSet` and
 /// `Release` STD-VER-020, -061; `Logic` STD-CTX-022). Only what the registry needs is
 /// declared: name, kind, parent, abstractness and fields.
@@ -297,6 +310,54 @@ fn genesis() -> BTreeMap<String, Value> {
                 field("description", "text", true),
             ],
         ),
+        // DSN-DVM-410 (PH-2 step 3a, DEC-098): exchange rates are Definition objects, one
+        // object per series `(source, from, to, rate_type)`; its valid time is the rate
+        // date. One unit of `from` is `rate` units of `to` (the rate object of
+        // STD-EXPR-005). Rates are data entered day by day, so the class is below
+        // `DataObject` with the write policy `direct` (a Buk may refine it to
+        // `change_set`). Kernel class; a standard clause follows with a later release.
+        keyed(
+            g(
+                "FxRate",
+                Some("definition"),
+                Some("DataObject"),
+                false,
+                vec![
+                    field("source", "text", true),
+                    field("from", "text", true),
+                    field("to", "text", true),
+                    field("rate_type", "text", true),
+                    field("rate", "decimal", true),
+                    field("fixing_time", "instant", false),
+                ],
+            ),
+            &["source", "from", "to", "rate_type"],
+        ),
+        // DSN-DVM-447 (PH-2 step 3a, DEC-098): business calendars are Definition objects
+        // holding the weekend days and holidays of the L1 calendar value (STD-EXPR-005),
+        // the calendars they are the union of, and a cut-off rule; below `DataObject`, as
+        // the rates.
+        g(
+            "BusinessCalendar",
+            Some("definition"),
+            Some("DataObject"),
+            false,
+            vec![
+                field("name", "text", true),
+                list_field(
+                    "weekend",
+                    json!({"type": "integer", "constraints": {"min": 1, "max": 7}}),
+                ),
+                list_field("holidays", json!({"type": "date"})),
+                list_field(
+                    "union",
+                    json!({"type": "reference", "constraints": {"target_class": "BusinessCalendar"}}),
+                ),
+                field("cutoff_time", "time", false),
+                field("cutoff_tz", "text", false),
+                field("description", "text", false),
+            ],
+        ),
         g(
             "Release",
             Some("definition"),
@@ -355,6 +416,8 @@ pub fn is_genesis(name: &str) -> bool {
             | "PropertyDecl"
             | "Lifecycle"
             | "Policy"
+            | "FxRate"
+            | "BusinessCalendar"
             | "Release"
             | "MatchRecord"
     )

@@ -11,6 +11,7 @@ pub mod check;
 pub mod eval;
 pub mod lexer;
 pub mod parser;
+pub mod reference;
 pub mod value;
 
 /// The model layer below this crate, for crates whose allowed dependency is `ubos-expr`
@@ -21,6 +22,7 @@ pub use ast::Node;
 pub use check::{Env, check};
 pub use eval::{Evaluator, MAX_ITEMS, MAX_UNITS, OrderKey, Resolver, order_key};
 pub use parser::parse;
+pub use reference::{ReferenceData, mentions_reference, with_reference};
 pub use value::{Ty, Val, field_type, from_json, to_json, type_name};
 
 use serde_json::{Map, Value, json};

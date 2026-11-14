@@ -186,6 +186,20 @@ pub trait Host {
     fn typed_ref(&mut self, core: &mut Core, uri: &str) -> Result<Option<Val>, BpaError>;
     /// The static type of a class (custom value types as their base).
     fn class_type(&mut self, class: &str) -> Result<Ty, BpaError>;
+    /// The stored calendars and rate objects at the coordinates of the process, for an L1
+    /// expression that may name one (DSN-DVM-410, DSN-DVM-447); `None` when the host
+    /// keeps none.
+    fn reference(
+        &mut self,
+        _core: &mut Core,
+    ) -> Result<Option<std::rc::Rc<dyn ubos_expr::ReferenceData>>, BpaError> {
+        Ok(None)
+    }
+    /// Called after an evaluation that had the reference data in scope: the host records
+    /// the versions the evaluation used as inputs of the process.
+    fn reference_used(&mut self, _core: &mut Core) -> Result<(), BpaError> {
+        Ok(())
+    }
     /// Whether the host implements an instruction outside `IMPLEMENTED` (the connector and
     /// model instructions of a node host with services, CTR-002).
     fn implements(&self, _name: &str) -> bool {
@@ -484,6 +498,10 @@ pub fn eval(
         (Some(t), Some(b)) => Some(from_json(t, b)),
         _ => None,
     };
+    let reference = match text.as_str() {
+        Some(t) if ubos_expr::mentions_reference(t) => host.reference(core)?,
+        _ => None,
+    };
     let resolver = RefResolver {
         inner: RefCell::new((core, host)),
     };
@@ -494,11 +512,17 @@ pub fn eval(
     ev.params = Some(Val::Map(f.params.clone()));
     ev.vars = scope.clone();
     ev.resolver = Some(&resolver);
-    let r = ev.eval(&ast.0);
+    let r = match &reference {
+        Some(data) => ubos_expr::with_reference(data.clone(), || ev.eval(&ast.0)),
+        None => ev.eval(&ast.0),
+    };
     let used = ev.units();
     drop(ev);
-    let (core, _) = resolver.inner.into_inner();
+    let (core, host) = resolver.inner.into_inner();
     core.charge(used)?;
+    if reference.is_some() {
+        host.reference_used(core)?;
+    }
     r
 }
 

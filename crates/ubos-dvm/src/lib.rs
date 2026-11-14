@@ -15,6 +15,7 @@ pub mod flow;
 pub mod host;
 pub mod keys;
 pub mod matching;
+pub mod money;
 pub mod process;
 pub mod proofs;
 pub mod relations;

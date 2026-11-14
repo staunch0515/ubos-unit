@@ -295,6 +295,14 @@ impl Adapter {
             "system_commit" => self.engine.system_commit(i)?,
             "read" => self.engine.read(i)?,
             "read_ledger" => self.engine.read_ledger(i)?,
+            // kernel host API of PH-2 step 3a (DSN-DVM-409, -410, -447); not adapter
+            // operations of STD-CONF-005
+            "currencies" => self.engine.currencies(i)?,
+            "fx_rate" => self.engine.fx_rate(i)?,
+            "convert" => self.engine.convert(i)?,
+            "calendar" => self.engine.calendar(i)?,
+            "business_day" => self.engine.business_day(i)?,
+            "ledger_totals" => self.engine.ledger_totals(i)?,
             "create_branch" | "merge" | "diff" | "export_state" | "merge_preview"
             | "change_set" | "tag" | "delete_tag" | "tag_info" | "release" | "revert"
             | "branch_info" | "set_parent_line" | "commit_info" | "tree_diff" | "process_info"

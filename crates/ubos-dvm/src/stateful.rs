@@ -1176,6 +1176,7 @@ fn create(
         state.as_deref(),
     )?;
     let body = repo.reg.check_body(&class, &Value::Object(given), false)?;
+    crate::money::check_definition(repo.reg, &class, &Value::Object(body.clone()))?;
     let a = ch
         .get("valid")
         .and_then(|v| s(v, "from"))
@@ -1308,6 +1309,7 @@ fn update(
         crate::sheets::sheet_body(&o.class, &mut body)?;
         repo.reg
             .check_body(&o.class, &Value::Object(body.clone()), false)?;
+        crate::money::check_definition(repo.reg, &o.class, &Value::Object(body.clone()))?;
         let slug = s(ch, "slug").unwrap_or(&o.slug).to_string();
         names::check_name("slug", &slug)?;
         let kind = s(&valid, "kind").unwrap_or("supersede_from");

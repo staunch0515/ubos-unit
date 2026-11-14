@@ -429,7 +429,19 @@ pub fn best_bound(bounds: &[Bound]) -> Option<&Bound> {
 pub fn reaches_objects(n: &Node) -> bool {
     match n {
         Node::Call(_, name, args) => {
-            matches!(name.as_str(), "ref" | "exists") || args.iter().any(reaches_objects)
+            // `ref` and `exists`, and the functions that name a stored calendar or rate
+            // object (DSN-DVM-410, DSN-DVM-447)
+            matches!(
+                name.as_str(),
+                "ref"
+                    | "exists"
+                    | "convert"
+                    | "is_business_day"
+                    | "add_business_days"
+                    | "next_business_day"
+                    | "previous_business_day"
+                    | "cutoff"
+            ) || args.iter().any(reaches_objects)
         }
         Node::List(_, items) => items.iter().any(reaches_objects),
         Node::Member(_, b, _, _) | Node::Neg(_, b) | Node::Not(_, b) | Node::Matches(_, b, _) => {
