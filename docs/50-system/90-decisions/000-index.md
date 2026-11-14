@@ -22,6 +22,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-096 | PH-2 step 1h: release of BPA 1.0-rc8 — notes finalised, VER-INSP-9006, the owner's signed tag `bpa-v1.0.0-rc8`, freeze; the candidate part of EXIT-2-01 | Accepted |
 | DEC-097 | PH-2 step 2: extended formal models — approvals and deferred commits (`approval.tla`, VER-FORM-0100) and sagas (`saga.tla`, VER-FORM-0101) checked with 0 violations; liveness in separate modules; findings A-1…A-8 and S-1…S-6 taken up by the clause and design changes of steps 4 and 6; EXIT-2-02 met | Accepted |
 | DEC-098 | PH-2 step 3: money and periods in the kernel in parts 3a–3f — crate `ubos-ledger` (pure library, no finance vocabulary), FX and calendars (new DSN-DVM-447), posting groups, periods and restatement, matching, balance projections; the conformance test claims the 1.0-rc8 clauses as each part implements them; rates entered as data until the connectors of step 12 | Accepted |
+| DEC-099 | Dispositions after PH-2 step 3a–3d: findings L-1…L-12 and design items D-1…D-5 go into the next release candidate (1.0-rc9) with the A-* and S-* findings of DEC-097; `FxRate` is a genesis class and the scenario documents no longer list it as a Buk class; the currency table is checked against ISO 4217 before step 9; development paused after 3a–3d | Accepted |
 
 ---
 
@@ -317,3 +318,17 @@ DEC-090 on follow.
   - Putting the ledger mechanisms directly in `ubos-dvm` was rejected: UBS-ARC-07 already names `ubos-ledger`, and a pure library can be property-tested without storage.
   - Shipping US market calendars in the kernel was rejected: calendars are business data and belong to Buks.
 - **Affects:** DSN-DVM-322, DSN-DVM-323, DSN-DVM-409, DSN-DVM-410, DSN-DVM-420, DSN-DVM-423, DSN-DVM-440, DSN-DVM-441, DSN-DVM-442, DSN-DVM-443, DSN-DVM-444, DSN-DVM-445, DSN-DVM-446, DSN-DVM-447, FR-LEDG-031, FR-LEDG-033, FR-ANL-021, FR-LOC-021, FR-LOC-022, FR-LOC-041, FR-LOC-042, DEC-087, DEC-090
+
+### DEC-099 — Dispositions after PH-2 step 3, parts 3a–3d
+- **Date:** 2026-11-14 · **Status:** Accepted
+- **Context:** Parts 3a–3d of DEC-098 are merged; the owner paused development before part 3e and confirmed the default suggestions of the report `docs/reports/ph2-step2-3-report-zh.md` §4 on 2026-11-14. The report `verify/reports/ph2-3/` lists findings L-1…L-12 on clauses of BPA 1.0-rc8 and D-1…D-5 on design items.
+- **Decision:**
+  1. **Findings.** L-1…L-12 go into the next release candidate (1.0-rc9) together with A-1…A-8 and S-1…S-6 of DEC-097; D-1…D-5 are revised with the clauses they depend on. Until then the kernel follows the vectors, as built.
+  2. **`FxRate`.** FX rates are objects of the genesis class `FxRate` (3a); the scenario documents of SCN-501… and SCN-101… no longer list `FxRate` (or `Currency`) as a Buk class.
+  3. **Currency table.** The ISO 4217 table of `ubos-types::currency` is checked against the official list before PH-2 step 9 (the `finance` Buk).
+  4. **Pause.** Step 3 resumes with part 3e (balance projections), then 3f; no pull request to `main` until the owner asks.
+- **Consequences:**
+  - The open owner actions are the signed tags `bpa-v1.0.0-rc1`…`rc8` and, when development resumes, the confirmation of the 1.0-rc9 opening.
+- **Alternatives considered:**
+  - Revising the design items D-1…D-5 now was rejected: they depend on the clause wording of 1.0-rc9.
+- **Affects:** DEC-097, DEC-098, DSN-DVM-410, DSN-DVM-440, DSN-DVM-441, DSN-DVM-442, DSN-DVM-444, DSN-DVM-445, DSN-DVM-446, SCN-501, SCN-101

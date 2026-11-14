@@ -21,7 +21,7 @@ The Fund Operations Buk models the following classes. Kinds follow IMP-01.
 | `Investor` (extends `Party`), `InvestorAccount` | Definition | investor register; personal fields encrypted |
 | `DealingOrder` (subscription, redemption, switch) | Definition with lifecycle | `received → validated → accepted → priced → settled`, or `rejected` / `cancelled` |
 | `UnitMovement`, `CashMovement`, `JournalEntry`, `FeeAccrual` | Ledger | append-only postings |
-| `Price`, `FxRate` | Definition | bitemporal market data |
+| `Price` | Definition | bitemporal market data; FX rates are objects of the genesis class `FxRate` (DSN-DVM-410, DEC-099) |
 | `NavCalculation` | Definition (result) | one per share class and valuation date, with lineage |
 | `Holding`, `UnitBalance`, `AccountBalance` | Projection | derived from ledger classes |
 

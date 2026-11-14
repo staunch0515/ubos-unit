@@ -21,7 +21,7 @@ is **Northwind Components, Inc.**, a US C-corporation with a calendar fiscal yea
 | `Account`, `AccountType`, `FiscalCalendar`, `Period` | Definition | chart of accounts (hierarchical), fiscal calendar, open/soft-closed/closed periods |
 | `JournalEntry` (header) | Definition with lifecycle | `draft → submitted → approved → posted`, or `rejected`; posting creates ledger lines |
 | `GlLine` | Ledger | append-only, balanced per posting group, gap-free sequence per ledger |
-| `Customer`, `Vendor` (extend `Party`), `Item`, `TaxCode`, `Currency`, `FxRate` | Definition | master data, bitemporal |
+| `Customer`, `Vendor` (extend `Party`), `Item`, `TaxCode` | Definition | master data, bitemporal; currencies are kernel reference data and FX rates objects of the genesis class `FxRate` (DSN-DVM-410, DEC-099) |
 | `Invoice`, `CreditMemo`, `Receipt`, `Bill`, `Payment` | Definition with lifecycle | subledger documents that post to `GlLine` |
 | `BankAccount`, `BankStatementLine`, `ReconMatch` | Definition / Ledger | statement import and immutable match records |
 | `FixedAsset`, `DepreciationSchedule` | Definition | book depreciation (straight-line, declining balance) |
