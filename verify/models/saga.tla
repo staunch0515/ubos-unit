@@ -37,15 +37,19 @@
 (* step, if no outcome is recorded yet. This fences the attempt: a step    *)
 (* that would still commit after its timeout finds the key taken and does  *)
 (* nothing. If the step committed first, the timeout finds "ok" and the    *)
-(* saga continues (findings F-1, F-2 of reports/saga.section.md).          *)
+(* saga continues (findings S-1 and S-2 of the report).                    *)
 (*                                                                         *)
 (* The declaration of the saga (recovery, timeout action and compensation  *)
 (* per step) is chosen in the initial state from the configured sets, so   *)
 (* one run covers every declaration. A timeout may pass at any moment or   *)
 (* never, so a step without a timeout is covered by one that declares one. *)
 (*                                                                         *)
+(* The invariants are checked on Spec (saga.cfg, saga.ci.cfg). The         *)
+(* temporal properties need fairness and are checked on FairSpec by the    *)
+(* configurations of saga_live.tla, at smaller bounds (reports).           *)
+(*                                                                         *)
 (* Mutation selects a deliberately wrong variant for the sensitivity       *)
-(* checks of reports/saga.section.md; "none" is the design.                *)
+(* checks of the report; "none" is the design.                             *)
 (***************************************************************************)
 EXTENDS Integers, Sequences, FiniteSets, TLC
 
@@ -58,7 +62,7 @@ CONSTANTS N,              \* number of steps
           CompCanFail,    \* a compensation process may fail
           MaxCrashes,     \* bound on coordinator crashes
           MaxLost,        \* bound on lost invocations (executor crashes before its commit)
-          Mutation        \* "none" or a mutation of reports/saga.section.md
+          Mutation        \* "none" or a mutation of the report (sensitivity checks)
 
 ASSUME Mutation \in {"none", "no_dedupe", "rerun_failed", "no_fence", "timeout_as_ok",
                      "comp_forward_order", "comp_failed_step", "comp_error_skipped",
@@ -309,7 +313,10 @@ Work(c) == Load(c) \/ Advance(c) \/ Restart(c)
 Fairness == /\ \A c \in Coords : WF_vars(Work(c)) /\ WF_vars(Invoke(c))
             /\ WF_vars(\E k \in Keys : Exec(k))
 
-Spec == Init /\ [][Next]_vars /\ Fairness
+Spec == Init /\ [][Next]_vars
+
+\* The specification of the liveness runs (saga_live.tla).
+FairSpec == Spec /\ Fairness
 
 (***************************************************************************)
 (* Properties.                                                             *)
