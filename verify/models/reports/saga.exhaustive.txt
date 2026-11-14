@@ -1,0 +1,27 @@
+# saga: exhaustive run at the stated bound of VER-FORM-0101 (saga.cfg): 3 steps x 2 coordinators, 2 coordinator crashes,
+# 1 lost invocation, 72 declarations, 2 attempts; invariants on Spec (DEC-031 rule 1)
+# command: TLC_WORKERS=2 sh verify/models/check.sh full saga
+#   = tlc2.TLC -workers 2 -config saga.cfg saga.tla   (wall time 7 min 42 s)
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 7.0E-5
+  based on the actual fingerprints:  val = 5.1E-6
+94092744 states generated, 16730520 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 49.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 7 and the 95th percentile is 3).
+Finished in 07min 40s at (2026-11-14 05:44:24)
+
+# saga: CI bounds (saga.ci.cfg): the stated bound with 1 coordinator crash and 1 attempt; invariants on Spec
+# command: TLC_WORKERS=2 sh verify/models/check.sh ci saga
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 3.0E-6
+  based on the actual fingerprints:  val = 3.6E-6
+18192240 states generated, 3846168 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 46.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 7 and the 95th percentile is 2).
+Finished in 01min 28s at (2026-11-14 05:46:02)

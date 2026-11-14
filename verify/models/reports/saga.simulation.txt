@@ -1,0 +1,12 @@
+# saga_live: simulation at the stated bound of VER-FORM-0101 (saga_sim.cfg = bounds of saga.cfg), temporal properties
+# Terminates, EndsCompletedOrCompensated, EndsAsDeclared on FairSpec and TypeOK (DEC-031 rule 2)
+# command: tlc2.TLC -workers 2 -simulate num=1000000 -depth 100 -config saga_sim.cfg saga_live.tla
+# A behaviour runs to its end in about 24 states (3,000 behaviours with 1 worker: 71,273 states), so the states
+# checked below correspond to about 1.9 million behaviours, at least the 1,000,000 requested (TLC does not print the count).
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running Random Simulation with seed -4568877328531483675 with 2 workers on 4 cores with 3040MB heap and 64MB offheap mem
+Implied-temporal checking--satisfiability problem has 3 branches.
+Computed 72 initial states...
+Finished in 01h 24min at (2026-11-14 05:36:13)
+Progress: 44803949 states checked.
+# no error reported

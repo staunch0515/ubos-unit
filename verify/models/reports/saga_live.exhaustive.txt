@@ -1,0 +1,50 @@
+# saga_live: exhaustive liveness run (saga_live.cfg): the bounds of saga.cfg with 1 coordinator crash and 1 attempt;
+# temporal properties Terminates, EndsCompletedOrCompensated, EndsAsDeclared on FairSpec (DEC-031 rule 2)
+# command: TLC_WORKERS=2 sh verify/models/check.sh full saga_live
+#   = tlc2.TLC -workers 2 -config saga_live.cfg saga_live.tla
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Progress(46) at 2026-11-14 06:15:00: 18,192,240 states generated, 3,846,168 distinct states found, 0 states left on queue.
+Checking 3 branches of temporal properties for the complete state space with 11538504 total distinct states at (2026-11-14 06:15:00)
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 3.0E-6
+  based on the actual fingerprints:  val = 1.9E-7
+18192240 states generated, 3846168 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 46.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 7 and the 95th percentile is 3).
+Finished in 23min 00s at (2026-11-14 06:15:22)
+
+# saga_live: exhaustive liveness run (saga_live_c1.cfg): the bounds of saga.cfg with 1 coordinator (2 crashes, 2 attempts)
+# command: tlc2.TLC -workers 2 -config saga_live_c1.cfg saga_live.tla
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Progress(48) at 2026-11-14 05:52:03: 3,247,104 states generated, 862,584 distinct states found, 0 states left on queue.
+Checking 3 branches of temporal properties for the complete state space with 2587752 total distinct states at (2026-11-14 05:52:03)
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 1.1E-7
+  based on the actual fingerprints:  val = 1.1E-7
+3247104 states generated, 862584 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 48.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 5 and the 95th percentile is 2).
+Finished in 02min 06s at (2026-11-14 05:52:07)
+
+# saga_live: CI bounds (saga_live.ci.cfg): 2 coordinators, 1 crash, backward recovery, 8 declarations
+# command: TLC_WORKERS=2 sh verify/models/check.sh ci saga_live
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Progress(46) at 2026-11-14 05:49:55: 3,005,168 states generated, 608,056 distinct states found, 0 states left on queue.
+Checking 3 branches of temporal properties for the complete state space with 1824168 total distinct states at (2026-11-14 05:49:55)
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 7.9E-8
+  based on the actual fingerprints:  val = 6.7E-9
+3005168 states generated, 608056 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 46.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 7 and the 95th percentile is 2).
+Finished in 03min 56s at (2026-11-14 05:49:59)
+
+# Bound that did not complete: liveness at the stated bound (an earlier variant of the model with 128 declarations
+# and one fairness condition per key), stopped after 60 min, no violation found before stopping. Last progress line:
+Progress(29) at 2026-11-14 03:00:37: 46,290,576 states generated (1,087,186 s/min), 11,439,904 distinct states found (252,028 ds/min), 2,343,559 states left on queue.

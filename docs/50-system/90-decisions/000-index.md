@@ -20,6 +20,7 @@ Decisions are never deleted. A replaced decision is marked
 | DEC-094 | PH-2 step 1f: integration and addressing in BPA 1.0-rc8 — connectors and `call.connector` (STD-ISA-090), compensation of pre-commit calls (STD-TXN-051), `emit.notify` (STD-ISA-071), short forms and VFS paths (STD-ADDR-003, -004), REST facade (STD-PROTO-021) | Accepted |
 | DEC-095 | PH-2 step 1g: search and views in BPA 1.0-rc8 — `search.aggregate` (STD-ISA-081), `search.traverse` (STD-ISA-082), `search.text` (STD-ISA-083) with declared parameters, view resolution (STD-CLS-023) | Accepted |
 | DEC-096 | PH-2 step 1h: release of BPA 1.0-rc8 — notes finalised, VER-INSP-9006, the owner's signed tag `bpa-v1.0.0-rc8`, freeze; the candidate part of EXIT-2-01 | Accepted |
+| DEC-097 | PH-2 step 2: extended formal models — approvals and deferred commits (`approval.tla`, VER-FORM-0100) and sagas (`saga.tla`, VER-FORM-0101) checked with 0 violations; liveness in separate modules; findings A-1…A-8 and S-1…S-6 taken up by the clause and design changes of steps 4 and 6; EXIT-2-02 met | Accepted |
 
 ---
 
@@ -279,3 +280,21 @@ DEC-090 on follow.
   - Tagging BPA 1.0.0 now was rejected: the kernel has not run the 1.0-rc8 vectors, so defects may still be found and corrected in a further candidate.
   - Waiting for the kernel before tagging was rejected: the standard precedes the code (AR-033), and the kernel steps implement a frozen text.
 - **Affects:** DSN-BPA-001, EXIT-2-01, VER-INSP-9006, DEC-045, DEC-089
+
+### DEC-097 — Extended formal models: approvals and sagas (PH-2 step 2)
+- **Date:** 2026-11-14 · **Status:** Accepted
+- **Context:** PH-2 step 2 (UBS-PH-2 §11) checks the approval and saga protocols formally before the kernel implements them (AR-033, DSN-DVM-746, DSN-DVM-566), with the bounds of VER-FORM-0100 and VER-FORM-0101 and the rule of DEC-031. The owner confirmed the plan with the default suggestions on 2026-11-14.
+- **Decision:**
+  1. **Parts.** 2a: model `verify/models/approval.tla` of deferred commits, approvals, separation of duties, invalidation, re-run and expiry (STD-TXN-060, STD-VER-021, STD-LGS-041…043, DSN-DVM-550…552). 2b: model `verify/models/saga.tla` of a three-step saga with crashing coordinators, idempotent step and compensation processes, lost and repeated invocations, timeouts with the declared action (STD-TXN-080, DSN-DVM-564…566, DSN-DVM-750). 2c: report `verify/models/reports/README.md` §6 and §7, `check.sh` and CI.
+  2. **Liveness in separate modules.** TLC's symmetry reduction is not sound for liveness and `check.sh` takes one configuration per model, so the temporal properties are checked by `approval_live.tla` and `saga_live.tla`, which only extend the safety models. All four run in CI at reduced bounds.
+  3. **Bounds.** The approval model completed exhaustively at the stated bound (2 approvers × 3 editors × 3 objects; 50,992,122 distinct states); its liveness property is checked exhaustively at one pending change. The saga invariants completed exhaustively at the stated bound (16,730,520 distinct states); its liveness properties did not complete there in 60 minutes and are checked by rule 2 of DEC-031 (exhaustive at two reduced bounds, 1,000,000 simulated behaviours at the stated bound).
+  4. **Mutation checks.** Every property is the target of a deliberately wrong variant selected by the constant `Mutation`; 11 of 11 (approvals) and 9 of 9 (sagas) were detected.
+  5. **Findings.** The models found no violation of a checked property, but fourteen places where clauses and design items disagree, leave a case open or are unsafe as worded: A-1…A-8 (approvals: re-run after moved bases, preview named in the approval, default expiry, separation of duties at commit, delegation, several requirements, wording) and S-1…S-6 (sagas: timeouts fenced on the step's branch, durable failed outcomes, terminal states, timeout members of `DAT-Saga`, compare-and-set transitions, compensations). BPA 1.0-rc8 is frozen (DEC-096), so the clause changes go into the next release candidate opened at the start of step 4 (A-*) and step 6 (S-*), each by its own decision with the owner's confirmation; the design items change with them. The models follow the reading recorded in the report until then.
+- **Consequences:**
+  - EXIT-2-02 is met: VER-FORM-0100 and VER-FORM-0101 pass with 0 violations.
+  - CI's formal-model job runs six models; it grows by about seven minutes.
+  - Steps 4 and 6 start from the findings; the kernel implements the corrected clauses, not the frozen wording.
+- **Alternatives considered:**
+  - Correcting the clauses now in 1.0-rc8 was rejected: the candidate is frozen once tagged, and the corrections belong to the steps that implement them.
+  - Waiting about two hours for an exhaustive liveness run of the saga model at the stated bound was rejected for this step: DEC-031 accepts simulation where TLC does not complete, and the invariants, which carry the at-most-once and ordering guarantees, completed exhaustively. The longer run can follow on the reference hardware.
+- **Affects:** EXIT-2-02, VER-FORM-0100, VER-FORM-0101, DSN-DVM-550, DSN-DVM-551, DSN-DVM-552, DSN-DVM-564, DSN-DVM-565, DSN-DVM-566, DSN-DVM-746, STD-TXN-060, STD-TXN-080, STD-LGS-041, STD-LGS-042, STD-LGS-043, DEC-031, DEC-096

@@ -37,7 +37,7 @@ depends_on: [UBS-VER-01, UBS-PH-2]
   1. Model pending changes, approvals with preview hashes, concurrent edits, SoD constraints.
   2. Check: no commit without valid approvals; stale approvals never count; SoD always holds.
 - **Pass criterion:** 0 violations at 2 approvers × 3 editors × 3 objects.
-- **Evidence:** model and checker output.
+- **Evidence:** model `verify/models/approval.tla` with `approval_live.tla` and the checker output in `verify/models/reports/` (PH-2 step 2a, DEC-097: the stated bound exhaustive, 50,992,122 distinct states, 0 violations; liveness exhaustive at one pending change; 11 of 11 mutations detected; findings A-1…A-8 in `reports/README.md` §6).
 - **Supports:** EXIT-2-02
 
 ### VER-FORM-0101 — Saga model
@@ -48,7 +48,7 @@ depends_on: [UBS-VER-01, UBS-PH-2]
   1. Model a 3-step saga with timeouts and coordinator crashes.
   2. Check: every started saga ends completed or compensated; compensations run at most once per step.
 - **Pass criterion:** 0 violations.
-- **Evidence:** model and checker output.
+- **Evidence:** model `verify/models/saga.tla` with `saga_live.tla` and the checker output in `verify/models/reports/` (PH-2 step 2b, DEC-097: invariants exhaustive at the stated bound, 16,730,520 distinct states; liveness exhaustive at two reduced bounds and 1,000,000 simulated behaviours at the stated bound (DEC-031); 0 violations; 9 of 9 mutations detected; findings S-1…S-6 in `reports/README.md` §7).
 - **Supports:** EXIT-2-02
 
 ### VER-SCN-2000 — Basic Finance scenario family and accounting correctness
